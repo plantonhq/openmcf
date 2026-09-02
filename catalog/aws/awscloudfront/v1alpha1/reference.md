@@ -354,7 +354,11 @@ dial: "PriceClass_All" (every edge location -- the default),
 or "PriceClass_100" (North America + Europe only, the cheapest).
 Viewers outside the selected class are served from the nearest
 included edge -- functional everywhere, just slower far away.
-Empty keeps PriceClass_All.
+Empty keeps PriceClass_All. The Terraform provider nominally also
+admits "None" (a shared SDK enum value for the legacy streaming and
+multi-tenant surfaces), but AWS rejects it on standard
+distributions -- the three values here mirror AWS's real contract,
+deliberately stricter than the provider.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["PriceClass_100","PriceClass_200","PriceClass_All"]}}
 

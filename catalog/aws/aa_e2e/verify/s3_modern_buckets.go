@@ -3,6 +3,7 @@ package verify
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -60,6 +61,15 @@ func directoryBucketExists(ctx context.Context, cfg aws.Config, id, region strin
 			case "NotFound", "NoSuchBucket":
 				return false, nil
 			}
+		}
+		// S3 Express routes every bucket operation through CreateSession,
+		// and a DELETED bucket's 404 surfaces as a credential-acquisition
+		// failure ("get identity: get credentials: ... CreateSession ...
+		// NoSuchBucket") whose wrapper chain errors.As cannot unwrap to a
+		// smithy.APIError — match the code textually, the same fallback
+		// the bedrock and backup verifiers use for unmodeled not-founds.
+		if strings.Contains(err.Error(), "NoSuchBucket") {
+			return false, nil
 		}
 		return false, err
 	}

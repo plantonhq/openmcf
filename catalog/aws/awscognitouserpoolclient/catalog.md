@@ -1,39 +1,39 @@
 # AWS Cognito User Pool Client
 
-Deploys a Cognito User Pool app client — the OAuth 2.0 / OIDC contract between ONE application and a user pool. Each application surface (web SPA, mobile app, M2M service) gets its own client with its own grant types, redirect URLs, token lifetimes, and client ID. Downstream systems reference that client ID (API Gateway JWT authorizer audiences, ALB authenticate-cognito actions, SDK configs).
+Deploys a Cognito User Pool app client — the OAuth 2.0 / OIDC contract between ONE application and a user pool. Each application surface (web SPA, mobile app, M2M service) gets its own client with its own grant types, redirect URLs, token lifetimes, and client ID. Downstream systems reference that client ID (API Gateway JWT authorizer audiences, ALB authenticate-cognito actions, SDK configs), which is why the client is its own resource rather than a field on the pool.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Cognito User Pool Client** -- registered on the target user pool with the configured OAuth flows, scopes, redirect URLs, auth flows, token lifetimes, attribute access, and optional Pinpoint analytics
-- **Client Secret** -- minted only when `generateSecret` is true (confidential / M2M clients); public clients authenticate with PKCE instead
-- **Client-Scoped Risk Configuration** -- created only when `riskConfiguration` is set; overrides the pool-wide threat-protection response policy for this client only (requires the pool's threat protection to be active)
-- **AWS Tags** -- resource metadata tags applied automatically for tracking and governance
+- **Cognito User Pool Client** — registered on the target user pool with the configured OAuth flows, scopes, redirect URLs, auth flows, token lifetimes, attribute access, and optional Pinpoint analytics. App clients are not taggable in AWS.
+- **Client Secret** — minted only when `generateSecret` is true (confidential / M2M clients); public clients authenticate with PKCE instead.
+- **Client-Scoped Risk Configuration** — created only when `riskConfiguration` is set; overrides the pool-wide threat-protection response policy for this client only (requires the pool's threat protection to be active).
 
 ## Before You Deploy
 
 ### Planton Setup
 
-- **AWS Provider Connection** -- an active connection in the Connect module with credentials for the target AWS account.
-- **Planton Runner** -- required when using Runner-based credential delivery.
+- **AWS Provider Connection** — an active connection in the Connect module with credentials for the target AWS account. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
 
 ### AWS Account
 
-- **A Cognito User Pool** -- the directory this application authenticates against. Reference an AwsCognitoUserPool Cloud Resource or provide the pool ID directly.
-- **Identity providers** (optional) -- list federated providers by name or reference AwsCognitoIdentityProvider resources in `supportedIdentityProviders`.
-- **Resource server scopes** (optional) -- custom OAuth scopes from an AwsCognitoResourceServer use the form `identifier/scope-name`.
+- **A Cognito User Pool** — the directory this application authenticates against. Reference an AwsCognitoUserPool Cloud Resource or provide the pool ID directly.
+- **Identity providers** (only for federated sign-in) — list providers by name or reference AwsCognitoIdentityProvider resources in `supportedIdentityProviders`.
+- **Resource server scopes** (only for custom scopes) — an AwsCognitoResourceServer minting the `identifier/scope-name` strings this client will request; mandatory for the `client_credentials` grant.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **AWS Cognito User Pool Client**, and click **Deploy**. Start from the **Web SPA** preset for public clients, **M2M Client Credentials** for machine grants, or **Server Confidential** for server-side apps with a secret.
+Open the deployment store, find **AWS Cognito User Pool Client**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields covering the pool reference, OAuth posture, and token lifetimes. Start from the **Web SPA** preset in the [Presets](#presets) tab for public clients, **Machine-to-Machine (Client Credentials)** for machine grants, or **Server-Side Confidential** for server-side apps holding a secret.
 
 ### CLI
 
+Create a manifest and apply it:
+
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoUserPoolClient
 metadata:
   name: web-spa-client
@@ -54,9 +54,9 @@ spec:
     - email
     - profile
   callbackUrls:
-    - https://app.example.com/callback
+    - https://app.acme-corp.com/callback
   logoutUrls:
-    - https://app.example.com/logout
+    - https://app.acme-corp.com/logout
   supportedIdentityProviders:
     - value: COGNITO
   explicitAuthFlows:
@@ -70,26 +70,92 @@ spec:
 planton apply -f cognito-user-pool-client.yaml
 ```
 
+This creates a public SPA client on the referenced pool: Authorization Code grant with the standard OIDC scopes, SRP sign-in against the pool's own directory, refresh tokens, revocation on sign-out, and user-enumeration protection. A Stack Job tracks the provisioning in real time.
+
 ### InfraChart
 
-Reference the pool and any federated providers with ValueFromRef so the deployment graph creates them first. Put custom resource-server scopes into `allowedOauthScopes` using the resource server's `scope_identifiers` output.
+When the client deploys alongside its pool and a federated provider in one chart, wire both references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  userPoolId:
+    valueFrom:
+      kind: AwsCognitoUserPool
+      name: app-auth
+      fieldPath: status.outputs.user_pool_id
+  allowedOauthFlowsUserPoolClient: true
+  allowedOauthFlows:
+    - code
+  allowedOauthScopes:
+    - openid
+    - email
+  callbackUrls:
+    - https://app.acme-corp.com/callback
+  supportedIdentityProviders:
+    - value: COGNITO
+    - valueFrom:
+        kind: AwsCognitoIdentityProvider
+        name: corp-okta
+        fieldPath: status.outputs.provider_name
+```
+
+The InfraPipeline resolves the dependency graph — pool, then provider, then client — so the provider exists before the client lists it. Custom resource-server scopes go into `allowedOauthScopes` using the resource server's `scope_identifiers` output values.
 
 ## Key Configuration
 
-**Generate secret** -- ForceNew. On for confidential server-side and M2M clients; off for public SPAs and mobile apps that use PKCE.
+These are the most important decisions when configuring an app client. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**OAuth grants** -- Authorization Code is the modern default. Client Credentials is machine-to-machine and cannot share a client with user-facing grants. Callback URLs are required for browser redirects; the default redirect URI must be one of them.
+**Confidential or public is decided at birth** — `generateSecret` is create-only. On for server-side and M2M clients that can protect a secret; off for SPAs and mobile apps, which authenticate with PKCE. Changing your mind later means a new client and a new client ID everywhere downstream.
 
-**Refresh token rotation** -- When ENABLED, each refresh issues a new refresh token. Drop `ALLOW_REFRESH_TOKEN_AUTH` from explicit auth flows — AWS rejects the combination. `retryGracePeriodSeconds` is tri-state: leave it unset to keep AWS's default, or set an explicit `0` to retire rotated-out tokens immediately (a distinct, deliberate posture — not the same as unset).
+**One client per application surface, and M2M stands alone** — Authorization Code (`code`) is the modern default for anything user-facing; `implicit` is legacy (tokens leak into browser history). The `client_credentials` grant cannot share a client with user-facing grants — AWS rejects the mix — and it can request ONLY custom resource-server scopes, since the built-in OIDC scopes describe a user that doesn't exist in a machine flow.
 
-**Client-scoped threat protection** -- `riskConfiguration` overrides the pool-wide response policy for this client only: its own account-takeover actions and notification templates, compromised-credential response, and IP exceptions. Requires the pool's `userPoolAddOns.advancedSecurityMode` to be `AUDIT` or `ENFORCED`.
+**Refresh token rotation changes the rules** — with `refreshTokenRotation.feature: ENABLED`, each refresh issues a new token and retires the old one, shrinking a stolen token's blast radius. Drop `ALLOW_REFRESH_TOKEN_AUTH` from `explicitAuthFlows` when you enable it — rotation owns the refresh behavior and AWS rejects the combination. `retryGracePeriodSeconds` is tri-state: unset keeps AWS's default, an explicit `0` pins immediate retirement, 1–60 grants that many seconds for clients that lose the response carrying the new token.
 
-## After Deployment
+**Token lifetimes are a value-unit pair** — `accessTokenValidity`/`idTokenValidity` (5 minutes to 24 hours) and `refreshTokenValidity` (60 minutes to 10 years) are interpreted in `tokenValidityUnits` (defaults: hours, hours, days). Shorter access tokens shrink the exposure window at the cost of more refresh traffic; the spec validates the bounds before AWS sees them.
 
-Stack outputs include `client_id` (the hero identifier apps and authorizers embed), `client_secret` (sensitive; only when a secret was generated), and the resolved `user_pool_id`.
+**Keep `preventUserExistenceErrors: ENABLED`** — it returns the same error for wrong-password and nonexistent-user attempts, defeating user enumeration. LEGACY exists for backward compatibility only.
 
-## Related Resources
+**Client-scoped threat protection has a cross-resource prerequisite** — `riskConfiguration` (account-takeover actions per risk level, compromised-credential response, IP allow/block exceptions) overrides the pool-wide policy for this client only, and requires the pool's threat protection (`userPoolAddOns.advancedSecurityMode` of AUDIT or ENFORCED) to be active — a requirement AWS enforces at apply, not the spec. For server-side flows, `enablePropagateAdditionalUserContextData` forwards the real end-user IP and user agent to threat protection (requires a client secret); without it, Cognito risk-scores your server's IP.
 
-- **AwsCognitoUserPool** -- the user directory this client authenticates against
-- **AwsCognitoIdentityProvider** -- federated providers listed in `supportedIdentityProviders`
-- **AwsCognitoResourceServer** -- custom OAuth scopes requested in `allowedOauthScopes`
+**Omitting `supportedIdentityProviders` enables everything** — AWS turns on ALL of the pool's providers for the client. List `COGNITO` and the intended federated providers explicitly so adding a provider to the pool later doesn't silently appear on this client's sign-in page.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsCognitoUserPool** | `userPoolId` | `status.outputs.user_pool_id` |
+| **AwsCognitoIdentityProvider** | `supportedIdentityProviders` | `status.outputs.provider_name` |
+| **AwsIamRole** | `analyticsConfiguration.roleArn` | `status.outputs.role_arn` |
+| **AwsSesEmailIdentity** | `riskConfiguration.accountTakeover.notifyConfiguration.sourceArn` | `status.outputs.identity_arn` |
+
+Custom resource-server scopes travel as plain strings in `allowedOauthScopes` — copy them from the resource server's `scope_identifiers` output.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `client_id` | The app client ID — the public identifier and the `aud` claim | API Gateway JWT authorizer audiences, ALB authenticate-cognito actions, application SDK configs |
+| `client_secret` | The client secret (sensitive; populated only when a secret was generated) | Confidential clients' token-endpoint authentication, wired as a secret |
+| `user_pool_id` | The pool this client belongs to, resolved from the reference | Application configs needing the (pool id, client id) pair together |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Public SPA with PKCE** — no secret, Authorization Code grant, SRP auth (the password never leaves the device), standard OIDC scopes, revocation and enumeration protection on. Add rotation later without replacing the client. Start from the **Web SPA** preset.
+
+**Machine-to-machine per service** — `client_credentials` with a generated secret and custom resource-server scopes, short access-token lifetimes. Give each calling service its OWN client so each holds its own credential and can be revoked independently — sharing one M2M client across services makes revocation an outage. Start from the **Machine-to-Machine (Client Credentials)** preset.
+
+**Server-side confidential** — Authorization Code with a secret, rotating refresh tokens with a small retry grace window, and end-user context propagated to threat protection so risk scoring sees the browser, not your backend. Start from the **Server-Side Confidential** preset.
+
+## Works With
+
+- [**AWS Cognito User Pool**](/cloud-catalog/aws-cognito-user-pool) — the user directory this client authenticates against, wired via the `userPoolId` reference
+- [**AWS Cognito Identity Provider**](/cloud-catalog/aws-cognito-identity-provider) — federated providers listed in `supportedIdentityProviders`
+- [**AWS Cognito Resource Server**](/cloud-catalog/aws-cognito-resource-server) — mints the custom OAuth scopes this client requests
+- [**AWS SES Email Identity**](/cloud-catalog/aws-ses-email-identity) — the sending identity for threat-protection notification emails

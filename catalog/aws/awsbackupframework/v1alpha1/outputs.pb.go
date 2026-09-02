@@ -26,7 +26,12 @@ const (
 type AwsBackupFrameworkStackOutputs struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The framework's ARN - what report plans reference.
-	FrameworkArn  string `protobuf:"bytes,1,opt,name=framework_arn,json=frameworkArn,proto3" json:"framework_arn,omitempty"`
+	FrameworkArn string `protobuf:"bytes,1,opt,name=framework_arn,json=frameworkArn,proto3" json:"framework_arn,omitempty"`
+	// The AWS region the framework lives in. Frameworks are
+	// region-scoped and addressed by region + name, so any consumer (or
+	// verifier) reaching the framework off the ambient region needs
+	// this alongside the ARN.
+	Region        string `protobuf:"bytes,2,opt,name=region,proto3" json:"region,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -68,13 +73,21 @@ func (x *AwsBackupFrameworkStackOutputs) GetFrameworkArn() string {
 	return ""
 }
 
+func (x *AwsBackupFrameworkStackOutputs) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
 var File_catalog_aws_awsbackupframework_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsbackupframework_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/aws/awsbackupframework/v1alpha1/outputs.proto\x12+dev.planton.aws.awsbackupframework.v1alpha1\"E\n" +
+	"5catalog/aws/awsbackupframework/v1alpha1/outputs.proto\x12+dev.planton.aws.awsbackupframework.v1alpha1\"]\n" +
 	"\x1eAwsBackupFrameworkStackOutputs\x12#\n" +
-	"\rframework_arn\x18\x01 \x01(\tR\fframeworkArnB\xf1\x02\n" +
+	"\rframework_arn\x18\x01 \x01(\tR\fframeworkArn\x12\x16\n" +
+	"\x06region\x18\x02 \x01(\tR\x06regionB\xf1\x02\n" +
 	"/com.dev.planton.aws.awsbackupframework.v1alpha1B\fOutputsProtoP\x01Z_github.com/plantonhq/planton/catalog/aws/awsbackupframework/v1alpha1;awsbackupframeworkv1alpha1\xa2\x02\x04DPAA\xaa\x02+Dev.Planton.Aws.Awsbackupframework.V1alpha1\xca\x02+Dev\\Planton\\Aws\\Awsbackupframework\\V1alpha1\xe2\x027Dev\\Planton\\Aws\\Awsbackupframework\\V1alpha1\\GPBMetadata\xea\x02/Dev::Planton::Aws::Awsbackupframework::V1alpha1b\x06proto3"
 
 var (

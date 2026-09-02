@@ -1,0 +1,80 @@
+# Preset-validity baseline -- the accepted backlog of presets that fail their
+# own kind's validation rules: presets authored before validity was
+# machine-enforced and not yet brought to the bar. Each provider's sweep burns
+# its entries down; the list trends to 0 and never grows.
+#
+# The CI guardrail (go test ./pkg/presetvalidity/...) fails when:
+#   - a violation appears that is NOT listed here (a preset shipped invalid), or
+#   - a listed entry is no longer a violation (it was fixed -- remove it here).
+#
+# Entry format: <repo-relative preset yaml path>:<rule>   (see pkg/presetvalidity rule constants)
+# Regenerate with:  PLANTON_REGEN_PRESET_VALIDITY_BASELINE=1 go test ./pkg/presetvalidity/
+violations:
+  - catalog/azure/azurelocalnetworkgateway/presets/01-static-site.yaml:invalid-preset
+  - catalog/azure/azurelocalnetworkgateway/presets/02-bgp-site.yaml:invalid-preset
+  - catalog/azure/azureprivatelinkservice/presets/02-fixed-destination-ip.yaml:invalid-preset
+  - catalog/azure/azurevirtualnetworkgatewayconnection/presets/01-site-to-site.yaml:invalid-preset
+  - catalog/azure/azurevirtualnetworkgatewayconnection/presets/02-custom-ipsec-policy.yaml:invalid-preset
+  - catalog/cloudflare/cloudflared1database/presets/01-standard.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarednsrecord/presets/03-srv-service.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarednsrecord/presets/04-caa-certificate-authority.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarednszone/presets/01-basic-zone.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarednszone/presets/02-dnssec-signed.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarednszone/presets/03-typed-records.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareemailroutingaddress/presets/01-destination.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarehyperdriveconfig/presets/01-postgres-basic.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarehyperdriveconfig/presets/02-postgres-mtls.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarehyperdriveconfig/presets/03-postgres-vpc.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarekvnamespace/presets/01-standard.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarelist/presets/01-ip-allowlist.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarelist/presets/02-bulk-redirect.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarelistitem/presets/01-ip-entry.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarelistitem/presets/02-redirect-entry.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareloadbalancer/presets/01-active-passive-failover.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareloadbalancer/presets/02-geographic-routing.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareloadbalancer/presets/03-weighted-ab-testing.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareloadbalancer/presets/04-traffic-rules.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareloadbalancermonitor/presets/01-https-web.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareloadbalancermonitor/presets/02-tcp-port.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareloadbalancerpool/presets/01-web-pool.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareloadbalancerpool/presets/02-geo-located-pool.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarepagesproject/presets/01-git-connected-site.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarepagesproject/presets/02-direct-upload-site.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarequeue/presets/01-worker-consumer.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarequeue/presets/02-http-pull.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarer2bucket/presets/01-private.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarer2bucket/presets/02-public-cdn.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarer2bucket/presets/03-lifecycle-managed.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareruleset/presets/08-skip-rules.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareturnstilewidget/presets/01-managed.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareturnstilewidget/presets/02-invisible.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareworker/presets/01-api-with-custom-domain.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareworker/presets/02-minimal.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareworker/presets/03-static-site.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareworker/presets/04-full-stack-app.yaml:invalid-preset
+  - catalog/cloudflare/cloudflareworkerskvpair/presets/01-standard.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrustaccessapplication/presets/01-self-hosted-web-app.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrustaccessapplication/presets/02-saas-oidc-app.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrustaccessgroup/presets/01-engineering-team.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrustaccessgroup/presets/02-idp-group-with-mfa.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrustaccesspolicy/presets/01-allow-staff.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrustaccesspolicy/presets/02-admins-with-approval.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrusttunnel/presets/01-public-hostname.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrusttunnel/presets/02-access-protected.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrusttunnel/presets/03-private-network-connector.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrusttunnelroute/presets/01-private-subnet.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrusttunnelroute/presets/02-isolated-overlap.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/presets/01-isolated-segment.yaml:invalid-preset
+  - catalog/cloudflare/cloudflarezerotrusttunnelvirtualnetwork/presets/02-default-network.yaml:invalid-preset
+  - catalog/gcp/gcpcloudrun/presets/03-gpu-inference.yaml:invalid-preset
+  - catalog/gcp/gcpfirewallrule/presets/01-ingress-allow-web.yaml:invalid-preset
+  - catalog/gcp/gcpfirewallrule/presets/02-ingress-allow-ssh-iap.yaml:invalid-preset
+  - catalog/gcp/gcpfirewallrule/presets/03-egress-deny-all.yaml:invalid-preset
+  - catalog/gcp/gcpgkeworkloadidentitybinding/presets/01-standard.yaml:invalid-preset
+  - catalog/gcp/gcpglobaladdress/presets/01-external-static-ip.yaml:invalid-preset
+  - catalog/gcp/gcpglobaladdress/presets/02-internal-vpc-peering-range.yaml:invalid-preset
+  - catalog/gcp/gcpglobaladdress/presets/03-private-service-connect.yaml:invalid-preset
+  - catalog/gcp/gcpvertexaiendpoint/presets/03-private-psc.yaml:invalid-preset
+  - catalog/kubernetes/kubernetesjenkins/presets/01-standard.yaml:invalid-preset
+  - catalog/kubernetes/kubernetessecret/presets/02-tls.yaml:invalid-preset
+  - catalog/kubernetes/kubernetessecret/presets/03-docker-registry.yaml:invalid-preset

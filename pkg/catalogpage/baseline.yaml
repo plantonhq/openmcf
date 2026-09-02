@@ -1,0 +1,13 @@
+# Catalog-page baseline -- the accepted backlog of pages below the ONE catalog
+# page standard (_rules/docs/write-planton-component-catalog-md.mdc): pages that
+# predate the standard and have not been brought to the bar yet. The upgrade
+# sweep burns this list down provider by provider; it trends to 0 and never
+# grows.
+#
+# The CI guardrail (go test ./pkg/catalogpage/...) fails when:
+#   - a violation appears that is NOT listed here (a page shipped below the bar), or
+#   - a listed entry is no longer a violation (it was fixed -- remove it here).
+#
+# Entry format: <repo-relative catalog.md path>:<rule>   (see pkg/catalogpage rule constants)
+# Regenerate with:  PLANTON_REGEN_CATALOG_PAGE_BASELINE=1 go test ./pkg/catalogpage/
+violations: []

@@ -1,21 +1,37 @@
 # Cloudflare Zero Trust Device Default Profile
 
-The account's default WARP device profile: the settings every enrolled device receives unless a custom profile matches it first. Applying edits the always-existing singleton; destroy is a no-op.
+Manages the account's default Cloudflare WARP device profile: the settings every enrolled device receives unless a custom profile matches it first. The profile always exists on the account — applying this resource edits the singleton in place, and destroy is a no-op that leaves the last-applied values standing. Two companion write paths fold in: the account's local-DNS fallback list (full-replacement) and the per-zone WARP client certificate toggle. Treat it like a settings panel, not an object with a lifecycle.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Default device profile** -- one `cloudflare_zero_trust_device_default_profile` (a PATCH upsert of the account singleton)
-- **Local-DNS fallback list** -- one `cloudflare_zero_trust_device_default_profile_local_domain_fallback` when `fallback_domains` is declared (full replacement of the account's list)
-- **Zone certificate toggle** -- one `cloudflare_zero_trust_device_default_profile_certificates` when `zone_certificates` is declared (zone-scoped)
+- **Default Device Profile** — a `cloudflare_zero_trust_device_default_profile`, a PATCH upsert of the account singleton. Unset spec fields are never sent, leaving the live value (or Cloudflare's default) untouched
+- **Local-DNS Fallback List** — created only when `fallbackDomains` is declared, a `cloudflare_zero_trust_device_default_profile_local_domain_fallback` that replaces the account's whole list on every apply
+- **Zone Certificate Toggle** — created only when `zoneCertificates` is declared, a `cloudflare_zero_trust_device_default_profile_certificates` enabling or disabling WARP client certificate provisioning on one zone
 
-## Prerequisites
+## Before You Deploy
 
-- **Zero Trust enabled on the account** (the team-name onboarding step)
-- **A Cloudflare API token** with Account → Zero Trust → Edit (the zone-certificates fold additionally needs Zone → SSL and Certificates → Edit)
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** — an active connection in the Connect module with a Cloudflare API token carrying Account → Zero Trust → Edit. The zone-certificates fold additionally needs Zone → SSL and Certificates → Edit. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline API token authentication.
+
+### Cloudflare Account
+
+- **Zero Trust enabled** — the account must have completed Cloudflare Zero Trust onboarding (the team-name step).
+- **The current fallback list fetched** (only for `fallbackDomains`) — Cloudflare seeds every account with a default list (localhost, home.arpa, and kin). Declaring the field replaces the whole list, so fold the seeded rows you want to keep into the manifest before the first apply.
+- **The target zone in the same account** (only for `zoneCertificates`) — the zone whose client certificate devices should receive.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Cloudflare Zero Trust Device Default Profile**, and click **Deploy**. The creation wizard walks you through the owning account, the WARP settings body (lock-in toggles, timers, service mode, LAN access), split-tunnel routes, the fallback domain list, and the per-zone certificate toggle. Start from the **Locked fleet baseline** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -28,48 +44,94 @@ spec:
   accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
   switchLocked: true
   allowedToLeave: false
+  autoConnect: 600
 ```
 
 ```shell
 planton apply -f default-profile.yaml
 ```
 
-## Configuration Reference
+This patches the account's default profile so users cannot turn WARP off or unenroll, and a user-disabled client reconnects on its own after ten minutes. Every other setting keeps its live value. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `accountId` | string | The Cloudflare account. | Required, 32-hex; replaces on change. |
+When deploying as part of a multi-resource environment, wire virtual network scoping and the certificate zone to resources managed by other Cloud Resources:
 
-### Optional Fields
+```yaml
+spec:
+  virtualNetworks:
+    allowed:
+      - valueFrom:
+          kind: CloudflareZeroTrustTunnelVirtualNetwork
+          name: prod-overlay
+          fieldPath: status.outputs.virtual_network_id
+    defaultVirtualNetworkId:
+      valueFrom:
+        kind: CloudflareZeroTrustTunnelVirtualNetwork
+        name: prod-overlay
+        fieldPath: status.outputs.virtual_network_id
+  zoneCertificates:
+    zoneId:
+      valueFrom:
+        kind: CloudflareDnsZone
+        name: acme-com
+        fieldPath: status.outputs.zone_id
+    enabled: true
+```
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `exclude` / `include` | list | Split-tunnel routes. | Mutually exclusive lists; each entry address XOR host. |
-| `serviceModeV2` | object | The client mode. | `mode` required when set; `port` 1-65535. |
-| `virtualNetworks` | object | Reachable Zero Trust virtual networks. | `allowed` min 1 (vnet references); `defaultVirtualNetworkId` required. |
-| `dnsSearchSuffixes` | list | Short-hostname resolution suffixes. | `suffix` required per row; the list is fully managed -- empty clears the account's list. |
-| `fallbackDomains` | list | The folded local-DNS fallback list. | FULL REPLACEMENT -- the declared list is exactly what exists. |
-| `zoneCertificates` | object | Per-zone WARP client certificates. | `zoneId` reference + explicit `enabled` (no delete exists); the endpoint needs a user-actor credential -- account-owned tokens get 401 code 1039. |
-| `autoConnect`, `captivePortal` | int | Reconnect/captive-portal timers (seconds). | >= 0. |
-| `lanAllowMinutes`, `lanAllowSubnetSize` | int | The LAN access window. | >= 0; subnet size <= 128. |
-| `switchLocked`, `allowedToLeave`, `allowModeSwitch`, `allowUpdates`, ... | bool | The toggle body. | Unset never sends (keeps Cloudflare's default). |
-| `tunnelProtocol` | string | wireguard or masque. | API-owned value set; empty RESETS the account to Cloudflare's default protocol -- declare it explicitly on accounts running a non-default one. |
+The InfraPipeline deploys the referenced virtual networks and zone first, then patches the profile against their real IDs.
 
-## Destroy Semantics
+## Key Configuration
 
-No-op on all three surfaces: the last-applied values stand. Removing the resource abandons management, never reverts.
+These are the most important decisions when configuring the default device profile. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**Destroy reverts nothing, on any surface** — the profile is a settings singleton (PATCH upsert, no delete), the fallback list's destroy is a no-op, and the certificate toggle has no delete at all. Removing this resource abandons the last-applied state; devices keep behaving as configured. To actually revert, apply the values you want.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `account_id` | string | The account (the singleton's identity) |
-| `gateway_unique_id` | string | The Gateway-side profile identifier |
-| `policy_id` | string | The profile's policy identifier |
+**The fallback list is full-replacement — and Cloudflare pre-seeded it** — the moment `fallbackDomains` is declared, your list replaces the whole account list, including the seeded rows. Declaring one row does not add a row; it deletes everything else. Rows without `dnsServer` entries fall back to the system resolvers unless `disableAutoFallback` fails them closed. `dnsSearchSuffixes` is managed the same way — the declared list is exactly what exists, and an empty declaration clears the account's list.
 
-## Related Components
+**`switchLocked` and `allowedToLeave` are lock-in levers** — the first removes users' ability to turn WARP off, the second their ability to unenroll; together they hard-lock the fleet. Roll them out after split-tunnel and fallback routing are proven — a bad route with a locked switch is a helpdesk incident on every device at once.
 
-- [Cloudflare Zero Trust Device Custom Profile](/docs/catalog/cloudflare/cloudflarezerotrustdevicecustomprofile) -- targeted overrides
-- [Cloudflare Zero Trust Device Posture Rule](/docs/catalog/cloudflare/cloudflarezerotrustdeviceposturerule) -- device health checks
+**Split tunnel runs in one direction** — `exclude` (everything else tunnels) and `include` (everything else bypasses) are mutually exclusive modes, not filters to combine; the spec rejects a manifest declaring both. When switching modes, the semantics of every existing entry invert. `excludeOfficeIps` adds Microsoft 365 IPs to the exclude side automatically.
+
+**The certificate toggle is zone-scoped and permanent** — `zoneCertificates` is the one zone-scoped surface on this account-scoped kind, and Cloudflare offers no delete or import for it. `enabled` is required explicitly (true or false) because turning it off IS the managed off state; removing the block leaves it however it last was. The endpoint additionally requires a user-actor credential — account-owned tokens are refused with 401 code 1039 (measured live).
+
+**A blank `tunnelProtocol` is a reset, not a no-op** — an empty value resets the account to Cloudflare's default protocol. On accounts running a non-default protocol, declare it explicitly or an apply silently flips the fleet back.
+
+**Unset fields never fight the dashboard** — every optional toggle and timer is only sent when set, so this resource can manage exactly the settings you declare and leave the rest to Cloudflare's defaults or manual configuration.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| CloudflareZeroTrustTunnelVirtualNetwork | `spec.virtualNetworks.allowed[]` | `status.outputs.virtual_network_id` |
+| CloudflareZeroTrustTunnelVirtualNetwork | `spec.virtualNetworks.defaultVirtualNetworkId` | `status.outputs.virtual_network_id` |
+| CloudflareDnsZone | `spec.zoneCertificates.zoneId` | `status.outputs.zone_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `account_id` | The account the profile was applied to — the singleton's identity | Correlating the profile with other account-scoped resources |
+| `gateway_unique_id` | The Gateway-side identifier of the profile | Gateway policies that reference device profiles |
+| `policy_id` | The profile's policy identifier from the device policy API | API automation against the device policy endpoints |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Locked fleet baseline** — the managed-fleet shape: users cannot turn WARP off, unenroll, or switch modes; a disabled client self-reconnects after ten minutes with the standard captive-portal grace for hotel and airport Wi-Fi. Start from the **Locked fleet baseline** preset.
+
+**Split tunnel with on-prem DNS** — the hybrid-office shape: private LAN ranges and printer discovery stay off the tunnel, Microsoft 365 IPs are excluded automatically, short hostnames complete in the corp domain, and internal suffixes resolve against the on-prem resolver through the fallback list (with the seeded `localhost` and `home.arpa` rows re-declared deliberately). Start from the **Split tunnel with on-prem DNS** preset.
+
+**Baseline plus overrides** — keep the default profile permissive and layer stricter custom profiles on specific identity groups, or invert it: a locked baseline with looser custom profiles for engineering. The default is what every device falls back to when no custom profile matches.
+
+## Works With
+
+- [**Cloudflare Zero Trust Device Custom Profile**](/cloud-catalog/cloudflare-zero-trust-device-custom-profile) — group-specific overrides of this baseline; lowest precedence wins.
+- [**Cloudflare Zero Trust Device Posture Rule**](/cloud-catalog/cloudflare-zero-trust-device-posture-rule) — the health checks Access and Gateway policies demand from these devices.
+- [**Cloudflare Zero Trust Tunnel Virtual Network**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) — the routing segments `virtualNetworks` scopes device access to.
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) — the zone `zoneCertificates` provisions WARP client certificates from.

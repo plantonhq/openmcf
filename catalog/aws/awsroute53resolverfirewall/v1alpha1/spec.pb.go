@@ -126,7 +126,9 @@ type AwsRoute53ResolverFirewallDomainList struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The domains on the list, e.g. "malware.example." - AWS treats each
 	// entry as the domain and all its subdomains. A "*." prefix matches
-	// subdomains only.
+	// subdomains only. AWS stores every entry as a trailing-dot FQDN;
+	// both modules append the dot when absent, so either form is fine
+	// here and never causes drift.
 	Domains       []string `protobuf:"bytes,2,rep,name=domains,proto3" json:"domains,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -214,7 +216,9 @@ type AwsRoute53ResolverFirewallRule struct {
 	BlockResponse string `protobuf:"bytes,8,opt,name=block_response,json=blockResponse,proto3" json:"block_response,omitempty"`
 	// The record value an OVERRIDE response returns (AWS returns it as
 	// a CNAME - the record type has exactly one legal value, so the
-	// modules pin it).
+	// modules pin it). AWS stores it as a trailing-dot FQDN
+	// ("sinkhole.example.com."); both modules append the dot when
+	// absent, so either form is fine here and never causes drift.
 	BlockOverrideDomain string `protobuf:"bytes,9,opt,name=block_override_domain,json=blockOverrideDomain,proto3" json:"block_override_domain,omitempty"`
 	// The TTL (seconds, 0-604800) of the OVERRIDE record.
 	BlockOverrideTtl *int64 `protobuf:"varint,10,opt,name=block_override_ttl,json=blockOverrideTtl,proto3,oneof" json:"block_override_ttl,omitempty"`

@@ -1,28 +1,26 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically:
-#
-#   Custom-scopes token (recommended):
-#     reserved_ip:read    -- read the reservation via GET /v2/reserved_ips/{ip} or /v2/reserved_ipv6/{ip} (provenance: derived)
-#     reserved_ip:create  -- reserve the address via POST /v2/reserved_ips or /v2/reserved_ipv6 (derived)
-#     reserved_ip:update  -- assign/unassign via POST /v2/reserved_ips/{ip}/actions (v4 inline assignment; derived)
-#     reserved_ip:delete  -- release the address via DELETE (derived)
-#     droplet:read        -- the v4 assign path waits on the target droplet's pending actions before assigning (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (the digitalocean_reserved_ip / reserved_ipv6 / reserved_ipv6_assignment
-# create/read/update/delete/import paths); the live capture lane upgrades
-# them to proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceanreservedip
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageReservedIp
+        scopes:
+          - reserved_ip:read
+          - reserved_ip:create
+          - reserved_ip:update
+          - reserved_ip:delete
+        provenance: derived
+        notes: Covers the digitalocean_reserved_ip / reserved_ipv6 / reserved_ipv6_assignment create/read/update/delete/import paths -- read the reservation via GET /v2/reserved_ips/{ip} or /v2/reserved_ipv6/{ip} (reserved_ip:read), reserve the address via POST /v2/reserved_ips or /v2/reserved_ipv6 (reserved_ip:create), assign/unassign via POST /v2/reserved_ips/{ip}/actions (v4 inline assignment) (reserved_ip:update), and release the address via DELETE (reserved_ip:delete). A full-access token also works; it is never least-privilege.
+      - purpose: ReadTargetDroplet
+        scopes:
+          - droplet:read
+        provenance: derived
+        notes: The v4 assign path waits on the target droplet's pending actions before assigning.

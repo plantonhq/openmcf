@@ -1,6 +1,6 @@
 # Azure Private Endpoint
 
-Deploys an Azure Private Endpoint: a network interface that gives a Private Link-powered service — an Azure PaaS resource (SQL, PostgreSQL, Storage, Key Vault, Cosmos DB, ...) or a partner's Private Link Service — a private IP inside your virtual network. Traffic to the service rides the Microsoft backbone, never the public internet; each endpoint maps to ONE sub-resource of the target (the data-exfiltration boundary), and the private DNS zone group is part of this resource so DNS registration stays atomic with the endpoint. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, subnets, target services, DNS zones, and application security groups.
+Deploys an Azure Private Endpoint: a network interface that gives a Private Link-powered service — an Azure PaaS resource (SQL, PostgreSQL, Storage, Key Vault, Cosmos DB, ...) or a partner's Private Link Service — a private IP inside your virtual network. Traffic to the service rides the Microsoft backbone, never the public internet; each endpoint maps to ONE sub-resource of the target (the data-exfiltration boundary), and the private DNS zone group is part of this resource so DNS registration stays atomic with the endpoint.
 
 ## What Gets Created
 
@@ -30,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Private Endpoint**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the endpoint's five steps: placement (with a live VNet-to-subnet cascade from your connected subscription), the private link target (resource or alias, with a curated sub-resource picker and a live connection diagram), DNS integration (the wizard names the exact privatelink zone your chosen sub-resource needs), network details, and governance tags.
+Open the deployment store, find **Azure Private Endpoint**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the endpoint's five steps: placement (with a live VNet-to-subnet cascade from your connected subscription), the private link target (resource or alias, with a curated sub-resource picker and a live connection diagram), DNS integration (the wizard names the exact privatelink zone your chosen sub-resource needs), network details, and governance tags. Start from the **Private Endpoint for Azure SQL Database** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePrivateEndpoint
 metadata:
   name: db-endpoint
@@ -49,14 +49,23 @@ spec:
     value: "acme-network-rg"
   name: pg-orders-pe
   subnetId:
-    value: "/subscriptions/.../subnets/private-endpoints"
+    valueFrom:
+      kind: AzureSubnet
+      name: endpoints-subnet
+      fieldPath: status.outputs.subnet_id
   privateServiceConnection:
     privateConnectionResourceId:
-      value: "/subscriptions/.../flexibleServers/orders-db"
+      valueFrom:
+        kind: AzurePostgresqlFlexibleServer
+        name: orders-db
+        fieldPath: status.outputs.server_id
     subresourceNames:
       - postgresqlServer
   privateDnsZoneIds:
-    - value: "/subscriptions/.../privateDnsZones/privatelink.postgres.database.azure.com"
+    - valueFrom:
+        kind: AzurePrivateDnsZone
+        name: pg-privatelink-zone
+        fieldPath: status.outputs.zone_id
 ```
 
 ```shell
@@ -128,20 +137,20 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `private_endpoint_id` | Azure resource ID of the Private Endpoint | Monitoring, diagnostics, governance |
-| `private_endpoint_name` | Name of the endpoint resource | Tooling that addresses the endpoint by name |
 | `private_ip_address` | The private IP allocated from the subnet -- what the service FQDN resolves to inside linked networks | Network troubleshooting, firewall rules, externally-managed DNS |
 | `network_interface_id` | ARM ID of the network interface Azure created for the endpoint | Effective-routes and NSG flow-log diagnostics |
+
+`status.outputs` also carries `private_endpoint_id` and `private_endpoint_name`, but no catalog component consumes the endpoint by reference — clients reach the target through DNS, not through the endpoint's own ID.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Database private connectivity** -- An endpoint targeting Azure SQL (`sqlServer`) with DNS registration in `privatelink.database.windows.net`, so the server's FQDN resolves privately and its public endpoint can be disabled. Start from the **SQL Server** preset.
+**Database private connectivity** -- An endpoint targeting Azure SQL (`sqlServer`) with DNS registration in `privatelink.database.windows.net`, so the server's FQDN resolves privately and its public endpoint can be disabled. Start from the **Private Endpoint for Azure SQL Database** preset.
 
-**Storage account private access** -- An endpoint targeting Blob Storage (`blob`) registered in `privatelink.blob.core.windows.net`. Storage exposes one sub-resource per service -- an application needing blob AND file access deploys two endpoints. Start from the **Storage Account** preset.
+**Storage account private access** -- An endpoint targeting Blob Storage (`blob`) registered in `privatelink.blob.core.windows.net`. Storage exposes one sub-resource per service -- an application needing blob AND file access deploys two endpoints. Start from the **Private Endpoint for Azure Blob Storage** preset.
 
-**Key Vault private access** -- An endpoint targeting Key Vault (`vault`) registered in `privatelink.vaultcore.azure.net`, for zero-trust architectures where secret access must stay on the backbone. Start from the **Key Vault** preset.
+**Key Vault private access** -- An endpoint targeting Key Vault (`vault`) registered in `privatelink.vaultcore.azure.net`, for zero-trust architectures where secret access must stay on the backbone. Start from the **Key Vault Private Endpoint** preset.
 
 ## Works With
 

@@ -1,6 +1,6 @@
 # AWS EKS Node Group
 
-Deploys a managed EKS node group — an EC2 fleet AWS provisions, health-checks, and rolls for you, registered as workers of an existing EKS cluster. The component supports inline instance configuration or launch-template-driven fleets, On-Demand/Spot/Capacity-Block purchase models, auto-scaling bounds, Kubernetes labels and taints, controlled version rollouts, and managed node auto-repair. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring to clusters, IAM roles, subnets, and launch templates.
+Deploys a managed EKS node group — an EC2 fleet AWS provisions, health-checks, and rolls for you, registered as workers of an existing EKS cluster. The component supports inline instance configuration or launch-template-driven fleets, On-Demand/Spot/Capacity-Block purchase models, auto-scaling bounds, Kubernetes labels and taints, controlled version rollouts, and managed node auto-repair.
 
 ## What Gets Created
 
@@ -30,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS EKS Node Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **On-Demand General Purpose** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS EKS Node Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **On-Demand General Pool** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksNodeGroup
 metadata:
   name: general-workers
@@ -64,7 +64,7 @@ spec:
 planton apply -f eks-node-group.yaml
 ```
 
-This creates an On-Demand node group with m6i.large instances scaling between 2 and 5 nodes on 100 GiB root disks, no SSH access, no labels or taints. A Stack Job tracks the provisioning and streams progress in real time.
+This creates an On-Demand node group with m6i.large instances scaling between 2 and 5 nodes on 100 GiB root disks, no SSH access, no labels or taints. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -103,7 +103,7 @@ These are the most important decisions when configuring an EKS node group. Explo
 
 **Instance types** -- The EC2 types AWS may launch. Empty keeps the AWS default (t3.medium). On-Demand groups use the first type; Spot fleets should list several similar types (m6i.large, m5.large, m6a.large) for capacity-pool diversity. Create-only.
 
-**Capacity type** -- `on_demand` (default) for predictable availability, `spot` for 60–90% savings on fault-tolerant workloads (2-minute reclaim notice), or `capacity_block` for pre-purchased ML capacity. Create-only.
+**Capacity type** -- `on_demand` (default) for predictable availability, `spot` for fault-tolerant workloads that can absorb a 2-minute reclaim notice in exchange for lower instance cost, or `capacity_block` for pre-purchased ML capacity. Create-only.
 
 **Scaling** -- `minSize` 0 is a valid dormant pool; min ≥ 2 keeps a production fleet alive through a node failure. `desiredSize` is where the group starts and what AWS holds until a cluster autoscaler moves it.
 
@@ -142,13 +142,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**On-demand general purpose** -- m6i.large instances, 2–5 node scaling, 100 GiB disks, multi-AZ placement. The standard starting point for workloads that need predictable capacity. Start from the **On-Demand General Purpose** preset.
+**On-demand general purpose** -- m6i.large instances, 2–5 node scaling, 100 GiB disks, multi-AZ placement. The standard starting point for workloads that need predictable capacity. Start from the **On-Demand General Pool** preset.
 
-**Spot cost-optimized** -- Several similar instance types on Spot, a `node-lifecycle: spot` label, and a taint if only Spot-tolerant workloads should land there. Pair with an On-Demand group for critical services. Start from the **Spot Cost-Optimized** preset.
+**Spot cost-optimized** -- Several similar instance types on Spot, a `node-lifecycle: spot` label, and a taint if only Spot-tolerant workloads should land there. Pair with an On-Demand group for critical services. Start from the **Spot Cost-Optimized Pool** preset.
 
-**Template-driven fleet** -- A `launchTemplate` reference with a pinned version: custom AMI, IMDSv2 required, encrypted volumes. Roll the fleet by publishing a new template version and bumping the pin.
+**Template-driven fleet** -- A `launchTemplate` reference with a pinned version: custom AMI, IMDSv2 required, encrypted volumes. Roll the fleet by publishing a new template version and bumping the pin. Start from the **Launch-Template Pool** preset.
 
-**Warm standby capacity** -- A `warmPoolConfig` with `poolState: STOPPED`, a small standby floor, and `reuseOnScaleIn: true`: scale-out serves traffic in seconds while pooled nodes bill only their EBS storage. Start from the **Warm Pool** preset.
+**Warm standby capacity** -- A `warmPoolConfig` with `poolState: STOPPED`, a small standby floor, and `reuseOnScaleIn: true`: scale-out serves traffic in seconds while pooled nodes bill only their EBS storage. Start from the **Warm Pool Node Group** preset.
 
 ## Works With
 

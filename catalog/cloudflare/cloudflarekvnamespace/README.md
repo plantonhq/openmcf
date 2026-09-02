@@ -79,12 +79,15 @@ Design your application to tolerate this eventual consistency model.
 - 1 GB storage
 - Limits reset daily at 00:00 UTC
 
-**Paid Plans (Bundled Workers, $5/month):**
-- 10 million reads/month included
-- 1 million writes/month included
-- $0.50 per million additional reads
-- $5.00 per million additional writes
-- $0.50/GB-month for storage beyond 1 GB
+**Paid Plans (Bundled Workers):**
+
+Past the plan's included allotment (10 million reads/month, 1 million writes/month, and the first GB of storage), KV bills on three dimensions:
+
+- Additional reads bill per million operations.
+- Additional writes bill per million too — at roughly an order of magnitude more than reads, so write-heavy workloads pay for their writes.
+- Storage beyond the included GB bills per GB-month.
+
+The verified per-preset figures live in the component's generated estimate at `catalog/_pricing/estimates/cloudflarekvnamespace.yaml`, computed from the pinned, source-dated price book — current rates belong there and on Cloudflare's published pricing page, never hand-typed in this document.
 
 ## Integration with Workers
 

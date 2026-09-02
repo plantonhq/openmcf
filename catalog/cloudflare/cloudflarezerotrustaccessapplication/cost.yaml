@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezerotrustaccessapplication
+spec:
+  billing_model: free
+  free_tier: "An Access application is configuration inside Cloudflare Zero Trust, whose billable unit is the SEAT, never the object: \"Cloudflare One subscriptions consist of seats that active users in your account consume... A user consumes a seat when they perform an authentication event\" (https://developers.cloudflare.com/cloudflare-one/team-and-resources/users/seat-management/, fetched 2026-08-22). Cloudflare's Access product page carries a Free Plan with a 50-user limit (https://www.cloudflare.com/en-au/sase/products/access/, fetched 2026-08-22), so the application object -- and the whole product for up to 50 users -- costs nothing."
+  notes: "No field of this 779-line spec pins a plan, seat count, or subscription: type, domain, destinations, policy references, IdP allowlists, session/cookie settings, CORS, MFA config, SaaS SAML/OIDC blocks, and SCIM provisioning are all evaluation and federation configuration. The real spend lives in the Zero Trust PLAN: each distinct user who authenticates to any Access application consumes one seat (one seat regardless of how many apps they use), free through 50 users and per-user on paid plans, chosen at the account. Spend also cannot run away through this object -- Cloudflare's own seat page states that once all seats are consumed, additional users who attempt to log in are BLOCKED, not billed."

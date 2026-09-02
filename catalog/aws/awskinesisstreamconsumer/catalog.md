@@ -1,6 +1,6 @@
 # AWS Kinesis Stream Consumer
 
-Registers an enhanced fan-out consumer for an Amazon Kinesis Data Stream, providing dedicated 2 MB/s read throughput per shard independent of all other consumers. The consumer integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the parent Kinesis stream.
+Registers an enhanced fan-out consumer for an Amazon Kinesis Data Stream, providing dedicated 2 MB/s read throughput per shard independent of all other consumers. The stream binding accepts ValueFromRef wiring to an AwsKinesisStream in the same InfraChart, and both the consumer name and the stream binding are immutable after creation — a rename or a re-point is a replacement.
 
 ## What Gets Created
 
@@ -32,7 +32,7 @@ Open the deployment store, find **AWS Kinesis Stream Consumer**, and click **Dep
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStreamConsumer
 metadata:
   name: analytics-consumer
@@ -100,8 +100,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Basic consumer** -- Register an enhanced fan-out consumer with an existing stream using a direct ARN. Suitable for standalone consumer registration and quick prototyping. Start from the **Basic Consumer** preset.
 
-**Stream reference consumer** -- Register a consumer using a ValueFromRef to an Planton-managed Kinesis stream. The platform resolves the stream ARN at deployment time and creates a dependency edge in the InfraPipeline DAG. Start from the **Stream Reference** preset.
+**Stream reference consumer** -- Register a consumer using a ValueFromRef to a Planton-managed Kinesis stream. The platform resolves the stream ARN at deployment time and creates a dependency edge in the InfraPipeline DAG. Start from the **Stream Reference (valueFrom)** preset.
 
 ## Works With
 
-- [**AWS Kinesis Stream**](/cloud-catalog/aws-kinesis-stream) -- provides the parent stream this consumer registers with for dedicated throughput
+- [**AWS Kinesis Data Stream**](/cloud-catalog/aws-kinesis-stream) -- provides the parent stream this consumer registers with for dedicated throughput

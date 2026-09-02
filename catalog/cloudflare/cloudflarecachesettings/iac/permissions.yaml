@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# HONEST UNKNOWN -- the two Argo-backed settings (tiered_caching via
+# /zones/{zone_id}/argo/tiered_caching, argo_smart_routing via
+# /zones/{zone_id}/argo/smart_routing) map to NO permission group on the
+# reference: no group names Argo or these paths, and no fetched source
+# documents which group covers them, so none is claimed here.
+# (provenance: derived)
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarecachesettings
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageCacheSettings
+        name: Cache Settings Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Covers the Terraform module's six conditional resources -- cloudflare_tiered_cache, cloudflare_argo_tiered_caching, cloudflare_zone_cache_reserve, cloudflare_regional_tiered_cache, cloudflare_argo_smart_routing, cloudflare_zone_cache_variants -- and the Pulumi module's six matching resources in cache_settings.go (neither engine performs secondary lookups) -- write the four cache zone settings the modules manage under /zones/{zone_id}/cache/ (smart tiered cache, cache reserve, regional tiered cache, cache variants) via PATCH/PUT and, for the two real-delete surfaces (smart tiered cache, variants), DELETE (derived from the module's API surface; the reference describes this group as Cache Rules access, so the cache-settings coverage is our inference from the group's name and API family). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22; the reference's rendering collapses the space in "Cache Settings Write" -- the paired "Cache Settings Read" row and the dashboard-name row for the same group confirm the spelling).
+      - purpose: ReadCacheSettings
+        name: Cache Settings Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import those settings via GET on the same paths (derived from the module's API surface).

@@ -1,15 +1,15 @@
 # GCP Subnetwork
 
-Deploys a custom-mode subnet in an existing GCP VPC with configurable primary CIDR range, optional secondary IP ranges for GKE alias IPs, and Private Google Access for internal API connectivity. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and VPCs.
+Deploys a subnetwork in a custom-mode GCP VPC — the regional address space workloads actually live in. One kind carries the whole subnet surface: the primary IPv4 CIDR (expandable in place, never shrinkable), secondary ranges for GKE alias IPs, Private Google Access, dual-stack and IPv6-only addressing, VPC Flow Logs, and the special-purpose roles other networking features require — proxy-only subnets for Envoy-based load balancers and Private Service Connect subnets.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Compute Engine API** -- enabled on the target project before creating subnet resources
-- **Subnetwork** -- a `compute.Subnetwork` in the specified project, region, and VPC network with the configured primary CIDR range and Private Google Access setting
+- **Subnetwork** -- a Compute Engine subnetwork in the specified project, region, and VPC network, carrying the primary CIDR range, purpose, stack type, and Private Google Access setting
 - **Secondary IP Ranges** -- created only when `secondaryIpRanges` entries are provided; named secondary CIDR blocks used by GKE for Pod and Service IP allocation
-- **GCP Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking and governance
+- **VPC Flow Logs configuration** -- created only when `logConfig` is set; an empty block enables logging with GCP's defaults (5-second aggregation, 50% sampling, all metadata)
+- **Compute Engine API enablement** -- `compute.googleapis.com` is enabled in the target project; tearing down the subnet never disables the API
 
 ## Before You Deploy
 
@@ -21,14 +21,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the subnetwork will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **A VPC network** in custom subnet mode. Provide the network self-link directly or reference a GcpVpcNetwork Cloud Resource via ValueFromRef.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+- **A VPC network** in custom subnet mode. Provide the network self-link directly or reference a GcpVpcNetwork Cloud Resource via ValueFromRef. The module enables the Compute Engine API itself, so the connection's principal needs permission to enable services on a fresh project.
+- **An internal IPv6 range on the VPC** (only for INTERNAL `ipv6AccessType`) -- ULA-addressed subnets draw their prefix from the VPC's internal IPv6 range.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Subnetwork**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **GKE-Ready** preset in the [Presets](#presets) tab to pre-populate a subnet with secondary IP ranges configured for GKE Pod and Service allocation.
+Open the deployment store, find **GCP Subnetwork**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **GKE-Ready Subnet** preset in the [Presets](#presets) tab to pre-populate a subnet with secondary IP ranges configured for GKE Pod and Service allocation.
 
 ### CLI
 
@@ -82,13 +82,17 @@ The InfraPipeline resolves the dependency graph, deploys the project and VPC fir
 
 These are the most important decisions when configuring a subnetwork. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Primary CIDR range** -- The `ipCidrRange` must be non-overlapping with other subnets in the VPC. Use `/20` (4,096 IPs) for GKE node subnets or `/24` (256 IPs) for smaller compute workloads. The range is immutable after creation.
+**Primary CIDR range** -- The `ipCidrRange` must not overlap any other range in the VPC. The range is mutable in ONE direction: expanding it (e.g. `/20` → `/18`) updates in place, but shrinking forces destroy and recreate — an outage for everything addressed in the subnet. Size for growth up front: `/20` (4,096 IPs) is a common team-sized default; GCP reserves 4 addresses per primary range. Enterprises with centrally allocated IP plans can source the CIDR from a Network Connectivity internal range via `reservedInternalRange` instead.
 
-**Secondary IP ranges for GKE** -- Add entries to `secondaryIpRanges` with names like `pods` and `services` to enable VPC-native GKE clusters. A `/14` range for pods supports large clusters, while a `/20` range for services covers most Kubernetes deployments. The range names are referenced by GcpGkeCluster's `clusterSecondaryRangeName` and `servicesSecondaryRangeName` fields.
+**Purpose** -- PRIVATE (the default) is a regular workload subnet. REGIONAL_MANAGED_PROXY reserves Envoy address space that regional internal and external Application Load Balancers require — every VPC region hosting one needs exactly one ACTIVE proxy-only subnet, and forgetting it is the error load-balancer deployments trip over. PRIVATE_SERVICE_CONNECT backs published PSC services. Choose at creation: purpose is immutable in practice.
 
-**Private Google Access** -- Set `privateIpGoogleAccess` to true so VMs and GKE nodes without external IPs can reach Google APIs (Container Registry, Cloud Logging, Cloud Storage) through internal routing. Required for private GKE clusters.
+**Secondary IP ranges for GKE** -- Add entries to `secondaryIpRanges` with names like `pods` and `services` to enable VPC-native GKE clusters. A `/14` range for pods supports large clusters, while a `/20` range for services covers most Kubernetes deployments. The range names are referenced by GcpGkeCluster's `clusterSecondaryRangeName` and `servicesSecondaryRangeName` fields. The `sendSecondaryIpRangeIfEmpty` latch defaults to false, so a partial manifest with an empty list leaves existing ranges untouched instead of wiping a live cluster's pod range.
 
-**Region selection** -- The `region` field is immutable after creation. Place subnets in regions close to your users or adjacent to other resources that need low-latency connectivity.
+**Private Google Access** -- Set `privateIpGoogleAccess` to true so VMs and GKE nodes without external IPs can reach Google APIs (Artifact Registry, Cloud Logging, Cloud Storage) through internal routing. Effectively mandatory for private-only subnets; required for private GKE clusters. Mutable.
+
+**VPC Flow Logs** -- Setting `logConfig` (even empty) turns on flow logging at GCP's defaults: 50% sampling with all metadata. Full sampling on a busy subnet carries real Cloud Logging cost — raise `flowSampling` to 1.0 only for security forensics, and narrow with `filterExpr` (e.g. `connection.dest_port == 443`) for targeted capture.
+
+**IP stack** -- `stackType` IPV4_ONLY is the default; IPV4_IPV6 and IPV6_ONLY require `ipv6AccessType` (EXTERNAL internet-routable GUAs, or INTERNAL ULAs that need the VPC's internal IPv6 range enabled). Moving between IPV4_ONLY and IPV4_IPV6 updates in place; moving to or from IPV6_ONLY recreates, and the access type itself is immutable.
 
 ## Outputs and Dependencies
 
@@ -105,20 +109,25 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `subnetwork_self_link` | Self-link URL of the created subnetwork | GcpGkeCluster subnet reference, Compute Engine instance placement |
+| `subnetwork_self_link` | Self-link URI of the created subnetwork | GcpGkeCluster subnet reference, Compute Engine instance placement |
+| `subnetwork_name` | Name of the subnetwork in GCP | Consumers that address subnets by name (e.g. Cloud Run Direct VPC egress) |
 | `region` | Region where the subnetwork resides | Cloud Router and NAT region alignment |
-| `ip_cidr_range` | Primary IPv4 CIDR of the subnet | Network planning, firewall rule source/destination ranges |
+| `ip_cidr_range` | Primary IPv4 CIDR of the subnet | Firewall rule source/destination ranges, IP planning |
+| `gateway_address` | IPv4 address of the subnet's default gateway | Appliance and custom-route configuration |
 | `secondary_ranges` | List of secondary range names and CIDRs | GcpGkeCluster Pod and Service secondary range name references |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**GKE-ready subnet** -- A `/20` primary range with two secondary ranges: a `/14` for pods (262,144 IPs) and a `/20` for services (4,096 IPs), plus Private Google Access enabled. The range names `pods` and `services` match the defaults expected by GcpGkeCluster presets. Start from the **GKE-Ready** preset.
+**GKE-ready subnet** -- A `/20` primary range with two secondary ranges: a `/14` for pods (262,144 IPs) and a `/20` for services (4,096 IPs), plus Private Google Access enabled. The range names `pods` and `services` match the defaults expected by GcpGkeCluster presets. Start from the **GKE-Ready Subnet** preset.
 
-**General-purpose subnet** -- A `/24` primary range for Compute Engine VMs or Cloud Run with VPC Access. No secondary ranges, since alias IPs are not needed outside GKE. Private Google Access is still enabled. Start from the **General-Purpose** preset.
+**General-purpose subnet** -- A `/24` primary range for Compute Engine VMs or Cloud Run with VPC Access. No secondary ranges, since alias IPs are not needed outside GKE. Private Google Access is still enabled. Start from the **General-Purpose Subnet** preset.
+
+**Proxy-only subnet** -- A REGIONAL_MANAGED_PROXY subnet with the ACTIVE role: the address space GCP's Envoy-based regional load balancers allocate proxies from, and the prerequisite every region hosting a regional ALB needs exactly one of. Start from the **Proxy-Only Subnet (Regional Managed Proxy)** preset.
 
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the subnetwork is created
-- [**GCP VPC**](/cloud-catalog/gcp-vpc) -- provides the VPC network that contains this subnetwork
+- [**GCP VPC Network**](/cloud-catalog/gcp-vpc-network) -- provides the VPC network that contains this subnetwork
+- [**GCP GKE Cluster**](/cloud-catalog/gcp-gke-cluster) -- consumes the subnet and its secondary ranges for VPC-native pod and service IPs

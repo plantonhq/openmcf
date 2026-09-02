@@ -102,7 +102,7 @@ Deleting a Service removes the configuration and disconnects the webhook. It doe
 A Service does not operate in isolation. It connects to several other platform resources:
 
 - **Pipeline**: Each pipeline run is triggered by a Service. Pipelines track build and deployment progress per environment.
-- **Secret**: Sensitive configuration (API keys, passwords, tokens) stored with envelope encryption. Scoped to organization or environment. Referenced using `$secrets-group/<group>/<name>` syntax.
+- **Secret**: Sensitive configuration (API keys, passwords, tokens) stored provider-native in your organization's secret backend. Scoped to organization or environment. Referenced using `$secret/<slug>` syntax (`$secret/@<env>/<slug>` for environment-scoped secrets, with an optional `/<key>` for key-value secrets).
 - **Variable / Variable Group**: Non-sensitive configuration (endpoints, feature flags, port numbers). Scoped to organization or environment. Referenced using `$variables-group/<group>/<name>` syntax. Both secrets and variables support dynamic references to infrastructure output fields.
 - **DNS Domain**: DNS domains configured for ingress. A Service's ingress references a DNS domain resource for routing.
 - **Tekton Pipeline**: Reusable pipeline definitions registered in the Tekton hub. Referenced by self-managed pipeline configurations.

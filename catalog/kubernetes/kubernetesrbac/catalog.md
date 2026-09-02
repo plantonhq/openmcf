@@ -1,6 +1,6 @@
 # Kubernetes RBAC
 
-Deploys one Kubernetes RBAC grant as a single resource: a scope (one namespace or the whole cluster), a role (custom policy rules or an existing built-in role by name), and the subjects that receive it (ServiceAccounts, users, or groups). The module derives the right object pair automatically -- Role + RoleBinding at namespace scope, ClusterRole + ClusterRoleBinding at cluster scope. Manages authorization declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys one Kubernetes RBAC grant as a single resource: a scope (one namespace or the whole cluster), a role (custom policy rules or an existing built-in role by name), and the subjects that receive it (ServiceAccounts, users, or groups). The module derives the right object pair automatically -- Role + RoleBinding at namespace scope, ClusterRole + ClusterRoleBinding at cluster scope. Every grant is purely additive: Kubernetes RBAC has no deny rules, so the resource you declare is the full authorization story for its subjects.
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **RBAC on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Namespace App Reader** preset for a least-privilege app grant or **Grant Builtin View** to bind the built-in view role in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes RBAC**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Namespace App Reader** preset for a least-privilege app grant or **Grant Built-in `view` to a Group** to bind the built-in view role in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRbac
 metadata:
   name: checkout-reader
@@ -58,7 +58,33 @@ spec:
 planton apply -f rbac.yaml
 ```
 
-This creates a Role permitting read access to ConfigMaps and Secrets in `backend-services`, bound to the `checkout-identity` ServiceAccount through a RoleBinding.
+This creates a Role permitting read access to ConfigMaps and Secrets in `backend-services`, bound to the `checkout-identity` ServiceAccount through a RoleBinding. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the grant to the namespace and identity managed by other Cloud Resources:
+
+```yaml
+spec:
+  namespaceScope:
+    namespace:
+      valueFrom:
+        kind: KubernetesNamespace
+        name: backend-namespace
+        fieldPath: spec.name
+  existingRole:
+    name: view
+    isClusterRole: true
+  subjects:
+    - serviceAccount:
+        name:
+          valueFrom:
+            kind: KubernetesServiceAccount
+            name: checkout-identity
+            fieldPath: spec.name
+```
+
+The InfraPipeline deploys the namespace and the ServiceAccount first, then creates the grant against them.
 
 ## Key Configuration
 
@@ -76,11 +102,11 @@ These are the most important decisions when configuring a Kubernetes RBAC grant.
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespaceScope.namespace` | KubernetesNamespace (`spec.name`) | The namespace a namespace-scoped grant confines permissions to |
-| `spec.subjects[].serviceAccount.name` | KubernetesServiceAccount (`spec.name`) | The workload identity receiving the permissions |
-| `spec.subjects[].serviceAccount.namespace` | KubernetesNamespace (`spec.name`) | The subject identity's namespace (required at cluster scope) |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespaceScope.namespace` | `spec.name` |
+| **KubernetesServiceAccount** | `subjects[].serviceAccount.name` | `spec.name` |
+| **KubernetesNamespace** | `subjects[].serviceAccount.namespace` | `spec.name` |
 
 ### What This Component Provides
 
@@ -100,7 +126,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Least-privilege app grant** -- A custom namespace-scoped role granting exactly the verbs the workload calls, bound to its ServiceAccount. Start from the **Namespace App Reader** preset.
 
-**Human read access** -- The built-in `view` ClusterRole bound at namespace scope to a group from your identity provider. Start from the **Grant Builtin View** preset.
+**Human read access** -- The built-in `view` ClusterRole bound at namespace scope to a group from your identity provider. Start from the **Grant Built-in `view` to a Group** preset.
 
 **Platform operator** -- A cluster-scoped custom role for tooling that watches resources across namespaces. Start from the **Cluster Operator** preset.
 
@@ -108,6 +134,6 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Kubernetes ServiceAccount** -- the usual subject: identity there, permissions here.
-- **Kubernetes Namespace** -- namespace-scoped grants reference their namespace so charts deploy in dependency order.
-- **Kubernetes Deployment and the other workload kinds** -- run as the granted ServiceAccount to exercise the permissions.
+- [**Kubernetes ServiceAccount**](/cloud-catalog/kubernetes-service-account) -- the usual subject: identity there, permissions here.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- namespace-scoped grants reference their namespace so charts deploy in dependency order.
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) and the other workload kinds -- run as the granted ServiceAccount to exercise the permissions.

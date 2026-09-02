@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Management access is IAM-authenticated Monitoring API access with no weaker alternative; the delivery-side credential forms are fixed by each external service's integration contract, not selectable here.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

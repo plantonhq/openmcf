@@ -50,10 +50,11 @@ var _ = ginkgo.Describe("AzureDataProtectionResourceGuardSpec Validation Tests",
 				gomega.Expect(err).To(gomega.BeNil())
 			})
 
-			ginkgo.It("should accept an exclusion list", func() {
+			ginkgo.It("should accept an exclusion list of excludable operations", func() {
 				input := validResource()
 				input.Spec.VaultCriticalOperationExclusionList = []string{
-					"Microsoft.RecoveryServices/vaults/backupconfig/write",
+					"Microsoft.RecoveryServices/vaults/backupResourceGuardProxies/write",
+					"Microsoft.RecoveryServices/vaults/backupconfig/delete",
 				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).To(gomega.BeNil())
@@ -109,6 +110,29 @@ var _ = ginkgo.Describe("AzureDataProtectionResourceGuardSpec Validation Tests",
 			ginkgo.It("should reject an empty exclusion-list entry", func() {
 				input := validResource()
 				input.Spec.VaultCriticalOperationExclusionList = []string{""}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject excluding an MUA-mandatory operation", func() {
+				// ARM rejects these with
+				// BMSUserErrorInvalidCriticalOperationExclusionList; the
+				// spec mirrors that list so the failure lands at
+				// admission.
+				input := validResource()
+				input.Spec.VaultCriticalOperationExclusionList = []string{
+					"Microsoft.RecoveryServices/vaults/backupconfig/write",
+				}
+				err := protovalidate.Validate(input)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+
+			ginkgo.It("should reject a mandatory operation mixed into an otherwise-legal list", func() {
+				input := validResource()
+				input.Spec.VaultCriticalOperationExclusionList = []string{
+					"Microsoft.RecoveryServices/vaults/backupResourceGuardProxies/write",
+					"Microsoft.DataProtection/backupVaults/write#reduceSoftDeleteSecurity",
+				}
 				err := protovalidate.Validate(input)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})

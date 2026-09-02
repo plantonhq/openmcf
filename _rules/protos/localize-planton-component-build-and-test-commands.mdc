@@ -120,4 +120,4 @@ cd catalog/digitalocean/<resource>/iac/tf && terraform init -backend=false && te
 
 ## Why This Matters
 
-The Planton monorepo contains 600+ resource kinds across more than a dozen cloud providers, a Go backend, and a Next.js frontend. Running `make build` compiles everything -- cross-compiles Go for 3 OS targets, runs Bazel with 2,800+ actions, and builds the frontend. This takes over a minute even with cache hits. When you're iterating on a single component, there is zero reason to pay that cost.
+The Planton monorepo contains 700+ resource kinds across more than a dozen cloud providers, a Go backend, and a Next.js frontend. Running `make build` compiles everything -- cross-compiles Go for 3 OS targets, runs Bazel with 2,800+ actions, and builds the frontend. This takes over a minute even with cache hits. When you're iterating on a single component, there is zero reason to pay that cost.

@@ -29,10 +29,12 @@ network gateway and one connection.
   family and generation right the first time; resizing WITHIN a family
   (VpnGw1AZ -> VpnGw2AZ) is in-place, crossing families (Basic ->
   anything, non-AZ -> AZ for ExpressRoute) is not.
-- The gateway bills hourly from provisioning (VpnGw1AZ is in the
-  ~$0.2-0.4/hour class -- Azure reduced AZ pricing as part of the SKU
-  consolidation) whether or not any tunnel is connected. Do not leave
-  test gateways running overnight.
+- The gateway bills hourly from provisioning -- the SKU sets the
+  rate, and Azure reduced AZ pricing as part of the SKU consolidation
+  -- whether or not any tunnel is connected. Do not leave test
+  gateways running overnight. Verified per-SKU figures live in the
+  generated estimate at
+  `catalog/_pricing/estimates/azurevirtualnetworkgateway.yaml`.
 
 ## Choosing the SKU
 

@@ -48,9 +48,9 @@ func llmJudgeEvaluator() *AwsBedrockAgentCoreEvaluator {
 		Name:  "helpfulness",
 		Level: "SESSION",
 		LlmAsAJudge: &AwsBedrockAgentCoreLlmJudge{
-			Instructions: "Assess whether the agent resolved the user's request.",
+			Instructions: "Assess whether the agent resolved the user's request given the {context}.",
 			Model: &AwsBedrockAgentCoreJudgeModel{
-				ModelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+				ModelId: "us.amazon.nova-2-lite-v1:0",
 				Inference: &AwsBedrockAgentCoreJudgeInference{
 					Temperature: f64(0),
 				},
@@ -68,7 +68,7 @@ func llmJudgeEvaluator() *AwsBedrockAgentCoreEvaluator {
 // minimalHarness is a valid harness with the required model arm.
 func minimalHarness() *AwsBedrockAgentCoreHarness {
 	return &AwsBedrockAgentCoreHarness{
-		Name:             "support-bench",
+		Name:             "support_bench",
 		ExecutionRoleArn: svr("arn:aws:iam::123456789012:role/agentcore-eval"),
 		Model: &AwsBedrockAgentCoreHarnessModel{
 			Bedrock: &AwsBedrockAgentCoreHarnessBedrockModel{
@@ -314,10 +314,41 @@ var _ = ginkgo.Describe("AwsBedrockAgentCoreEvaluationSpec validations", func() 
 		ginkgo.It("rejects a harness name above 40 characters", func() {
 			spec := minimalEvaluator()
 			harness := minimalHarness()
-			harness.Name = "this-harness-name-is-way-too-long-for-aws-limits"
+			harness.Name = "this_harness_name_is_way_too_long_for_aws_limits"
 			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a hyphenated harness name (CreateHarness names the regex)", func() {
+			spec := minimalEvaluator()
+			harness := minimalHarness()
+			harness.Name = "support-bench"
+			spec.Harnesses = []*AwsBedrockAgentCoreHarness{harness}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects SESSION-level judge instructions without a placeholder", func() {
+			spec := &AwsBedrockAgentCoreEvaluationSpec{
+				Region:     "us-west-2",
+				Evaluators: []*AwsBedrockAgentCoreEvaluator{llmJudgeEvaluator()},
+			}
+			spec.Evaluators[0].LlmAsAJudge.Instructions = "Assess whether the agent resolved the user's request."
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("must embed at least one placeholder"))
+		})
+
+		ginkgo.It("accepts placeholder-less instructions on a non-SESSION judge (contract unverified there)", func() {
+			spec := &AwsBedrockAgentCoreEvaluationSpec{
+				Region:     "us-west-2",
+				Evaluators: []*AwsBedrockAgentCoreEvaluator{llmJudgeEvaluator()},
+			}
+			spec.Evaluators[0].Level = "TRACE"
+			spec.Evaluators[0].LlmAsAJudge.Instructions = "Assess whether the agent resolved the user's request."
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
 		ginkgo.It("rejects a tool whose config arm mismatches its type", func() {

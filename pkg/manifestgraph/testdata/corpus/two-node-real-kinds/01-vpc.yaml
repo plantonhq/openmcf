@@ -1,0 +1,8 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpVpcNetwork
+metadata:
+  name: storefront-vpc
+  env: prod
+spec:
+  projectId:
+    value: acme-prod

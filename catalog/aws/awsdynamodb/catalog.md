@@ -1,6 +1,6 @@
 # AWS DynamoDB
 
-Deploys a DynamoDB table end to end: key schema and secondary indexes, capacity (on-demand, provisioned, or price-tuned with warm throughput), DynamoDB Streams and a Kinesis change-data destination, Global Tables v2 multi-region replicas, encryption custody, point-in-time recovery, TTL, contributor insights, a resource-based IAM policy, and creation by restore or S3 import. The table integrates with Planton's Provider Connections for AWS credential management.
+Deploys a DynamoDB table end to end: key schema and secondary indexes, capacity (on-demand, provisioned, or price-tuned with warm throughput), DynamoDB Streams and a Kinesis change-data destination, Global Tables v2 multi-region replicas, encryption custody, point-in-time recovery, TTL, contributor insights, a resource-based IAM policy, and creation by restore or S3 import. On PROVISIONED tables the module also owns Application Auto Scaling, so capacity targets and scheduled adjustments live in the same manifest as the table.
 
 ## What Gets Created
 
@@ -39,14 +39,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS DynamoDB**, and click **Deploy**. The creation wizard walks you through the creation source (new, restore, or import), key schema, capacity, indexes, streams, global tables, protection, and operational settings.
+Open the deployment store, find **AWS DynamoDB**, and click **Deploy**. The creation wizard walks you through the creation source (new, restore, or import), key schema, capacity, indexes, streams, global tables, protection, and operational settings. Start from the **On-Demand Simple Table** preset in the [Presets](#presets) tab for the shape most services need.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsDynamodb
 metadata:
   name: orders-table
@@ -74,7 +74,38 @@ spec:
 planton apply -f dynamodb.yaml
 ```
 
-This creates an on-demand DynamoDB table with a composite primary key (partition key `pk` and sort key `sk`), deletion protection, and point-in-time recovery enabled. No secondary indexes, streams, or TTL are configured.
+This creates an on-demand DynamoDB table with a composite primary key (partition key `pk` and sort key `sk`), deletion protection, and point-in-time recovery enabled. No secondary indexes, streams, or TTL are configured. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When the table deploys alongside its encryption key and change-data stream in one chart, wire the references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  billingMode: PAY_PER_REQUEST
+  attributeDefinitions:
+    - name: pk
+      type: S
+  keySchema:
+    - attributeName: pk
+      keyType: HASH
+  serverSideEncryption:
+    enabled: true
+    kmsKeyArn:
+      valueFrom:
+        kind: AwsKmsKey
+        name: data-key
+        fieldPath: status.outputs.key_arn
+  kinesisStreamingDestination:
+    streamArn:
+      valueFrom:
+        kind: AwsKinesisStream
+        name: table-changes
+        fieldPath: status.outputs.stream_arn
+```
+
+The InfraPipeline resolves the dependency graph, deploys the KMS key and Kinesis stream first, then provisions the table with the resolved ARNs.
 
 ## Key Configuration
 
@@ -96,14 +127,11 @@ These are the most important decisions when configuring a DynamoDB table. Explor
 
 ### What This Component Consumes
 
-Foreign-key fields resolve automatically via ValueFromRef when they reference resources deployed through Planton:
-
-| Field | References | Via |
-|-------|------------|-----|
-| `serverSideEncryption.kmsKeyArn` | `AwsKmsKey` | `status.outputs.key_arn` |
-| `replicas[].kmsKeyArn` | `AwsKmsKey` | `status.outputs.key_arn` |
-| `kinesisStreamingDestination.streamArn` | `AwsKinesisStream` | `status.outputs.stream_arn` |
-| `importTable.s3Bucket` | `AwsS3Bucket` | `status.outputs.bucket_id` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsKmsKey** (optional) | `serverSideEncryption.kmsKeyArn`, `replicas[].kmsKeyArn` | `status.outputs.key_arn` |
+| **AwsKinesisStream** (optional) | `kinesisStreamingDestination.streamArn` | `status.outputs.stream_arn` |
+| **AwsS3Bucket** (optional, import) | `importTable.s3Bucket` | `status.outputs.bucket_id` |
 
 Each field also accepts a literal value for resources not managed by Planton.
 
@@ -115,22 +143,25 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 |--------|-------------|----------------------|
 | `table_name` | DynamoDB table name | Application configuration, Lambda function environment variables |
 | `table_arn` | Amazon Resource Name of the table | IAM policies, CloudWatch alarms, cross-service integrations |
-| `table_id` | Provider-assigned table ID | Resource tracking and audit |
 | `stream_arn` | DynamoDB Streams ARN (when streams are enabled) | `AwsLambdaEventSourceMapping` event sources |
 | `stream_label` | Stream label (when streams are enabled) | Stream consumer identification |
 
+`table_id` is also exported -- the provider-assigned table ID, useful for audit rather than downstream wiring.
+
 ## Common Patterns
 
-Presets cover the three table shapes most deployments start from:
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-- **On-Demand Simple** -- a single-key on-demand table with point-in-time recovery and deletion protection; the right starting point for most services.
-- **Provisioned Production** -- a composite-key table with reserved capacity, a GSI, encryption, and contributor insights for sustained workloads.
-- **Global Table** -- a streams-enabled table with a multi-region replica for active/active serving.
+**On-demand service table** -- A single- or composite-key on-demand table with point-in-time recovery and deletion protection: zero capacity planning, and the right starting point for most services. Start from the **On-Demand Simple Table** preset.
+
+**Provisioned production table** -- A composite-key table with reserved capacity, a GSI, customer-managed encryption, and contributor insights for sustained, predictable traffic where reserved-capacity pricing wins. Start from the **Provisioned Production Table** preset; when traffic is predictable in shape but not in level, the **Provisioned Table with Auto Scaling** preset adds target tracking inside capacity bounds.
+
+**Multi-region active/active** -- A streams-enabled table (`NEW_AND_OLD_IMAGES`, as replication requires) with a replica in a second region. Start from the **Global Table (Multi-Region Active-Active)** preset.
 
 ## Works With
 
-- **AwsLambdaEventSourceMapping** -- consumes the table's `stream_arn` output for change-driven Lambda processing.
-- **AwsKmsKey** -- provides customer-managed encryption keys for the table and its replicas.
-- **AwsKinesisStream** -- receives the table's change data through the Kinesis streaming destination.
-- **AwsS3Bucket** -- provides the source data for table imports.
-- **AwsIamRole / AwsIamPolicy** -- application roles reference the table ARN and name outputs in their policies.
+- [**AWS Lambda Event Source Mapping**](/cloud-catalog/aws-lambda-event-source-mapping) -- consumes the table's `stream_arn` output for change-driven Lambda processing
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides customer-managed encryption keys for the table and its replicas
+- [**AWS Kinesis Data Stream**](/cloud-catalog/aws-kinesis-stream) -- receives the table's change data through the Kinesis streaming destination
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides the source data for table imports
+- [**AWS IAM Policy**](/cloud-catalog/aws-iam-policy) -- application policies reference the table ARN and name outputs

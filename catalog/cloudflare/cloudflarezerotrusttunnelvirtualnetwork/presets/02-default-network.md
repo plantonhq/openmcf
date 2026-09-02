@@ -1,4 +1,4 @@
-# Preset: Account default virtual network
+# Account default virtual network
 
 The single virtual network that routes and WARP clients fall back to when they do not
 name one explicitly.

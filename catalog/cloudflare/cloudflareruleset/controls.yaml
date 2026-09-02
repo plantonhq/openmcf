@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflareruleset
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A ruleset stores no customer data -- rule expressions and action parameters are control-plane configuration. The one stored artifact a rule can create, WAF matched-payload logs, is encrypted by requirement with a key only the customer holds (see enc-at-rest-cmk).
+    - control_id: enc-at-rest-cmk
+      status: configurable
+      field_path: rules.action_parameters.matched_data.public_key
+      evidence:
+        type: spec_default
+        reference: An execute rule's matched_data.public_key is the customer-provided public key Cloudflare uses to encrypt matched request payloads before storing them in firewall event logs -- only the holder of the matching private key can decrypt them, and payload logging cannot be enabled without supplying the key.
+      notes: Scope is narrow -- it covers only the matched-payload logs of managed-ruleset executions, because that is the only data at rest this component can cause.
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: rules.action_parameters.ssl
+      evidence:
+        type: spec_default
+        reference: A set_config rule in the http_config_settings phase sets the zone's SSL mode (off, flexible, full, strict, origin_pull) for matching requests, and automatic_https_rewrites and opportunistic_encryption sit beside it -- this component can both raise and lower the transit-encryption posture of the traffic it matches.
+      notes: Choosing off or flexible sends the Cloudflare-to-origin hop in cleartext for matched requests; set strict wherever the origin holds a certificate the edge trusts (a CloudflareOriginCaCertificate suffices).
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A ruleset filters traffic already arriving at Cloudflare's edge for a zone; it exposes no endpoint of its own.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: rules.expression
+      evidence:
+        type: spec_default
+        reference: Each rule pairs a wirefilter expression (match on ip.src, geo, paths, headers, and more) with an action -- block, challenge, js_challenge, managed_challenge, or skip -- making the ruleset itself the mechanism that restricts which inbound requests proceed.
+    - control_id: edge-protection
+      status: configurable
+      field_path: rules.action
+      evidence:
+        type: spec_default
+        reference: This component IS the edge request filter -- the http_request_firewall_custom and http_request_firewall_managed phases carry WAF custom rules and managed-ruleset executions (with per-category and per-rule overrides), the http_ratelimit phase carries rate limiting, and exposed_credential_check detects leaked-credential logins.
+      notes: A ruleset only protects what its rules cover; deploying a managed WAF ruleset via an execute rule requires a plan that includes it.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership and API-token posture; the ruleset exposes no data plane of its own to authorize.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component holds no credentials and calls no cloud APIs.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: configurable
+      field_path: rules.logging
+      evidence:
+        type: spec_default
+        reference: Per-rule logging.enabled overrides whether matched requests are recorded (Cloudflare's default varies by action -- skip rules default to unlogged), the log action records matches without acting, and the http_log_custom_fields phase adds cookie, header, and body fields to the zone's logs.
+      notes: Changes to the ruleset itself land in the Cloudflare account audit log unconditionally -- that part is account posture, not this component's configuration.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: The spec exposes no metrics-export toggle; matched-rule analytics appear in Cloudflare's Security Analytics unconditionally, and shipping them elsewhere is CloudflareLogpushJob territory.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Rulesets are evaluated at every Cloudflare edge location; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete of the ruleset and every rule in it -- and a zone/root ruleset owns its entire phase, so deletion empties that phase for the zone. Disable individual rules (enabled false) for a reversible off-switch, and keep each rule's ref set so reordering never plans a destroy-and-recreate.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates the Ruleset Engine, and managed rulesets deployed by reference (execute) are updated by Cloudflare without customer action.

@@ -1,6 +1,6 @@
 # GCP Cloud Run
 
-Deploys a containerized service on Google Cloud Run v2: one or more containers per instance (sidecars are first-class), request-driven autoscaling from zero to thousands of instances, declarative traffic splitting across immutable revisions, ingress and IAM invoker controls, Direct VPC Egress, and volumes backed by Cloud SQL, Secret Manager, GCS, NFS, or scratch space. The service integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, service accounts, KMS keys, Cloud SQL instances, GCS buckets, VPC networks, and subnetworks.
+Deploys a containerized service on Google Cloud Run v2: one or more containers per instance (sidecars are first-class), request-driven autoscaling from zero to thousands of instances, declarative traffic splitting across immutable revisions, ingress and IAM invoker controls, Direct VPC Egress, and volumes backed by Cloud SQL, Secret Manager, GCS, NFS, or scratch space. Every composition seam — the GCP project, the runtime service account, the KMS key, Cloud SQL instances, GCS buckets, VPC networks and subnetworks — accepts ValueFromRef wiring, so the service drops into an InfraChart without hand-copied identifiers.
 
 ## What Gets Created
 
@@ -42,7 +42,7 @@ Open the deployment store, find **GCP Cloud Run**, and click **Deploy**. The cre
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudRun
 metadata:
   name: my-api
@@ -70,7 +70,7 @@ spec:
 planton apply -f cloud-run.yaml
 ```
 
-This creates a publicly accessible Cloud Run service with scale-to-zero, 1 vCPU, 512Mi memory, and the Gen 2 execution environment. VPC access, volumes, and traffic splitting are not configured.
+This creates a publicly accessible Cloud Run service with scale-to-zero, 1 vCPU, 512Mi memory, and the Gen 2 execution environment; VPC access, volumes, and traffic splitting are not configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -127,6 +127,8 @@ These are the most important decisions when configuring a Cloud Run service. Exp
 
 **Execution environment** -- `EXECUTION_ENVIRONMENT_GEN2` (recommended) runs full Linux and is required for GCS/NFS volumes; `EXECUTION_ENVIRONMENT_GEN1` has faster cold starts with a gVisor-restricted syscall surface.
 
+**Destroy semantics** -- `deletionProtection` defaults to true: destroying the resource FAILS until you set it false, because deleting a service tears down its endpoint and every revision. `deletionPolicy: ABANDON` is the softer exit — the service leaves management but keeps serving in GCP.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
@@ -161,9 +163,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Public API service** -- Publicly accessible with scale-to-zero, unauthenticated access, port 8080, and Gen 2 execution. Suitable for web applications, APIs, and webhooks. Start from the **Public API Service** preset.
 
-**Private VPC-connected service** -- Internal-only ingress with IAM authentication and Direct VPC Egress for private resource access (private-IP Cloud SQL, Memorystore). Suitable for backend microservices. Start from the **Private VPC Service** preset.
+**Private VPC-connected service** -- Internal-only ingress with IAM authentication and Direct VPC Egress for private resource access (private-IP Cloud SQL, Memorystore). Suitable for backend microservices. Start from the **Private VPC-Connected Backend** preset.
 
-**GPU inference** -- A `nodeSelector.accelerator` (e.g. `nvidia-l4`) gives every instance a GPU for scale-to-zero model serving; containers need at least 4 CPU / 16Gi and the region needs GPU quota. Start from the **GPU Inference** preset.
+**GPU inference** -- A `nodeSelector.accelerator` (e.g. `nvidia-l4`) gives every instance a GPU for scale-to-zero model serving; containers need at least 4 CPU / 16Gi and the region needs GPU quota. Start from the **GPU Inference Service** preset.
 
 ## Works With
 

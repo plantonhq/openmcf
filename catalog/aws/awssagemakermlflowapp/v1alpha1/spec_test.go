@@ -47,7 +47,7 @@ var _ = ginkgo.Describe("AwsSagemakerMlflowAppSpec validations", func() {
 				spec.AccountDefaultStatus = "ENABLED"
 				spec.DefaultDomainIds = []*foreignkeyv1.StringValueOrRef{svr("d-abc123")}
 				spec.ModelRegistrationMode = "AutoModelRegistrationEnabled"
-				spec.WeeklyMaintenanceWindowStart = "SUN:03:00"
+				spec.WeeklyMaintenanceWindowStart = "Sun:03:00"
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -87,6 +87,15 @@ var _ = ginkgo.Describe("AwsSagemakerMlflowAppSpec validations", func() {
 			ginkgo.It("should return a validation error", func() {
 				spec := minimalApp()
 				spec.WeeklyMaintenanceWindowStart = "XYZ:03:00"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an uppercase day token", func() {
+			ginkgo.It("should return a validation error (AWS's API is mixed-case, live-caught)", func() {
+				spec := minimalApp()
+				spec.WeeklyMaintenanceWindowStart = "SUN:03:00"
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})

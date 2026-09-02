@@ -58,6 +58,9 @@ spec:
         type: spec_default
         reference: metadata_options.http_tokens defaults to "required" -- IMDSv2 only, with the v1 fallback ("optional") an explicit opt-in -- and http_put_response_hop_limit defaults to 1 so pods cannot reach the node's instance credentials; http_protocol_ipv6 defaults to disabled.
       notes: These are the CRD's own defaults, mirrored in this spec -- the EKS security best practice. The 02-bottlerocket-encrypted preset writes them out explicitly.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the EC2NodeClass are Kubernetes API operations captured by the target cluster's audit policy, and the EC2 actions Karpenter performs from it (RunInstances, CreateLaunchTemplate) land in the AWS account's CloudTrail -- both owned outside this spec.

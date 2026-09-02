@@ -1,0 +1,42 @@
+# Capacity derivation: machine-executable rules turning any
+# KubernetesKeycloak manifest's spec values into the cluster capacity the
+# deployment reserves. Field paths are spec-relative proto field names,
+# held to the served contract by the conformance gate. The spec's
+# resources field carries the (default_container_resources) annotation --
+# the sizing the modules apply when a manifest omits resources -- and the
+# estimator states those defaults with their origin named in the basis.
+# Keycloak binds no persistent volumes: state lives in the database the
+# db block names. Schema: finops/componentcapacityderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCapacityDerivation
+metadata:
+  name: kuberneteskeycloak
+spec:
+  workloads:
+    - label: instance
+      resources_path: resources
+      instances:
+        field_value:
+          field_path: instances
+          default_when_unset: "1"
+  exclusions:
+    - text: the dollar value of this capacity is the target cluster's node economics
+    - applies_when:
+        - field_path: db.vendor
+          op: equals
+          value: dev-mem
+      text: the dev-mem sandbox database lives in the pod's own memory -- no storage is reserved and every realm and user is lost on restart
+    - applies_when:
+        - field_path: db.vendor
+          op: equals
+          value: dev-file
+      text: the dev-file sandbox database lives on the pod's own ephemeral disk -- no storage is reserved and every realm and user is lost on restart
+    - applies_when:
+        - field_path: db.vendor
+          op: not_equals
+          value: dev-mem
+        - field_path: db.vendor
+          op: not_equals
+          value: dev-file
+      text: the database holding every realm and user carries its own footprint on its own resource
+    - text: the Keycloak Operator reconciling this resource carries its own footprint on KubernetesKeycloakOperator

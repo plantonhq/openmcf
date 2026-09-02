@@ -1,6 +1,6 @@
 # Harbor
 
-Deploys Harbor -- the CNCF-graduated container registry that stores, signs, and scans OCI artifacts -- from the official `harbor` chart at `helm.goharbor.io` (chart 1.19.x = Harbor 2.15.x). Composition-first data arms cover the whole lifecycle: the chart's in-cluster PostgreSQL and Redis for evaluation (single-node, no failover -- evaluation-grade by upstream's own position), or a composed KubernetesPostgres and KubernetesValkey for production; artifact blobs live on a PersistentVolumeClaim, or on S3-compatible (a composed KubernetesSeaweedFs works in-cluster), GCS, or Azure Blob object storage. The Trivy vulnerability scanner ships ON by chart truth. Uses a Kubernetes Provider Connection for cluster access.
+Deploys Harbor -- the CNCF-graduated container registry that stores, signs, and scans OCI artifacts -- from the official `harbor` chart at `helm.goharbor.io` (chart 1.19.x = Harbor 2.15.x). Composition-first data arms cover the whole lifecycle: the chart's in-cluster PostgreSQL and Redis for evaluation (single-node, no failover -- evaluation-grade by upstream's own position), or a composed KubernetesPostgres and KubernetesValkey for production; artifact blobs live on a PersistentVolumeClaim, or on S3-compatible (a composed KubernetesSeaweedFs works in-cluster), GCS, or Azure Blob object storage. The Trivy vulnerability scanner ships ON by chart truth.
 
 Know the address contract before you deploy: `externalUrl` is LOAD-BEARING for pushes and pulls -- Harbor embeds it in the token-service URL returned to every OCI client, so `docker login/push/pull` fail auth when the dialed address disagrees with it. Set it to what the exposure in front of Harbor actually serves.
 
@@ -36,14 +36,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Harbor on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the fourteen spec steps. Start from the **Minimal** preset for evaluation or **Production Composed** for the fully-composed production shape in the [Presets](#presets) tab.
+Open the deployment store, find **Harbor**, and click **Deploy**. The creation wizard walks you through placement, the registry address, exposure, admin credentials, the database/cache/storage arms, the Trivy scanner, per-component sizing, and the Helm-values escape hatch. Start from the **Minimal — evaluation registry, zero dependencies** preset for evaluation or **Production — composed data plane, object storage, HA components** for the fully-composed production shape in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHarbor
 metadata:
   name: harbor
@@ -67,7 +67,7 @@ spec:
 planton apply -f harbor.yaml
 ```
 
-This creates the smallest honest Harbor: the chart's in-cluster PostgreSQL and Redis, artifact blobs on a 20Gi PersistentVolumeClaim, Trivy scanning on (the chart default), a generated admin password exported as a Secret handle, and a ClusterIP front door reached through the exported `port_forward_command`.
+This creates the smallest honest Harbor: the chart's in-cluster PostgreSQL and Redis, artifact blobs on a 20Gi PersistentVolumeClaim, Trivy scanning on (the chart default), a generated admin password exported as a Secret handle, and a ClusterIP front door reached through the exported `port_forward_command`. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -89,6 +89,8 @@ spec:
           name: harbor-pg
           fieldPath: status.outputs.password_secret.name
 ```
+
+The InfraPipeline resolves the dependency graph: the PostgreSQL cluster deploys first, then Harbor is installed against it.
 
 ## Key Configuration
 
@@ -146,15 +148,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Minimal registry for evaluation** -- the chart's in-cluster PostgreSQL and Redis, filesystem blobs, Trivy on, port-forward access. Start from the **Minimal** preset.
+**Minimal registry for evaluation** -- the chart's in-cluster PostgreSQL and Redis, filesystem blobs, Trivy on, port-forward access. Start from the **Minimal — evaluation registry, zero dependencies** preset.
 
-**Production composed registry** -- external PostgreSQL and Valkey by reference, S3-compatible blobs on a composed SeaweedFS with `disableRedirect`, a LoadBalancer front door with TLS from a composed Certificate, two replicas per component, and metrics with a ServiceMonitor. Start from the **Production Composed** preset.
+**Production composed registry** -- external PostgreSQL and Valkey by reference, S3-compatible blobs on a composed SeaweedFS with `disableRedirect`, a LoadBalancer front door with TLS from a composed Certificate, two replicas per component, and metrics with a ServiceMonitor. Start from the **Production — composed data plane, object storage, HA components** preset.
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for Harbor's placement
-- [**Kubernetes Postgres**](/cloud-catalog/kubernetes-postgres) -- the production database arm; its application Secret composes AS-IS
-- [**Kubernetes Valkey**](/cloud-catalog/kubernetes-valkey) -- the production cache arm (Redis protocol)
-- [**Kubernetes SeaweedFS**](/cloud-catalog/kubernetes-seaweed-fs) -- in-cluster S3-compatible artifact storage
-- [**Kubernetes Certificate**](/cloud-catalog/kubernetes-certificate) -- front-door and internal-TLS certificates
-- [**Kubernetes Kube Prometheus Stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- provides the ServiceMonitor CRDs and scrapes the exporter
+- [**PostgreSQL**](/cloud-catalog/kubernetes-postgres) -- the production database arm; its application Secret composes AS-IS
+- [**Valkey**](/cloud-catalog/kubernetes-valkey) -- the production cache arm (Redis protocol)
+- [**SeaweedFS**](/cloud-catalog/kubernetes-seaweed-fs) -- in-cluster S3-compatible artifact storage
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) -- front-door and internal-TLS certificates
+- [**kube-prometheus-stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- provides the ServiceMonitor CRDs and scrapes the exporter

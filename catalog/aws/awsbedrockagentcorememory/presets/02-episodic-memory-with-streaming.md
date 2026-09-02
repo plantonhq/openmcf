@@ -12,8 +12,10 @@ runs.
 
 ## What You Get
 
-- Episodes under `/episodes/{actorId}` plus reflection records under
-  `/reflections/{actorId}`
+- Episodes under `/episodes/{actorId}` plus reflection records
+  consolidated under `/episodes` (a reflection namespace must equal, or
+  be a whole-segment prefix of, an episode namespace — AWS rejects a
+  disjoint pair)
 - A `customer_id` index for filtered retrieval
 - Every record's metadata on your Kinesis stream in near-real-time
 

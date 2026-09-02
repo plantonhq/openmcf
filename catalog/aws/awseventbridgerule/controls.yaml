@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The rule exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden. API destination endpoint credentials live on the EventBridge connection the destination references, outside this spec.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec carries no logging dial. Management calls against the rule land in CloudTrail as account-level posture, and per-event delivery logs are configured bus-side (the bus's log_config), which records this rule's matches and delivery outcomes among the rest of the bus's traffic.

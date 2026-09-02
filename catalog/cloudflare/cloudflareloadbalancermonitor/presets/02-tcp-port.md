@@ -2,7 +2,7 @@
 display_name: TCP Port
 ---
 
-# Preset: TCP port health check
+# TCP port health check
 
 A TCP monitor that checks whether a port accepts connections — suitable for
 non-HTTP origins (databases, message brokers, custom TCP services) behind a

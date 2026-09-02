@@ -1,6 +1,6 @@
 # Azure Machine Learning Compute Instance
 
-Creates a compute instance on an Azure Machine Learning workspace -- a single always-on VM serving as one data scientist's cloud workstation for notebooks, interactive debugging, and small jobs. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Creates a compute instance on an Azure Machine Learning workspace -- a single always-on VM serving as one data scientist's cloud workstation for notebooks, interactive debugging, and small jobs.
 
 ## What Gets Created
 
@@ -56,11 +56,22 @@ spec:
 planton apply -f azure-machine-learning-compute-instance.yaml
 ```
 
-The instance provisions in roughly five to ten minutes.
+This creates a DS3v2 workstation owned by the assigned user, with a system identity and SSH disabled; it provisions in roughly five to ten minutes. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an ML-platform chart the order is: workspace → **compute instance** (one per team member), wiring the workspace by reference.
+In an ML-platform chart the order is: workspace → **compute instance** (one per team member). Wire the workspace by reference:
+
+```yaml
+spec:
+  workspaceId:
+    valueFrom:
+      kind: AzureMachineLearningWorkspace
+      name: ml-prod
+      fieldPath: status.outputs.machine_learning_workspace_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the workspace before the instance.
 
 ## Key Configuration
 
@@ -90,7 +101,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `machine_learning_compute_instance_id` | ARM ID of the instance | Operational tooling |
 | `machine_learning_compute_instance_name` | The instance's name | What its owner selects as their compute |
 | `system_assigned_identity_principal_id` | The system identity's principal ID | Storage / Key Vault role assignments |
 | `ssh_username`, `ssh_port` | Service-assigned SSH coordinates | Remote development tooling |

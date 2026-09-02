@@ -28,7 +28,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Monitoring SLO**, and click **Deploy**. Start from the **Availability SLO** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Monitoring SLO**, and click **Deploy**. The creation wizard walks you through the target project, the service arm, the goal and measurement period, and the service-level indicator. Start from the **Availability SLO** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -58,9 +58,31 @@ spec:
 planton apply -f slo.yaml
 ```
 
-Three nines of good checkouts, measured over a rolling 30 days, on a custom service created in the same apply.
+Three nines of good checkouts, measured over a rolling 30 days, on a custom service created in the same apply. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, the SLO references its project via ValueFromRef:
+
+```yaml
+spec:
+  projectId:
+    valueFrom:
+      kind: GcpProject
+      name: observability-project
+      fieldPath: status.outputs.project_id
+  service:
+    customService:
+      displayName: Checkout
+  goal: 0.999
+  rollingPeriodDays: 30
+```
+
+The InfraPipeline deploys the project first, then creates the service and SLO in it.
 
 ## Key Configuration
+
+These are the most important decisions when configuring an SLO. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **service** -- exactly one arm: `serviceId` (an existing/auto-detected service), `customService` (create a blank-slate container — the right arm for anything GCP does not auto-detect), or `basicService` (create from a well-known type + labels, e.g. `CLOUD_RUN`).
 
@@ -77,6 +99,8 @@ Three nines of good checkouts, measured over a rolling 30 days, on a custom serv
 | **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

@@ -581,9 +581,12 @@ type GcpBackendServiceBackend struct {
 	Group *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=group,proto3" json:"group,omitempty"`
 	// How this backend's capacity is measured: UTILIZATION (instance CPU,
 	// the default — instance groups only), RATE (HTTP requests per second),
-	// CONNECTION (open connections, for TCP/SSL), or CUSTOM_METRICS
-	// (backend-reported ORCA metrics). NEG backends must use RATE (or
-	// CUSTOM_METRICS); serverless NEGs ignore balancing entirely. Mutable.
+	// CONNECTION (open connections, for TCP/SSL), CUSTOM_METRICS
+	// (backend-reported ORCA metrics), or IN_FLIGHT (concurrent in-flight
+	// requests). IN_FLIGHT's target dial is not surfaced by the pinned
+	// provider, so IN_FLIGHT backends ride the API's default target.
+	// NEG backends must use RATE (or CUSTOM_METRICS); serverless NEGs
+	// ignore balancing entirely. Mutable.
 	BalancingMode *string `protobuf:"bytes,2,opt,name=balancing_mode,json=balancingMode,proto3,oneof" json:"balancing_mode,omitempty"`
 	// Fraction of the configured capacity this backend actually accepts
 	// (default 1.0 = 100%). 0 drains the backend without removing it — the
@@ -2427,7 +2430,10 @@ type GcpBackendServiceSignedUrlKey struct {
 	// characters of base64url, with or without the trailing == padding.
 	// Anyone holding this value can mint valid signed URLs, so it is
 	// handled as a secret. Immutable per key name: rotating means adding a
-	// new key and removing the old.
+	// new key and removing the old. The base64url shape is taught here
+	// rather than enforced by a validation rule, because sensitive fields
+	// hold a managed-secret reference on consuming platforms and a
+	// content-shape rule would reject every reference.
 	KeyValue      string `protobuf:"bytes,2,opt,name=key_value,json=keyValue,proto3" json:"key_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2719,10 +2725,11 @@ const file_catalog_gcp_gcpbackendservice_v1alpha1_spec_proto_rawDesc = "" +
 	"\"GcpBackendServiceTlsSubjectAltName\x12\x1b\n" +
 	"\bdns_name\x18\x01 \x01(\tH\x00R\adnsName\x12@\n" +
 	"\x1buniform_resource_identifier\x18\x02 \x01(\tH\x00R\x19uniformResourceIdentifierB\f\n" +
-	"\x03san\x12\x05\xbaH\x02\b\x01\"\xa5\x01\n" +
+	"\x03san\x12\x05\xbaH\x02\b\x01\"\x89\x01\n" +
 	"\x1dGcpBackendServiceSignedUrlKey\x12?\n" +
-	"\x04name\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$R\x04name\x12C\n" +
-	"\tkey_value\x18\x02 \x01(\tB&\xbaH\x1f\xc8\x01\x01r\x1a2\x18^[A-Za-z0-9_-]{22}(==)?$\xa0\xa6\x1d\x01R\bkeyValueB\xe7\x02\n" +
+	"\x04name\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$R\x04name\x12'\n" +
+	"\tkey_value\x18\x02 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bkeyValueB\xe7\x02\n" +
 	".com.dev.planton.gcp.gcpbackendservice.v1alpha1B\tSpecProtoP\x01Z]github.com/plantonhq/planton/catalog/gcp/gcpbackendservice/v1alpha1;gcpbackendservicev1alpha1\xa2\x02\x04DPGG\xaa\x02*Dev.Planton.Gcp.Gcpbackendservice.V1alpha1\xca\x02*Dev\\Planton\\Gcp\\Gcpbackendservice\\V1alpha1\xe2\x026Dev\\Planton\\Gcp\\Gcpbackendservice\\V1alpha1\\GPBMetadata\xea\x02.Dev::Planton::Gcp::Gcpbackendservice::V1alpha1b\x06proto3"
 
 var (

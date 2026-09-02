@@ -33,14 +33,14 @@ The function's **name comes from `metadata.name`** — create-time immutable in 
 
 ### Console
 
-Open the deployment store, find **AWS Lambda**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from a preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS Lambda**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Zip-Based Lambda Function** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambda
 metadata:
   name: payment-processor
@@ -158,9 +158,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Zip-based event handler** -- S3 code source, a current runtime, explicit sizing, and a failure destination on the async config. The standard configuration for API endpoints, webhook handlers, and queue workers.
+**Zip-based event handler** -- S3 code source, a current runtime, explicit sizing, and a failure destination on the async config. The standard configuration for API endpoints, webhook handlers, and queue workers. Start from the **Zip-Based Lambda Function** preset.
 
-**Container-based function** -- ECR image code source for functions with large dependency trees or image-standardized build pipelines.
+**Container-based function** -- ECR image code source for functions with large dependency trees or image-standardized build pipelines. Start from the **Container-Based Lambda Function** preset.
 
 **Traffic-shifted production service** -- `publish` on, a `live` alias with a canary weight for progressive rollouts, and provisioned concurrency on the steady alias when cold starts matter.
 

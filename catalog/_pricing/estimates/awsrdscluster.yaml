@@ -1,10 +1,13 @@
 # GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -20,7 +23,7 @@ spec:
           sku_meter: instance hours
           pricing_unit: hours
           pricing_quantity: "1460"
-          quantity_basis: 2 instances (writer + reader-1, both db.r6g.large) x 730 hours
+          quantity_basis: each provisioned instance bills its instance class's Aurora PostgreSQL hourly rate x 730 hours
           list_unit_price: "0.26"
           price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
           retrieved_on: "2026-08-16"
@@ -29,10 +32,10 @@ spec:
       exclusions:
         - Aurora cluster storage bills per consumed GB-month and grows with data
         - storage I/O requests on standard (non-I/O-Optimized) Aurora storage are workload-dependent
-        - backup storage beyond the free allowance grows with churn across the 7-day retention window
-        - CloudWatch ingestion for the exported postgresql logs depends on database chatter
+        - backup storage beyond the free allowance grows with churn across the configured retention window
+        - CloudWatch ingestion for the exported logs depends on database chatter
         - data transfer between AZs and out of the region
-      notes: Performance Insights is enabled but free at the default 7-day retention; the managed master password and deletion protection add no charge of their own.
+      notes: Performance Insights is enabled but free at the default 7-day retention. The managed master password and deletion protection add no charge of their own.
     - preset: 02-aurora-mysql
       region_assumption: us-west-2
       currency: USD
@@ -42,7 +45,7 @@ spec:
           sku_meter: instance hours
           pricing_unit: hours
           pricing_quantity: "1460"
-          quantity_basis: 2 instances (writer + reader-1, both db.r6g.large) x 730 hours
+          quantity_basis: each provisioned instance bills its instance class's Aurora MySQL hourly rate x 730 hours
           list_unit_price: "0.26"
           price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
           retrieved_on: "2026-08-16"
@@ -51,24 +54,24 @@ spec:
       exclusions:
         - Aurora cluster storage bills per consumed GB-month and grows with data
         - storage I/O requests on standard (non-I/O-Optimized) Aurora storage are workload-dependent
-        - backtrack change records across the 24-hour backtrack window bill per million records and follow write churn
-        - backup storage beyond the free allowance grows with churn across the 7-day retention window
-        - CloudWatch ingestion for the exported error and slowquery logs depends on database chatter
+        - backtrack change records across the configured backtrack window bill per million records and follow write churn
+        - backup storage beyond the free allowance grows with churn across the configured retention window
+        - CloudWatch ingestion for the exported logs depends on database chatter
         - data transfer between AZs and out of the region
-      notes: Performance Insights is enabled but free at the default 7-day retention.
+      notes: Performance Insights is enabled but free at the default 7-day retention. The managed master password and deletion protection add no charge of their own.
     - preset: 03-aurora-serverless-v2
       region_assumption: us-west-2
       currency: USD
       hours_per_month: 730
       total_list_cost: "0.00"
       exclusions:
-        - ACU-hours are demand-driven -- min_capacity 0 enables automatic pause, so an idle cluster's compute cost is zero and a busy one bills up to the 16-ACU ceiling per hour
+        - ACU-hours are demand-driven -- min_capacity 0 enables automatic pause, so an idle cluster's compute cost is zero and a busy one bills up to the configured max_capacity ceiling per hour
         - Aurora cluster storage bills per consumed GB-month and grows with data (it bills even while compute is paused)
-        - storage I/O requests on standard Aurora storage are workload-dependent
+        - storage I/O requests on standard (non-I/O-Optimized) Aurora storage are workload-dependent
         - Data API requests (enable_http_endpoint) bill per million requests past the free allowance, which covers only the first year of usage
-        - backup storage beyond the free allowance grows with churn across the 7-day retention window
+        - backup storage beyond the free allowance grows with churn across the configured retention window
         - data transfer between AZs and out of the region
-      notes: min_capacity 0 means no committed compute spend -- the single db.serverless writer pauses after 5 idle minutes and resumes on the next connection. Every dollar of this preset follows usage.
+      notes: min_capacity 0 means no committed compute spend -- the db.serverless instances pause after 5 idle minutes and resume on the next connection. Every dollar of this preset follows usage.
     - preset: 04-mysql-s3-migration
       region_assumption: us-west-2
       currency: USD
@@ -78,7 +81,7 @@ spec:
           sku_meter: instance hours
           pricing_unit: hours
           pricing_quantity: "730"
-          quantity_basis: 1 instance (writer, db.r6g.large) x 730 hours
+          quantity_basis: each provisioned instance bills its instance class's Aurora MySQL hourly rate x 730 hours
           list_unit_price: "0.26"
           price_source: https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonRDS/20260812234745/us-west-2/index.json
           retrieved_on: "2026-08-16"
@@ -86,8 +89,8 @@ spec:
       total_list_cost: "189.8000"
       exclusions:
         - Aurora cluster storage bills per consumed GB-month -- immediately material here, since the S3 restore lands the migrated dataset on day one
-        - storage I/O requests on standard Aurora storage are workload-dependent
-        - backtrack change records across the 72-hour backtrack window bill per million records and follow cutover write churn
-        - backup storage beyond the free allowance grows with churn across the 7-day retention window
+        - storage I/O requests on standard (non-I/O-Optimized) Aurora storage are workload-dependent
+        - backtrack change records across the configured backtrack window bill per million records and follow write churn
+        - backup storage beyond the free allowance grows with churn across the configured retention window
         - data transfer between AZs and out of the region
       notes: The one-time S3 restore itself adds no RDS charge; S3 storage and request costs for the XtraBackup files belong to the source bucket.

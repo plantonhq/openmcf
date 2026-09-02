@@ -1,4 +1,4 @@
-# Preset: Production Multi-Action Alarm
+# Production Multi-Action Alarm
 
 **Use case:** Production-grade alarm with separate notification channels for ALARM, OK, and INSUFFICIENT_DATA state transitions.
 
@@ -57,5 +57,7 @@ Using `okActions` prevents alert fatigue — teams see that an issue resolved wi
 
 ## Cost
 
-- **CloudWatch alarms**: $0.10/alarm/month (standard resolution)
+- **CloudWatch alarms**: billed per alarm-month; standard resolution is the cheaper alarm tier
 - **SNS**: first 1M notifications/month free
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awscloudwatchalarm.yaml` — computed from the pinned price book, never hand-typed here.

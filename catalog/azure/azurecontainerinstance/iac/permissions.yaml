@@ -16,7 +16,7 @@ spec:
           - Microsoft.ContainerInstance/containerGroups/write
           - Microsoft.ContainerInstance/containerGroups/delete
         provenance: derived
-        notes: Covers azurerm_container_group (tf main.tf) and containerservice.NewGroup (pulumi module/main.go) -- create, refresh, tag/identity updates, and destroy. The container group API is create-only for most properties, so spec changes replace the group through the same three actions. Spellings follow Microsoft.ContainerInstance's official operation list; the namespace is not yet in the ARM action inventory snapshot, so the casing is taken from az provider operation list output rather than the inventory.
+        notes: Covers azurerm_container_group (tf main.tf) and containerservice.NewGroup (pulumi module/main.go) -- create, refresh, tag/identity updates, and destroy. The container group API is create-only for most properties, so spec changes replace the group through the same three actions. Spellings follow Microsoft.ContainerInstance's official operation list; the committed ARM action-inventory snapshot (pkg/iac/actioninventory/azure.yaml) carries the Microsoft.ContainerInstance namespace and confirms the casing of every action here.
       - purpose: JoinDelegatedSubnet
         actions:
           - Microsoft.Network/virtualNetworks/subnets/join/action

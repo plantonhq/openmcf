@@ -1,4 +1,4 @@
-# Preset: Google OAuth
+# Google OAuth
 
 Configures Google as a social identity provider for a Cognito User Pool.
 
@@ -11,7 +11,7 @@ Configures Google as a social identity provider for a Cognito User Pool.
 
 - `${USER_POOL_ID}` -- Cognito User Pool ID (e.g., `us-east-1_Ab1Cd2EfG`)
 - `${GOOGLE_CLIENT_ID}` -- Google OAuth 2.0 client ID from Google Cloud Console
-- `${GOOGLE_CLIENT_SECRET}` -- Google OAuth 2.0 client secret
+- `$secret/google-oauth-client-secret` -- a managed-secret reference to the Google OAuth 2.0 client secret; the field is sensitive, so a `$secret/<slug>` reference belongs here, never plaintext
 
 ## After Deployment
 

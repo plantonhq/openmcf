@@ -20,10 +20,7 @@ spec:
   #   - kms_key_arn / encryption_key_arn -- fixed-at-creation key
   #     references. Unblock: fold a KMS fixture in when the proof lane
   #     wants the arm.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q41
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

@@ -1,4 +1,4 @@
-# Preset: CMEK-Encrypted Dataset
+# CMEK-Encrypted Dataset
 
 ## When to Use
 

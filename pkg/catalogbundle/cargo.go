@@ -372,6 +372,15 @@ func computePermissionsProvenance(permissions *permissionsv1.ComponentPermission
 	for _, rule := range spec.GetKubernetes().GetRules() {
 		seen[rule.GetProvenance()] = true
 	}
+	for _, group := range spec.GetCloudflare().GetGroups() {
+		seen[group.GetProvenance()] = true
+	}
+	for _, group := range spec.GetDigitalOcean().GetGroups() {
+		seen[group.GetProvenance()] = true
+	}
+	for _, grant := range spec.GetDigitalOcean().GetSpacesGrants() {
+		seen[grant.GetProvenance()] = true
+	}
 	if len(seen) == 0 {
 		return ""
 	}

@@ -31,8 +31,9 @@ field). The guard itself is a free configuration object.
 ```yaml
 # Offline-plan test manifest. Exercises the full surface: the
 # exclusion list (present here to prove the wire shape -- production
-# guidance is an EMPTY list, which guards everything) and user tags
-# merged over the derived ones.
+# guidance is an EMPTY list, which guards everything; entries must be
+# operations ARM allows excluding, never the MUA-mandatory set) and
+# user tags merged over the derived ones.
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureDataProtectionResourceGuard
 metadata:
@@ -45,7 +46,7 @@ spec:
     value: test-rg
   name: test-backup-mua-guard
   vaultCriticalOperationExclusionList:
-    - Microsoft.RecoveryServices/vaults/backupconfig/write
+    - Microsoft.RecoveryServices/vaults/backupResourceGuardProxies/write
   tags:
     cost-center: platform
 ```
@@ -101,11 +102,21 @@ the guard.
 
 Critical vault operations EXCLUDED from the guard's approval
 requirement, as ARM operation names (e.g.
-"Microsoft.RecoveryServices/vaults/backupconfig/write"). An
-excluded operation executes without an approval. Leave empty to
-guard every critical operation (the strongest posture). Updates
-in place.
+"Microsoft.RecoveryServices/vaults/backupResourceGuardProxies/write").
+An excluded operation executes without an approval. Leave empty to
+guard every critical operation (the strongest posture). Updates in
+place. Azure keeps a MANDATORY set no guard may ever exclude and
+rejects the create outright
+(BMSUserErrorInvalidCriticalOperationExclusionList) when the list
+names one: the operations that would disarm the guard itself
+(backupconfig/write, both vault families'
+backupResourceGuardProxies/delete,
+backupVaults/write#reduceSoftDeleteSecurity) and the cross-tenant
+vault-mapping operations. The provider does not validate this --
+the rule below mirrors ARM's own rejection list so the failure
+lands at admission, not at deploy.
 
+- rule: the exclusion list names an operation Azure never allows excluding -- the MUA-mandatory set (backupconfig/write, backupResourceGuardProxies/delete, backupVaults/write#reduceSoftDeleteSecurity, and the backupCrossTenantVaultMappings operations) is always guarded
 - rule: {"repeated":{"items":{"string":{"minLen":"1"}}}}
 
 ### spec.tags
@@ -132,6 +143,14 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.resourceGroup` | AzureResourceGroup | `status.outputs.resource_group_name` |
+
+## Referenced By
+
+Fields on other kinds that can point at this resource:
+
+| Kind | Field | Reads |
+|---|---|---|
+| AzureRecoveryServicesVault | `spec.resourceGuardId` | `status.outputs.resource_guard_id` |
 
 ## See Also
 

@@ -63,6 +63,9 @@ spec:
       evidence:
         type: spec_default
         reference: The legacy-weak path is cleartext database protocol over the network, permitted when ssl_mode is unset; ENCRYPTED_ONLY (all presets) retires it.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: password_validation_policy (minimum length, reuse interval, username-substring bar) and root_password govern DATABASE users authenticating over the SQL protocol -- not end-user sign-in, which belongs to whatever application fronts the instance.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

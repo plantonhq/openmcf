@@ -27,14 +27,14 @@ The actual CIDR is assigned by Azure at creation and surfaces as the `ip_prefix`
 
 ### Console
 
-Open the deployment store, find **Azure Public IP Prefix**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **NAT SNAT Range** preset in the [Presets](#presets) tab for the flagship zone-redundant egress range.
+Open the deployment store, find **Azure Public IP Prefix**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **NAT Gateway SNAT Range** preset in the [Presets](#presets) tab for the flagship zone-redundant egress range.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzurePublicIpPrefix
 metadata:
   name: prod-egress
@@ -58,7 +58,7 @@ spec:
 planton apply -f prefix.yaml
 ```
 
-This reserves 16 contiguous zone-redundant addresses; the assigned CIDR lands in `status.outputs.ip_prefix` — hand that one value to every partner allowlist.
+This reserves 16 contiguous zone-redundant addresses; the assigned CIDR lands in `status.outputs.ip_prefix` — hand that one value to every partner allowlist. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -103,17 +103,18 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 |--------|-------------|----------------------|
 | `public_ip_prefix_id` | Azure Resource Manager ID of the prefix | AzurePublicIp `publicIpPrefixId` (allocate from the range), AzureNatGateway `publicIpPrefixIds` (SNAT association) |
 | `ip_prefix` | The actual reserved CIDR, e.g. "20.42.0.16/28" | Partner and firewall allowlists — the range's whole reason to exist |
-| `public_ip_prefix_name` | Name of the prefix resource | Automation scripts, inventory |
+
+The outputs also carry `public_ip_prefix_name`, the prefix resource's name -- consumers reference the prefix by ARM ID, so the name has no ValueFromRef consumer.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**NAT SNAT range** -- a zone-redundant /28 associated with a NAT gateway: predictable egress addresses that scale SNAT ports with the fleet. Start from the **NAT SNAT Range** preset.
+**NAT SNAT range** -- a zone-redundant /28 associated with a NAT gateway: predictable egress addresses that scale SNAT ports with the fleet. Start from the **NAT Gateway SNAT Range** preset.
 
-**Partner allowlist** -- a dedicated range for one integration, so the partner allowlists one CIDR and revoking the integration later touches nothing else. Start from the **Partner Allowlist** preset.
+**Partner allowlist** -- a dedicated range for one integration, so the partner allowlists one CIDR and revoking the integration later touches nothing else. Start from the **Partner Firewall Allowlist** preset.
 
-**From-prefix public IP** -- reserve the range here, then allocate individual AzurePublicIp resources from it — each guaranteed to come from the allowlisted CIDR. Start from the **From-Prefix Public IP** preset.
+**From-prefix public IP** -- reserve the range here, then allocate individual AzurePublicIp resources from it — each guaranteed to come from the allowlisted CIDR. Start from the **Public IP From Prefix** preset.
 
 ## Works With
 

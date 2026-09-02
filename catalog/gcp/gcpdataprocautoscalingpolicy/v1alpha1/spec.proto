@@ -77,11 +77,22 @@ message GcpDataprocAutoscalingPolicySecondaryWorkerConfig {
 message GcpDataprocAutoscalingPolicyYarnConfig {
   // How long the autoscaler waits for a graceful YARN decommission
   // before forcefully removing a worker during scale-down. Running
-  // tasks get this window to finish. Bounds: 0s to 1 day.
+  // tasks get this window to finish. Bounds: 0s to 1 day (86400s) —
+  // the Dataproc API's own limit, enforced below so an out-of-range
+  // value fails at spec time instead of at the provider.
   // Format: duration in seconds with "s" suffix (e.g., "3600s").
   string graceful_decommission_timeout = 1 [
     (buf.validate.field).required = true,
-    (buf.validate.field).string.pattern = "^[0-9]+s$"
+    (buf.validate.field).string.pattern = "^[0-9]+s$",
+    // The 0–86400 range is encoded as a regex (0–9999, 10000–79999,
+    // 80000–85999, 86000–86399, 86400) because the rule dialect has no
+    // numeric parse for duration strings; the format escape keeps this
+    // rule quiet when the pattern rule already reports a malformed value.
+    (buf.validate.field).cel = {
+      id: "graceful_decommission_timeout_bound"
+      message: "graceful_decommission_timeout must be at most 1 day (86400s)"
+      expression: "this == '' || !this.matches('^[0-9]+s$') || this.matches('^0*([0-9]{1,4}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)s$')"
+    }
   ];
 
   // Fraction of pending YARN memory the autoscaler adds capacity for
@@ -132,13 +143,28 @@ message GcpDataprocAutoscalingPolicyYarnConfig {
 // autoscaling algorithm and its evaluation cadence.
 message GcpDataprocAutoscalingPolicyBasicAlgorithm {
   // How long the autoscaler waits between evaluations, letting the
-  // cluster settle after a scaling event. Bounds: 2 minutes to 1 day.
-  // Format: duration in seconds with "s" suffix. Default: "120s".
-  string cooldown_period = 1 [(buf.validate.field).cel = {
-    id: "cooldown_period_format"
-    expression: "this == '' || this.matches('^[0-9]+s$')"
-    message: "cooldown_period must be a duration in seconds (e.g., '120s')"
-  }];
+  // cluster settle after a scaling event. Bounds: 2 minutes (120s) to
+  // 1 day (86400s) — the Dataproc API's own limits, enforced below so
+  // an out-of-range value fails at spec time instead of at the
+  // provider. Format: duration in seconds with "s" suffix.
+  // Default: "120s".
+  string cooldown_period = 1 [
+    (buf.validate.field).cel = {
+      id: "cooldown_period_format"
+      expression: "this == '' || this.matches('^[0-9]+s$')"
+      message: "cooldown_period must be a duration in seconds (e.g., '120s')"
+    },
+    // The 120–86400 range is encoded as a regex (120–199, 200–999,
+    // 1000–9999, 10000–79999, 80000–85999, 86000–86399, 86400) because
+    // the rule dialect has no numeric parse for duration strings; the
+    // format escape keeps this rule quiet when the format rule already
+    // reports a malformed value.
+    (buf.validate.field).cel = {
+      id: "cooldown_period_bound"
+      message: "cooldown_period must be between 2 minutes (120s) and 1 day (86400s)"
+      expression: "this == '' || !this.matches('^[0-9]+s$') || this.matches('^0*(1[2-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)s$')"
+    }
+  ];
 
   // YARN memory-based scaling behavior.
   GcpDataprocAutoscalingPolicyYarnConfig yarn_config = 2 [(buf.validate.field).required = true];

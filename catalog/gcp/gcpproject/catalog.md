@@ -1,6 +1,6 @@
-# Project on Google Cloud
+# GCP Project
 
-Deploys a Google Cloud project — the Layer-0 container every other GCP resource lives in. Configures resource hierarchy placement (organization, folder, or standalone), billing account attachment, labels and resource-manager tags, the default-network posture, pre-enabled Cloud APIs, and the deletion policy. Integrates with Planton's Provider Connections for GCP credential management.
+Deploys a Google Cloud project — the Layer-0 container every other GCP resource lives in. Configures resource hierarchy placement (organization, folder, or standalone), billing account attachment, labels and resource-manager tags, the default-network posture, pre-enabled Cloud APIs, and the deletion policy. The `projectId` is globally unique across all of GCP and immutable — the one naming decision this page exists to get right.
 
 ## What Gets Created
 
@@ -33,7 +33,7 @@ IAM grants are deliberately NOT part of this component — model each grant as a
 
 ### Console
 
-Open the deployment store, find **Project on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Production** preset in the [Presets](#presets) tab to pre-populate a production-ready project with essential APIs enabled and destroy blocked by `deletionPolicy: PREVENT`.
+Open the deployment store, find **GCP Project**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Production Project** preset in the [Presets](#presets) tab to pre-populate a production-ready project with essential APIs enabled and destroy blocked by `deletionPolicy: PREVENT`.
 
 ### CLI
 
@@ -99,9 +99,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard production project** -- Folder-based hierarchy, billing linked, a hardening baseline of 8 APIs pre-enabled, and destroy blocked by `deletionPolicy: PREVENT`. Start from the **Standard Production** preset.
+**Standard production project** -- Folder-based hierarchy, billing linked, a hardening baseline of 8 APIs pre-enabled, and destroy blocked by `deletionPolicy: PREVENT`. Start from the **Standard Production Project** preset.
 
-**Development project** -- Lightweight project with billing linked, a minimal 3-API set, and the default `DELETE` policy so teardown is one command. Bake uniqueness into the ID itself (a team or ticket suffix) — IDs are globally unique and reserved after deletion. Start from the **Development** preset.
+**Development project** -- Lightweight project with billing linked, a minimal 3-API set, and the default `DELETE` policy so teardown is one command. Bake uniqueness into the ID itself (a team or ticket suffix) — IDs are globally unique and reserved after deletion. Start from the **Development Project** preset.
 
 ## Works With
 

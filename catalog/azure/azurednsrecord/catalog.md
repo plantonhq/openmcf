@@ -35,7 +35,7 @@ Open the deployment store, find **Azure DNS Record**, and click **Deploy**. The 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureDnsRecord
 metadata:
   name: www-a-record

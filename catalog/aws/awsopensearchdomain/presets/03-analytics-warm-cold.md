@@ -37,7 +37,7 @@ Configure Index State Management (ISM) policies in OpenSearch Dashboards after d
 | `analytics-search` | Domain name (3-28 chars, lowercase, hyphens) | Your naming convention |
 | `<vpc-name>` | Name of the AwsVpc resource providing subnets | Your Planton VPC manifest |
 | `<security-group-name>` | Name of the AwsSecurityGroup allowing HTTPS (443) | Your Planton security group manifest |
-| `<master-password>` | Master user password (min 8 chars, mixed case, digit, special) | Generate a strong password |
+| `$secret/opensearch-master-password` | A managed-secret reference to the master user password (min 8 chars, mixed case, digit, special) — the field is sensitive, so a `$secret/<slug>` reference belongs here, never plaintext | Your org's managed secrets |
 | `<index-slow-logs-log-group-arn>` | CloudWatch Logs log group ARN for index slow logs | AWS CloudWatch console or pre-created log group |
 | `<search-slow-logs-log-group-arn>` | CloudWatch Logs log group ARN for search slow logs | AWS CloudWatch console or pre-created log group |
 | `<application-logs-log-group-arn>` | CloudWatch Logs log group ARN for application logs | AWS CloudWatch console or pre-created log group |

@@ -41,6 +41,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication path of its own exists to retire -- access is IAM-authenticated Composer API access, full stop.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Creating, updating, or deleting the ConfigMap lands in Cloud Audit Logs as project-level posture; DAG-level activity logging belongs to the parent environment's Airflow logs.

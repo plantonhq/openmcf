@@ -40,7 +40,7 @@ Open the deployment store, find **AWS Cognito User Pool**, and click **Deploy**.
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCognitoUserPool
 metadata:
   name: app-auth
@@ -62,7 +62,7 @@ spec:
 planton apply -f cognito-user-pool.yaml
 ```
 
-This creates a user pool with email as the sign-in identifier, email auto-verification, email-based recovery, and deletion protection. Add an AwsCognitoUserPoolClient resource so an application can authenticate — the pool alone has no app client.
+This creates a user pool with email as the sign-in identifier, email auto-verification, email-based recovery, and deletion protection. Add an AwsCognitoUserPoolClient resource so an application can authenticate — the pool alone has no app client. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -159,5 +159,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the SNS caller role SMS delivery rides on
 - [**AWS Lambda**](/cloud-catalog/aws-lambda) -- authentication lifecycle triggers, token customization, and custom message senders
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- encrypts codes handed to custom sender Lambdas
-- [**AWS Certificate Manager Certificate**](/cloud-catalog/aws-cert-manager-cert) -- the us-east-1 certificate for custom hosted UI domains
+- [**AWS ACM Certificate**](/cloud-catalog/aws-cert-manager-cert) -- the us-east-1 certificate for custom hosted UI domains
 - [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group), [**AWS Kinesis Firehose**](/cloud-catalog/aws-kinesis-firehose), [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- log export destinations

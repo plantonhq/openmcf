@@ -1,6 +1,6 @@
 # Azure Managed Redis Access Policy Assignment
 
-Grants Redis data-plane access to a Microsoft Entra identity on an Azure Managed Redis instance -- the Redis analog of a role assignment, and the grant half of Managed Redis's keyless-by-default story. Access keys are off unless explicitly enabled, so a granted identity is how clients connect at all: the identity presents its object ID as the Redis username and an Entra token as the password, and no secret exists to leak or rotate. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Grants Redis data-plane access to a Microsoft Entra identity on an Azure Managed Redis instance -- the Redis analog of a role assignment, and the grant half of Managed Redis's keyless-by-default story. Access keys are off unless explicitly enabled, so a granted identity is how clients connect at all: the identity presents its object ID as the Redis username and an Entra token as the password, and no secret exists to leak or rotate.
 
 ## What Gets Created
 
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Managed Redis Access Policy Assignment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the grant itself. Start from the **Identity Grant** preset in the [Presets](#presets) tab for the secretless workload pattern.
+Open the deployment store, find **Azure Managed Redis Access Policy Assignment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the grant itself. Start from the **Workload Identity Grant** preset in the [Presets](#presets) tab for the secretless workload pattern.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedRedisAccessPolicyAssignment
 metadata:
   name: app-cache-grant
@@ -54,7 +54,7 @@ spec:
 planton apply -f grant.yaml
 ```
 
-This grants the identity full data-plane access on the instance's default database. The identity connects with its object ID as the username and an Entra token as the password.
+This grants the identity full data-plane access on the instance's default database; the identity connects with its object ID as the username and an Entra token as the password. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -104,9 +104,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Workload identity grant** -- The secretless application pattern: a user-assigned identity granted per instance, referenced end to end. Start from the **Identity Grant** preset.
+**Workload identity grant** -- The secretless application pattern: a user-assigned identity granted per instance, referenced end to end. Start from the **Workload Identity Grant** preset.
 
-**Human operator grant** -- A user or Entra group (covering a whole on-call rotation with one assignment) granted by literal GUID -- personal, auditable access with no shared key in a vault. Start from the **Human Operator** preset.
+**Human operator grant** -- A user or Entra group (covering a whole on-call rotation with one assignment) granted by literal GUID -- personal, auditable access with no shared key in a vault. Start from the **Human Operator Grant** preset.
 
 ## Works With
 

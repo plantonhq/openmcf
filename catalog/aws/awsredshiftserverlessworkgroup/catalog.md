@@ -1,16 +1,15 @@
 # AWS Redshift Serverless Workgroup
 
-Deploys an Amazon Redshift Serverless workgroup — the compute plane of the serverless warehouse: Redshift Processing Unit (RPU) capacity, VPC placement, network reachability, and query-level configuration. A workgroup computes; the data it serves lives on the [AwsRedshiftServerlessNamespace](/cloud-catalog/aws-redshift-serverless-namespace) it attaches to by name. Billing follows the compute — RPU-hours accrue only while queries execute, so an idle workgroup costs nothing. Many workgroups can serve one namespace (a capped dev endpoint and an autoscaling production endpoint over the same data), and each is created and destroyed without touching what is stored. The workgroup integrates with Planton's Provider Connections for AWS credential management.
+Deploys an Amazon Redshift Serverless workgroup — the compute plane of the serverless warehouse: Redshift Processing Unit (RPU) capacity, VPC placement, network reachability, and query-level configuration. A workgroup computes; the data it serves lives on the [AwsRedshiftServerlessNamespace](/cloud-catalog/aws-redshift-serverless-namespace) it attaches to by name. Billing follows the compute — RPU-hours accrue only while queries execute, so an idle workgroup costs nothing. Many workgroups can serve one namespace (a capped dev endpoint and an autoscaling production endpoint over the same data), and each is created and destroyed without touching what is stored.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Redshift Serverless Workgroup** -- the compute plane whose name is the resource name (create-time immutable); SQL clients connect to its endpoint
-- **Capacity Posture** -- a fixed RPU baseline you choose, or the price-performance dial where AWS owns the baseline; plus the optional hard spend ceiling
-- **VPC Placement** -- compute and a managed VPC endpoint in the subnets you reference (three AZs minimum), guarded by the security groups you attach
-- **Reachability Posture** -- enhanced VPC routing for governed COPY/UNLOAD data movement, private-by-default endpoint exposure, and the connection port
-- **Query Configuration** -- session parameters and query monitoring guardrails applied directly to the workgroup (serverless has no parameter groups), plus the release track
+- **Redshift Serverless Workgroup** -- the compute plane whose name is the resource name (create-time immutable); SQL clients connect to its endpoint. The workgroup carries the capacity posture (a fixed RPU baseline or the price-performance dial, plus the optional hard spend ceiling), VPC placement (subnets across three AZs minimum, guarded by the referenced security groups), reachability (enhanced VPC routing, private-by-default exposure, the connection port), and query configuration (session parameters and monitoring guardrails -- serverless has no parameter groups)
+- **Custom Domain Association** -- created only when `customDomain` is configured; fronts the endpoint with a branded DNS name and an ACM certificate
+- **VPC Endpoint Accesses** -- one per `endpointAccesses[]` entry; private endpoints into consuming VPCs
+- **Usage Limits** -- one per `usageLimits[]` entry; RPU-hour and datasharing spend caps with escalating breach actions
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -29,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Redshift Serverless Workgroup**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Capped Dev** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS Redshift Serverless Workgroup**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Capped Development Workgroup** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedshiftServerlessWorkgroup
 metadata:
   name: analytics-dev
@@ -65,15 +64,39 @@ This creates a cost-bounded dev workgroup over the referenced namespace. A Stack
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the namespace deploys first, then workgroups reference it — and applications consume the workgroup's endpoint:
+When the workgroup deploys alongside its namespace, subnets, and security group in one chart, wire the references via ValueFromRef:
 
 ```yaml
-# This workgroup's connect string, from another resource's env wiring:
-valueFrom:
-  kind: AwsRedshiftServerlessWorkgroup
-  name: analytics-prod
-  fieldPath: status.outputs.endpoint_address
+spec:
+  region: us-west-2
+  namespaceName:
+    valueFrom:
+      kind: AwsRedshiftServerlessNamespace
+      name: analytics-data
+      fieldPath: status.outputs.namespace_name
+  baseCapacity: 8
+  maxCapacity: 32
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: warehouse-az1
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: warehouse-az2
+        fieldPath: status.outputs.subnet_id
+    - valueFrom:
+        kind: AwsSubnet
+        name: warehouse-az3
+        fieldPath: status.outputs.subnet_id
+  securityGroupIds:
+    - valueFrom:
+        kind: AwsSecurityGroup
+        name: warehouse-sg
+        fieldPath: status.outputs.security_group_id
 ```
+
+The InfraPipeline resolves the dependency graph, deploys the namespace, subnets, and security group first, then provisions the workgroup with the resolved values.
 
 ## Key Configuration
 
@@ -95,14 +118,12 @@ These are the most important decisions when configuring a serverless workgroup. 
 
 ### What This Component Consumes
 
-| Field | Referenced Kind | Purpose |
-|-------|-----------------|---------|
-| `namespaceName` | [AwsRedshiftServerlessNamespace](/cloud-catalog/aws-redshift-serverless-namespace) | The data plane this compute serves (required) |
-| `subnetIds[]` | [AwsSubnet](/cloud-catalog/aws-subnet) | Compute and endpoint placement (three AZs minimum) |
-| `securityGroupIds[]` | [AwsSecurityGroup](/cloud-catalog/aws-security-group) | Who can reach the endpoint |
-| `endpointAccesses[].subnetIds[]` | [AwsSubnet](/cloud-catalog/aws-subnet) | Consuming-VPC placement for cross-VPC endpoints |
-| `endpointAccesses[].vpcSecurityGroupIds[]` | [AwsSecurityGroup](/cloud-catalog/aws-security-group) | Access control on each endpoint |
-| `customDomain.certificateArn` | [AwsCertManagerCert](/cloud-catalog/aws-cert-manager-cert) | TLS for the custom domain |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsRedshiftServerlessNamespace** (required) | `namespaceName` | `status.outputs.namespace_name` |
+| **AwsSubnet** | `subnetIds`, `endpointAccesses[].subnetIds` | `status.outputs.subnet_id` |
+| **AwsSecurityGroup** (optional) | `securityGroupIds`, `endpointAccesses[].vpcSecurityGroupIds` | `status.outputs.security_group_id` |
+| **AwsCertManagerCert** (optional) | `customDomain.certificateArn` | `status.outputs.cert_arn` |
 
 ### What This Component Provides
 
@@ -123,16 +144,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Capped dev workgroup** -- the smallest practical baseline (8 RPU) with a hard 32-RPU ceiling: cheap, bounded, and safe to leave running (idle costs nothing). Start from the **Capped Dev** preset.
+**Capped dev workgroup** -- the smallest practical baseline (8 RPU) with a hard 32-RPU ceiling: cheap, bounded, and safe to leave running (idle costs nothing). Start from the **Capped Development Workgroup** preset.
 
-**Price-performance production workgroup** -- AWS owns the baseline at the balanced level, a 512-RPU cap bounds spend, enhanced VPC routing governs data movement, TLS is required, and a four-hour query limit guards runaway work. Start from the **Price-Performance Production** preset.
+**Price-performance production workgroup** -- AWS owns the baseline at the balanced level, a 512-RPU cap bounds spend, enhanced VPC routing governs data movement, TLS is required, and a four-hour query limit guards runaway work. Start from the **Price-Performance Production Workgroup** preset.
 
-**Governed workgroup with private endpoints** -- a fixed baseline with daily RPU-hour deactivation, datasharing transfer logging, a VPC endpoint for a BI-tooling VPC, and a branded TLS domain. Start from the **Private Endpoint Domain** preset.
+**Governed workgroup with private endpoints** -- a fixed baseline with daily RPU-hour deactivation, datasharing transfer logging, a VPC endpoint for a BI-tooling VPC, and a branded TLS domain. Start from the **Governed Workgroup with Private Endpoints and a Custom Domain** preset.
 
 ## Works With
 
 - [**AWS Redshift Serverless Namespace**](/cloud-catalog/aws-redshift-serverless-namespace) -- the data plane this workgroup computes for (references `namespace_name`)
 - [**AWS Subnet**](/cloud-catalog/aws-subnet) -- placement for the compute and its managed VPC endpoint
 - [**AWS Security Group**](/cloud-catalog/aws-security-group) -- carries the warehouse's ingress rules
-- [**AWS Cert Manager Cert**](/cloud-catalog/aws-cert-manager-cert) -- provides the TLS certificate for the custom domain
+- [**AWS ACM Certificate**](/cloud-catalog/aws-cert-manager-cert) -- provides the TLS certificate for the custom domain
 - [**AWS Redshift Cluster**](/cloud-catalog/aws-redshift-cluster) -- the provisioned alternative when steady, predictable load makes reserved capacity cheaper

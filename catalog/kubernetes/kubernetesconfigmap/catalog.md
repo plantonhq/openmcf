@@ -1,6 +1,6 @@
 # Kubernetes ConfigMap
 
-Deploys a Kubernetes ConfigMap carrying UTF-8 configuration entries and base64 binary payloads that workloads consume as environment variables or mounted files. Supports the immutable flag for versioned, rollout-friendly configuration. Manages configuration declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys a Kubernetes ConfigMap carrying UTF-8 configuration entries and base64 binary payloads that workloads consume as environment variables or mounted files. Supports the immutable flag for versioned, rollout-friendly configuration. The spec covers the complete upstream ConfigMap surface; for confidential data use Kubernetes Secret instead — the two kinds are deliberate mirrors of each other.
 
 ## What Gets Created
 
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **ConfigMap on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **App Config** preset for flag-style settings or **Immutable Versioned** for production rollout discipline in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes ConfigMap**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Application Configuration** preset for flag-style settings or **Immutable Versioned Configuration** for production rollout discipline in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesConfigMap
 metadata:
   name: checkout-settings
@@ -50,7 +50,25 @@ spec:
 planton apply -f configmap.yaml
 ```
 
-This creates a mutable ConfigMap in the `backend-services` namespace with two flag-style entries, ready to consume via `envFrom.configMapRef`.
+This creates a mutable ConfigMap in the `backend-services` namespace with two flag-style entries, ready to consume via `envFrom.configMapRef`. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, reference the namespace so it is created before the ConfigMap:
+
+```yaml
+spec:
+  name: checkout-settings
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: backend-namespace
+      fieldPath: spec.name
+  data:
+    LOG_LEVEL: "info"
+```
+
+The InfraPipeline creates the namespace first, then the ConfigMap inside it in dependency order.
 
 ## Key Configuration
 
@@ -68,9 +86,11 @@ These are the most important decisions when configuring a Kubernetes ConfigMap. 
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the ConfigMap is created in; omitted means the cluster's `default` namespace |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+
+The namespace field is optional: when omitted, the ConfigMap lands in the cluster's `default` namespace — the same behavior as kubectl without a namespace flag.
 
 ### What This Component Provides
 
@@ -85,13 +105,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Application settings** -- Flag-style entries (log levels, feature flags) injected as env vars via `envFrom`. Start from the **App Config** preset.
+**Application settings** -- Flag-style entries (log levels, feature flags) injected as env vars via `envFrom`. Start from the **Application Configuration** preset.
 
-**Immutable versioned config** -- A versioned name (`app-settings-v1`) with `immutable: true`; every config change becomes a new object and a visible diff in the workload's reference. Start from the **Immutable Versioned** preset.
+**Immutable versioned config** -- A versioned name (`app-settings-v1`) with `immutable: true`; every config change becomes a new object and a visible diff in the workload's reference. Start from the **Immutable Versioned Configuration** preset.
 
 **Binary payloads** -- Keystores or binary certificates carried as base64 in `binaryData`, mounted as files. Start from the **Binary Payload** preset.
 
 ## Works With
 
-- **Kubernetes Namespace** -- reference the namespace so infra charts create it and this ConfigMap in dependency order.
-- **Kubernetes Deployment and the other workload kinds** -- consume entries as env vars (`envFrom`, `configMapKeyRef`) or mounted files (`configMap` volume source), from the same namespace only.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- reference the namespace so infra charts create it and this ConfigMap in dependency order.
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- workloads consume entries as env vars (`envFrom`, `configMapKeyRef`) or mounted files (`configMap` volume source), from the same namespace only.
+- [**Kubernetes Secret**](/cloud-catalog/kubernetes-secret) -- the confidential mirror of this kind; put credentials and keys there, not here.

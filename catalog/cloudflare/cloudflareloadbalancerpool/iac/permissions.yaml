@@ -1,0 +1,29 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# The component's catalog.md states the requirement in prose ("a Cloudflare
+# API token that has Load Balancing edit access") -- migrated here
+# losslessly; the precise account-scoped group for pools is the pair below
+# (the zone-scoped "Load Balancers Write" group governs the zone-attached
+# load balancers, not this account-level resource).
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareloadbalancerpool
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManagePool
+        name: "Load Balancing: Monitors and Pools Write"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Covers the Terraform module's single cloudflare_load_balancer_pool resource and the Pulumi module's matching LoadBalancerPool resource -- account-scoped ("grants write access to account level load balancer resources"); create/update/delete the pool via POST/PUT/DELETE /accounts/{account_id}/load_balancers/pools[/{id}] (path mapping derived from the module's API surface; neither engine performs secondary lookups -- the monitor reference is resolved by the platform before the engines run). Group names verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadPool
+        name: "Load Balancing: Monitors and Pools Read"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import the pool via GET /accounts/{account_id}/load_balancers/pools/{id}.

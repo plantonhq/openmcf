@@ -48,6 +48,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: "The environment exposes no authentication plane of its own to strengthen or disable. Custody teaching for its two static-credential fields: dapr_application_insights_connection_string embeds an instrumentation key (a telemetry write credential, ForceNew because ARM never returns it), and custom_domain.certificate_blob_base64 bundles a private key -- both ride the manifest as secrets, so manifest custody is their access control."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: "Control-plane changes land in the Azure Activity Log as subscription-level posture; the environment offers no separate audit knob. What the workloads do is visible through the log destination this spec wires (see monitoring-integration)."

@@ -22,9 +22,12 @@ go_test(
     embed = [":costestimator"],
     deps = [
         "//catalog/aws/awsalb/v1alpha1",
+        "//catalog/aws/awsebsvolume/v1alpha1",
         "//catalog/aws/awseksnodegroup/v1alpha1",
         "//catalog/aws/awselasticip/v1alpha1",
+        "//catalog/aws/awsrdscluster/v1alpha1",
         "//catalog/aws/awsrdsinstance/v1alpha1",
+        "//catalog/aws/awswafwebacl/v1alpha1",
         "//finops/componentcostderivation/v1:componentcostderivation",
         "//finops/pricebook/v1:pricebook",
         "//shared/foreignkey/v1:foreignkey",

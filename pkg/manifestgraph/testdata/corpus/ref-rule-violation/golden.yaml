@@ -1,0 +1,5 @@
+order:
+    - TestCloudResourceGeneric/consumer@dev
+findings:
+    - external-value-from TestCloudResourceGeneric/consumer@dev spec.annotated_ref
+    - ref-rule TestCloudResourceGeneric/consumer@dev spec.annotated_ref

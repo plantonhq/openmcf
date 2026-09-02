@@ -11,4 +11,3 @@ spec:
       - requestId
       - customerId
       - sourceIp
-  selectionCriteria: LogGroupNamePrefix IN ["/app"]

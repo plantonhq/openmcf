@@ -10,6 +10,10 @@ GraphQL is request/response with subscriptions bolted on; Events is pub/sub firs
 
 AppSync applies the schema through an asynchronous creation call, and the Terraform provider performs no drift detection on it: an out-of-band schema edit stays invisible until your next in-band change. Treat the manifest as the only writer. Schema errors surface at APPLY time, not plan — a failed apply names the offending SDL line.
 
+## Managed type definitions are create-time text
+
+AWS rewrites a type's SDL definition server-side into its own whitespace form (indentation stripped, braces re-placed, blank lines injected — live-caught), and the provider reads that rewritten form back with no suppression. Both engines therefore ignore textual drift on `definition` to keep plans converging — which means an in-place edit to a type's definition body does NOT propagate. To change a managed type, remove its entry, apply, and re-add it with the new text — the same replace-the-entry choreography its `format` field already requires. Types that evolve often belong in the schema SDL instead, where the whole document re-applies on any change.
+
 ## Resolver changes serialize per API
 
 The provider takes a per-API lock around every resolver mutation and retries conflicts for two minutes. A manifest that changes thirty resolvers applies them one at a time — a big rollout is slow, not stuck. The same lock covers types and the schema.

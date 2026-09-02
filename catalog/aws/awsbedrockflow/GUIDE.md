@@ -56,4 +56,7 @@ in production.
 
 Creating, updating, and deleting flows is free. Costs are the nodes':
 model tokens on prompt/knowledge-base nodes, agent invocations, Lambda
-duration. An idle flow costs $0.
+duration. An idle flow costs nothing. Verified per-preset figures live
+in the generated estimate at
+`catalog/_pricing/estimates/awsbedrockflow.yaml`, computed from the
+pinned, source-dated price book.

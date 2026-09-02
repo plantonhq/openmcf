@@ -8,7 +8,7 @@ running serverless MLflow in production.
 
 - **The app and the tracking server are two AWS products, not one.**
   This kind is the SERVERLESS MLflow 3.x deployment — billed per use,
-  $0 idle, nothing to size. `AwsSagemakerMlflowServer` is the classic
+  no idle charge, nothing to size. `AwsSagemakerMlflowServer` is the classic
   dedicated-capacity server billed hourly with ~25-minute lifecycle
   operations. The app is NOT a tracking-server satellite: it does not
   attach to a server; it stands alone and associates with SageMaker
@@ -31,9 +31,10 @@ running serverless MLflow in production.
 
 ## Running serverless MLflow in production
 
-- **Default to the app for new deployments.** Per-use billing with $0
-  idle beats ~$430/month (Small server) for all but sustained heavy
-  tracking — and there is no capacity to outgrow.
+- **Default to the app for new deployments.** Per-use billing with no
+  idle charge beats a dedicated server's always-on hourly meter for
+  all but sustained heavy tracking — and there is no capacity to
+  outgrow.
 - **Get the role right the first time.** `role_arn` is the one change
   that replaces the app; everything else is an in-place edit.
 - **One account default, ever.** `account_default_status: ENABLED` is

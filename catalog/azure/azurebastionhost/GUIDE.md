@@ -6,6 +6,10 @@ Judgment calls that matter when you run Bastion in production.
 
 Upgrading (Basic -> Standard -> Premium) is an in-place, ~10-minute configuration change. Downgrading has NO path: the host is deleted and recreated, dropping every active session. The cost difference between Standard and Premium is marginal -- when session recording or private-only deployment is plausibly in your future, start at Premium.
 
+## Budget real minutes for every lifecycle operation
+
+Bastion is a slow resource class: measured live, a BASIC host's create runs 10-14 minutes and its delete 6-9 minutes (paid tiers are similar or slower). Nothing is wrong when a deploy sits in "creating" for a quarter hour. Plan rollouts, teardowns, and SKU changes as maintenance-window work, never as a quick pre-meeting change.
+
 ## The subnet is a contract, not a suggestion
 
 Dedicated-infrastructure hosts deploy ONLY into a subnet named exactly `AzureBastionSubnet`, /26 or larger, carrying nothing else. ARM enforces the name at deploy time -- the reference resolves after offline validation, so a wrongly-named subnet surfaces as a deploy-time failure, not a manifest error. Carve the subnet when you design the network, not when you need the host.

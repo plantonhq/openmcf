@@ -1,4 +1,4 @@
-# Preset: Allow staff
+# Allow staff
 
 A simple `allow` policy that grants access to anyone with a corporate email domain,
 connecting from an allowed country, with a 24-hour session.

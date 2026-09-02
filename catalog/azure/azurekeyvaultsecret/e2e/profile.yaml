@@ -3,12 +3,15 @@ kind: ComponentE2EProfile
 metadata:
   name: azurekeyvaultsecret
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green with the value
-  # masked); live dual-engine proof has not yet run. Secrets are
+  # PROVEN live on both engines (proof session, 2026-08-20): Pulumi
+  # 7m11s; Terraform 7m45s incl. a blind import round-trip (31s) by
+  # the VERSIONED data-plane URI with a no-differences re-plan (the
+  # secret's value read back through the data plane, no tolerance
+  # consumed). Secrets are
   # effectively FREE (fractions of a cent per 10k operations) and
   # data-plane fast -- the lane's time is the fixture chain (resource
-  # group + Key Vault, both minutes-class). ONE scenario runs:
+  # group + Key Vault, both minutes-class; the vault purge dominates
+  # teardown). ONE scenario runs:
   # `minimal` (value + content type + expiry on the fixture vault --
   # the key sibling's proven lane shape; the ambient principal's
   # subscription-scoped Key Vault Administrator grant covers the
@@ -16,6 +19,6 @@ spec:
   # tags stay offline-proven in the canonical manifest -- pure
   # attribute writes on the same code path the lane proves.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

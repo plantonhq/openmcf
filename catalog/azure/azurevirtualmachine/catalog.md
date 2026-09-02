@@ -32,14 +32,14 @@ The network interface, managed data disks, and user-assigned identities are NOT 
 
 ### Console
 
-Open the deployment store, find **Azure Virtual Machine**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Ubuntu SSH** preset in the [Presets](#presets) tab for a zonal Ubuntu 24.04 LTS VM with SSH-key-only authentication.
+Open the deployment store, find **Azure Virtual Machine**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Ubuntu Server with SSH Keys** preset in the [Presets](#presets) tab for a zonal Ubuntu 24.04 LTS VM with SSH-key-only authentication.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualMachine
 metadata:
   name: app-server
@@ -52,10 +52,7 @@ spec:
   name: app-vm
   size: Standard_D2s_v5
   networkInterfaceIds:
-    - valueFrom:
-        kind: AzureNetworkInterface
-        name: app-nic
-        fieldPath: status.outputs.network_interface_id
+    - value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/acme-prod-rg/providers/Microsoft.Network/networkInterfaces/app-nic
   osProfile:
     linux:
       adminUsername: azureuser
@@ -78,7 +75,7 @@ spec:
 planton apply -f virtual-machine.yaml
 ```
 
-This creates an Ubuntu 24.04 LTS VM (Standard_D2s_v5 — 2 vCPUs, 8 GiB), Premium SSD OS disk inheriting the image's size, SSH-key-only authentication, a system-assigned managed identity, and managed-storage boot diagnostics.
+This creates an Ubuntu 24.04 LTS VM (Standard_D2s_v5 — 2 vCPUs, 8 GiB), Premium SSD OS disk inheriting the image's size, SSH-key-only authentication, a system-assigned managed identity, and managed-storage boot diagnostics. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -147,22 +144,21 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `vm_id` | Azure Resource Manager ID of the Virtual Machine | Monitor diagnostic settings, Azure Policy assignments, backup policies |
-| `vm_name` | Name of the Virtual Machine | Automation scripts, monitoring dashboards |
-| `virtual_machine_guid` | The VM's unique GUID | Inventory and licensing systems |
 | `private_ip_address` | Private IP of the primary NIC | Application configuration, internal DNS records |
 | `public_ip_address` | Public IP of the primary NIC (when one is configured NIC-side) | SSH/RDP access, DNS A records |
-| `computer_name` | The OS hostname | Inventory, monitoring agent configuration |
 | `system_assigned_identity_principal_id` | Principal ID of the system-assigned identity (when enabled) | AzureRoleAssignment grants on Azure resources |
+
+The VM also surfaces `vm_name`, `computer_name`, and `virtual_machine_guid` (the 128-bit GUID licensing and inventory systems key on, stable across restarts) for reference; no downstream Cloud Resource consumes them.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Ubuntu SSH server** -- a zonal Ubuntu 24.04 LTS VM authenticated by SSH keys only, attached to a referenced network interface, with managed boot diagnostics. Suitable for application servers, jump boxes, and development VMs. Start from the **Ubuntu SSH** preset.
+**Ubuntu SSH server** -- a zonal Ubuntu 24.04 LTS VM authenticated by SSH keys only, attached to a referenced network interface, with managed boot diagnostics. Suitable for application servers, jump boxes, and development VMs. Start from the **Ubuntu Server with SSH Keys** preset.
 
-**Windows Server with trusted launch** -- Windows Server 2022 with secure boot + vTPM, the admin password sourced from a secret reference, and Azure Hybrid Benefit licensing. Start from the **Windows Server** preset.
+**Windows Server with trusted launch** -- Windows Server 2022 with secure boot + vTPM, the admin password sourced from a secret reference, and Azure Hybrid Benefit licensing. Start from the **Windows Server with Trusted Launch** preset.
 
-**Spot worker with a data disk** -- an evictable spot VM with a termination notification for drain, a referenced managed data disk at LUN 0, and DEALLOCATE eviction so the disks persist. Start from the **Spot + Data Disk** preset.
+**Spot worker with a data disk** -- an evictable spot VM with a termination notification for drain, a referenced managed data disk at LUN 0, and DEALLOCATE eviction so the disks persist. Start from the **Spot Worker with a Persistent Data Disk** preset.
 
 ## Works With
 

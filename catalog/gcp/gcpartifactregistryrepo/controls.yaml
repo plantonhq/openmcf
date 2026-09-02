@@ -51,6 +51,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Every access path authenticates IAM principals with OAuth tokens over HTTPS; the resource exposes no weaker or legacy protocol to disable. Remote-mode upstream credentials are username/password because that is the UPSTREAM registry's auth model (Docker Hub rate-limit tokens and the like), held in Secret Manager rather than in configuration.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

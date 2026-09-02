@@ -466,9 +466,12 @@ repository task failures and lifecycle debugging.
 
 `string | valueFrom`
 
-CloudWatch Logs log group ARN to receive the events. The log group must
-exist and have a resource policy allowing FSx to write to it. If not set,
-logging is disabled regardless of the level setting.
+CloudWatch Logs log group ARN to receive the events. When set, the log
+group must exist and have a resource policy allowing FSx to write to it.
+When left empty with a level set, FSx logs to its DEFAULT log group
+(/aws/fsx/lustre) -- logging is NOT disabled by omitting the
+destination. Logging is off only when the whole log_configuration
+message is absent (or the level is DISABLED).
 
 - references: AwsCloudwatchLogGroup (`status.outputs.log_group_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsCloudwatchLogGroup, name: <that resource's name>, fieldPath: status.outputs.log_group_arn}} -- a bare string does not parse

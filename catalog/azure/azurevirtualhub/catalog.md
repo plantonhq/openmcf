@@ -1,6 +1,6 @@
 # Azure Virtual Hub
 
-Deploys a Virtual Hub -- the managed regional router of an Azure Virtual WAN -- together with its routing customization: custom route tables, route maps, BGP peerings with network virtual appliances, and routing intent. Spoke networks attach through Virtual Hub Connections; VPN and ExpressRoute gateways deploy into the hub as separate resources that reference it. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a Virtual Hub -- the managed regional router of an Azure Virtual WAN -- together with its routing customization: custom route tables, route maps, BGP peerings with network virtual appliances, and routing intent. Spoke networks attach through Virtual Hub Connections; VPN and ExpressRoute gateways deploy into the hub as separate resources that reference it.
 
 ## What Gets Created
 
@@ -48,10 +48,7 @@ spec:
     value: "network-rg"
   name: hub-eastus
   virtualWanId:
-    valueFrom:
-      kind: AzureVirtualWan
-      name: global-wan
-      fieldPath: status.outputs.virtual_wan_id
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/network-rg/providers/Microsoft.Network/virtualWans/global-wan
   addressPrefix: "10.100.0.0/23"
 ```
 
@@ -59,11 +56,30 @@ spec:
 planton apply -f azure-virtual-hub.yaml
 ```
 
-A Standard hub bills (~$0.25/hr class) from creation, and ARM takes 15-30 minutes to bring the hub's router to a Provisioned state.
+This creates a Standard-tier hub with a /23 address space in the referenced WAN and no routing customization -- it routes any-to-any through its built-in default table. A Standard hub bills hourly from creation, and ARM takes 15-30 minutes to bring the hub's router to a Provisioned state. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In a hub-and-spoke chart, the hub is the regional pivot: WAN → **hub** → connections, gateways, and firewall, each wiring to the previous by reference.
+In a hub-and-spoke chart, the hub is the regional pivot: WAN → **hub** → connections, gateways, and firewall, each wiring to the previous by reference:
+
+```yaml
+spec:
+  region: eastus
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: network-rg
+      fieldPath: status.outputs.resource_group_name
+  name: hub-eastus
+  virtualWanId:
+    valueFrom:
+      kind: AzureVirtualWan
+      name: global-wan
+      fieldPath: status.outputs.virtual_wan_id
+  addressPrefix: "10.100.0.0/23"
+```
+
+The InfraPipeline resolves the dependency graph, deploys the resource group and WAN first, then provisions the hub with the resolved IDs.
 
 ## Key Configuration
 
@@ -93,14 +109,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `virtual_hub_id` | ARM ID of the hub | A connection's or gateway's `virtualHubId` |
-| `virtual_hub_name` | Name of the hub | Operational tooling |
 | `default_route_table_id` | ARM ID of the built-in default route table | A connection's `associatedRouteTableId` |
 | `virtual_router_asn` | The hub router's BGP ASN (always 65515) | NVA BGP configuration |
 | `virtual_router_ips` | The hub router's peering IPv4 addresses | NVA BGP neighbor configuration |
 | `route_table_ids` | Custom route table ARM IDs, keyed by name | `status.outputs.route_table_ids.<name>` in connection routing |
 | `route_map_ids` | Route map ARM IDs, keyed by name | `status.outputs.route_map_ids.<name>` as inbound/outbound maps |
-| `bgp_connection_ids` | BGP connection ARM IDs, keyed by name | Operational tooling |
-| `routing_intent_id` | ARM ID of the routing intent (empty when none) | Operational tooling |
+
+The hub's remaining outputs (`virtual_hub_name`, `bgp_connection_ids`, `routing_intent_id`) echo names and child IDs back for reference; no downstream Cloud Resource consumes them.
 
 ## Common Patterns
 

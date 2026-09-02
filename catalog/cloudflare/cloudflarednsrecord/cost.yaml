@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarednsrecord
+spec:
+  billing_model: free
+  free_tier: "Cloudflare's authoritative DNS is marked \"Available on all plans\" on its own docs landing page (https://developers.cloudflare.com/dns/, retrieved 2026-08-22), and no Cloudflare page prices individual records -- a record costs nothing to create, hold, or serve, whether it answers once a year or a billion times a day."
+  notes: "No field of this spec buys anything: name, type, content, the typed data blocks, ttl, priority, comment, and tags are record data served by Cloudflare's DNS at no charge. The two routing toggles move WHERE traffic goes, not what this object bills: proxied sends the record's traffic through Cloudflare's edge, where CDN/WAF/DDoS behavior and quotas are the ZONE plan's posture (spend, if any, lives on the zone plan and its add-ons, never on the record); private_routing restricts the record to Cloudflare-internal resolution, an Enterprise Internal DNS feature that is plan-gated -- the record rides an entitlement the account already has rather than creating one. All four presets are plain record values."

@@ -67,6 +67,9 @@ spec:
         type: spec_default
         reference: Within the authentication block, unauthenticated defaults to false -- clients must present SASL/IAM, SASL/SCRAM, or mTLS credentials. Omitting the authentication block entirely leaves the cluster accepting unauthenticated connections, so declaring the block is the control.
       notes: The TLS default on client_broker_encryption also keeps the plaintext 9092 listener closed; every preset declares an authentication block.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: logging

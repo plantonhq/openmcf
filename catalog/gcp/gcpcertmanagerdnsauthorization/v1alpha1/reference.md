@@ -72,6 +72,7 @@ If omitted, the provider's default project is used.
 Name of the authorization in GCP. Must be 1-64 characters: start with
 a letter, then letters, digits, hyphens, or underscores.
 If not specified, defaults to metadata.name.
+Immutable: renaming destroys and recreates the authorization.
 
 - rule: authorization_name must be 1-64 characters, start with a letter, and contain only letters, digits, hyphens, or underscores
 
@@ -100,6 +101,8 @@ Human-readable description of the authorization.
 The Certificate Manager location. Defaults to "global" — the correct
 choice for classic external HTTPS load balancers. Regional
 authorizations pair with regional certificates only.
+Immutable: changing the location destroys and recreates the
+authorization.
 
 ### spec.type
 

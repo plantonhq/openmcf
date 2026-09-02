@@ -52,6 +52,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Which auth methods OpenBao accepts (Kubernetes, OIDC, userpass...) is runtime configuration inside OpenBao, outside this spec. The spec models no legacy protocol.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Which auth methods OpenBao accepts -- and every strength dial on them (userpass password policies, login MFA enforcement) -- is runtime configuration inside OpenBao, outside this spec (see no-legacy-auth).
     - control_id: audit-logging
       status: configurable
       field_path: server.audit_storage

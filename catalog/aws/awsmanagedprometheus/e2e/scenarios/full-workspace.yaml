@@ -60,15 +60,19 @@ spec:
             name: planton-oss-e2e-awsamp-lg
             fieldPath: status.outputs.log_group_arn
         qspThreshold: 0
+  # No Resource member: the modules compose the workspace's own ARN
+  # (AMP accepts no other Resource value - server contract). Action is
+  # authored as a STRING, not a one-element list: AMP's stored form
+  # collapses single-element Action arrays to the scalar, and the blind
+  # import round-trip diffs against anything else (the canonical
+  # stored-form class).
   resourcePolicy:
     Version: "2012-10-17"
     Statement:
       - Effect: Allow
         Principal:
           AWS: arn:aws:iam::${E2E_ENV:PLANTON_E2E_AWS_ACCOUNT_ID}:root
-        Action:
-          - aps:RemoteWrite
-        Resource: "*"
+        Action: aps:RemoteWrite
   anomalyDetectors:
     - alias: planton-oss-e2e-request-rate
       query: sum(rate(http_requests_total[5m]))

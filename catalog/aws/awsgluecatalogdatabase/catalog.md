@@ -1,6 +1,6 @@
 # AWS Glue Catalog Database
 
-Deploys a metadata container in the AWS Glue Data Catalog that organizes table definitions for data stored in S3, Redshift, RDS, and other data stores. The database serves as the namespace layer for Amazon Athena, AWS Glue ETL jobs, Glue Crawlers, Redshift Spectrum, and Amazon EMR queries. It integrates with Planton's Provider Connections for AWS credential management.
+Deploys a metadata container in the AWS Glue Data Catalog that organizes table definitions for data stored in S3, Redshift, RDS, and other data stores. The database serves as the namespace layer for Amazon Athena, AWS Glue ETL jobs, Glue Crawlers, Redshift Spectrum, and Amazon EMR queries. One resource covers three shapes — a regular database, a resource link to a database shared from another account, or a federated database projecting an external source — and the shape's coordinates are fixed at creation.
 
 ## What Gets Created
 
@@ -31,7 +31,7 @@ Open the deployment store, find **AWS Glue Catalog Database**, and click **Deplo
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlueCatalogDatabase
 metadata:
   name: analytics
@@ -70,7 +70,7 @@ These are the most important decisions when configuring a Glue Catalog Database.
 
 ### What This Component Consumes
 
-This component has no foreign key dependencies.
+This component has no foreign key dependencies — `locationUri` is a plain S3 URI with a user-defined path prefix, and the resource-link and federated-database coordinates are catalog identifiers, not resource references.
 
 ### What This Component Provides
 
@@ -94,4 +94,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-This component operates independently and does not reference other components.
+The database carries no foreign key references of its own, but it genuinely co-deploys with:
+
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- backs the `locationUri` default table storage path and holds the data the catalog describes
+- [**AWS Athena Workgroup**](/cloud-catalog/aws-athena-workgroup) -- runs SQL queries against the tables cataloged in this database

@@ -1,0 +1,4 @@
+order:
+    - TestCloudResourceGeneric/twin@dev
+findings:
+    - duplicate-identity TestCloudResourceGeneric/twin@dev

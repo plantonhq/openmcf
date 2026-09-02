@@ -1,4 +1,4 @@
-# Kubernetes Postgres
+# PostgreSQL
 
 Deploys a production-grade PostgreSQL cluster reconciled by CloudNativePG — the CNCF PostgreSQL operator. One resource carries the whole database story: instances with streaming replication and automated failover, storage with an optional dedicated WAL volume, PostgreSQL server configuration, bootstrap (fresh initdb, restore from a backup, physical replication from an existing server, or logical import from RDS/Cloud SQL/anything reachable), declarative roles, continuous WAL archiving plus scheduled base backups to S3/GCS/Azure-Blob/S3-compatible stores, TLS, and monitoring. The cluster is in-cluster plumbing by design — external exposure is composed from first-class exposure kinds, never embedded here.
 
@@ -24,20 +24,20 @@ Applications connect through the SERVICES, never a pod: after a failover the `-r
 - **CloudNativePG operator** installed and running — deploy the **Kubernetes CloudNativePG Operator** component first. For backups, the operator must be installed with its Barman Cloud plugin enabled (CloudNativePG's built-in object-store support is deprecated upstream and deliberately not modeled here).
 - **A storage class** capable of dynamic provisioning for the declared sizes; volume expansion support if you plan to grow storage in place.
 - For keyless backups: cloud-side identity (an IRSA role, GKE Workload Identity binding, or AKS federated credential) written against the instance pods' ServiceAccount — wired through the `workloadIdentity` field.
-- For organization-trusted TLS: cert-manager and a **Kubernetes Certificate** resource to reference; otherwise the operator self-signs per cluster.
+- For organization-trusted TLS: cert-manager and a **Cert Manager Certificate** resource to reference; otherwise the operator self-signs per cluster.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Kubernetes Postgres**, and click **Deploy**. The creation wizard walks you through placement, instances and storage, how the cluster is born (bootstrap), server configuration, roles, backups with their credential posture, superuser access, TLS, monitoring, and scheduling. Start from the **Production HA** preset in the [Presets](#presets) tab.
+Open the deployment store, find **PostgreSQL**, and click **Deploy**. The creation wizard walks you through placement, instances and storage, how the cluster is born (bootstrap), server configuration, roles, backups with their credential posture, superuser access, TLS, monitoring, and scheduling. Start from the **Production HA** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPostgres
 metadata:
   name: app-database
@@ -111,7 +111,7 @@ These are the most important decisions when configuring a PostgreSQL cluster. Ex
 
 **Superuser stays off** — the upstream default blanks the `postgres` password and everything runs through the application owner role. Enable it only when something genuinely needs superuser SQL, and the operator maintains the `{name}-superuser` Secret.
 
-**TLS by composition** — by default the operator self-signs a CA and server certificate per cluster. Point `certificates.serverTlsSecret` at a cert-manager-issued **Kubernetes Certificate** to serve an organization-trusted chain (the CA Secret rides along in `serverCaSecret`).
+**TLS by composition** — by default the operator self-signs a CA and server certificate per cluster. Point `certificates.serverTlsSecret` at a **Cert Manager Certificate** to serve an organization-trusted chain (the CA Secret rides along in `serverCaSecret`).
 
 **Exposure is composed, never embedded** — the cluster is reachable in-cluster at the exported `kube_endpoint`. To reach it from outside, compose a first-class exposure kind; this component never creates one.
 
@@ -159,5 +159,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - **Kubernetes CloudNativePG Operator** — the prerequisite: reconciles the Cluster resource; its Barman Cloud plugin powers the backup story.
 - **Kubernetes Namespace** — the placement target.
 - **Kubernetes StorageClass** — backs the data and WAL volumes.
-- **Kubernetes Certificate** — the cert-manager seam for organization-trusted server TLS.
+- **Cert Manager Certificate** — the cert-manager seam for organization-trusted server TLS.
 - **Kubernetes Valkey** — the cache beside the database in a typical application stack.

@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+#
+# Out-of-band prerequisite, not a token scope: the github/gitlab/bitbucket
+# source variants require the DigitalOcean ACCOUNT to hold a linked source
+# connection to that provider -- deploys fail without it. The git variant
+# (public clone URL) needs no linkage.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanfunction
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageApp
+        scopes:
+          - app:read
+          - app:create
+          - app:update
+          - app:delete
+        provenance: derived
+        notes: Covers digitalocean_app's create/read/update/delete/import paths in both the Terraform and Pulumi modules; both modules create ONE digitalocean_app, so the app scope family is the whole surface -- read the app via GET /v2/apps/{id} on refresh/import and while the create/update waiters poll deployment progress (app:read), create the app via POST /v2/apps where the function component, its git source, envs, alerts, log destinations, and the optional project_id all ride the create body (app:create), spec changes redeploy via PUT /v2/apps/{id} (app:update), and delete the app via DELETE /v2/apps/{id} (app:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.

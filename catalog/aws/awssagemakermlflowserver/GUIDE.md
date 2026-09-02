@@ -30,15 +30,17 @@ running managed MLflow in production.
 
 ## Running a tracking server in production
 
-- **Budget ~25 minutes per lifecycle operation.** Creation and
-  deletion each take about that long (provider timeouts are 45m per
-  operation, not user-configurable) — plan replacements as
-  half-hour-plus events, and remember role and version changes ARE
-  replacements.
-- **The meter runs from Created onward.** Small is ~$0.6/hour
-  (~$430/month) whether anyone logs a run or not. If the team tracks
-  intermittently, the serverless `AwsSagemakerMlflowApp` at $0 idle is
-  the better fit.
+- **Budget ~17–25 minutes per lifecycle operation.** Live-measured on
+  both engines (2026-08-25): creation 17m36s, deletion 16m36s for a
+  Small server (provider timeouts are 45m per operation, not
+  user-configurable) — plan replacements as half-hour-plus events, and
+  remember role and version changes ARE replacements.
+- **The meter runs from Created onward.** The server bills hourly
+  around the clock whether anyone logs a run or not — size sets the
+  rate. If the team tracks intermittently, the serverless
+  `AwsSagemakerMlflowApp`, which charges nothing while idle, is the
+  better fit. Verified per-size figures live in the generated estimate
+  at `catalog/_pricing/estimates/awssagemakermlflowserver.yaml`.
 - **Start Small; resize in place.** Size upgrades are a
   maintenance-window style operation, not a replacement — there is no
   penalty for starting at ~25 users and growing.
@@ -47,8 +49,11 @@ running managed MLflow in production.
   off means replacing the server (~50 minutes of lifecycle) or an
   out-of-band API call.
 - **Set the maintenance window deliberately.** Omitted means AWS
-  picks; `weekly_maintenance_window_start` (UTC `DDD:HH:MM`) puts
-  resizes and patching in your quiet hours.
+  picks; `weekly_maintenance_window_start` (UTC `Ddd:HH:MM`) puts
+  resizes and patching in your quiet hours. The day token is
+  mixed-case — AWS accepts `Tue:03:30` and rejects `TUE:03:30` at
+  create (live-verified; the spec validates the exact API regex so a
+  manifest never learns this from a failed deploy).
 
 ---
 

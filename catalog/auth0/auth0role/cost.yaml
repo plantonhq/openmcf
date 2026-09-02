@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: auth0role
+spec:
+  billing_model: free
+  free_tier: "Auth0 publishes no per-object price for roles -- no meter charges for creating a role or granting it permissions. Plan gating is the real boundary: Auth0's pricing feature matrix (auth0.com/pricing, User Management section, retrieved 2026-08-22) lists Role Management as not available on the Free plan and included from Essentials up, so this component presumes a tenant on Essentials or above; within such a tenant, roles are free."
+  notes: "The real spend lives in the tenant subscription that hosts this object: Auth0 bills by plan tier plus monthly active users (Free up to 25,000 MAUs; Essentials from $35/month B2C or $150/month B2B; Professional from $240/month B2C or $800/month B2B; Enterprise custom; yearly billing is 11x monthly -- auth0.com/pricing, retrieved 2026-08-22). The permissions a role bundles are scopes defined on resource servers (the auth0resourceserver kind, itself unmetered), and the users the role is assigned to are exactly what the MAU meter counts -- the role changes what a signed-in user may do, never what that sign-in costs."

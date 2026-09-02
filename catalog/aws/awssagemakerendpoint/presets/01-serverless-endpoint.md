@@ -2,7 +2,9 @@
 
 This preset serves one model on serverless compute — SageMaker scales
 capacity with traffic and bills per inference, so an idle endpoint
-costs $0. The start-cheap shape for new and spiky workloads.
+incurs no charge at all. The start-cheap shape for new and spiky
+workloads; the verified figure lives in the component's generated
+estimate at `catalog/_pricing/estimates/awssagemakerendpoint.yaml`.
 
 ## When to Use
 

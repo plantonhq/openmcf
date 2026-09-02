@@ -50,6 +50,9 @@ spec:
       evidence:
         type: provider_default
         reference: SigV4-signed API access over TLS is the only path onto the bus -- no API key, password, or weaker protocol exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: log_config

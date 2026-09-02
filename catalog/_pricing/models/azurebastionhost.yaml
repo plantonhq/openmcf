@@ -2,12 +2,13 @@
 # estimates -- quantity assumptions derived from the preset manifests and
 # defended in prose. Prices live in the provider's price book (../pricebook/,
 # referenced by entry slug); the estimate generator joins the two and emits
-# ../estimates/. A hand model rather than a derivation: Bastion's scaling
-# meter is excess-over-baseline -- the SKU's base gateway rate INCLUDES the
-# first 2 instances and only scale units above 2 bill the additional-instance
-# meter, a (scale_units - 2) subtraction the derivation grammar cannot
-# express -- so each preset's additional-instance quantity is computed here
-# and defended in its basis. Schema: finops/componentcostestimatemodel/v1.
+# ../estimates/. A hand model with each preset's additional-instance
+# quantity computed and defended in its basis: Bastion's scaling meter is
+# excess-over-baseline -- the SKU's base gateway rate INCLUDES the first 2
+# instances and only scale units above 2 bill the additional-instance
+# meter. The derivation grammar's subtract_baseline factor can now state
+# that (scale_units - 2) arithmetic, so this model is due migration to a
+# derivation. Schema: finops/componentcostestimatemodel/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimateModel
 metadata:

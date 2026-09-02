@@ -1,4 +1,4 @@
-# Preset: Cluster with Declared Contract Topics
+# Cluster with Declared Contract Topics
 
 An MSK cluster whose topics deploy WITH it: three contract topics (an event stream, its dead-letter queue, and a compacted snapshot topic) declared in the spec and managed through the MSK topic API — no Kafka client, bootstrap connectivity, or credential setup at deploy time, and no init-container topic scripts in your applications.
 
@@ -24,7 +24,7 @@ An MSK cluster whose topics deploy WITH it: three contract topics (an event stre
 
 ## Cost Estimate
 
-Approximately $0.63/hr for 3 x kafka.m5.large brokers (~$460/month) plus EBS storage; the topics themselves add no cost beyond the data they retain.
+The cost drivers are the three kafka.m5.large brokers (billed hourly, the dominant line) plus their EBS storage; the declared topics themselves add no charge beyond the data they retain. The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awsmskcluster.yaml` — computed from the pinned price book, never hand-typed here.
 
 ## Customization
 

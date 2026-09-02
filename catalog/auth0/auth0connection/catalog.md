@@ -1,6 +1,6 @@
 # Auth0 Connection (Identity Provider)
 
-Deploys an Auth0 Connection that bridges Auth0 with an identity source -- databases, social providers (Google, Facebook, GitHub), or enterprise identity providers (SAML, OIDC, Azure AD/Entra ID). Each connection is configured with a single strategy and its corresponding provider-specific options, then linked to one or more Auth0 applications. Integrates with Planton's Auth0 Provider Connection for credential management and ValueFromRef for wiring client dependencies.
+Deploys an Auth0 Connection that bridges Auth0 with an identity source -- a hosted user database, a social provider (Google, Facebook, GitHub), or an enterprise identity provider (SAML, OIDC, Azure AD/Entra ID). Each connection carries exactly one strategy and its provider-specific options block, and the strategy is fixed for the connection's lifetime. A connection only becomes a login option for the applications listed in `enabledClients` -- left empty, no application can authenticate through it.
 
 ## What Gets Created
 
@@ -18,23 +18,23 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Auth0 Account
 
-- **An Auth0 tenant** with connection quota available.
-- **OAuth credentials from the social provider** if using a social strategy (Google, Facebook, GitHub). Obtain a client ID and secret from the provider's developer console.
-- **Identity Provider metadata** if using an enterprise strategy -- SAML sign-in endpoint and X.509 certificate, OIDC issuer URL, or Azure AD app registration credentials.
-- **Auth0 Client application IDs** if linking the connection to specific applications via `enabledClients`. Provide client IDs directly or reference Auth0Client Cloud Resources via ValueFromRef.
+- **OAuth credentials from the social provider** (only for social strategies) -- a client ID and secret from the provider's developer console, set in `socialOptions`.
+- **Identity Provider metadata** (only for enterprise strategies) -- SAML sign-in endpoint and X.509 signing certificate for `samlOptions`, the issuer URL for `oidcOptions`, or the app registration credentials and tenant domain for `azureAdOptions`.
+- **Auth0 Client application IDs** (only for `enabledClients`) -- provide client IDs directly or reference Auth0Client Cloud Resources via ValueFromRef.
+- **The password-advanced-options entitlement** (only for `passwordHistorySize`, `passwordNoPersonalInfo`, or `passwordDictionary`) -- these database options call a paid Auth0 API and the deployment fails with a 403 on free and lower-tier tenants. Leave them unset unless the tenant carries the entitlement.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Auth0 Connection (Identity Provider)**, and click **Deploy**. The creation wizard walks you through environment and connection configuration and spec fields.
+Open the deployment store, find **Auth0 Connection (Identity Provider)**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the strategy, and the options block that strategy requires.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Connection
 metadata:
   name: user-db
@@ -51,7 +51,7 @@ spec:
 planton apply -f auth0-connection.yaml
 ```
 
-This creates an Auth0 hosted database connection with a "good" password policy and brute-force protection enabled. No client restrictions are configured, so all applications in the tenant can use it. A Stack Job tracks the provisioning in real time.
+This creates an Auth0-hosted database connection with a `good` password policy and brute-force protection enabled. Until `enabledClients` lists at least one application, no application offers this connection as a login option. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -72,13 +72,13 @@ The InfraPipeline resolves the dependency graph, deploys the client first, then 
 
 These are the most important decisions when configuring an Auth0 Connection. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Strategy** -- The `strategy` field determines the identity source type and which options block applies. Use `auth0` for a hosted database, social strategy names like `google-oauth2` or `github` for social login, or enterprise strategies like `samlp`, `oidc`, or `waad` for corporate SSO. This field cannot be changed after creation.
+**Strategy** -- The `strategy` field is a one-way door: it determines the identity source type, which options block applies, and it cannot be changed after creation -- switching a connection from `auth0` to `samlp` means a new connection and a user migration. Use `auth0` for a hosted database, social strategy names like `google-oauth2` or `github` for social login, and `samlp`, `oidc`, or `waad` for corporate SSO.
 
-**Password policy** -- The `databaseOptions.passwordPolicy` field sets complexity requirements for database connections. Options range from `none` to `excellent` (10+ characters with mixed case, numeric, and special). Use `good` or `excellent` for production workloads with `bruteForceProtection: true`.
+**Enabled clients** -- The `enabledClients` field is the connection's blast door. If left empty, no application can authenticate through this connection -- users see nothing and login attempts fail, with no error at deploy time. List every application that should offer this connection, directly by client ID or by referencing Auth0Client Cloud Resources via ValueFromRef.
 
-**Enterprise provider configuration** -- Each enterprise strategy requires its own options block: `samlOptions` for SAML with sign-in endpoint and signing certificate, `oidcOptions` for OIDC with issuer and client credentials, and `azureAdOptions` for Azure AD with tenant domain and app registration details.
+**Password policy** -- The `databaseOptions.passwordPolicy` field sets complexity requirements for database connections, from `none` to `excellent` (10+ characters with mixed case, numeric, and special). Use `good` or higher for production with `bruteForceProtection: true`. The advanced controls (`passwordHistorySize`, `passwordNoPersonalInfo`, `passwordDictionary`) require the paid entitlement noted in Before You Deploy.
 
-**Enabled clients** -- The `enabledClients` field restricts which Auth0 applications can use this connection. If left empty, no applications can authenticate through it. Provide client IDs directly or reference Auth0Client Cloud Resources via ValueFromRef.
+**Enterprise provider configuration** -- Each enterprise strategy requires its own options block: `samlOptions` with the IdP's sign-in endpoint and signing certificate, `oidcOptions` with the issuer (Auth0 discovers the rest from `/.well-known/openid-configuration`), and `azureAdOptions` with the app registration credentials and tenant domain. A strategy deployed without its matching options block produces a connection that cannot authenticate anyone.
 
 ## Outputs and Dependencies
 
@@ -94,20 +94,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `id` | Unique Auth0 connection identifier (e.g., `con_...`) | Auth0 API operations |
+| `id` | Unique Auth0 connection identifier (e.g., `con_...`) | Management API operations, tenant log queries |
 | `name` | Unique connection name within the tenant | Auth0Client `enabledConnections` references |
-| `strategy` | Identity provider strategy type | Downstream validation logic |
-| `is_enabled` | Whether the connection is currently enabled | Health checks, monitoring |
-| `provisioning_ticket_url` | Self-service setup URL for enterprise connections | IdP onboarding workflows |
-| `callback_url` | Auth0 callback URL to register with the identity provider | Social and enterprise IdP configuration |
-| `metadata_url` | SAML metadata URL (SAML connections only) | SAML IdP configuration |
-| `entity_id` | SAML Service Provider Entity ID (SAML connections only) | SAML IdP trust configuration |
-| `enabled_client_ids` | List of application client IDs linked to this connection | Audit, downstream wiring |
-| `realms` | Realms/domains for identifier-first authentication | Authentication routing |
 
 ## Common Patterns
 
-No presets are available yet. Configure directly using the fields documented in the [API Explorer](#api-explorer) tab.
+**Hosted user database** -- `strategy: auth0` with a `good`-or-better password policy and brute-force protection. The default when you own the user store: Auth0 stores credentials as bcrypt hashes and you get signup, password reset, and MFA hooks without running a database.
+
+**Social login** -- one connection per provider (`google-oauth2`, `github`, `facebook`) with that provider's OAuth credentials in `socialOptions`. The `scopes` list decides what profile data Auth0 receives; request only what the application reads.
+
+**Enterprise SSO** -- `samlp`, `oidc`, or `waad`, typically one connection per corporate IdP. In B2B setups, provision a new connection per customer rather than reworking an existing one -- the strategy is immutable and each customer's IdP metadata is independent.
 
 ## Works With
 

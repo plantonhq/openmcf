@@ -1,6 +1,6 @@
 # Azure Event Hub Namespace
 
-Deploys an Azure Event Hubs namespace -- the container and billing boundary for high-throughput event streaming. The namespace carries the pricing tier, throughput capacity, network posture, and authentication mode; the streaming entities (event hubs, consumer groups, SAS rules, schema groups, geo-DR pairings) are first-class Cloud Resources that reference it. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Event Hubs namespace -- the container and billing boundary for high-throughput event streaming. The namespace carries the pricing tier, throughput capacity, network posture, and authentication mode; the streaming entities (event hubs, consumer groups, SAS rules, schema groups, geo-DR pairings) are first-class Cloud Resources that reference it. The namespace name becomes the endpoint `{name}.servicebus.windows.net` and the Kafka bootstrap host on port 9093, so existing Kafka producers and consumers connect without code changes (the Basic tier has no Kafka endpoint).
 
 ## What Gets Created
 
@@ -29,14 +29,14 @@ The event streams themselves are separate Cloud Resources: deploy an **AzureEven
 
 ### Console
 
-Open the deployment store, find **Azure Event Hub Namespace**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Streaming** preset in the [Presets](#presets) tab for the common production entry point.
+Open the deployment store, find **Azure Event Hub Namespace**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Streaming Namespace** preset in the [Presets](#presets) tab for the common production entry point.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureEventHubNamespace
 metadata:
   name: platform-events
@@ -57,7 +57,7 @@ spec:
 planton apply -f eventhub-namespace.yaml
 ```
 
-This creates a Standard-tier namespace starting at 2 throughput units with auto-inflate growing it to at most 10 under load. Leaving `sku` unset deploys STANDARD as well -- unspecified means Azure's default applies.
+This creates a Standard-tier namespace starting at 2 throughput units with auto-inflate growing it to at most 10 under load. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -117,41 +117,27 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 With `localAuthenticationEnabled: false`, the six credential outputs still populate but are **inert** -- Azure rejects SAS authentication namespace-wide.
 
-## The Event Hubs Family
+## Common Patterns
 
-The namespace is the hub of a satellite family -- each entity deploys as its own Cloud Resource referencing `status.outputs.namespace_id`:
+**Standard streaming** -- an explicit STANDARD namespace with elastic throughput (auto-inflate to a ceiling): the default starting point for telemetry, logging, and Kafka migrations. Remember auto-inflate only scales UP -- trim `capacity` manually after a traffic spike or the higher bill persists. Start from the **Standard Streaming Namespace** preset.
 
-```yaml
-# On an AzureEventHub (the stream, with partitions, retention, and capture)
-namespaceId:
-  valueFrom:
-    kind: AzureEventHubNamespace
-    name: platform-events
-    fieldPath: status.outputs.namespace_id
-```
+**Locked-down keyless** -- SAS authentication disabled (Entra-only data plane) plus a DENY firewall admitting only named sources, with trusted Microsoft services still delivering. No connection strings to rotate, leak, or vault; the trade is that every client needs an Entra identity and a data-plane role. Start from the **Locked-Down Keyless Namespace** preset.
+
+**Premium isolated** -- reserved processing units with a system-assigned identity, for latency-sensitive streams that must not share throughput with other tenants: the isolation tier below a whole dedicated cluster. Remember moving into or out of PREMIUM replaces the namespace and every entity in it. Start from the **Premium Isolated Namespace** preset.
+
+## Works With
+
+The namespace is the hub of a satellite family -- each streaming entity deploys as its own Cloud Resource referencing `status.outputs.namespace_id`:
 
 - [**Azure Event Hub**](/cloud-catalog/azure-event-hub) -- the event stream: partition layout, retention, capture-to-storage
 - [**Azure Event Hub Consumer Group**](/cloud-catalog/azure-event-hub-consumer-group) -- independent read cursors per downstream system
 - [**Azure Event Hub Authorization Rule**](/cloud-catalog/azure-event-hub-authorization-rule) -- least-privilege SAS credentials scoped to the namespace or one hub
 - [**Azure Event Hub Schema Group**](/cloud-catalog/azure-event-hub-schema-group) -- the schema registry
 - [**Azure Event Hub Disaster Recovery Config**](/cloud-catalog/azure-event-hub-disaster-recovery-config) -- the geo-DR alias pairing two namespaces
-- [**Azure Event Hub Cluster**](/cloud-catalog/azure-event-hub-cluster) -- dedicated single-tenant hardware this namespace can be placed on
+- [**Azure Event Hub Cluster**](/cloud-catalog/azure-event-hub-cluster) -- dedicated single-tenant hardware this namespace can be placed on via `dedicatedClusterId`
 - [**Azure Event Hub Namespace Customer Managed Key**](/cloud-catalog/azure-event-hub-namespace-customer-managed-key) -- BYOK encryption for namespaces on a dedicated cluster
-
-## Common Patterns
-
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
-
-**Standard streaming** -- an explicit STANDARD namespace with elastic throughput (auto-inflate to a ceiling): the default starting point for telemetry, logging, and Kafka migrations. Start from the **Standard Streaming** preset.
-
-**Locked-down keyless** -- SAS authentication disabled (Entra-only data plane) plus a DENY firewall admitting only named sources, with trusted Microsoft services still delivering. Start from the **Locked-Down Keyless** preset.
-
-**Premium isolated** -- reserved processing units with a system-assigned identity, for latency-sensitive streams that must not share throughput with other tenants. Start from the **Premium Isolated** preset.
-
-## Works With
-
 - [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the namespace is created
 - [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) -- pre-created identities for capture and customer-managed-key compositions
 - [**Azure Subnet**](/cloud-catalog/azure-subnet) -- subnets admitted through the firewall via the Microsoft.EventHub service endpoint
-- [**Azure Private Endpoint**](/cloud-catalog/azure-private-endpoint) -- VNet-private access when the public endpoint is disabled
+- [**Azure Private Endpoint**](/cloud-catalog/azure-private-endpoint) -- VNet-private access when the public endpoint is disabled (subresource `namespace`)
 - [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- Entra data-plane roles (Data Owner/Sender/Receiver) for the keyless posture

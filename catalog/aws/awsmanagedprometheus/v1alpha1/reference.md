@@ -78,15 +78,17 @@ spec:
       - logGroupArn:
           value: arn:aws:logs:us-west-2:123456789012:log-group:/amp/queries
         qspThreshold: 10000
+  # Statements carry no Resource member: the modules compose the
+  # workspace's own ARN (AMP accepts no other Resource value). A single
+  # action is authored as a string - AMP's stored form collapses
+  # one-element Action arrays to the scalar.
   resourcePolicy:
     Version: "2012-10-17"
     Statement:
       - Effect: Allow
         Principal:
           AWS: arn:aws:iam::210987654321:root
-        Action:
-          - aps:RemoteWrite
-        Resource: "*"
+        Action: aps:RemoteWrite
   anomalyDetectors:
     - alias: request-rate
       query: sum(rate(http_requests_total[5m]))
@@ -326,7 +328,16 @@ are logged (0 logs everything).
 `object`
 
 The workspace's resource policy - the IAM document granting other
-principals/accounts access to this workspace. The provider's
+principals/accounts access to this workspace. Write statements
+WITHOUT a Resource member: AMP requires every statement's Resource
+to be exactly this workspace's own ARN (PutResourcePolicy rejects
+anything else with "Resource in policy does not match workspace
+resource ARN"), so both modules compose it after the workspace
+exists - an authored Resource is replaced, never honored. Author
+a single action as a STRING ("Action": "aps:RemoteWrite"), not a
+one-element list - AMP's stored form collapses single-element
+Action arrays to the scalar, and an adopted (imported) policy
+authored as a list diffs forever against that echo. The provider's
 revision_id concurrency token is deliberately not modeled (a
 state-managed apply-behavior knob, meaningless as declarative
 config).

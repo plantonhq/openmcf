@@ -16,7 +16,7 @@ spec:
     - field_path: bandwidth_in_mbps
       sku_meter: circuit fee
       pricing_unit: circuit-months
-      impact: The bandwidth step is the fee ladder's rung -- each published step (50 through 10000 Mbps) has its own monthly price, roughly doubling every two steps. It can be INCREASED in place mid-month; decreasing means deleting and re-buying, which is why right-sizing starts small.
+      impact: The bandwidth step is the fee ladder's dial -- each published step (50 through 10000 Mbps) has its own monthly price, roughly doubling every two steps. It can be INCREASED in place mid-month; decreasing means deleting and re-buying, which is why right-sizing starts small.
     - field_path: sku_family
       sku_meter: circuit fee
       pricing_unit: circuit-months

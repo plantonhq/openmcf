@@ -1,10 +1,10 @@
 # Standard Default
 
-This preset creates the middle rung of the ladder AND makes it the cluster-wide default: every pod that names no priority class receives value 1000 instead of the bare-Kubernetes default of 0. This lifts all ordinary workloads above the batch tier (which sits at a negative value) without anyone having to label anything.
+This preset creates the middle step of the ladder AND makes it the cluster-wide default: every pod that names no priority class receives value 1000 instead of the bare-Kubernetes default of 0. This lifts all ordinary workloads above the batch tier (which sits at a negative value) without anyone having to label anything.
 
 ## When to Use
 
-- Every cluster that adopts a priority ladder — unmarked pods should land on a deliberate rung, not at 0
+- Every cluster that adopts a priority ladder — unmarked pods should land on a deliberate step, not at 0
 - Making the critical/standard/batch distinction meaningful: with the default at 1000, batch at -100 genuinely yields to ordinary workloads
 
 ## Key Configuration Choices

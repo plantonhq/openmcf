@@ -50,6 +50,9 @@ spec:
         type: module_default
         reference: The chart's documented admin/admin default never ships -- both modules generate the bootstrap admin password into a Secret (<name>-admin-auth) and create the user from environment variables (the chart's literal-password init path is never used); the session-signing SECRET_KEY is likewise module-generated because Superset refuses to start on its insecure default.
       notes: Flower is the exception surface -- it has no authentication at all, ships off by default, and the spec-level warning says keep it off or fence it.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Superset sign-in strength is Flask-AppBuilder configuration -- password complexity, rate limiting, and OAuth/LDAP/MFA ride config_overrides rather than typed fields; the modules' contribution is the Secret-generated bootstrap admin password (see no-legacy-auth).
     - control_id: audit-logging
       status: not_applicable
       notes: A provider-style audit trail is not modeled in this spec -- component activity streams to stdout for the cluster's log collector, and changes to the release itself are Kubernetes API operations captured by the target cluster's audit policy.

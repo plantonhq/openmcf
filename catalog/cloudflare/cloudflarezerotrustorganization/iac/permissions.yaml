@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustorganization
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageOrganization
+        name: "Access: Organizations, Identity Providers, and Groups Write"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: "Upsert the Zero Trust organization singleton via PUT /{accounts_or_zones}/{account_or_zone_id}/access/organizations (one endpoint serving both the account_id and zone_id spec scopes) and update the folded Access service-key rotation cadence via PUT /accounts/{account_id}/access/keys (named by both endpoint references' Accepted Permissions). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22); the per-endpoint mapping is confirmed by the \"Accepted Permissions\" sections of the Zero Trust organizations and Access keys endpoint references (https://developers.cloudflare.com/api/resources/zero_trust/subresources/organizations/methods/update/ and https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/keys/methods/update/, retrieved 2026-08-22). Note the reference also lists a narrower \"Access: Organizations Write\" group, but the endpoint references accept only this combined group. Covers the Terraform module's cloudflare_zero_trust_organization singleton plus its conditional cloudflare_zero_trust_access_key_configuration companion, and the Pulumi module's matching ZeroTrustOrganization and ZeroTrustAccessKeyConfiguration resources; neither engine performs secondary lookups."
+      - purpose: ReadOrganization
+        name: "Access: Organizations, Identity Providers, and Groups Read"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the organization and the key configuration via GET on the same paths (named by the endpoint references' Accepted Permissions).

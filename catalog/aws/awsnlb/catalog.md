@@ -7,7 +7,7 @@ Deploys a Network Load Balancer — the Layer-4 entry point for TCP, UDP, and TL
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Network Load Balancer** -- one node per subnet mapping, optionally pinned to an Elastic IP (internet-facing) or a specific private IPv4 address (internal), with the configured cross-zone, DNS routing, zonal-shift, and PrivateLink-enforcement attributes
-- **S3 access-log delivery** -- enabled by configuring the access-logs bucket; captures TLS-listener traffic only (an AWS limitation)
+- **S3 access-log configuration** -- set on the load balancer when the access-logs bucket is configured; captures TLS-listener traffic only (an AWS limitation)
 - **Route53 alias A records** -- created only when DNS is enabled, one alias record per hostname pointing at the NLB's DNS name
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the load balancer
 
@@ -32,14 +32,14 @@ Listeners and target groups are **not** created here — attach AwsLbListener re
 
 ### Console
 
-Open the deployment store, find **AWS NLB**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Static IP Internet Facing** preset in the [Presets](#presets) tab for the headline use case: public IPs that never change.
+Open the deployment store, find **AWS NLB**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Static-IP Internet-Facing NLB** preset in the [Presets](#presets) tab for the headline use case: public IPs that never change.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNlb
 metadata:
   name: edge-nlb
@@ -77,6 +77,28 @@ planton apply -f nlb.yaml
 
 This creates an internet-facing NLB with a static public IP in each of two zones. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the NLB deploys alongside its network in one chart, wire the subnet and Elastic IP references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  subnetMappings:
+    - subnetId:
+        valueFrom:
+          kind: AwsSubnet
+          name: public-subnet-a
+          fieldPath: status.outputs.subnet_id
+      allocationId:
+        valueFrom:
+          kind: AwsElasticIp
+          name: edge-ip-a
+          fieldPath: status.outputs.allocation_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the subnets and Elastic IPs first, then places the NLB nodes on them.
+
 ## Key Configuration
 
 These are the most important decisions when configuring an NLB. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -99,17 +121,17 @@ These are the most important decisions when configuring an NLB. Explore the full
 
 ### What This Component Consumes
 
-| Field | References | Via |
-|-------|-----------|-----|
-| `subnetMappings[].subnetId` | AwsSubnet | `status.outputs.subnet_id` |
-| `subnetMappings[].allocationId` | AwsElasticIp | `status.outputs.allocation_id` |
-| `securityGroups[]` | AwsSecurityGroup | `status.outputs.security_group_id` |
-| `accessLogs.bucket` | AwsS3Bucket | `status.outputs.bucket_id` |
-| `dns.route53ZoneId` | AwsRoute53Zone | `status.outputs.zone_id` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSubnet** | `subnetMappings[].subnetId` | `status.outputs.subnet_id` |
+| **AwsElasticIp** | `subnetMappings[].allocationId` | `status.outputs.allocation_id` |
+| **AwsSecurityGroup** | `securityGroups[]` | `status.outputs.security_group_id` |
+| **AwsS3Bucket** | `accessLogs.bucket` | `status.outputs.bucket_id` |
+| **AwsRoute53Zone** | `dns.route53ZoneId` | `status.outputs.zone_id` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
@@ -122,18 +144,18 @@ After provisioning, `status.outputs` contains:
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Static-IP internet entry point** -- an internet-facing NLB with an Elastic IP per zone; partners allowlist the fixed addresses. Start from the **Static IP Internet Facing** preset.
+**Static-IP internet entry point** -- an internet-facing NLB with an Elastic IP per zone; partners allowlist the fixed addresses. Start from the **Static-IP Internet-Facing NLB** preset.
 
-**Internal service front** -- an internal NLB fronting TCP/gRPC services for other VPC workloads. Start from the **Internal** preset.
+**Internal service front** -- an internal NLB fronting TCP/gRPC services for other VPC workloads. Start from the **Internal NLB** preset.
 
-**PrivateLink service backend** -- an internal NLB with security groups and PrivateLink enforcement, backing a VPC endpoint service consumed by other accounts. Start from the **Private Link Hardened** preset.
+**PrivateLink service backend** -- an internal NLB with security groups and PrivateLink enforcement, backing a VPC endpoint service consumed by other accounts. Start from the **PrivateLink-Hardened NLB** preset.
 
 ## Works With
 
-- **AwsLbListener** -- attaches to this NLB's `load_balancer_arn` output and owns ports, protocols (TCP/UDP/TCP_UDP/TLS), and TLS certificates.
-- **AwsLbTargetGroup** -- receives the connections the listeners forward.
-- **AwsSubnet** -- the zone placement, referenced per subnet mapping.
-- **AwsElasticIp** -- static public addresses, referenced per internet-facing mapping.
-- **AwsSecurityGroup** -- optional inbound filtering, referenced by `securityGroups`.
-- **AwsS3Bucket** -- the access-log destination, referenced by `accessLogs.bucket`.
-- **AwsRoute53Zone** -- the hosted zone for alias records, referenced by `dns.route53ZoneId`.
+- [**AWS LB Listener**](/cloud-catalog/aws-lb-listener) -- attaches to this NLB's `load_balancer_arn` output and owns ports, protocols (TCP/UDP/TCP_UDP/TLS), and TLS certificates.
+- [**AWS LB Target Group**](/cloud-catalog/aws-lb-target-group) -- receives the connections the listeners forward.
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- the zone placement, referenced per subnet mapping.
+- [**AWS Elastic IP**](/cloud-catalog/aws-elastic-ip) -- static public addresses, referenced per internet-facing mapping.
+- [**AWS Security Group**](/cloud-catalog/aws-security-group) -- optional inbound filtering, referenced by `securityGroups`.
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- the access-log destination, referenced by `accessLogs.bucket`.
+- [**AWS Route 53 Zone**](/cloud-catalog/aws-route53-zone) -- the hosted zone for alias records, referenced by `dns.route53ZoneId`.

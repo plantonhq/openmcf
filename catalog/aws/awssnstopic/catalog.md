@@ -1,6 +1,6 @@
 # AWS SNS Topic
 
-Deploys an SNS topic (Standard or FIFO) with KMS encryption, IAM access and data protection policies, FIFO message archiving, per-protocol delivery status logging, and X-Ray tracing. The topic owns its identity, policies, and delivery posture; subscriptions are first-class AwsSnsSubscription resources that reference this topic's ARN — each owning its own protocol, endpoint, filtering, and dead-letter lifecycle. The topic integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to KMS keys and IAM roles.
+Deploys an SNS topic (Standard or FIFO) with KMS encryption, IAM access and data protection policies, FIFO message archiving, per-protocol delivery status logging, and X-Ray tracing. The topic owns its identity, policies, and delivery posture; subscriptions are first-class AwsSnsSubscription resources that reference this topic's ARN — each owning its own protocol, endpoint, filtering, and dead-letter lifecycle. The KMS key and the delivery-logging IAM roles accept ValueFromRef wiring, so an encrypted topic composes directly with AwsKmsKey and AwsIamRole resources in the same InfraChart. The topic type is a one-way door: `fifoTopic` cannot be changed after creation.
 
 ## What Gets Created
 
@@ -38,7 +38,7 @@ Open the deployment store, find **AWS SNS Topic**, and click **Deploy**. The cre
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSnsTopic
 metadata:
   name: order-events
@@ -115,9 +115,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Standard topic** -- SHA-256 signatures with AWS-default delivery behavior. The starting point for pub/sub fan-out; attach consumers as AwsSnsSubscription resources. Start from the **Standard Topic** preset.
 
-**FIFO topic with deduplication** -- Content-based deduplication and per-message-group throughput scope. Suitable for ordered event processing where downstream consumers are SQS FIFO queues. Start from the **FIFO With Deduplication** preset.
+**FIFO topic with deduplication** -- Content-based deduplication and per-message-group throughput scope. Suitable for ordered event processing where downstream consumers are SQS FIFO queues. Start from the **FIFO Topic with Deduplication** preset.
 
-**FIFO topic with archive** -- Strict ordering plus a message archive for consumer backfill: subscriptions added later replay history from the archive before going live. Start from the **FIFO With Archive** preset.
+**FIFO topic with archive** -- Strict ordering plus a message archive for consumer backfill: subscriptions added later replay history from the archive before going live. Start from the **FIFO Topic with Message Archive** preset.
 
 ## Works With
 

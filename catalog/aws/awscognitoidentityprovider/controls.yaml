@@ -43,6 +43,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: This object adds a federation path; it cannot disable the pool's other sign-in paths -- password policy and authentication-flow floors are user pool and app client configuration. Within its own exchange there is no legacy protocol to turn off; the SAML hardening dials (request_signing_algorithm, encrypted_responses, idp_sign_out) tighten the modern exchange rather than disabling an older one.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: This object federates an external IdP into the pool -- the credentials those users present are verified by the external provider (Google, Facebook, OIDC, SAML), whose password and MFA posture lives outside both this spec and the pool.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. Management calls against the provider are recorded by AWS CloudTrail as account-level posture, and sign-in event logging (including exportable auth-event logs under the Plus tier's threat protection) is a user pool capability, not a per-provider setting.

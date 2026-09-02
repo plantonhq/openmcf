@@ -66,6 +66,9 @@ spec:
         type: spec_default
         reference: The literal open-access ACL is the unauthenticated path -- referencing a real AwsMemorydbAcl disables it, and AWS couples tls_enabled=false to open-access so an unencrypted-and-authenticated shape is unrepresentable at create.
       notes: Stating open access explicitly is deliberate spec design -- an invisible default granting unauthenticated access has no place in a manifest.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: MemoryDB exposes no data-plane access or audit log delivery this spec could enable; control-plane changes land in CloudTrail, and sns_topic_arn carries operational events (failover, maintenance, scaling), which are notifications, not access logs.

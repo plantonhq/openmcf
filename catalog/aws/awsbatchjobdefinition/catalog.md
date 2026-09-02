@@ -1,6 +1,6 @@
 # AWS Batch Job Definition
 
-Deploys an AWS Batch job definition: the versioned container blueprint jobs are submitted from — image, command, sizing, IAM identities, retries, and timeout. The compute environment provides capacity, the queue routes, and the job definition describes WHAT runs. It models both workload arms of AWS type `container`: single-container ECS-based jobs for EC2 and Fargate — the shape nearly every Batch workload uses — and Batch-on-EKS pod jobs for compute environments attached to an EKS cluster. It integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys an AWS Batch job definition: the versioned container blueprint jobs are submitted from — image, command, sizing, IAM identities, retries, and timeout. The compute environment provides capacity, the queue routes, and the job definition describes WHAT runs. It models both workload arms of AWS type `container`: single-container ECS-based jobs for EC2 and Fargate — the shape nearly every Batch workload uses — and Batch-on-EKS pod jobs for compute environments attached to an EKS cluster.
 
 ## What Gets Created
 
@@ -36,7 +36,7 @@ Open the deployment store, find **AWS Batch Job Definition**, and click **Deploy
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsBatchJobDefinition
 metadata:
   name: etl-job
@@ -76,11 +76,31 @@ spec:
 planton apply -f batch-job-definition.yaml
 ```
 
-This registers a Fargate container job with a parameterized command, the recommended Spot-reclaim retry posture (retry infrastructure failures, exit on application failures), and a one-hour per-attempt limit. A Stack Job tracks the provisioning and streams progress in real time.
+This registers a Fargate container job with a parameterized command, the recommended Spot-reclaim retry posture (retry infrastructure failures, exit on application failures), and a one-hour per-attempt limit. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-Jobs are submitted at runtime against a queue + this definition; within an InfraPipeline the definition typically references the IAM roles and EFS resources deployed beside it, exactly as in the CLI example's `valueFrom` blocks.
+When the definition deploys alongside its IAM roles and EFS storage in one chart, wire the references via ValueFromRef (the CLI example above shows the role wiring; here is an EFS volume):
+
+```yaml
+spec:
+  container:
+    volumes:
+      - name: shared-data
+        efs:
+          fileSystemId:
+            valueFrom:
+              kind: AwsElasticFileSystem
+              name: batch-shared
+              fieldPath: status.outputs.file_system_id
+          accessPointId:
+            valueFrom:
+              kind: AwsEfsAccessPoint
+              name: batch-shared-ap
+              fieldPath: status.outputs.access_point_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the file system and access point first, then registers the job definition that mounts them.
 
 ## Key Configuration
 

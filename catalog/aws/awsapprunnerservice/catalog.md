@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS App Runner Service**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Public Image**, **Production VPC-Connected and Encrypted Service**, or **GitHub Code Source** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS App Runner Service**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Public Image**, **Production VPC-Connected and Encrypted Service**, or **GitHub Code Source (Node.js)** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAppRunnerService
 metadata:
   name: my-api
@@ -152,7 +152,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Production VPC-connected service** -- Private ECR image with a VPC connector for private egress, customer-managed KMS encryption, a tuned auto scaling configuration (warm instance pool), and HTTP health checks. The recommended production baseline. Start from the **Production VPC-Connected and Encrypted Service** preset.
 
-**GitHub code source** -- Deploys directly from a repository using a managed runtime (Node.js, Python, Go, and more). App Runner handles the build-to-deploy lifecycle with no container image or CI/CD pipeline required. Start from the **GitHub Code Source** preset.
+**GitHub code source** -- Deploys directly from a repository using a managed runtime (Node.js, Python, Go, and more). App Runner handles the build-to-deploy lifecycle with no container image or CI/CD pipeline required. Start from the **GitHub Code Source (Node.js)** preset.
 
 ## Works With
 
@@ -162,4 +162,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the ECR access role for image pulling and the instance role for runtime AWS API access
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- customer-managed encryption for the stored deployment source
 - [**AWS WAF Web ACL**](/cloud-catalog/aws-waf-web-acl) -- request inspection in front of the endpoint via `webAclArn`
-- [**AWS Route53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- the exported domain-validation and alias records' natural home
+- [**AWS Route 53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- the exported domain-validation and alias records' natural home

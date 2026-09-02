@@ -5,7 +5,8 @@
 # meter per composed circuit connection (a uniform per-element fee,
 # countable from the repeated connections field). Scale units 6-10 are
 # refusals: Microsoft bills a lower marginal increment from the 6th
-# unit up, an excess-over-baseline shape these rules cannot express.
+# unit up, a banded marginal rate that needs a numeric comparison
+# (units above 5 split across two prices) no condition can state.
 # The hub's deployment and data processing meters ride the
 # AzureVirtualHub, and the circuit bills as its own resource family --
 # Virtual WAN's own split. The estimate generator replays the catalog

@@ -34,11 +34,17 @@ spec:
         kind: AwsKinesisStream
         name: planton-oss-e2e-awskinesisstream-prereq
         fieldPath: status.outputs.stream_arn
+    # AWS principals are BARE account ids - PutDestinationPolicy
+    # rejects the arn:aws:iam::...:root form (server contract,
+    # live-caught). QUOTED so the id stays a JSON string: an unquoted
+    # id parses as a YAML number and IAM's grammar rejects a numeric
+    # principal ("Error occurred while parsing accessPolicy" -
+    # live-caught too).
     accessPolicy:
       Version: "2012-10-17"
       Statement:
         - Effect: Allow
           Principal:
-            AWS: arn:aws:iam::${E2E_ENV:PLANTON_E2E_AWS_ACCOUNT_ID}:root
+            AWS: "${E2E_ENV:PLANTON_E2E_AWS_ACCOUNT_ID}"
           Action: logs:PutSubscriptionFilter
           Resource: "*"

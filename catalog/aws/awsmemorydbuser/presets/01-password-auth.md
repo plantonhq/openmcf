@@ -31,7 +31,7 @@ standard production pattern for MemoryDB's ACL-based authentication.
 | `<user-name>` | The AUTH identity (e.g. `orders-service`); becomes `metadata.name`, max 40 chars | Your naming convention |
 | `<aws-region>` | AWS region code (e.g. `us-west-2`) | Your deployment region |
 | `<key-prefix>` | Key namespace this user may touch (e.g. `orders`) | Your data model |
-| `<strong-password-16-to-128-chars>` | Password material (16–128 characters) | Your secret manager |
+| `$secret/memorydb-user-password` | A managed-secret reference to the password material (16–128 characters) — the field is sensitive, so a `$secret/<slug>` reference belongs here, never plaintext | Your org's managed secrets |
 
 ## Common Additions
 

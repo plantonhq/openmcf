@@ -1,6 +1,6 @@
 # AWS FSx Windows File System
 
-Deploys a fully managed Windows file system on Amazon FSx for Windows File Server with SMB protocol access, Active Directory integration for identity-based access control, configurable deployment types (single-AZ or multi-AZ with automatic failover), Windows ACLs, DNS aliases, and audit logging to CloudWatch. The file system integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPCs, security groups, KMS keys, and CloudWatch log groups.
+Deploys a fully managed Windows file system on Amazon FSx for Windows File Server with SMB protocol access, Active Directory integration for identity-based access control, configurable deployment types (single-AZ or multi-AZ with automatic failover), Windows ACLs, DNS aliases, and audit logging to CloudWatch. Every Windows file system must join an Active Directory domain -- AWS Managed Microsoft AD or self-managed -- and the deployment type is a one-way door that fixes the availability posture and which storage media are available.
 
 ## What Gets Created
 
@@ -32,14 +32,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS FSx Windows File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single AZ Development** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS FSx Windows File System**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single-AZ Development FSx Windows** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxWindowsFileSystem
 metadata:
   name: corp-file-server
@@ -135,11 +135,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single AZ development** -- SINGLE_AZ_2 with minimal SSD storage and throughput. Cost-effective for development, testing, and small team file shares that do not require cross-AZ redundancy. Start from the **Single AZ Development** preset.
+**Single AZ development** -- SINGLE_AZ_2 with minimal SSD storage and throughput. Cost-effective for development, testing, and small team file shares that do not require cross-AZ redundancy. Start from the **Single-AZ Development FSx Windows** preset.
 
-**Single AZ production** -- SINGLE_AZ_2 with larger storage, higher throughput, customer-managed KMS encryption, audit logging enabled, and automatic backups. Suitable for production home directories, .NET application data, and SQL Server databases. Start from the **Single AZ Production** preset.
+**Single AZ production** -- SINGLE_AZ_2 with larger storage, higher throughput, customer-managed KMS encryption, audit logging enabled, and automatic backups. Suitable for production home directories, .NET application data, and SQL Server databases. Start from the **Single-AZ Production FSx Windows** preset.
 
-**Multi AZ high availability** -- MULTI_AZ_1 with automatic failover across two AZs, audit logging, and automatic backups. Designed for business-critical Windows workloads requiring transparent failover with floating DNS. Start from the **Multi AZ High Availability** preset.
+**Multi AZ high availability** -- MULTI_AZ_1 with automatic failover across two AZs, audit logging, and automatic backups. Designed for business-critical Windows workloads requiring transparent failover with floating DNS. Start from the **Multi-AZ High Availability FSx Windows** preset.
 
 ## Works With
 

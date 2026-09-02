@@ -1,4 +1,4 @@
-# Preset: Queue with a Worker (push) consumer
+# Queue with a Worker (push) consumer
 
 A queue consumed automatically by a Worker — the most common Queues setup. Cloudflare
 invokes the Worker with batches of messages as they arrive and autoscales the

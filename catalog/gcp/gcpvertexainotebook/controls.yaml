@@ -60,6 +60,9 @@ spec:
       evidence:
         type: provider_default
         reference: "Every access path authenticates with tokens or keys, never passwords: the Workbench proxy requires a Google identity over OAuth, and SSH uses IAM-governed keys. enable_third_party_identity extends access to federated workforce identities -- still token-based."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

@@ -1,26 +1,21 @@
-# Least-privilege permissions the IaC runner's DigitalOcean credential needs
-# to provision, update, and destroy this component with the official
-# modules. Schema: iac/componentpermissions/v1.
-#
-# DigitalOcean authenticates with a bearer API token, not IAM-statement
-# policies, so none of the schema's provider sections (aws/gcp/azure/
-# kubernetes) applies -- their absence is the schema's own claim that the
-# modules touch no such API. The DigitalOcean least-privilege story lives in
-# the token's SCOPES until the schema grows a DigitalOcean section, at which
-# point this inventory converts mechanically:
-#
-#   Custom-scopes token (recommended):
-#     vpc:read    -- read the peering via GET /v2/vpcs/peerings/{id} and poll its status waiter (provenance: derived)
-#     vpc:create  -- create the peering via POST /v2/vpcs/peerings (derived)
-#     vpc:update  -- rename the peering via PATCH /v2/vpcs/peerings/{id} (derived)
-#     vpc:delete  -- delete the peering via DELETE /v2/vpcs/peerings/{id} (derived)
-#   A full-access token also works; it is never least-privilege.
-#
-# All entries are derived from static analysis of the official modules
-# (digitalocean_vpc_peering's create/read/update/delete/import paths); the
-# live capture lane upgrades them to proven.
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
 apiVersion: iac.planton.dev/v1
 kind: ComponentPermissions
 metadata:
   name: digitaloceanvpcpeering
-spec: {}
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageVpcPeering
+        scopes:
+          - vpc_peering:read
+          - vpc_peering:create
+          - vpc_peering:update
+          - vpc_peering:delete
+        provenance: derived
+        notes: Covers digitalocean_vpc_peering's create/read/update/delete/import paths -- read the peering via GET /v2/vpcs/peerings/{id} and poll its status waiter (vpc_peering:read), create the peering via POST /v2/vpcs/peerings (vpc_peering:create), rename the peering via PATCH /v2/vpcs/peerings/{id} (vpc_peering:update), and delete the peering via DELETE /v2/vpcs/peerings/{id} (vpc_peering:delete). Scope names verified against https://docs.digitalocean.com/reference/api/scopes/, retrieved 2026-08-22. A full-access token also works; it is never least-privilege.

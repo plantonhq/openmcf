@@ -45,7 +45,9 @@ spec:
     enabled: true
     internalUserDatabaseEnabled: true
     masterUserName: admin
+    # The master password is sensitive: reference a managed secret
+    # ($secret/<slug>) -- never a plaintext value.
     masterUserPassword:
-      value: "<master-password>"
+      value: $secret/opensearch-master-password
   autoTuneOptions:
     desiredState: ENABLED

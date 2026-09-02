@@ -47,6 +47,9 @@ spec:
         type: spec_default
         reference: Empty defaults to GCP's KEY_ALG_RSA_2048; the spec admits KEY_ALG_RSA_1024 only as an explicitly labeled legacy choice ("weaker -- avoid for new keys"), and TYPE_PKCS12_FILE exists solely for legacy tooling that requires p12 (password "notasecret").
       notes: Keyless accounts (the default) have no legacy path at all -- the weaker options only become reachable once a user-managed key is opted into.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

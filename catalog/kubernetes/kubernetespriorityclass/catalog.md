@@ -1,6 +1,6 @@
 # Kubernetes PriorityClass
 
-Deploys a cluster-scoped Kubernetes PriorityClass — one rung of the workload importance ladder. Pods reference the class by name; the scheduler places higher-priority pods first when capacity is scarce and, unless preemption is disabled, evicts lower-priority pods to make room. Manages scheduling policy declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys a cluster-scoped Kubernetes PriorityClass — one step of the workload importance ladder. Pods reference the class by name; the scheduler places higher-priority pods first when capacity is scarce and, unless preemption is disabled, evicts lower-priority pods to make room. The class carries the priority value, the preemption policy, and the optional cluster-wide default flag.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **PriorityClass on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Critical Services** preset for a revenue-path tier or **Preemptable Batch** for interruptible work in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes PriorityClass**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Critical Services** preset for a revenue-path tier or **Preemptable Batch** for interruptible work in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPriorityClass
 metadata:
   name: critical
@@ -48,13 +48,13 @@ spec:
 planton apply -f priorityclass.yaml
 ```
 
-This creates a preempting class at value 1,000,000 that pods opt into via `priorityClassName: critical`.
+This creates a preempting class at value 1,000,000 that pods opt into via `priorityClassName: critical`. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
 These are the most important decisions when configuring a Kubernetes PriorityClass. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**The value is the ladder position** -- Higher schedules (and preempts) ahead of lower; only the ORDER matters, so leave generous gaps between rungs. User classes stay at or below 1,000,000,000 (the range above belongs to Kubernetes system classes); negative values make an always-preemptable tier. The value is immutable -- changing it replaces the class.
+**The value is the ladder position** -- Higher schedules (and preempts) ahead of lower; only the ORDER matters, so leave generous gaps between steps. User classes stay at or below 1,000,000,000 (the range above belongs to Kubernetes system classes); negative values make an always-preemptable tier. The value is immutable -- changing it replaces the class.
 
 **Preemption policy** -- The default (preempt lower priority) is what critical service tiers want: pending pods evict lower-priority pods to fit. **Never Preempt** keeps the queue-jumping benefit without evicting anything running -- the right policy for high-priority batch work.
 
@@ -81,9 +81,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**The three-rung ladder** -- `critical` (1,000,000, preempting) for revenue-path services, `standard` (1,000, the global default) for everything unmarked, and `batch` (-100, never-preempt) for interruptible work. Start from the **Critical Services**, **Standard Default**, and **Preemptable Batch** presets.
+**The three-step ladder** -- `critical` (1,000,000, preempting) for revenue-path services, `standard` (1,000, the global default) for everything unmarked, and `batch` (-100, never-preempt) for interruptible work. Start from the **Critical Services**, **Standard Default**, and **Preemptable Batch** presets.
 
 ## Works With
 
-- **Kubernetes Deployment, StatefulSet, DaemonSet, Job, CronJob** -- pods opt into the class via `priorityClassName` in their pod scheduling configuration.
-- **Kubernetes ResourceQuota** -- a priority-class-scoped quota budgets how much a tier may consume, so the critical tier can neither starve nor be starved.
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) and [**Kubernetes StatefulSet**](/cloud-catalog/kubernetes-stateful-set) -- pods opt into the class via `priorityClassName` in their pod scheduling configuration
+- [**Kubernetes ResourceQuota**](/cloud-catalog/kubernetes-resource-quota) -- a priority-class-scoped quota budgets how much a tier may consume, so the critical tier can neither starve nor be starved

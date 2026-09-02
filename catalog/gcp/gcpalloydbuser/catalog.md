@@ -6,45 +6,52 @@ Deploys a database user (`google_alloydb_user`) on an AlloyDB cluster. Users are
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **AlloyDB User** — database role on the cluster with the chosen authentication type
-- **Database Roles** — PostgreSQL roles granted to the user (e.g. `alloydbiamuser`)
+- **AlloyDB API enablement** (`alloydb.googleapis.com`) on the target project (never disabled on destroy)
+- **AlloyDB User** — a database user on the cluster with the chosen authentication type and the declared PostgreSQL roles (e.g. `alloydbiamuser`) granted
 
 ## Before You Deploy
 
 ### Planton Setup
 
-- **GCP Provider Connection** — credentials for the target project
-- **Planton Runner** — when using Runner-based credential delivery
+- **GCP Provider Connection** — an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-### GCP Prerequisites
+### GCP Project
 
-- **GcpAlloydbCluster** — the cluster this user lives on. Reference `status.outputs.cluster_id`.
+- **A GcpAlloydbCluster** — the cluster this user lives on. Reference its `status.outputs.cluster_id`, or pass the full cluster resource path directly.
 - **Password secret** — for ALLOYDB_BUILT_IN, store the password as an org secret reference (`$secret/slug`) or inline for dev only.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP AlloyDB User**, and click **Deploy**. Start from the **Application User** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP AlloyDB User**, and click **Deploy**. Start from the **Application User (ALLOYDB_BUILT_IN)** preset in the [Presets](#presets) tab.
 
 ### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbUser
 metadata:
   name: orders-app
+  org: acme-corp
+  env: prod
 spec:
   cluster:
-    valueFrom:
-      kind: GcpAlloydbCluster
-      name: orders-db
-      fieldPath: status.outputs.cluster_id
+    value: "projects/acme-prod-12345/locations/us-central1/clusters/orders-db"
   userId: orders-app
   password: $secret/orders-app-db-password
   databaseRoles:
     - alloydbiamuser
 ```
+
+```shell
+planton apply -f alloydb-user.yaml
+```
+
+This creates a password-authenticated application user on the cluster with the `alloydbiamuser` role, the password resolved from the org secret at deploy time. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -62,11 +69,15 @@ spec:
 
 ## Key Configuration
 
-**Authentication type** — `ALLOYDB_BUILT_IN` (default) uses a password. `ALLOYDB_IAM_USER` enables passwordless IAM database authentication via AlloyDB Auth Proxy or Language Connectors.
+These are the most important decisions when configuring an AlloyDB user. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**User ID** — Immutable after creation. One user per application service is the recommended pattern.
+**Authentication type** — `ALLOYDB_BUILT_IN` (default) uses a password; updating the password rotates it in place. `ALLOYDB_IAM_USER` enables passwordless IAM database authentication via AlloyDB Auth Proxy or Language Connectors — the spec rejects a password on an IAM user, and the type is immutable: switching between the two means a new user.
 
-**Database roles** — Grant only the PostgreSQL roles the application needs. `alloydbiamuser` is the standard application role for built-in users.
+**User ID** — Immutable after creation, and it is the PostgreSQL role name applications authenticate as. One user per application service is the recommended pattern — it makes credential rotation and revocation per-service instead of shared.
+
+**Database roles** — Grant only the PostgreSQL roles the application needs. `alloydbiamuser` is the standard application role; `alloydbsuperuser` grants cluster-wide power and belongs on break-glass users only.
+
+**Destroy behavior** — the default destroy drops the user from the cluster, but objects it owns inside PostgreSQL keep their ownership rows — reassign ownership first or the drop fails. `deletionPolicy: PREVENT` protects a credential applications still authenticate with; `ABANDON` leaves the user existing (and authenticating) on the cluster.
 
 ## Outputs and Dependencies
 
@@ -79,12 +90,18 @@ spec:
 
 ### What This Component Provides
 
-| Output | Description |
-|--------|-------------|
-| `user_id` | The AlloyDB user resource name |
-| `name` | Short user name within the cluster |
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `name` | Fully qualified user resource name (`projects/{p}/locations/{l}/clusters/{c}/users/{u}`) | Management API calls, monitoring |
+| `user_id` | The database role name as stored by AlloyDB | Application connection strings (the username apps authenticate as) |
+
+`cluster_id` is also exported but only echoes the cluster the spec already names.
 
 ## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Application user** — password-authenticated built-in user with `alloydbiamuser` role. Start from **Application User**.
 

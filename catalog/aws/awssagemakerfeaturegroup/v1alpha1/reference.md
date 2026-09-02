@@ -157,7 +157,13 @@ the group (provider-enforced).
 
 IAM role used to persist data into the offline store's S3 location.
 The role must trust sagemaker.amazonaws.com and be able to write
-the bucket.
+the bucket. When offline_store is configured, CreateFeatureGroup
+validates the role AGAINST THE BUCKET at create time - it assumes
+the role and calls s3:GetBucketAcl, and writes carry
+s3:PutObjectAcl (the verbs AWS's own AmazonSageMakerFeatureStoreAccess
+managed policy grants). A role that can only read/write objects
+fails the create with ValidationException "Invalid S3Uri" wrapping
+the S3 AccessDenied (live-verified 2026-08-25).
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}

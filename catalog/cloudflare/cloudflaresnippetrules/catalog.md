@@ -1,23 +1,35 @@
 # Cloudflare Snippet Rules
 
-The zone's snippet routing table: an ordered list of expressions deciding which requests invoke which snippet. One manifest owns the WHOLE table -- every apply is a full-replacement PUT. Destroy wipes every snippet rule in the zone, including ones created outside this manifest.
+Deploys the zone's snippet routing table: the ordered list of expressions deciding which requests invoke which Cloudflare Snippet. A zone has exactly one such table, and Cloudflare's API is a full-replacement PUT — every apply replaces the entire table with exactly the `rules` list in this manifest, so one manifest must own all of a zone's snippet rules. Destroying the resource deletes every snippet rule in the zone, including rules created outside this manifest; the snippets themselves survive, only the routing table empties.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Snippet rules** -- one `cloudflare_snippet_rules` on the zone, whose `rules` list is the entire routing table
+- **Snippet Rules** -- one `cloudflare_snippet_rules` on the zone, whose `rules` list is the whole routing table, evaluated in order against Cloudflare's Rules language (the same wirefilter expressions rulesets use)
 
-## Prerequisites
+## Before You Deploy
 
-- **A Cloudflare zone** -- typically a CloudflareDnsZone whose `zone_id` output this resource references
-- **A Cloudflare API token** with Zone → Snippets → Edit
-- **At least one CloudflareSnippet** -- rules invoke snippets by name; a missing name fails at apply
-- **Sole ownership of the zone's snippet-rule table** -- a second manifest against the same zone silently overwrites this one
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** -- an active connection in the Connect module with a Cloudflare API token that has Snippets Edit on the target zone. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-One rule that invokes a snippet on a path prefix:
+### Cloudflare Account
+
+- **A Cloudflare zone** -- provide the zone ID directly or wire `zoneId` to a Cloudflare DNS Zone resource by reference.
+- **The snippets the rules invoke** -- each rule's `snippetName` must exist in the zone; a missing name fails at apply, not at validation. Create the Cloudflare Snippet resources first.
+- **Sole ownership of the zone's snippet-rule table** -- a second manifest, a dashboard edit, or another team's rules against the same zone will be silently overwritten by this manifest's next apply.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Cloudflare Snippet Rules**, and click **Deploy**. The creation wizard walks you through the zone and an ordered rule builder — expression, snippet, description, and enablement per rule. Start from the **Path-prefix route** preset in the [Presets](#presets) tab.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -40,42 +52,18 @@ spec:
 planton apply -f snippet-rules.yaml
 ```
 
-`enabled` is omitted and still true -- this spec defaults it on so a declared rule runs. Cloudflare's own default is false.
+This installs a one-row routing table that invokes the `redirect_legacy` snippet on every request under `/legacy` — the rule runs immediately because this spec defaults `enabled` to true. A Stack Job tracks the provisioning in real time.
 
-## Configuration Reference
+### InfraChart
 
-### Required Fields
-
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `zoneId` | StringValueOrRef | The zone whose snippet routing table is managed. Can reference a CloudflareDnsZone via `valueFrom` (defaults to `status.outputs.zone_id`). | Required. |
-| `rules` | object[] | The WHOLE table, evaluated in order. | At least one. Each rule needs `expression` and `snippetName`. |
-
-### Rule Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `expression` | string | -- | Cloudflare Rules language (wirefilter). Validated by Cloudflare at apply. |
-| `snippetName` | StringValueOrRef | -- | The snippet to invoke. Can reference a CloudflareSnippet via `valueFrom` (defaults to `status.outputs.snippet_name`). |
-| `description` | string | unset | Shown in the dashboard. |
-| `enabled` | bool | **true** | FOOTGUN: Cloudflare defaults this to false. This spec defaults it to true so a declared rule runs. Set `false` explicitly to stage a rule. |
-
-## Examples
-
-### Path-prefix route
+When deploying as part of a multi-resource environment, wire both the zone and the invoked snippet to resources managed in the same InfraPipeline:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareSnippetRules
-metadata:
-  name: legacy-routes
-  org: acme-corp
-  env: prod
 spec:
   zoneId:
     valueFrom:
       kind: CloudflareDnsZone
-      name: example-zone
+      name: acme-com
       fieldPath: status.outputs.zone_id
   rules:
     - expression: 'starts_with(http.request.uri.path, "/legacy")'
@@ -84,21 +72,49 @@ spec:
           kind: CloudflareSnippet
           name: redirect-legacy
           fieldPath: status.outputs.snippet_name
-      description: Redirect legacy paths
 ```
 
-## Destroy Semantics
+The InfraPipeline resolves the dependency graph, deploys the zone and the snippet first, then installs the routing table that binds them.
 
-Destroy wipes ALL snippet rules in the zone, including ones created outside this manifest (dashboard, API). The snippets themselves survive. Every apply also replaces the whole table -- rules you did not declare disappear.
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring snippet rules. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `zone_id` | string | The zone whose snippet routing table is managed. The table is a zone singleton -- the zone ID is its identity. |
+**One manifest owns the whole table.** Every apply sends exactly the declared `rules` list and the live table becomes that list — rules added in the dashboard, by another team, or by a second manifest disappear on the next apply, with no merge and no warning. Keep every snippet rule for a zone in this one resource; split ownership and the manifests fight each other one apply at a time.
 
-## Related Components
+**`enabled` defaults true here — Cloudflare's default is false.** This is the footgun: a rule that omits the field at the API is created disabled and matches nothing, and migrated configurations have been burned by the flip. Both engines coalesce an unset flag to true so a declared rule runs; set `enabled: false` explicitly to stage a rule without activating it.
 
-- [Cloudflare Snippet](/docs/catalog/cloudflare/cloudflaresnippet) -- the code this table invokes by `snippetName`
-- [Cloudflare Ruleset](/docs/catalog/cloudflare/cloudflareruleset) -- expression-based WAF and cache rules, a different table
-- [Cloudflare DNS Zone](/docs/catalog/cloudflare/cloudflarednszone) -- `zoneId` foreign key
+**Order is evaluation order.** Rules run top to bottom in list order. Put narrower expressions above broader ones when both could match — reordering the list is a plain in-place update.
+
+**`snippetName` is a foreign key with a literal escape hatch.** Wire it to a Cloudflare Snippet resource by reference, or pass a literal name to invoke a snippet that already exists in the zone. Either way Cloudflare is the wall: an unknown name fails at apply.
+
+**Destroy is not selective.** It empties the zone's entire snippet routing table, outsiders included. To stop invoking snippets reversibly, set each rule's `enabled: false` and apply — that preserves table ownership and is a one-line rollback.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareDnsZone** | `zoneId` | `status.outputs.zone_id` |
+| **CloudflareSnippet** | `rules[].snippetName` | `status.outputs.snippet_name` |
+
+### What This Component Provides
+
+This component has no consumable outputs: `status.outputs` only echoes the zone ID back, because the routing table is a zone singleton whose identity is the zone itself — there is no separate table ID for downstream resources to reference.
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Path-prefix route** -- One rule invoking a redirect snippet when the path starts with `/legacy`; pair it with the Cloudflare Snippet **Redirect snippet** preset, which creates `redirect_legacy`. Start from the **Path-prefix route** preset.
+
+**One table, many snippets** -- The steady state for a zone using snippets seriously: a single manifest listing every route in evaluation order, each row wired to its snippet by reference so renames and redeploys cannot drift the table.
+
+**Staged rollout** -- Add the new rule with `enabled: false`, apply, verify the expression against live traffic expectations, then flip the flag. The table never leaves manifest control, and rollback is the same one-line change.
+
+## Works With
+
+- [**Cloudflare Snippet**](/cloud-catalog/cloudflare-snippet) -- the code this table invokes by name; create the snippet first.
+- [**Cloudflare Ruleset**](/cloud-catalog/cloudflare-ruleset) -- the other expression table on the zone (WAF, cache, redirects), same Rules language, different engine.
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the zone scope; wire `zoneId` via ValueFromRef.

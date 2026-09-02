@@ -24,7 +24,10 @@ resource "aws_ce_cost_category" "this" {
   dynamic "rule" {
     for_each = var.spec.rules
     content {
-      type  = rule.value.type != "" ? rule.value.type : null
+      # Always sent: AWS materializes type = "REGULAR" on expression
+      # rules, so an omitted type is a perpetual post-apply diff (the
+      # materialized-default class; server-verified 2026-08-25).
+      type  = rule.value.type != "" ? rule.value.type : "REGULAR"
       value = rule.value.value != "" ? rule.value.value : null
 
       # The INHERITED_VALUE shape: the category value comes from the

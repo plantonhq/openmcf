@@ -36,6 +36,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The framework exposes no authentication path at all -- there is no protocol, credential, or client negotiation to harden.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface for itself. Every management call against the framework is recorded by AWS CloudTrail as account-level posture. The framework's PURPOSE is auditing others -- it continuously evaluates the account's backup posture -- but that is its function, not a logging control on this component.

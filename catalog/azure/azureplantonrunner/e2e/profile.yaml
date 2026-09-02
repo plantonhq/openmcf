@@ -8,11 +8,20 @@ spec:
   # app-exists verify -> destroy -> verify-absent on both provisioners.
   # The scenario supplies an obviously-fake runner token, so the container
   # never joins any control plane -- deliberately: Container Apps reports
-  # the app provisioned independently of replica health, so app-level
-  # verification proves the full provisioning surface (the app, its secret
-  # store, the single-replica template) and clean teardown without live
-  # credentials.
+  # the app provisioned independently of replica health AFTER a successful
+  # image pull, so app-level verification proves the full provisioning
+  # surface (the app, its secret store, the single-replica template) and
+  # clean teardown without live credentials. The pull itself is NOT
+  # exempt: create-time revision provisioning validates the image manifest
+  # and fails the whole deployment on MANIFEST_UNKNOWN (proven live, both
+  # boundaries) -- so this lane also proves the published :latest image
+  # serves linux/amd64. Measured lanes ~11-12 min/engine, dominated by the
+  # fixture environment's ~8 min teardown. The lane's VERIFY-CAUSE phase
+  # additionally attests the replica RAN and is failing by design (ARM
+  # marks the crash-looping revision provisioningState=Failed /
+  # healthState=Unhealthy); the join-refusal specificity is pinned by the
+  # Kubernetes and Cloud Run lanes running the same binary and image.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

@@ -31,6 +31,7 @@ know before operating frameworks in production.
 - **One framework per compliance regime.** Controls evaluate
   account-wide by default; use per-control scopes to narrow to tagged
   or typed subsets rather than multiplying frameworks.
+- **Declare scope explicitly on resource-scoped controls.** A scope-less control (e.g. `BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN` with no scope) is valid at AWS, but AWS fills in its default all-supported-types scope server-side and the pinned Terraform provider has no diff suppression for that echo — every later plan proposes stripping a scope AWS will put right back (live-verified 2026-08-25). Declaring the resource types you actually care about keeps plans clean AND pins the control's meaning: AWS's default list grows as new services gain Backup support, silently widening an unscoped control's coverage (and its Config-rule evaluation bill).
 - **Control evaluations materialize as Config rules** (named after the
   framework) and bill as Config rule evaluations — the framework's
   cost lever is how many controls × how many resources they evaluate.

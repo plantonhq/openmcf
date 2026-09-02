@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The SMB access key is the ONLY authentication mode Azure offers on this surface, so no weaker path exists to disable relative to a stronger one; key hygiene (rotation via the in-place access_key update, referencing the key from a secret) is the available discipline.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Create/update/delete of the registration land in the Azure Activity Log automatically as subscription-level posture; file-access logs belong to the storage account's diagnostic settings, a separate kind.

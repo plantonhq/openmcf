@@ -1,4 +1,4 @@
-# Preset: Rule-Routed Domain
+# Rule-Routed Domain
 
 ## When to Use
 

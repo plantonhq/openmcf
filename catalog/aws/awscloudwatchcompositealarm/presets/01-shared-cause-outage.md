@@ -1,4 +1,4 @@
-# Preset: Shared-Cause Outage Page
+# Shared-Cause Outage Page
 
 **Use case:** Page on-call once for an outage with many symptoms.
 

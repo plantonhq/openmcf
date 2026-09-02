@@ -20,9 +20,17 @@ spec:
   #     already provides. The contract is taught on the spec field and
   #     both modules.
   #
-  # pending_proof: forged this session to the full offline bar -- Q44
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q44): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate. Three catches fixed at the bar: the
+  # resource policy's Resource must be exactly the workspace's own ARN
+  # (both modules compose it - authors never write Resource), AMP's
+  # stored form collapses single-element Action arrays to the scalar
+  # (author the string form), and the stored document's member order
+  # can never byte-match jsonencode (policy_document declared
+  # write-normalized in the import catalog - the order-only re-plan
+  # after import is the declared tolerance).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

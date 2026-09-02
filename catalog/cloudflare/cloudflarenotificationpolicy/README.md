@@ -90,3 +90,7 @@ Real delete. Deleting the policy stops the alerts it delivered, silently -- noth
 - [Cloudflare Notification Webhook](/docs/catalog/cloudflare/cloudflarenotificationwebhook) -- the webhook destinations referenced here
 - [Cloudflare Healthcheck](/docs/catalog/cloudflare/cloudflarehealthcheck) -- the origin probes behind health-check alerts
 - [Cloudflare Logpush Job](/docs/catalog/cloudflare/cloudflarelogpushjob) -- log export, and a subject of the failing-job alert type
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

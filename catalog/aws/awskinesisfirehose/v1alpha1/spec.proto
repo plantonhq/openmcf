@@ -2235,13 +2235,16 @@ message AwsKinesisFirehoseIcebergDestination {
   // Table routing
   // ---------------------------------------------------------------------------
 
-  // Destination tables for delivered records. When exactly one table is
-  // listed, all records land there. When multiple tables are listed,
-  // records must carry routing metadata (produced by a metadata_extraction
-  // or Lambda processor) selecting the target table per record.
+  // Destination tables for delivered records -- at least one is required
+  // (an Iceberg destination with no table cannot route records; AWS
+  // rejects it at apply time, so it is rejected here at validation time).
+  // When exactly one table is listed, all records land there. When
+  // multiple tables are listed, records must carry routing metadata
+  // (produced by a metadata_extraction or Lambda processor) selecting the
+  // target table per record.
   //
   // ForceNew -- changing the table routing replaces the delivery stream.
-  repeated AwsKinesisFirehoseIcebergDestinationTable destination_tables = 3;
+  repeated AwsKinesisFirehoseIcebergDestinationTable destination_tables = 3 [(buf.validate.field).repeated.min_items = 1];
 
   // Append-only mode. When true, Firehose only appends new snapshots --
   // update/delete semantics via unique keys are disabled. ForceNew.

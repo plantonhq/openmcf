@@ -1,6 +1,6 @@
 # AWS Security Group
 
-Deploys an EC2 Security Group within a specified VPC with configurable ingress and egress rules supporting IPv4/IPv6 CIDRs, cross-group references, and self-referencing. The security group integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to VPC and other security group resources.
+Deploys an EC2 Security Group within a specified VPC with configurable ingress and egress rules supporting IPv4/IPv6 CIDRs, cross-group references, and self-referencing. Security groups are stateful -- return traffic for an allowed connection is automatically permitted, so rules only describe the initiating direction. One posture choice to know up front: when `egress` is empty, the module revokes AWS's default allow-all outbound rule, making the manifest the complete statement of what the group permits. The group can also be shared into additional VPCs in the same account and region, so one firewall definition serves many networks.
 
 ## What Gets Created
 
@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Security Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Tier** preset in the [Presets](#presets) tab to pre-populate a common configuration.
+Open the deployment store, find **AWS Security Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Tier Security Group** preset in the [Presets](#presets) tab to pre-populate a common configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSecurityGroup
 metadata:
   name: web-tier-sg
@@ -128,13 +128,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Web tier** -- Allows inbound HTTP (80) and HTTPS (443) from the internet with unrestricted outbound. The standard pattern for public-facing load balancers and web servers. Start from the **Web Tier** preset.
+**Web tier** -- Allows inbound HTTP (80) and HTTPS (443) from the internet with unrestricted outbound. The standard pattern for public-facing load balancers and web servers. Start from the **Web Tier Security Group** preset.
 
-**Database tier** -- Restricts inbound access to specific ports (e.g., 5432 for PostgreSQL, 3306 for MySQL) from application-tier security groups only. No public CIDR access. Start from the **Database Tier** preset.
+**Database tier** -- Restricts inbound access to specific ports (e.g., 5432 for PostgreSQL, 3306 for MySQL) from application-tier security groups only. No public CIDR access. Start from the **Database Tier Security Group** preset.
 
-**Bastion host** -- Allows inbound SSH (22) from a restricted set of administrator IP addresses and full outbound access for management tasks. Start from the **Bastion** preset.
+**Bastion host** -- Allows inbound SSH (22) from a restricted set of administrator IP addresses and full outbound access for management tasks. Start from the **Bastion Host Security Group** preset.
 
-**Shared multi-VPC group** -- One baseline firewall definition associated with several VPCs, attached by workloads everywhere it is shared. Start from the **Shared Multi-VPC** preset.
+**Shared multi-VPC group** -- One baseline firewall definition associated with several VPCs, attached by workloads everywhere it is shared. Start from the **Shared Multi-VPC Security Group** preset.
 
 ## Works With
 

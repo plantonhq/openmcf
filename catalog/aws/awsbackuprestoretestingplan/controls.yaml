@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The plan exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. Every management call against the plan is recorded by AWS CloudTrail as account-level posture, and each test run's outcome lands in AWS Backup's restore job history as service behavior.

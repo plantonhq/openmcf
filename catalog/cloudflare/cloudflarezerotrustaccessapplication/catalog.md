@@ -1,14 +1,14 @@
-# Zero Trust App on Cloudflare
+# Cloudflare Zero Trust Access Application
 
-Deploys a Cloudflare Zero Trust Access Application that protects a hostname behind identity-aware access controls, with configurable email allowlists, Google Workspace group restrictions, session duration, and optional MFA enforcement. Integrates with Planton's Provider Connections for Cloudflare credential management.
+Deploys a Cloudflare Zero Trust Access application: the protected resource -- a self-hosted web app, a SaaS app, an SSH/VNC/RDP target, an app launcher, or an MCP endpoint -- that Cloudflare Access guards. The application binds one or more standalone Access policies (referenced by ID) to the resource and configures how users reach and authenticate to it: session lifetime, identity providers, cookie posture, CORS, and -- for SaaS types -- the SAML or OIDC federation Cloudflare provides. An application is account-scoped or zone-scoped (exactly one of `accountId` or `zoneId`); account scope is the common case and lets the app reuse account-level policies and groups.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Access Application** -- a self-hosted Access Application bound to the specified DNS zone and hostname, with configurable session duration
-- **Access Policy** -- an allow or deny policy attached to the application, with email-based include rules, optional Google Workspace group includes, and an optional MFA requirement
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
+- **Access Application** -- the guarded application with its type, protected `domain` and additional `destinations`, attached policies in evaluation order, session and cookie settings, and (for `saas` types) the SAML/OIDC federation configuration whose issued credentials surface as stack outputs
+
+Policies themselves are separate resources -- this component attaches existing CloudflareZeroTrustAccessPolicy resources; it does not create them.
 
 ## Before You Deploy
 
@@ -19,52 +19,82 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Cloudflare Account
 
-- **An existing Cloudflare DNS zone** -- the `zoneId` is required and must correspond to a zone containing the hostname you intend to protect. Obtain it from a CloudflareDnsZone resource's `status.outputs.zone_id` or from the Cloudflare dashboard.
-- **Zero Trust subscription** -- Access Applications require a Zero Trust plan enabled on the Cloudflare account.
-- **DNS resolution** -- the hostname specified in `hostname` must resolve within the specified zone. Configure a DNS record (A, AAAA, or CNAME) pointing to your origin before or alongside this deployment.
+- **Zero Trust subscription** -- Access applications require a Zero Trust plan enabled on the Cloudflare account.
+- **At least one Access policy** -- create a CloudflareZeroTrustAccessPolicy first (or have an existing policy ID); an application with no attached allow policy admits no one.
+- **A zone for the protected domain (self-hosted types only)** -- `domain` must be a hostname in a zone on this account, resolving to the origin (directly or through a Cloudflare Tunnel).
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Zero Trust App on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Company-Wide Email** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **Cloudflare Zero Trust Access Application**, and click **Deploy**. The creation wizard captures the scope (account or zone), the application type and protected domain, the attached policies, and session settings. Start from the **Self-hosted web application** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustAccessApplication
 metadata:
   name: internal-dashboard
   org: acme-corp
   env: prod
 spec:
-  applicationName: Internal Dashboard
-  zoneId: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
-  hostname: dashboard.example.com
-  allowedEmails:
-    - "*@acme-corp.com"
+  accountId: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+  name: internal-dashboard
+  type: self_hosted
+  domain: dashboard.example.com
+  sessionDuration: 24h
+  policies:
+    - policy:
+        valueFrom:
+          kind: CloudflareZeroTrustAccessPolicy
+          name: allow-staff
+          fieldPath: status.outputs.policy_id
+      precedence: 1
 ```
 
 ```shell
 planton apply -f cloudflare-zero-trust-access-application.yaml
 ```
 
-This creates a Zero Trust Access Application protecting `dashboard.example.com` with an allow policy granting access to all `@acme-corp.com` email addresses. MFA is not required and the session lasts 24 hours by default. A Stack Job tracks the provisioning in real time.
+This creates an account-scoped self-hosted application protecting `dashboard.example.com`, governed by the referenced `allow-staff` policy, with a 24-hour session. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+Deploy the group, policy, and application as one composition, wiring the application to the policy with ValueFromRef:
+
+```yaml
+spec:
+  policies:
+    - policy:
+        valueFrom:
+          kind: CloudflareZeroTrustAccessPolicy
+          name: allow-staff
+          fieldPath: status.outputs.policy_id
+      precedence: 1
+```
+
+The InfraPipeline resolves the dependency graph, provisions the policy first, then creates the application with the resolved policy ID attached.
 
 ## Key Configuration
 
-These are the most important decisions when configuring a Zero Trust Access Application. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+These are the most important decisions when configuring a Zero Trust Access application. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Policy type** -- Set `policyType` to `ALLOW` (default) to permit matching identities or `BLOCK` to deny them. Most configurations use ALLOW with a set of permitted emails or groups.
+**Scope (`accountId` vs `zoneId`)** -- Exactly one must be set. Account scope is the common case: the application can reuse account-level policies and Access groups. Zone scope pins the application to a single zone; `zoneId` accepts a literal or a CloudflareDnsZone reference.
 
-**Access control method** -- Use `allowedEmails` for email-based access (individual addresses or wildcard patterns like `*@company.com`). Use `allowedGoogleGroups` for Google Workspace group-based access with group IDs from Google Admin Console. Both can be combined in a single policy.
+**Type (`type`)** -- Defaults to `self_hosted` and determines which other fields apply: `domain` is required for `self_hosted`/`ssh`/`vnc`/`rdp`, `saasApp` is required for `saas` and `dash_sso`, and the launcher styling fields only matter for `app_launcher`. Choosing the wrong type is not a tweak -- most of the spec silently stops applying.
 
-**Session duration** -- The `sessionDurationMinutes` field controls how long each authenticated session lasts before re-authentication is required. Defaults to 1440 minutes (24 hours). Shorten to 480 (8 hours) or less for sensitive applications.
+**Policies (`policies`)** -- Standalone CloudflareZeroTrustAccessPolicy resources attached in evaluation order (`precedence`, lower first; list order breaks ties). Access denies by default, so an application with no allow policy locks everyone out -- including you.
 
-**MFA enforcement** -- Set `requireMfa: true` to add a multi-factor authentication requirement to the access policy. Users must complete a second authentication factor before gaining access. Recommended for admin panels and sensitive internal tools.
+**Session duration (`sessionDuration`)** -- A duration string like `24h`; empty uses the account default. Shorten it for sensitive applications; the `mfaConfig.sessionDuration` re-prompt is a separate, tighter clock for the second factor.
+
+**Identity providers (`allowedIdps`, `autoRedirectToIdentity`)** -- Empty allows every configured IdP. Restricting to one IdP and setting `autoRedirectToIdentity` skips the chooser page, which is the polished single-IdP experience but locks sign-in to that provider's availability.
+
+**SaaS federation (`saasApp`)** -- For `saas` types, choose `authType` `saml` or `oidc`. OIDC issues a `client_id`/`client_secret` pair as stack outputs to paste into the SaaS provider's SSO settings; SAML exports the SSO endpoint, entity ID, and public key instead.
+
+**CORS (`corsHeaders` vs `optionsPreflightBypass`)** -- Mutually exclusive. Bypass lets preflight requests skip Access entirely; explicit CORS headers keep Access in the path. Pick bypass only when the protected API must serve browsers from other origins that cannot carry the Access cookie.
 
 ## Outputs and Dependencies
 
@@ -72,7 +102,10 @@ These are the most important decisions when configuring a Zero Trust Access Appl
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **CloudflareDnsZone** | `zoneId` | `status.outputs.zone_id` |
+| **CloudflareZeroTrustAccessPolicy** | `policies[].policy` | `status.outputs.policy_id` |
+| **CloudflareDnsZone** (optional, zone scope) | `zoneId` | `status.outputs.zone_id` |
+
+`allowedIdps[]` and `scimConfig.idpUid` also accept references to identity-provider outputs alongside literal IdP IDs.
 
 ### What This Component Provides
 
@@ -80,18 +113,25 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `application_id` | The unique Cloudflare ID of the Access Application | Access management automation, monitoring dashboards |
-| `public_hostname` | The hostname protected by this Access Application | DNS verification, application endpoint documentation |
-| `policy_id` | The Cloudflare ID of the Access Policy attached to this application | Policy management, audit logging references |
+| `aud` | The application's audience (AUD) tag | Validating the Cloudflare Access JWT in the origin service or Worker behind the app |
+| `saas_client_id` | OAuth client ID (SaaS OIDC apps) | Pasted into the SaaS provider's SSO settings |
+| `saas_client_secret` | OAuth client secret (SaaS OIDC apps). Sensitive. | Pasted into the SaaS provider's SSO settings |
+| `saas_sso_endpoint` | SSO endpoint URL (SaaS SAML apps) | Configuring the SaaS provider's SAML connection |
+| `saas_public_key` | IdP-facing certificate (SaaS SAML apps) | Configuring the SaaS provider's SAML connection |
+| `saas_idp_entity_id` | IdP entity ID (SaaS SAML apps) | Configuring the SaaS provider's SAML connection |
+
+`status.outputs` also carries `application_id` and the resolved `domain`.
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**Self-hosted web app behind Access** -- An account-scoped `self_hosted` application protecting an internal hostname, governed by a referenced allow policy, commonly fronting an origin published through a Cloudflare Tunnel. Start from the **Self-hosted web application** preset.
 
-**Company-wide email access** -- Allows anyone with a company domain email to access the protected hostname. Use for internal dashboards, wikis, or tools where the entire organization should have access. Start from the **Company-Wide Email** preset.
-
-**Team access with Google Groups and MFA** -- Restricts access to specific Google Workspace groups and requires multi-factor authentication. Use for admin panels or sensitive tools where only certain teams should have access and MFA is mandated for compliance. Start from the **Team Google Groups** preset.
+**SaaS federation (OIDC)** -- Cloudflare acts as the identity provider for a SaaS product: the application issues the OAuth client credentials as outputs, and the SaaS provider's SSO settings consume them. Start from the **SaaS application (OIDC)** preset.
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- provides the zone ID for the domain containing the protected hostname
+- [**Cloudflare Zero Trust Access Policy**](/cloud-catalog/cloudflare-zero-trust-access-policy) -- attached via `policies[]` to decide who is admitted
+- [**Cloudflare Zero Trust Access Group**](/cloud-catalog/cloudflare-zero-trust-access-group) -- reusable identity groups the attached policies reference
+- [**Cloudflare Zero Trust Access Identity Provider**](/cloud-catalog/cloudflare-zero-trust-access-identity-provider) -- the IdPs `allowedIdps` restricts sign-in to
+- [**Cloudflare Zero Trust Tunnel**](/cloud-catalog/cloudflare-zero-trust-tunnel) -- publishes the private origin a self-hosted application protects
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- scopes a zone-level application and hosts the protected hostname

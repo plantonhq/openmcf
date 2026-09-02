@@ -8,9 +8,16 @@ spec:
   # Minutes-lived, ~$0 (the monthly dashboard charge prorates to
   # nothing).
   #
-  # pending_proof: forged this session to the full offline bar -- Q44
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q44): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate. Live catch fixed at the bar: the
+  # widget key "y" had to be QUOTED in YAML manifests (the loader then
+  # parsed YAML 1.1, where bare y is boolean true - the body reached
+  # AWS with "true" keys). Dated note 2026-08-29: the loader moved to
+  # YAML 1.2 semantics, so bare y is an ordinary string and the
+  # quoting requirement is retired; the proof stands (the manifest
+  # bytes the lane deployed parse identically under both).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 15

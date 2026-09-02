@@ -48,7 +48,7 @@ type AwsPlantonRunnerStackOutputs struct {
 	// runner.
 	SecurityGroupId string `protobuf:"bytes,6,opt,name=security_group_id,json=securityGroupId,proto3" json:"security_group_id,omitempty"`
 	// The ARN of the execution role -- the setup identity that pulls the
-	// runner image, writes its logs, and reads its credentials secret.
+	// runner image, writes its logs, and reads its token secret.
 	ExecutionRoleArn string `protobuf:"bytes,7,opt,name=execution_role_arn,json=executionRoleArn,proto3" json:"execution_role_arn,omitempty"`
 	// The ARN of the runner's runtime IAM role -- the identity the runner
 	// holds while executing work. Grant this role permissions to let

@@ -1,6 +1,6 @@
 # Azure Redis Linked Server
 
-Links two PREMIUM Azure Cache for Redis instances into a geo-replication pair: the primary serves reads and writes while continuously replicating to the secondary in another region, which serves as the warm disaster-recovery target. The link is a first-class resource because DELETING it IS the failover operation -- unlinking makes the secondary writable.
+Links two PREMIUM Azure Cache for Redis instances into a geo-replication pair: the primary serves reads and writes while continuously replicating to the secondary in another region, which serves as the warm disaster-recovery target. The link is a first-class resource because DELETING it IS the failover operation -- unlinking makes the secondary writable. Know before you choose it: ARM has begun rejecting new Premium cache creations region by region as classic Azure Cache for Redis retires, so this kind links caches that already exist -- for new geo-replicated deployments, prefer Azure Managed Redis with its native geo-replication.
 
 ## What Gets Created
 
@@ -27,14 +27,14 @@ Azure enforces three contracts at link time:
 
 ### Console
 
-Open the deployment store, find **Azure Redis Linked Server**, and click **Deploy**. Start from the **Geo DR Link** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Redis Linked Server**, and click **Deploy**. Start from the **Geo-Replication DR Link** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRedisLinkedServer
 metadata:
   name: prod-cache-geo-link
@@ -63,7 +63,37 @@ spec:
 planton apply -f geo-link.yaml
 ```
 
+This links the two referenced Premium caches into a geo-replication pair, with `dr-cache` as the read-only secondary continuously receiving the primary's writes. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When both caches and the link deploy in the same InfraChart, wire all three references with ValueFromRef -- the location derives from the secondary cache's own region output:
+
+```yaml
+spec:
+  targetRedisCacheId:
+    valueFrom:
+      kind: AzureRedisCache
+      name: primary-cache
+      fieldPath: status.outputs.redis_cache_id
+  linkedRedisCacheId:
+    valueFrom:
+      kind: AzureRedisCache
+      name: dr-cache
+      fieldPath: status.outputs.redis_cache_id
+  linkedRedisCacheLocation:
+    valueFrom:
+      kind: AzureRedisCache
+      name: dr-cache
+      fieldPath: status.outputs.region
+  serverRole: SECONDARY
+```
+
+The InfraPipeline resolves the dependency graph, provisions both caches first, then establishes the link with the resolved IDs and region.
+
 ## Key Configuration
+
+These are the most important decisions when configuring a linked server. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **The pair** -- `targetRedisCacheId` is the PRIMARY (the link is created as its child; its resource group and name derive from this ID). `linkedRedisCacheId` is the SECONDARY -- the DR replica that rejects writes while linked.
 
@@ -85,22 +115,25 @@ planton apply -f geo-link.yaml
 
 ### What This Component Provides
 
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `linked_server_id` | Azure Resource Manager ID of the link | Audit trails |
-| `linked_server_name` | The link's name (equals the secondary cache's name) | Operational tooling |
 | `geo_replicated_primary_host_name` | DNS name that always resolves to the CURRENT primary | Application connection strings that survive failovers |
+
+The outputs also carry `linked_server_id` (the link's ARM ID) and `linked_server_name` (equal to the secondary cache's name) -- nothing composes with the link itself, so neither has a ValueFromRef consumer.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Geo DR link** -- The normal shape: primary in the app's region, secondary in the DR region, role SECONDARY. Start from the **Geo DR Link** preset.
+**Geo DR link** -- The normal shape: primary in the app's region, secondary in the DR region, role SECONDARY. Start from the **Geo-Replication DR Link** preset.
 
-**Re-link after failover** -- Once the failed region recovers, link in the opposite direction. Start from the **Relink After Failover** preset.
+**Re-link after failover** -- Once the failed region recovers, link in the opposite direction. Start from the **Re-Link After Failover** preset.
 
-**Cross-manifest link** -- Literal ARM IDs and a literal region when the caches are managed outside this manifest set. Start from the **Cross-Manifest Link** preset.
+**Cross-manifest link** -- Literal ARM IDs and a literal region when the caches are managed outside this manifest set. Start from the **Cross-Manifest Geo Link** preset.
 
 ## Works With
 
 - [**Azure Redis Cache**](/cloud-catalog/azure-redis-cache) -- both ends of the pair (Premium tier)
+- [**Azure Managed Redis Geo Replication**](/cloud-catalog/azure-managed-redis-geo-replication) -- the successor's native geo-replication; prefer it for new deployments as classic Premium cache creation retires

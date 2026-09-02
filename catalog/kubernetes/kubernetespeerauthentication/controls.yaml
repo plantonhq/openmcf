@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The plaintext-vs-mTLS choice IS the mtls mode covered under enc-in-transit (STRICT disables the plaintext path); there is no separate legacy protocol toggle in this spec.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the policy are Kubernetes API operations, captured by the target cluster's audit policy. Connection-level authentication logs, where they exist, come from the sidecars and istiod.

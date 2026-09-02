@@ -45,7 +45,7 @@ planton service-account key revoke sa-xxxx --key-id ak-yyyy
 To authenticate the CLI as a service account, use the API key directly:
 
 ```bash
-planton auth login --api-key pck_...
+planton auth login --api-key pak_...
 ```
 
 This works with any API key — whether it belongs to a human user or a service account. Once logged in, `planton auth who` shows your identity type and, for service accounts, the owning account name and organization. The `planton auth list` command also distinguishes between OAuth sessions, user API keys, and service account API keys across your configured environments.

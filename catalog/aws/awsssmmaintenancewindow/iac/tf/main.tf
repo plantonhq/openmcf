@@ -12,6 +12,14 @@
 #   - rate controls (max_concurrency/max_errors) are only legal on a
 #     task WITH targets - AWS rejects them on untargeted tasks, so the
 #     module renders them only when targets exist;
+#   - RUN_COMMAND tasks REQUIRE targets server-side (live-caught 400:
+#     "you must specify at least one resource as the target"; only
+#     Automation/Lambda/Step Functions tasks may run untargeted), and a
+#     WindowTargetIds selector needs the CLOUD-GENERATED registration
+#     ID - so the module resolves WindowTargetIds values that name an
+#     in-spec target entry to the created registration's ID (the
+#     catalog's name-based join convention); values naming no in-spec
+#     target pass through unchanged for externally registered IDs;
 #   - the invocation union renders exactly the one arm the spec set
 #     (the spec's CELs guarantee one arm, matching task_type).
 
@@ -80,8 +88,11 @@ resource "aws_ssm_maintenance_window_task" "this" {
   dynamic "targets" {
     for_each = each.value.targets
     content {
-      key    = targets.value.key
-      values = targets.value.values
+      key = targets.value.key
+      # WindowTargetIds values naming an in-spec target resolve to the
+      # created registration's cloud-generated ID; unknown values pass
+      # through (externally registered target IDs).
+      values = targets.value.key == "WindowTargetIds" ? [for v in targets.value.values : try(aws_ssm_maintenance_window_target.this[v].id, v)] : targets.value.values
     }
   }
 

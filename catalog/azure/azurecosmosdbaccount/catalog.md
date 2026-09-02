@@ -1,6 +1,6 @@
 # Azure Cosmos DB Account
 
-Deploys an Azure Cosmos DB account — the globally distributed, multi-model database account that owns regions, consistency, network posture, encryption, and backup for everything stored inside it. Databases and containers are first-class kinds (AzureCosmosdbSqlDatabase / AzureCosmosdbSqlContainer for the SQL API, AzureCosmosdbMongoDatabase / AzureCosmosdbMongoCollection for MongoDB) that reference this account's `cosmosdb_account_id` output — nothing is embedded in this spec. The account integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Cosmos DB account — the globally distributed, multi-model database account that owns regions, consistency, network posture, encryption, and backup for everything stored inside it. Databases and containers are first-class kinds (AzureCosmosdbSqlDatabase / AzureCosmosdbSqlContainer for the SQL API, AzureCosmosdbMongoDatabase / AzureCosmosdbMongoCollection for MongoDB) that reference this account's `cosmosdb_account_id` output — nothing is embedded in this spec. The account is the governance boundary: which regions data lives in, how reads are ordered, who can reach it, how it is encrypted, and how it is backed up are all decided here and inherited by everything inside.
 
 ## What Gets Created
 
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Cosmos DB Account**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **SQL API** preset in the [Presets](#presets) tab for the most common configuration.
+Open the deployment store, find **Azure Cosmos DB Account**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production SQL API Account** preset in the [Presets](#presets) tab for the most common configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureCosmosdbAccount
 metadata:
   name: orders-db
@@ -104,17 +104,41 @@ These are the most important decisions when configuring a Cosmos DB account. Exp
 | AzureKeyVaultKey | `keyVaultKeyId` | `status.outputs.versionless_id` |
 | AzureUserAssignedIdentity | `identity.identityIds[]`, `defaultIdentity.userAssignedIdentityId` | `status.outputs.identity_id` |
 
-### What This Component Produces
+### What This Component Provides
 
-| Output | Description | Consumed By |
-|--------|-------------|-------------|
-| `cosmosdb_account_id` | The ARM ID of the account | AzureCosmosdbSqlDatabase, AzureCosmosdbMongoDatabase, AzurePrivateEndpoint |
-| `cosmosdb_account_name` | The globally unique DNS label | Connection string composition |
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `cosmosdb_account_id` | The ARM ID of the account | AzureCosmosdbSqlDatabase / AzureCosmosdbMongoDatabase `cosmosdbAccountId`, AzurePrivateEndpoint targets |
+| `cosmosdb_account_name` | The globally unique DNS label | Connection string composition, scripting |
 | `endpoint` | The document endpoint SDKs connect to | Application configuration |
-| `read_endpoints` / `write_endpoints` | Per-region endpoints | Latency-sensitive readers / multi-write writers |
-| `primary_key` / `secondary_key` / readonly variants | Account keys (secret-bearing) | Legacy key-auth clients — prefer Entra RBAC |
-| `primary_sql_connection_string` (+ 3 variants) | Ready-made SQL-API connection strings (secret-bearing) | SQL SDK clients |
-| `primary_mongodb_connection_string` (+ 3 variants) | Ready-made MongoDB connection strings (secret-bearing) | MongoDB drivers on MongoDB accounts |
-| `identity_principal_id` | System-assigned identity principal | Role assignments the account needs |
+| `read_endpoints` | Per-region read endpoints, ordered by failover priority | Latency-sensitive readers pinning to a region |
+| `write_endpoints` | Per-region write endpoints | Multi-write clients |
+| `primary_key` | The primary read-write account key (secret-bearing) | Legacy key-auth clients; `secondary_key` is the rotation partner |
+| `primary_sql_connection_string` | Ready-made SQL-API connection string (secret-bearing; secondary and read-only variants also exported) | SQL SDK clients |
+| `primary_mongodb_connection_string` | Ready-made MongoDB connection string (secret-bearing; secondary and read-only variants also exported) | MongoDB drivers on MONGO_DB accounts |
+| `identity_principal_id` | The system-assigned identity's principal ID | Role assignments the account needs against other services |
 
 When `localAuthenticationEnabled` is false, the keys and connection strings stop authenticating — data-plane access rides Entra ID instead.
+
+## Common Patterns
+
+**Production document store that survives a regional outage** — two `geoLocations` with `automaticFailoverEnabled`, Session consistency, and Continuous backup for point-in-time restore. Regions can be added in place later, but Continuous cannot go back to Periodic without recreating the account — the one-way door to decide up front. Start from the **Production SQL API Account** preset.
+
+**MongoDB migration without driver changes** — `kind: MONGO_DB` with `ENABLE_MONGO` declared explicitly and `mongoServerVersion` pinned to what your drivers support. The API kind is fixed at creation; the account exports ready-made MongoDB connection strings applications consume directly. Start from the **MongoDB API Account** preset.
+
+**Serverless, keyless, private** — `ENABLE_SERVERLESS` bills per request (databases and containers must not declare throughput, and serverless accounts are single-region), `publicNetworkAccessEnabled: false` restricts access to private endpoints, and `localAuthenticationEnabled: false` forces every data-plane caller through Entra ID. Right for dev/staging with idle periods and for regulated workloads; wrong for steady high-throughput production, where provisioned RU/s is cheaper. Start from the **Serverless, Entra-Only Account** preset.
+
+**Customer-managed encryption** — `keyVaultKeyId` with a user-assigned `defaultIdentity` so the key can be unwrapped before the account's own identity exists. The key choice is fixed at creation; the vault needs purge protection, and the identity needs get/wrapKey/unwrapKey on the key.
+
+## Works With
+
+- [**Azure Resource Group**](/cloud-catalog/azure-resource-group) — the resource group the account is created in
+- [**Azure Cosmos DB SQL Database**](/cloud-catalog/azure-cosmosdb-sql-database) / [**Azure Cosmos DB SQL Container**](/cloud-catalog/azure-cosmosdb-sql-container) — the SQL-API data plane, referencing `cosmosdb_account_id`
+- [**Azure Cosmos DB Mongo Database**](/cloud-catalog/azure-cosmosdb-mongo-database) / [**Azure Cosmos DB Mongo Collection**](/cloud-catalog/azure-cosmosdb-mongo-collection) — the MongoDB-API data plane on MONGO_DB accounts
+- [**Azure Cosmos DB SQL Role Definition**](/cloud-catalog/azure-cosmosdb-sql-role-definition) / [**Azure Cosmos DB SQL Role Assignment**](/cloud-catalog/azure-cosmosdb-sql-role-assignment) — data-plane RBAC for the keyless posture
+- [**Azure Private Endpoint**](/cloud-catalog/azure-private-endpoint) — private connectivity when public network access is disabled (subresource `Sql` or `MongoDB`)
+- [**Azure Subnet**](/cloud-catalog/azure-subnet) — subnets admitted through the virtual-network filter
+- [**Azure Key Vault Key**](/cloud-catalog/azure-key-vault-key) — the customer-managed encryption key, referenced by versionless ID
+- [**Azure User Assigned Identity**](/cloud-catalog/azure-user-assigned-identity) — the identity that unwraps the customer-managed key

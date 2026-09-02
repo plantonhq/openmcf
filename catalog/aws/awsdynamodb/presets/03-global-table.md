@@ -19,7 +19,7 @@ This preset creates a DynamoDB Global Tables v2 deployment: the table in its hom
 ## Placeholders to Replace
 
 - `<aws-region>` -- The table's home region (e.g. `us-west-2`)
-- `<replica-region>` -- The replica's region (e.g. `eu-west-1`); must differ from the home region
+- `us-west-2` (example replica region) -- Replace with your replica's region (e.g. `eu-west-1`); it must differ from the home region, and the field's pattern requires a real region code
 
 ## Related Presets
 

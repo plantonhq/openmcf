@@ -59,7 +59,7 @@ module "hub_er_gateway" {
 
 ## Behavior Notes
 
-- The gateway bills ~$0.42/hr per scale unit FROM CREATION and takes
+- The gateway bills hourly per scale unit FROM CREATION and takes
   roughly 30 minutes to provision.
 - ARM accepts a connection only when the circuit's provider side is
   PROVISIONED -- a rejection on provisioning state is a prerequisite

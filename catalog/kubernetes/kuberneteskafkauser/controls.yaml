@@ -47,6 +47,9 @@ spec:
         type: spec_validation
         reference: The spec.authentication.type_enum validation rule restricts authentication.type to scram-sha-512, tls, or tls-external -- no PLAIN, no unauthenticated arm is representable in the contract.
       notes: Omitting authentication entirely is valid only for a principal that exists purely to carry ACLs for an externally-authenticated identity; it creates no credential and opens no login path.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the user resource are Kubernetes API operations, captured by the target cluster's audit policy; authentication and authorization decisions for the principal are broker-side events owned by the Kafka cluster's logging.

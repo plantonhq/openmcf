@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The stack exposes no weaker authentication path to disable -- Grafana's admin password is chart-generated randomly at first install (or supplied via grafana.admin_secret as a Secret reference), and remote-write basic-auth/bearer credentials are references to existing Secrets, never inline material.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The bundled Grafana signs users in, but password strength, lockout, and MFA are Grafana configuration inside the product -- this spec models only the bootstrap admin credential seam (chart-generated at first install, or a grafana.admin_secret reference), never strength rules.
     - control_id: audit-logging
       status: not_applicable
       notes: Administrative changes to the stack and its custom resources are Kubernetes API operations, captured by the target cluster's audit policy; component logs stream to stdout for the cluster's log collector.

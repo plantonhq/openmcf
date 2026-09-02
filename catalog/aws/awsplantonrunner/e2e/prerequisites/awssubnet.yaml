@@ -1,0 +1,87 @@
+# Consumer-scoped AwsSubnet install profile for the runner appliance's
+# lanes: the SHARED subnet fixtures are bare (no route table, no internet
+# gateway anywhere in their chain), and a Fargate task on them has ZERO
+# egress -- it dies at ResourceInitializationError fetching the token from
+# Secrets Manager before the container ever starts (proven live; the image
+# pull and the control-plane join need the same egress). These overrides
+# keep the shared fixtures' NAMES (the scenario's references are untouched)
+# but each subnet owns a default route to the internet gateway fixture,
+# which each document pulls into the chain ahead of itself via its own
+# e2e-prerequisites annotation.
+# Paired with assignPublicIp: true on the scenario -- public-subnet egress
+# is the cheapest topology that gives the appliance its documented
+# outbound-only reach (production uses private subnets + NAT; the module's
+# GUIDE teaches that posture).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSubnet
+metadata:
+  name: planton-oss-e2e-awssubnet-prereq-a
+  id: planton-oss-e2e-awssubnet-prereq-a
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsplantonrunner
+  annotations:
+    planton.dev/e2e: "true"
+    # The subnet's default route references the internet gateway fixture, so
+    # this install manifest declares that edge itself -- the dependency
+    # resolver's DFS orders the gateway BEFORE these subnets from exactly
+    # this annotation.
+    planton.dev/e2e-prerequisites: "AwsInternetGateway"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  availabilityZone: us-west-2a
+  cidrBlock: 10.0.101.0/24
+  routes:
+    - destinationCidrBlock: 0.0.0.0/0
+      targetType: internet_gateway
+      targetId:
+        valueFrom:
+          kind: AwsInternetGateway
+          name: planton-oss-e2e-awsinternetgateway-prereq
+          fieldPath: status.outputs.internet_gateway_id
+---
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsSubnet
+metadata:
+  name: planton-oss-e2e-awssubnet-prereq-b
+  id: planton-oss-e2e-awssubnet-prereq-b
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awsplantonrunner
+  annotations:
+    planton.dev/e2e: "true"
+    # The subnet's default route references the internet gateway fixture, so
+    # this install manifest declares that edge itself -- the dependency
+    # resolver's DFS orders the gateway BEFORE these subnets from exactly
+    # this annotation.
+    planton.dev/e2e-prerequisites: "AwsInternetGateway"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: planton-oss-e2e-awsvpc-prereq
+      fieldPath: status.outputs.vpc_id
+  availabilityZone: us-west-2b
+  cidrBlock: 10.0.102.0/24
+  routes:
+    - destinationCidrBlock: 0.0.0.0/0
+      targetType: internet_gateway
+      targetId:
+        valueFrom:
+          kind: AwsInternetGateway
+          name: planton-oss-e2e-awsinternetgateway-prereq
+          fieldPath: status.outputs.internet_gateway_id

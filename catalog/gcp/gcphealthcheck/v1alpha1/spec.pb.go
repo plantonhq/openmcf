@@ -966,8 +966,9 @@ type GcpHealthCheckGrpcTls struct {
 	// The gRPC service name passed to Health/Check. Empty probes the server's
 	// OVERALL health.
 	GrpcServiceName string `protobuf:"bytes,1,opt,name=grpc_service_name,json=grpcServiceName,proto3" json:"grpc_service_name,omitempty"`
-	// TCP port for the probe. Required when port_specification is
-	// USE_FIXED_PORT or unset. Must be 1-65535.
+	// TCP port for the probe when port_specification is USE_FIXED_PORT or
+	// unset. Must be 1-65535 when set. Optional — the provider does not
+	// require it; set it explicitly for a deterministic probe target.
 	Port int32 `protobuf:"varint,2,opt,name=port,proto3" json:"port,omitempty"`
 	// How the probe port is chosen: USE_FIXED_PORT (the `port` field, the
 	// default) or USE_SERVING_PORT (the backend's own serving port).

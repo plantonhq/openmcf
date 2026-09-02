@@ -6,8 +6,8 @@
 
 Create and manage [Amazon SageMaker AI MLflow apps](https://docs.aws.amazon.com/sagemaker/latest/dg/mlflow.html)
 — the serverless managed MLflow 3.x deployment that succeeds the
-hourly-billed tracking server: no capacity to size, billed per use, $0
-when idle.
+hourly-billed tracking server: no capacity to size, billed per use,
+nothing when idle.
 
 ## What Gets Created
 

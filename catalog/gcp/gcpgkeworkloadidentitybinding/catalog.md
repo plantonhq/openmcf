@@ -1,6 +1,6 @@
 # GCP GKE Workload Identity Binding
 
-Creates an IAM policy binding that allows a Kubernetes ServiceAccount (KSA) in a GKE cluster to impersonate a Google ServiceAccount (GSA) via Workload Identity Federation. This eliminates the need for exported JSON service account keys, enabling GKE pods to authenticate to GCP APIs using the cluster's Workload Identity pool. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and service accounts.
+Creates an IAM policy binding that allows a Kubernetes ServiceAccount (KSA) in a GKE cluster to impersonate a Google ServiceAccount (GSA) via Workload Identity Federation. This eliminates the need for exported JSON service account keys, enabling GKE pods to authenticate to GCP APIs using the cluster's Workload Identity pool. The IAM member principal is constructed from its parts — `serviceAccount:{project}.svc.id.goog[{namespace}/{name}]` — so a typo'd principal string is impossible by construction.
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP GKE Workload Identity Binding**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a typical KSA-to-GSA binding.
+Open the deployment store, find **GCP GKE Workload Identity Binding**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Workload Identity Binding** preset in the [Presets](#presets) tab to pre-populate a typical KSA-to-GSA binding.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeWorkloadIdentityBinding
 metadata:
   name: cert-manager-binding
@@ -110,7 +110,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard binding** -- A single KSA-to-GSA binding for common use cases like cert-manager DNS validation, external-dns record management, or application access to Cloud SQL, Cloud Storage, or Pub/Sub. Provide the project, GSA email, and KSA coordinates. Start from the **Standard** preset.
+**Standard binding** -- A single KSA-to-GSA binding for common use cases like cert-manager DNS validation, external-dns record management, or application access to Cloud SQL, Cloud Storage, or Pub/Sub. Provide the project, GSA email, and KSA coordinates. Start from the **Standard Workload Identity Binding** preset.
 
 ## Works With
 

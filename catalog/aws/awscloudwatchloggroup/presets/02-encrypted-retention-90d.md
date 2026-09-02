@@ -1,4 +1,4 @@
-# Preset: Encrypted 90-Day Retention
+# Encrypted 90-Day Retention
 
 **Use case:** Production application logging with KMS encryption and 90-day retention for compliance.
 
@@ -25,6 +25,8 @@ This pattern provides customer-managed encryption and a 90-day retention window 
 
 ## Cost
 
-- **Ingestion**: $0.50/GB
-- **Storage**: $0.03/GB/month (for up to 90 days)
-- **KMS**: $1.00/month per key + $0.03/10,000 API calls
+- **Ingestion**: billed per GB written — the dominant line for most log groups
+- **Storage**: billed per GB-month for up to the 90 days events are retained
+- **KMS**: the customer-managed key adds a flat monthly per-key charge plus per-API-call usage
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awscloudwatchloggroup.yaml` — computed from the pinned price book, never hand-typed here.

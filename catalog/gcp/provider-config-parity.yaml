@@ -1,0 +1,65 @@
+# Provider-config parity manifest for the Google provider block: the recorded
+# judgment joining `provider "google" {}` arguments (hashicorp/google at the
+# pinned version) to GcpProviderConfig fields. File presence enrolls this
+# provider for provider-block accounting.
+#
+# access_token matches its config field by name.
+
+mappings:
+  # The service-account key JSON: Planton names the credential for what it is;
+  # the provider block calls it credentials.
+  - config: config.service_account_key
+    arg: credentials
+  # Keyless web identity: the provider block's external_credentials is the
+  # web_identity message (audience and service_account_email match by name
+  # below the subtree); the token leaf diverges in name.
+  - config: config.web_identity
+    arg: external_credentials
+  - config: config.web_identity.web_identity_token
+    arg: external_credentials.identity_token
+
+moduleOwned:
+  - arg: user_project_override
+    reason: quota-project attribution for APIs that bill the user project -- set by the identity-platform kinds' modules with the recorded justification in their provider.tf comments; a config-level override would silently change billing attribution for every kind
+
+exclusions:
+  - arg: project
+    reason: the project is a resource property in every GCP spec (specs reference projects explicitly); a connection-level default project would make manifests ambiguous across projects
+  - arg: region
+    reason: region is a resource property in every GCP spec; the provider-level default is never consulted
+  - arg: zone
+    reason: zone is a resource property in every GCP spec; the provider-level default is never consulted
+  - arg: billing_project
+    reason: billing-project attribution beyond user_project_override is demand-driven; no catalog surface bills a separate project today
+  - arg: impersonate_service_account
+    reason: service-account impersonation as a provider argument is demand-driven -- the credential-broker's impersonated-account path covers the enterprise impersonation ask at the connection level
+  - arg: impersonate_service_account_delegates
+    reason: service-account impersonation as a provider argument is demand-driven -- the credential-broker's impersonated-account path covers the enterprise impersonation ask at the connection level
+  - arg: scopes
+    reason: OAuth scope narrowing below the SDK's cloud-platform default is demand-driven; issued credentials are already least-privilege at the identity layer
+  - arg: default_labels
+    reason: provider-level default labels are not yet expressible on the GCP provider config -- the AWS provider carries the pattern (default_tags); demand-driven for GCP
+  - arg: add_terraform_attribution_label
+    reason: Terraform's own attribution labeling; the platform owns resource attribution through its identity tags, not the engine's
+  - arg: terraform_attribution_label_addition_strategy
+    reason: Terraform's own attribution labeling; the platform owns resource attribution through its identity tags, not the engine's
+  - arg: batching
+    reason: client-side request batching is engine tuning with provider-recommended defaults, not deployment configuration
+  - arg: request_timeout
+    reason: client request-timeout tuning is engine plumbing, not deployment configuration
+  - arg: request_reason
+    reason: audit request-reason headers are demand-driven; no adopter posture requires them yet
+  - arg: poll_interval
+    reason: operation-polling tuning is engine plumbing, not deployment configuration
+  - arg: deletion_policy
+    reason: a provider-wide deletion override would blur per-kind destroy contracts -- deletion semantics are modeled per kind, where their consequences are taught
+  - arg: prefer_global_endpoints
+    reason: endpoint routing preference is demand-driven; per-service endpoint overrides are the pattern (carried on AWS) and arrive here with demand
+  - arg: prefer_regional_endpoints
+    reason: endpoint routing preference is demand-driven; per-service endpoint overrides are the pattern (carried on AWS) and arrive here with demand
+  - arg: universe_domain
+    reason: sovereign-cloud universe domains are demand-driven; no adopter runs outside googleapis.com today
+
+exclusionPatterns:
+  - pattern: _custom_endpoint$
+    reason: the provider stamps one custom-endpoint argument per service (~180 of them); per-service endpoint overrides are not yet expressible on the GCP provider config -- the AWS provider carries the pattern (the endpoints map), and GCP joins it with demand

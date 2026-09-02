@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceankubernetesnodepool
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageNodePool
+        scopes:
+          - kubernetes:create
+          - kubernetes:read
+          - kubernetes:update
+          - kubernetes:delete
+        provenance: derived
+        notes: Covers digitalocean_kubernetes_node_pool's create/read/update/delete/import paths (waiters included) in both the Terraform and Pulumi modules -- create the pool via POST /v2/kubernetes/clusters/{cluster}/node_pools with size, count, autoscale bounds, labels, taints, and tags riding the create body (kubernetes:create), read the pool via GET /v2/kubernetes/clusters/{cluster}/node_pools/{id} on refresh/import and while the create waiter polls node readiness (kubernetes:read), update count/bounds/labels/taints/tags via PUT /v2/kubernetes/clusters/{cluster}/node_pools/{id} (kubernetes:update), and destroy the pool AND its member droplets via DELETE /v2/kubernetes/clusters/{cluster}/node_pools/{id} (kubernetes:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.
+      - purpose: MaterializeTags
+        scopes:
+          - tag:create
+        provenance: derived
+        notes: Both modules always apply the Planton tags (plus spec tags) to the pool's droplets; assigning a tag name the account has never used materializes it.

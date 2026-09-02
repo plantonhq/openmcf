@@ -54,13 +54,29 @@ message AzureDataProtectionResourceGuardSpec {
 
   // Critical vault operations EXCLUDED from the guard's approval
   // requirement, as ARM operation names (e.g.
-  // "Microsoft.RecoveryServices/vaults/backupconfig/write"). An
-  // excluded operation executes without an approval. Leave empty to
-  // guard every critical operation (the strongest posture). Updates
-  // in place.
-  repeated string vault_critical_operation_exclusion_list = 4 [(buf.validate.field).repeated.items = {
-    string: {min_len: 1}
-  }];
+  // "Microsoft.RecoveryServices/vaults/backupResourceGuardProxies/write").
+  // An excluded operation executes without an approval. Leave empty to
+  // guard every critical operation (the strongest posture). Updates in
+  // place. Azure keeps a MANDATORY set no guard may ever exclude and
+  // rejects the create outright
+  // (BMSUserErrorInvalidCriticalOperationExclusionList) when the list
+  // names one: the operations that would disarm the guard itself
+  // (backupconfig/write, both vault families'
+  // backupResourceGuardProxies/delete,
+  // backupVaults/write#reduceSoftDeleteSecurity) and the cross-tenant
+  // vault-mapping operations. The provider does not validate this --
+  // the rule below mirrors ARM's own rejection list so the failure
+  // lands at admission, not at deploy.
+  repeated string vault_critical_operation_exclusion_list = 4 [
+    (buf.validate.field).repeated.items = {
+      string: {min_len: 1}
+    },
+    (buf.validate.field).cel = {
+      id: "dprg_exclusions_not_mandatory"
+      message: "the exclusion list names an operation Azure never allows excluding -- the MUA-mandatory set (backupconfig/write, backupResourceGuardProxies/delete, backupVaults/write#reduceSoftDeleteSecurity, and the backupCrossTenantVaultMappings operations) is always guarded"
+      expression: "this.all(op, !(op in ['Microsoft.RecoveryServices/vaults/backupconfig/write', 'Microsoft.RecoveryServices/vaults/backupResourceGuardProxies/delete', 'Microsoft.DataProtection/backupVaults/backupResourceGuardProxies/delete', 'Microsoft.DataProtection/backupVaults/write#reduceSoftDeleteSecurity', 'Microsoft.RecoveryServices/vaults/backupCrossTenantVaultMappings/write', 'Microsoft.RecoveryServices/vaults/backupCrossTenantVaultMappings/remove/action', 'Microsoft.RecoveryServices/vaults/backupCrossTenantVaultMappings/backupFabrics/protectionContainers/protectedItems/recoveryPoints/restore/action']))"
+    }
+  ];
 
   // Free-form tags applied to the guard, merged over the
   // Planton-derived resource tags (organization, environment,

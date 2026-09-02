@@ -1,6 +1,6 @@
 # GCP Firestore Database
 
-Deploys a Firestore database in a GCP project with configurable database type (Native or Datastore mode), location (single-region or multi-region), concurrency mode, point-in-time recovery, delete protection, edition tier (Standard or Enterprise), CMEK encryption, ENTERPRISE data-access modes (classic Firestore API, MongoDB-compatible API, realtime updates), resource-manager tags, and teardown policy. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and KMS keys.
+Deploys a Firestore database in a GCP project with configurable database type (Native or Datastore mode), location (single-region or multi-region), concurrency mode, point-in-time recovery, delete protection, edition tier (Standard or Enterprise), CMEK encryption, ENTERPRISE data-access modes (classic Firestore API, MongoDB-compatible API, realtime updates), resource-manager tags, and teardown policy. A project holds one `(default)` database plus any number of named databases; this component models one database per Cloud Resource.
 
 ## What Gets Created
 
@@ -12,6 +12,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **CMEK Encryption** -- created only when `kmsKeyName` is provided; encrypts database data at rest using a customer-managed Cloud KMS key in the same location as the database
 - **Data-Access Modes** -- on ENTERPRISE databases, three switches control which protocols can read and write: the classic Firestore API (`firestoreDataAccessMode`), MongoDB drivers (`mongodbCompatibleDataAccessMode`), and realtime query snapshots (`realtimeUpdatesMode`)
 - **Teardown Policy** -- `deletionPolicy` defaults to DELETE so destroys manage the full lifecycle; PREVENT makes a destroy fail, ABANDON unmanages the database while it keeps serving
+- **Firestore API enablement** -- `firestore.googleapis.com` enabled in the target project (never disabled on destroy)
 
 Firestore databases do not support GCP labels. Resource Manager tags (`resourceManagerTags`) are applied at create time only; day-to-day resource tracking relies on the Planton metadata (organization, environment, resource kind) stored in the Cloud Resource record.
 
@@ -25,14 +26,13 @@ Firestore databases do not support GCP labels. Resource Manager tags (`resourceM
 ### GCP Project
 
 - **A GCP project** where the Firestore database will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Firestore API** (`firestore.googleapis.com`) enabled in the target project.
-- **Cloud KMS key** in the same location as the database (if using CMEK). For multi-region databases: `nam5` requires a key in the `us` multi-region; `eur3` requires a key in the `europe` multi-region.
+- **Cloud KMS key** in the same location as the database (only for CMEK). For multi-region databases: `nam5` requires a key in the `us` multi-region; `eur3` requires a key in the `europe` multi-region.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Firestore Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Default Native** preset in the [Presets](#presets) tab to create the project's default Firestore Native database.
+Open the deployment store, find **GCP Firestore Database**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Default Firestore Native Database** preset in the [Presets](#presets) tab to create the project's default Firestore Native database.
 
 ### CLI
 
@@ -110,26 +110,25 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `database_id` | Fully qualified database ID (`projects/{project}/databases/{database}`) | Application configuration, IAM bindings, backup schedules |
+| `database_id` | Fully qualified database ID (`projects/{project}/databases/{database}`) | Application configuration, IAM bindings |
 | `database_name` | Database name (`(default)` or custom name) | Client library database selection, `GcpFirestoreIndex`/`GcpFirestoreBackupSchedule` attachment |
-| `uid` | Server-generated UUID4 | Correlation, audit trails |
-| `create_time` | Database creation timestamp (RFC3339 UTC) | Audit, lifecycle tracking |
-| `earliest_version_time` | Earliest timestamp for version reads (RFC3339 UTC) | Point-in-time recovery planning, data freshness validation |
+| `earliest_version_time` | Earliest timestamp for version reads (RFC3339 UTC) | Point-in-time recovery planning |
 | `version_retention_period` | How long past versions are retained (`3600s` without PITR, `604800s` with PITR) | Recovery-window verification |
 | `key_prefix` | Datastore Mode app-identifier prefix (empty without a legacy App Engine app) | Legacy Datastore key construction |
-| `update_time` | Last configuration-update timestamp (RFC3339 UTC) | Audit, change tracking |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Default Native** -- The project's default Firestore Native database in the US multi-region with delete protection enabled. The starting point for most applications using the Firestore client libraries. Start from the **Default Native** preset.
+**Default Native** -- The project's default Firestore Native database in the US multi-region with delete protection enabled. The starting point for most applications using the Firestore client libraries. Start from the **Default Firestore Native Database** preset.
 
-**Named Native with PITR** -- A custom-named Firestore Native database with point-in-time recovery enabled and delete protection. Suitable for production workloads that need data recovery capabilities and workload isolation from the default database. Start from the **Named Native PITR** preset.
+**Named Native with PITR** -- A custom-named Firestore Native database with point-in-time recovery enabled and delete protection. Suitable for production workloads that need data recovery capabilities and workload isolation from the default database. Start from the **Named Firestore Native Database with PITR** preset.
 
-**Enterprise with CMEK** -- Enterprise edition Firestore Native database with PITR, delete protection, and customer-managed encryption. Suitable for regulated industries requiring enhanced SLA, advanced security, and encryption key control. Start from the **Enterprise CMEK** preset.
+**Enterprise with CMEK** -- Enterprise edition Firestore Native database with PITR, delete protection, and customer-managed encryption. Suitable for regulated industries requiring enhanced SLA, advanced security, and encryption key control. Start from the **Enterprise Firestore Database with CMEK** preset.
 
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the database is created
 - [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides the CMEK encryption key for data at rest
+- [**GCP Firestore Index**](/cloud-catalog/gcp-firestore-index) -- composite and vector indexes attached to this database
+- [**GCP Firestore Backup Schedule**](/cloud-catalog/gcp-firestore-backup-schedule) -- daily and weekly managed backups of this database

@@ -8,6 +8,7 @@ go_library(
         "azure.go",
         "cloudflare.go",
         "digitalocean.go",
+        "extract.go",
         "gcp.go",
         "kubernetes.go",
         "loader.go",

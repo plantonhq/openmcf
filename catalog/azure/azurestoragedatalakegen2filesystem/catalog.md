@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Storage Data Lake Gen2 Filesystem**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Data Lake Zone** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Storage Data Lake Gen2 Filesystem**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Data Lake Zone Filesystem** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageDataLakeGen2Filesystem
 metadata:
   name: raw-zone
@@ -51,7 +51,7 @@ spec:
 planton apply -f filesystem.yaml
 ```
 
-This creates a zone with Azure's default ownership and no ACL -- engines address it as `abfss://raw@{account}.dfs.core.windows.net/`.
+This creates the `raw` filesystem on the `datalake-account` account with Azure's default ownership and no ACL -- engines address it as `abfss://raw@{account}.dfs.core.windows.net/`. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -69,7 +69,7 @@ These are the most important decisions when configuring a filesystem. Explore th
 
 **The root ACL** -- `aces` is the POSIX access control list on "/" -- the same rwx model as a Linux filesystem, evaluated per request against the caller's Entra identity. ACCESS entries gate the root itself; DEFAULT entries are the template newly created children inherit, which is how a zone's posture propagates to files landing in it. USER/GROUP entries may name a principal via `objectId`; MASK caps every named entry; OTHER covers unmatched callers. Permissions are the strict three-character form (`rwx`, `r-x`, `---`).
 
-**Properties** -- free-form key/value pairs stored on the filesystem. Azure requires the VALUES to be base64-encoded (keys stay plain), e.g. `environment: cHJvdWN0aW9u`. Visible to anyone who can read filesystem properties; not for secrets.
+**Properties** -- free-form key/value pairs stored on the filesystem. Azure requires the VALUES to be base64-encoded (keys stay plain), e.g. `environment: cHJvZHVjdGlvbg==`. Visible to anyone who can read filesystem properties; not for secrets.
 
 ## Outputs and Dependencies
 
@@ -97,11 +97,11 @@ There is deliberately NO abfss:// URL output: the address is the ACCOUNT's dfs e
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Medallion zones** -- one filesystem per zone (raw, curated, gold), each with an owner-manages / group-reads / others-shut-out ACL and DEFAULT twins so new files inherit the posture. Start from the **Data Lake Zone** preset.
+**Medallion zones** -- one filesystem per zone (raw, curated, gold), each with an owner-manages / group-reads / others-shut-out ACL and DEFAULT twins so new files inherit the posture. Start from the **Data Lake Zone Filesystem** preset.
 
-**Team workspace** -- a named Entra security group owns the workspace root; team membership IS the access list, managed in Entra instead of per-filesystem. Start from the **Team-Scoped Workspace** preset.
+**Team workspace** -- a named Entra security group owns the workspace root; team membership IS the access list, managed in Entra instead of per-filesystem. Start from the **Team-Scoped Workspace Filesystem** preset.
 
-**Regulated zone under a customer key** -- a default encryption scope backed by Key Vault on just the compliance zone. Start from the **Regulated Zone (CMK)** preset.
+**Regulated zone under a customer key** -- a default encryption scope backed by Key Vault on just the compliance zone. Start from the **Regulated Zone with Customer-Managed Key** preset.
 
 ## Works With
 

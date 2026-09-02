@@ -51,6 +51,9 @@ spec:
         type: spec_default
         reference: Unset means no static AWS credential exists (the keyless posture); the static key pair is the deliberate fallback for clusters without ambient AWS identity, and validation requires both halves together. google_cloud_dns.service_account_key_json and azure_dns.client_secret are the analogous static arms.
       notes: The modules materialize declared credentials as Kubernetes Secrets wired into the controller environment -- they never appear in chart values or pod specs. No committed preset stores cloud keys.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Record changes stream to stdout for the cluster's log collector (log_format json for pipelines); administrative changes to the component are Kubernetes API operations captured by the target cluster's audit policy, and the DNS provider's own audit trail records the zone mutations.

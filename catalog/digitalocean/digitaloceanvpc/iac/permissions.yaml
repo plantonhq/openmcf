@@ -1,0 +1,21 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanvpc
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageVpc
+        scopes:
+          - vpc:read
+          - vpc:create
+          - vpc:update
+          - vpc:delete
+        provenance: derived
+        notes: Covers digitalocean_vpc's create/read/update/delete/import paths -- read the VPC via GET /v2/vpcs/{id} on refresh/import (also how an auto-assigned ip_range lands in state) (vpc:read), create the VPC via POST /v2/vpcs with region, description, and the optional CIDR riding the create body (vpc:create), rename or re-describe via PUT/PATCH /v2/vpcs/{id} where region and ip_range are immutable -- changing them REPLACES the VPC instead (vpc:update), and delete the VPC via DELETE /v2/vpcs/{id} where DigitalOcean refuses while member resources remain, so destroy ordering matters (vpc:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.

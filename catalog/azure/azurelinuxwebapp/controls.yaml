@@ -59,6 +59,9 @@ spec:
         type: spec_default
         reference: "Defaults to true (Azure's own default): username/password publishing works over Web Deploy, and ftp_publish_basic_authentication_enabled separately governs the FTP credential. Setting both false closes every basic-auth deployment path and forces identity-based deployment."
       notes: "The 03-enterprise preset disables both. The exported site_credential outputs stop working once basic-auth publishing is off -- expected, that is the point."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: logs

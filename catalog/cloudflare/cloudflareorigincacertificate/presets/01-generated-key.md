@@ -1,4 +1,4 @@
-# Preset: Generated Key (recommended)
+# Generated Key (recommended)
 
 The recommended default: the module generates an RSA key + CSR for your hostnames
 and returns the signed certificate together with the (sensitive) private key. A

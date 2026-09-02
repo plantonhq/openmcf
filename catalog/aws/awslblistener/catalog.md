@@ -39,7 +39,7 @@ Open the deployment store, find **AWS LB Listener**, and click **Deploy**. The c
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListener
 metadata:
   name: https-listener
@@ -76,6 +76,38 @@ planton apply -f listener.yaml
 
 This attaches a TLS-terminating HTTPS listener to the ALB, forwarding everything to the web-servers group. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the listener deploys alongside its load balancer, certificate, and target group in one chart, wire the references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-east-1
+  loadBalancerArn:
+    valueFrom:
+      kind: AwsAlb
+      name: api-gateway
+      fieldPath: status.outputs.load_balancer_arn
+  port: 443
+  protocol: HTTPS
+  certificateArn:
+    valueFrom:
+      kind: AwsCertManagerCert
+      name: wildcard-cert
+      fieldPath: status.outputs.cert_arn
+  defaultActions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              valueFrom:
+                kind: AwsLbTargetGroup
+                name: web-servers
+                fieldPath: status.outputs.target_group_arn
+```
+
+The InfraPipeline resolves the dependency graph, deploys the load balancer, certificate, and target group first, then attaches the listener.
+
 ## Key Configuration
 
 These are the most important decisions when configuring a listener. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -96,16 +128,17 @@ These are the most important decisions when configuring a listener. Explore the 
 
 ### What This Component Consumes
 
-| Field | References | Via |
-|-------|-----------|-----|
-| `loadBalancerArn` | AwsAlb (default) or AwsNlb | `status.outputs.load_balancer_arn` |
-| `certificateArn` / `additionalCertificateArns[]` | AwsCertManagerCert | `status.outputs.cert_arn` |
-| `defaultActions[].forward.targetGroups[].arn` | AwsLbTargetGroup | `status.outputs.target_group_arn` |
-| `defaultActions[].authenticateCognito.userPoolArn` | AwsCognitoUserPool | `status.outputs.user_pool_arn` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsAlb** (default) or **AwsNlb** | `loadBalancerArn` | `status.outputs.load_balancer_arn` |
+| **AwsCertManagerCert** | `certificateArn` / `additionalCertificateArns[]` | `status.outputs.cert_arn` |
+| **AwsLbTargetGroup** | `defaultActions[].forward.targetGroups[].arn` | `status.outputs.target_group_arn` |
+| **AwsCognitoUserPool** | `defaultActions[].authenticateCognito.userPoolArn` / `.userPoolDomain` | `status.outputs.user_pool_arn` / `status.outputs.user_pool_domain` |
+| **AwsCognitoUserPoolClient** | `defaultActions[].authenticateCognito.userPoolClientId` | `status.outputs.client_id` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
@@ -117,14 +150,15 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **TLS termination + forward** -- the production 443 listener. Start from the **HTTPS Forward** preset.
 
-**HTTP→HTTPS redirect** -- the one-action port-80 listener every HTTPS site pairs with. Start from the **HTTP Redirect To HTTPS** preset.
+**HTTP→HTTPS redirect** -- the one-action port-80 listener every HTTPS site pairs with. Start from the **HTTP Redirect to HTTPS** preset.
 
-**SSO in front of an internal tool** -- an authenticate-oidc action ahead of the forward. Start from the **OIDC Protected** preset.
+**SSO in front of an internal tool** -- an authenticate-oidc action ahead of the forward. Start from the **OIDC-Protected HTTPS** preset.
 
 ## Works With
 
-- **AwsAlb / AwsNlb** -- the load balancer this listener attaches to, referenced by `loadBalancerArn`.
-- **AwsLbListenerRule** -- per-service routing attached through this listener's `listener_arn` output.
-- **AwsLbTargetGroup** -- the forward destinations, referenced per action.
-- **AwsCertManagerCert** -- the TLS material, referenced by `certificateArn`.
-- **AwsCognitoUserPool** -- the user pool behind authenticate-cognito actions.
+- [**AWS ALB**](/cloud-catalog/aws-alb) -- the Layer-7 load balancer this listener attaches to, referenced by `loadBalancerArn`.
+- [**AWS NLB**](/cloud-catalog/aws-nlb) -- the Layer-4 alternative attachment, taking forward-only protocols.
+- [**AWS LB Listener Rule**](/cloud-catalog/aws-lb-listener-rule) -- per-service routing attached through this listener's `listener_arn` output.
+- [**AWS LB Target Group**](/cloud-catalog/aws-lb-target-group) -- the forward destinations, referenced per action.
+- [**AWS ACM Certificate**](/cloud-catalog/aws-cert-manager-cert) -- the TLS material, referenced by `certificateArn`.
+- [**AWS Cognito User Pool**](/cloud-catalog/aws-cognito-user-pool) -- the user pool behind authenticate-cognito actions.

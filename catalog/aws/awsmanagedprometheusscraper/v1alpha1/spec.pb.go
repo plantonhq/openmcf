@@ -169,7 +169,8 @@ type AwsManagedPrometheusScraperEksSource struct {
 	ClusterArn *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=cluster_arn,json=clusterArn,proto3" json:"cluster_arn,omitempty"`
 	// Subnets the scraper's collectors place into (the cluster's
 	// subnets). Reference AwsSubnet subnet_id outputs or pass literal
-	// IDs.
+	// IDs. CreateScraper requires at least two subnets (server
+	// contract: "Number of subnets must be at least 2").
 	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,2,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
 	// Security groups on the scraper's network interfaces. Unset lets
 	// AWS pick the cluster's security group.
@@ -234,7 +235,9 @@ func (x *AwsManagedPrometheusScraperEksSource) GetSecurityGroupIds() []*v1.Strin
 type AwsManagedPrometheusScraperVpcSource struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Subnets the scraper's collectors place into. Reference AwsSubnet
-	// subnet_id outputs or pass literal IDs.
+	// subnet_id outputs or pass literal IDs. CreateScraper requires at
+	// least two subnets (server contract: "Number of subnets must be at
+	// least 2", live-verified on a single-subnet create).
 	SubnetIds []*v1.StringValueOrRef `protobuf:"bytes,1,rep,name=subnet_ids,json=subnetIds,proto3" json:"subnet_ids,omitempty"`
 	// Security groups on the scraper's network interfaces (AWS requires
 	// at least one for VPC sources). Reference AwsSecurityGroup
@@ -431,11 +434,11 @@ const file_catalog_aws_awsmanagedprometheusscraper_v1alpha1_spec_proto_rawDesc =
 	"\vcluster_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x03\xc8\x01\x01\x88\xd4a\xef\a\x92\xd4a\x1astatus.outputs.cluster_arnR\n" +
 	"clusterArn\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
+	"subnet_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x02\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x8b\x01\n" +
 	"\x12security_group_ids\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xba\x02\n" +
 	"$AwsManagedPrometheusScraperVpcSource\x12|\n" +
 	"\n" +
-	"subnet_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
+	"subnet_ids\x18\x01 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB)\xbaH\x05\x92\x01\x02\b\x02\x88\xd4a\xbc\b\x92\xd4a\x18status.outputs.subnet_idR\tsubnetIds\x12\x93\x01\n" +
 	"\x12security_group_ids\x18\x02 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x05\x92\x01\x02\b\x01\x88\xd4a\xf7\a\x92\xd4a status.outputs.security_group_idR\x10securityGroupIds\"\xaa\x02\n" +
 	",AwsManagedPrometheusScraperRoleConfiguration\x12|\n" +
 	"\x0fsource_role_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB \x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\rsourceRoleArn\x12|\n" +

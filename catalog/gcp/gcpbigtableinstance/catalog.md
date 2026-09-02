@@ -1,11 +1,12 @@
 # GCP Bigtable Instance
 
-Deploys a Cloud Bigtable instance with one or more clusters, configurable scaling (fixed nodes, autoscaling, or auto-allocated), SSD or HDD storage, optional CMEK encryption per cluster, and multi-zone replication for high availability. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and KMS keys.
+Deploys a Cloud Bigtable instance with one or more clusters, configurable scaling (fixed nodes, autoscaling, or auto-allocated), SSD or HDD storage, optional CMEK encryption per cluster, and multi-zone replication for high availability. The instance bundles its clusters because an instance without at least one cluster cannot store or serve data; tables are a separate kind with their own lifecycle.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Bigtable Admin API enablement** (`bigtableadmin.googleapis.com`) on the target project (never disabled on destroy)
 - **Bigtable Instance** -- a managed instance in the specified GCP project, serving as the logical container for data with deletion protection and optional display name
 - **Bigtable Clusters** -- one or more clusters within the instance, each placed in a specific zone with independent scaling configuration (fixed node count, autoscaling with CPU/storage targets, or auto-allocated)
 - **CMEK Encryption** -- created only when `kmsKeyName` is set on a cluster; encrypts data at rest with a customer-managed Cloud KMS key (immutable per cluster)
@@ -21,7 +22,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the Bigtable instance will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Bigtable API** (`bigtable.googleapis.com`) enabled in the target project.
 - **Cloud KMS key** (if using CMEK) -- the key region must match the cluster zone's region. The Bigtable service account must have `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the key.
 
 ## Deploy
@@ -35,7 +35,7 @@ Open the deployment store, find **GCP Bigtable Instance**, and click **Deploy**.
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableInstance
 metadata:
   name: events-store
@@ -55,7 +55,7 @@ spec:
 planton apply -f bigtable-instance.yaml
 ```
 
-This creates a Bigtable instance with a single 3-node SSD cluster, Google-managed encryption, and deletion protection enabled (default). No autoscaling or multi-zone replication is configured.
+This creates a Bigtable instance with a single 3-node SSD cluster, Google-managed encryption, and deletion protection enabled (default). No autoscaling or multi-zone replication is configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -116,3 +116,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the Bigtable instance is created
 - [**GCP KMS Key**](/cloud-catalog/gcp-kms-key) -- provides the Cloud KMS key for per-cluster CMEK encryption
+- [**GCP Bigtable Table**](/cloud-catalog/gcp-bigtable-table) -- tables created on this instance, referencing its `instance_name` output

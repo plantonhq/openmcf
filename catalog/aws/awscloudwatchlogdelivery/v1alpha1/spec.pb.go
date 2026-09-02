@@ -518,9 +518,16 @@ type AwsCrossAccountLogDestination struct {
 	// ARN.
 	TargetArn *v1.StringValueOrRef `protobuf:"bytes,3,opt,name=target_arn,json=targetArn,proto3" json:"target_arn,omitempty"`
 	// The destination's access policy: which accounts/principals may
-	// logs:PutSubscriptionFilter against this destination. NOTE the
-	// AWS contract: destroying the policy alone never removes it -
-	// only destroying the whole destination does.
+	// logs:PutSubscriptionFilter against this destination. Write AWS
+	// principals as BARE ACCOUNT IDs ("AWS": "123456789012") - the
+	// service rejects the ARN form with "Principal section of policy
+	// contains ARN instead of account ID: arn:aws:iam::...:root"
+	// (server contract; the usual IAM root-ARN spelling is invalid
+	// here). In YAML, QUOTE the id: an unquoted account id parses as a
+	// number and IAM's grammar rejects a numeric principal ("Error
+	// occurred while parsing accessPolicy"). NOTE the AWS contract:
+	// destroying the policy alone never removes it - only destroying
+	// the whole destination does.
 	AccessPolicy *structpb.Struct `protobuf:"bytes,4,opt,name=access_policy,json=accessPolicy,proto3" json:"access_policy,omitempty"`
 	// Update the policy even while it is actively in use by
 	// subscription filters. Unset keeps AWS's default behavior.

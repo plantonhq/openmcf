@@ -1,0 +1,43 @@
+# Consumer-scoped AzureMongoCluster prerequisite for the user (Entra
+# grant) lane. The grant requires a cluster that lists MicrosoftEntraID
+# in authentication_methods, and ARM rejects that method on the Free
+# tier (400 "Microsoft Entra ID authentication is not supported for
+# 'Free' cluster tier" -- the mongo_cluster_free_tier_no_entra CEL),
+# so the cluster kind's own Free-tier smoke cannot serve this lane.
+# This override deploys the smallest Entra-capable shape instead: M10
+# (~cents/hour for the lane's minutes-long life), one shard, HA
+# disabled, BOTH auth methods -- NativeAuth keeps the admin-credential
+# pair the Default mode requires, MicrosoftEntraID is what this lane
+# exists to bind against. metadata.name matches the cluster kind's own
+# smoke instance so the user scenario's reference resolves unchanged.
+apiVersion: azure.planton.dev/v1alpha1
+kind: AzureMongoCluster
+metadata:
+  name: planton-oss-e2e-azuremongocluster-smoke
+  id: planton-oss-e2e-azuremongocluster-smoke
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: azuremongoclusteruser
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  resourceGroup:
+    valueFrom:
+      name: planton-oss-e2e-azure-fixture-rg
+  name: planton-oss-e2e-mongo-${E2E_RUN_ID}
+  region: eastus
+  administratorUsername: mongoadmin
+  administratorPassword:
+    value: PlantonE2e-Thr0waway
+  version: "8.0"
+  computeTier: M10
+  storageSizeInGb: 32
+  shardCount: 1
+  highAvailabilityMode: Disabled
+  authenticationMethods:
+    - NativeAuth
+    - MicrosoftEntraID

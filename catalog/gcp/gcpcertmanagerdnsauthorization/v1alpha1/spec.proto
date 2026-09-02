@@ -32,6 +32,7 @@ message GcpCertManagerDnsAuthorizationSpec {
   // Name of the authorization in GCP. Must be 1-64 characters: start with
   // a letter, then letters, digits, hyphens, or underscores.
   // If not specified, defaults to metadata.name.
+  // Immutable: renaming destroys and recreates the authorization.
   string authorization_name = 2 [(buf.validate.field).cel = {
     id: "authorization_name.valid"
     message: "authorization_name must be 1-64 characters, start with a letter, and contain only letters, digits, hyphens, or underscores"
@@ -57,6 +58,8 @@ message GcpCertManagerDnsAuthorizationSpec {
   // The Certificate Manager location. Defaults to "global" — the correct
   // choice for classic external HTTPS load balancers. Regional
   // authorizations pair with regional certificates only.
+  // Immutable: changing the location destroys and recreates the
+  // authorization.
   string location = 5;
 
   // How the validation record is scoped:

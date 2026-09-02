@@ -63,6 +63,9 @@ spec:
         type: spec_default
         reference: Without Kerberos, in-cluster Hadoop protocols run in simple (unauthenticated) mode -- the legacy-weak path; enabling Kerberos turns on Hadoop Secure Mode and retires it.
       notes: No preset enables Kerberos; the presets rely on network isolation and IAM instead. security_config accepts exactly one of kerberos_config or identity_config.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

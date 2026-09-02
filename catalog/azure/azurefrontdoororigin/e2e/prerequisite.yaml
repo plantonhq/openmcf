@@ -23,4 +23,5 @@ spec:
     valueFrom:
       name: planton-oss-e2e-fd-og-prereq
   originName: e2e-primary-prereq
-  hostName: example.com
+  hostName:
+    value: example.com

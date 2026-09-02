@@ -64,6 +64,9 @@ spec:
         type: spec_default
         reference: The AWS default is "optional" (IMDSv1 and v2 both answer); "required" disables the legacy no-token IMDSv1 path -- the single most effective hardening against credential-stealing SSRF.
       notes: Every preset sets http_tokens required. SSH-versus-SSM is the other legacy-auth axis -- leaving key_name unset removes the static SSH key path in favor of SSM Session Manager.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Management-plane actions on the instance land in account-level CloudTrail outside this component, and OS-level audit logs belong to agents the workload runs; the spec wires no instance-scoped audit log stream.

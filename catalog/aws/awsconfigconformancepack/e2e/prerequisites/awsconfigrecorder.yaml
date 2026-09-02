@@ -16,6 +16,10 @@ metadata:
     e2e-component: awsconfigrecorder
   annotations:
     planton.dev/e2e: "true"
+    # This install manifest composes the history bucket its delivery
+    # channel writes to; declaring the kind here schedules the bucket
+    # BEFORE this recorder so the value_from reference below resolves.
+    planton.dev/e2e-prerequisites: "AwsS3Bucket"
   tags:
     - planton-e2e
 spec:

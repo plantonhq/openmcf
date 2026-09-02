@@ -43,6 +43,9 @@ spec:
         type: spec_default
         reference: "Stored access policies anchor every SAS token issued against them: shortening or deleting a policy IMMEDIATELY revokes all tokens it anchors -- the revocation lever ad-hoc SAS tokens lack. The 03-policy-anchored-access preset carries windowed read-only and read-write policies."
       notes: "This governs the SAS path's quality, not its existence -- disabling shared-key/SAS authorization entirely (allow_shared_key_access) is the ACCOUNT's switch. Where identity-based access is available (SMB with Entra Kerberos), prefer it over any SAS."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: "Data-plane access logging is the account's file-service diagnostic settings (StorageRead/StorageWrite/StorageDelete categories to a Log Analytics workspace); control-plane changes land in the Azure Activity Log. Neither has a share-level toggle."

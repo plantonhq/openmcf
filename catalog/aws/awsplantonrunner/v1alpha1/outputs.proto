@@ -34,7 +34,7 @@ message AwsPlantonRunnerStackOutputs {
   string security_group_id = 6;
 
   // The ARN of the execution role -- the setup identity that pulls the
-  // runner image, writes its logs, and reads its credentials secret.
+  // runner image, writes its logs, and reads its token secret.
   string execution_role_arn = 7;
 
   // The ARN of the runner's runtime IAM role -- the identity the runner

@@ -19,8 +19,10 @@
 package secretcoverage
 
 import (
+	"fmt"
 	"sort"
 
+	validatepb "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"github.com/plantonhq/planton/shared/options"
@@ -56,19 +58,31 @@ type Finding struct {
 }
 
 // classify is the pure decision for one field. Separated from the descriptor walk so
-// the full truth table -- including the two annotation-level violations -- is unit
+// the full truth table -- including the annotation-level violations -- is unit
 // tested without needing fixture protos in every contradictory shape.
+//
+// valueRule is the value-content constraint detected on the field ("" when none).
+// On a sensitive field it is a violation: consuming platforms store a managed-secret
+// REFERENCE in sensitive fields, and a rule written for the raw value (a UUID shape,
+// a URL prefix, base64 framing) rejects every reference -- the field becomes
+// impossible to fill through any annotation-driven surface. The shape belongs in the
+// field's comment, never in a rule. Length/presence bounds are NOT value rules (a
+// reference satisfies them) and are not detected.
 //
 // Note: an empty exemption reason is indistinguishable from "unset" (proto3 singular
 // string), so "empty reason" is not a reachable state and is intentionally not a rule.
-func classify(fieldName string, isSensitive bool, exemptReason string) (Classification, []string) {
+func classify(fieldName string, isSensitive bool, exemptReason string, valueRule string) (Classification, []string) {
 	looks := LooksSensitiveByName(fieldName)
+	var violations []string
+	if isSensitive && valueRule != "" {
+		violations = append(violations, fmt.Sprintf("sensitive field carries a value-content validation rule (%s) -- a stored managed-secret reference can never satisfy it; teach the shape in the field comment instead", valueRule))
+	}
 	switch {
 	case isSensitive && exemptReason != "":
 		// `sensitive` wins for safety, but the contradiction is flagged so it is fixed.
-		return Covered, []string{"field sets both `sensitive` and `sensitive_exempt_reason` (contradiction)"}
+		return Covered, append(violations, "field sets both `sensitive` and `sensitive_exempt_reason` (contradiction)")
 	case isSensitive:
-		return Covered, nil
+		return Covered, violations
 	case exemptReason != "":
 		if !looks {
 			return Exempt, []string{"`sensitive_exempt_reason` is set on a field whose name does not look sensitive (pointless exemption)"}
@@ -172,7 +186,7 @@ func isStringLeaf(fd protoreflect.FieldDescriptor) bool {
 
 func addLeaf(fd protoreflect.FieldDescriptor, path, kindName, provider string, out *[]Finding) {
 	sensitive, exemptReason := leafOptions(fd)
-	class, violations := classify(string(fd.Name()), sensitive, exemptReason)
+	class, violations := classify(string(fd.Name()), sensitive, exemptReason, valueContentRule(fd))
 	if class == NotSensitive {
 		return
 	}
@@ -185,6 +199,46 @@ func addLeaf(fd protoreflect.FieldDescriptor, path, kindName, provider string, o
 		ExemptReason: exemptReason,
 		Violations:   violations,
 	})
+}
+
+// valueContentRule returns a short descriptor of the first buf.validate constraint on
+// the field that inspects the VALUE's content (field-level CEL, string
+// pattern/const/prefix/suffix/contains/in), or "" when the field carries none.
+// Length and presence bounds (required, min_len, max_len, min_items...) are
+// deliberately not detected: a managed-secret reference satisfies them, so they can
+// legally coexist with `sensitive`. Message-level CELs are out of scope too -- they
+// express cross-field presence logic the walker cannot judge mechanically.
+func valueContentRule(fd protoreflect.FieldDescriptor) string {
+	opts := fd.Options()
+	if opts == nil || !proto.HasExtension(opts, validatepb.E_Field) {
+		return ""
+	}
+	rules, ok := proto.GetExtension(opts, validatepb.E_Field).(*validatepb.FieldRules)
+	if !ok || rules == nil {
+		return ""
+	}
+	if len(rules.GetCel()) > 0 {
+		return fmt.Sprintf("cel rule %q", rules.GetCel()[0].GetId())
+	}
+	sr := rules.GetString_()
+	if sr == nil {
+		return ""
+	}
+	switch {
+	case sr.GetPattern() != "":
+		return "string.pattern"
+	case sr.HasConst():
+		return "string.const"
+	case sr.GetPrefix() != "":
+		return "string.prefix"
+	case sr.GetSuffix() != "":
+		return "string.suffix"
+	case sr.GetContains() != "":
+		return "string.contains"
+	case len(sr.GetIn()) > 0:
+		return "string.in"
+	}
+	return ""
 }
 
 func leafOptions(fd protoreflect.FieldDescriptor) (sensitive bool, exemptReason string) {

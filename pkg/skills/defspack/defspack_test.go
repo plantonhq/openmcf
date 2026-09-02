@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -90,6 +91,27 @@ func TestValidateCatchesBrokenTrees(t *testing.T) {
 				files["skills/compat.yaml"] = "minimum_daemon_version: soon\nminimum_cli_version: v0.0.0\n"
 			},
 			wantErr: "is not a vX.Y.Z version",
+		},
+		{
+			name: "automation document slug does not match its file name",
+			mutate: func(files map[string]string) {
+				files["automations/investigate.yaml"] = "slug: other\ndisplayName: Investigate\n"
+			},
+			wantErr: "must equal the file name",
+		},
+		{
+			name: "automation file is not valid yaml",
+			mutate: func(files map[string]string) {
+				files["automations/investigate.yaml"] = "slug: [unclosed\n"
+			},
+			wantErr: "not valid YAML",
+		},
+		{
+			name: "automation file is empty",
+			mutate: func(files map[string]string) {
+				files["automations/investigate.yaml"] = ""
+			},
+			wantErr: "file is empty",
 		},
 	}
 
@@ -199,7 +221,8 @@ func TestPackageReleaseManifest(t *testing.T) {
 		t.Fatalf("manifest does not parse: %v", err)
 	}
 
-	for _, artifact := range append(reread.Skills, reread.Agents...) {
+	artifacts := append(append(reread.Skills, reread.Agents...), reread.Automations...)
+	for _, artifact := range artifacts {
 		content, err := os.ReadFile(filepath.Join(outDir, artifact.File))
 		if err != nil {
 			t.Errorf("%s: manifest lists a file that was not written: %v", artifact.File, err)
@@ -213,8 +236,203 @@ func TestPackageReleaseManifest(t *testing.T) {
 			t.Errorf("%s: checksum does not match manifest", artifact.File)
 		}
 	}
-	if len(reread.Skills) != 1 || len(reread.Agents) != 1 {
-		t.Errorf("manifest lists %d skill(s) and %d agent(s), want 1 and 1", len(reread.Skills), len(reread.Agents))
+	if len(reread.Skills) != 1 || len(reread.Agents) != 1 || len(reread.Automations) != 1 {
+		t.Errorf("manifest lists %d skill(s), %d agent(s), %d automation(s), want 1 of each",
+			len(reread.Skills), len(reread.Agents), len(reread.Automations))
+	}
+	if reread.Automations[0].File != "automation-investigate.yaml" {
+		t.Errorf("automation artifact file = %q, want the automation-<slug>.yaml contract", reread.Automations[0].File)
+	}
+}
+
+// TestManifestOmitsEmptyAutomations pins the compatibility posture: a
+// release carrying zero automations writes a manifest with NO automations
+// field at all (older-shaped, byte-compatible), never an empty array.
+func TestManifestOmitsEmptyAutomations(t *testing.T) {
+	files := validFixtureTree()
+	delete(files, "automations/investigate.yaml")
+	delete(files, "automations/README.md")
+	tree, err := LoadTree(writeTree(t, files))
+	if err != nil {
+		t.Fatalf("loading fixture tree: %v", err)
+	}
+	outDir := t.TempDir()
+	if _, err := PackageRelease(tree, "v9.9.9", outDir); err != nil {
+		t.Fatalf("packaging: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(outDir, ManifestFileName))
+	if err != nil {
+		t.Fatalf("manifest not written: %v", err)
+	}
+	if strings.Contains(string(raw), "automations") {
+		t.Fatalf("manifest of an automation-less release must omit the automations field, got:\n%s", raw)
+	}
+}
+
+// TestBrowseManifestMatchesArchives holds the browse manifest to its one
+// contract: it describes exactly the bytes the release ships. Both
+// directions are asserted against the packaged output -- every archive
+// entry is listed with its exact checksum and size (an exploded file IS
+// the archive entry, which is what lets the release workflow derive the
+// exploded tree by unzipping), no listed file is absent from its archive,
+// and the agent/automation entries carry the integrity manifest's own
+// checksums (they describe the same release-root files).
+func TestBrowseManifestMatchesArchives(t *testing.T) {
+	// The catalog fixture exercises nested pack paths, not just the flat
+	// references/ layout -- the browse manifest must describe both.
+	tree, err := LoadTree(writeTree(t, catalogFixtureTree()))
+	if err != nil {
+		t.Fatalf("loading fixture tree: %v", err)
+	}
+	outDir := t.TempDir()
+	manifest, err := PackageRelease(tree, "v9.9.9", outDir)
+	if err != nil {
+		t.Fatalf("packaging: %v", err)
+	}
+
+	raw, err := os.ReadFile(filepath.Join(outDir, BrowseManifestFileName))
+	if err != nil {
+		t.Fatalf("browse manifest not written: %v", err)
+	}
+	var browse BrowseManifest
+	if err := json.Unmarshal(raw, &browse); err != nil {
+		t.Fatalf("browse manifest does not parse: %v", err)
+	}
+	if browse.Version != "v9.9.9" {
+		t.Errorf("browse manifest version = %q", browse.Version)
+	}
+	if len(browse.Skills) != len(manifest.Skills) {
+		t.Fatalf("browse manifest lists %d skill(s), integrity manifest %d", len(browse.Skills), len(manifest.Skills))
+	}
+
+	for _, skillBrowse := range browse.Skills {
+		archiveBytes, err := os.ReadFile(filepath.Join(outDir, "skill-"+skillBrowse.Slug+".zip"))
+		if err != nil {
+			t.Fatalf("reading archive for %s: %v", skillBrowse.Slug, err)
+		}
+		reader, err := zip.NewReader(bytes.NewReader(archiveBytes), int64(len(archiveBytes)))
+		if err != nil {
+			t.Fatalf("opening archive for %s: %v", skillBrowse.Slug, err)
+		}
+		archiveEntries := map[string][]byte{}
+		for _, f := range reader.File {
+			rc, err := f.Open()
+			if err != nil {
+				t.Fatalf("%s/%s: opening entry: %v", skillBrowse.Slug, f.Name, err)
+			}
+			content, err := io.ReadAll(rc)
+			rc.Close()
+			if err != nil {
+				t.Fatalf("%s/%s: reading entry: %v", skillBrowse.Slug, f.Name, err)
+			}
+			archiveEntries[f.Name] = content
+		}
+
+		if len(skillBrowse.Files) != len(archiveEntries) {
+			t.Errorf("%s: browse manifest lists %d file(s), archive carries %d",
+				skillBrowse.Slug, len(skillBrowse.Files), len(archiveEntries))
+		}
+		for _, file := range skillBrowse.Files {
+			content, ok := archiveEntries[file.Path]
+			if !ok {
+				t.Errorf("%s: browse manifest lists %s which the archive does not carry", skillBrowse.Slug, file.Path)
+				continue
+			}
+			if int64(len(content)) != file.SizeBytes {
+				t.Errorf("%s/%s: size %d does not match browse manifest's %d", skillBrowse.Slug, file.Path, len(content), file.SizeBytes)
+			}
+			sum := sha256.Sum256(content)
+			if hex.EncodeToString(sum[:]) != file.Sha256 {
+				t.Errorf("%s/%s: checksum does not match browse manifest", skillBrowse.Slug, file.Path)
+			}
+		}
+	}
+
+	// Agents and automations already ship individually at the release root;
+	// the browse manifest points at those exact files, so its entries must
+	// agree with the integrity manifest's checksums for them.
+	assertRootFilesAgree := func(kind string, browseFiles []BrowseFile, artifacts []Artifact) {
+		if len(browseFiles) != len(artifacts) {
+			t.Errorf("%s: browse manifest lists %d, integrity manifest %d", kind, len(browseFiles), len(artifacts))
+			return
+		}
+		for i, file := range browseFiles {
+			if file.Path != artifacts[i].File {
+				t.Errorf("%s[%d]: browse path %q != integrity file %q", kind, i, file.Path, artifacts[i].File)
+			}
+			if file.Sha256 != artifacts[i].Sha256 {
+				t.Errorf("%s[%d]: browse checksum disagrees with the integrity manifest", kind, i)
+			}
+		}
+	}
+	assertRootFilesAgree("agents", browse.Agents, manifest.Agents)
+	assertRootFilesAgree("automations", browse.Automations, manifest.Automations)
+}
+
+// TestBrowseManifestDeterministic: like the archives, the browse
+// manifest's bytes are a pure function of the tree's content.
+func TestBrowseManifestDeterministic(t *testing.T) {
+	tree, err := LoadTree(writeTree(t, catalogFixtureTree()))
+	if err != nil {
+		t.Fatalf("loading fixture tree: %v", err)
+	}
+	first, err := EncodeBrowseManifest(BuildBrowseManifest(tree, "v9.9.9"))
+	if err != nil {
+		t.Fatalf("first build: %v", err)
+	}
+	second, err := EncodeBrowseManifest(BuildBrowseManifest(tree, "v9.9.9"))
+	if err != nil {
+		t.Fatalf("second build: %v", err)
+	}
+	if !bytes.Equal(first, second) {
+		t.Fatal("two builds of identical content produced different browse manifest bytes")
+	}
+}
+
+// TestBrowseManifestOmitsEmptyAutomations mirrors the integrity
+// manifest's compatibility posture for the browse document.
+func TestBrowseManifestOmitsEmptyAutomations(t *testing.T) {
+	files := validFixtureTree()
+	delete(files, "automations/investigate.yaml")
+	delete(files, "automations/README.md")
+	tree, err := LoadTree(writeTree(t, files))
+	if err != nil {
+		t.Fatalf("loading fixture tree: %v", err)
+	}
+	raw, err := EncodeBrowseManifest(BuildBrowseManifest(tree, "v9.9.9"))
+	if err != nil {
+		t.Fatalf("encoding: %v", err)
+	}
+	if strings.Contains(string(raw), "automations") {
+		t.Fatalf("browse manifest of an automation-less release must omit the automations field, got:\n%s", raw)
+	}
+}
+
+// TestExplodedLaneMirroredInReleaseWorkflow keeps this package and the
+// release workflow in lockstep, in TestPackSelectionMirroredInReleaseLane's
+// exact idiom: the workflow derives and verifies the exploded layout this
+// package's browse manifest describes, so a shape change on either side
+// without the other turns the release red here first.
+func TestExplodedLaneMirroredInReleaseWorkflow(t *testing.T) {
+	root := repoRoot(t)
+	wfPath := filepath.Join(root, ".github", "workflows", "release.definitions.yaml")
+	wf, err := os.ReadFile(wfPath)
+	if err != nil {
+		// Same sandbox posture as TestCommittedTreeValidates: the
+		// enforcing lane is `go test` from the repo root.
+		t.Skipf("release workflow not present at %s (sandboxed run)", wfPath)
+	}
+	text := string(wf)
+	for want, teach := range map[string]string{
+		"definitions-manifest.json|definitions-browse.json|": "the discover step's straggler whitelist must accept the browse manifest or every release fails at discovery",
+		"\n  exploded:\n":   "the exploded job derives and uploads the browsable layout this package's browse manifest describes",
+		"sha256sum --check": "the exploded job must verify every unzipped file against the browse manifest before uploading",
+		"needs: [skill, agent, automation, exploded]": "publish-manifest must wait on the exploded upload, or the stable pointer could name a release whose browsable layout is missing",
+		"definitions/releases/index.json":             "the releases index is the browse surfaces' release picker; it lives behind the same DAG guarantee",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("release.definitions.yaml is missing %q -- %s", want, teach)
+		}
 	}
 }
 
@@ -454,6 +672,10 @@ func validFixtureTree() map[string]string {
 		"skills/demo/references/topic.md": "The topic, explained.\n",
 		"skills/compat.yaml":              "minimum_daemon_version: v0.0.0\nminimum_cli_version: v0.0.0\n",
 		"agents/helper/instructions.md":   "You are the helper.\n",
+		"automations/investigate.yaml":    "slug: investigate\ndisplayName: Investigate\n",
+		// README.md must be ignored by the loader -- only *.yaml files are
+		// definitions.
+		"automations/README.md": "The automations tree.\n",
 	}
 }
 

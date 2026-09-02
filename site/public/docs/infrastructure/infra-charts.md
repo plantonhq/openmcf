@@ -72,7 +72,7 @@ spec:
 ```yaml
 {% if values.httpsEnabled | bool %}
 ---
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCertManagerCert
 metadata:
   name: "{{ values.env }}-alb-cert"
@@ -87,7 +87,7 @@ This means a single chart can handle multiple deployment profiles. An ECS enviro
 The key feature of Infra Charts is explicit dependency declaration. Resources within a chart can reference outputs of other resources — for example, a security group that needs the VPC's ID, or an ALB that needs subnet IDs from the VPC:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsAlb
 metadata:
   name: "{{ values.env }}-alb"

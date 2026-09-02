@@ -15,7 +15,8 @@ hour while it runs. The server's AWS name derives from metadata.name.
 
 Operational facts worth planning around: creation takes ~25 minutes
 and deletion is similar (AWS provisions dedicated capacity), and the
-server bills hourly from Created onward - Small is ~$0.6/hour. For
+server bills hourly from Created onward, whether or not anyone is
+tracking - the size ladder scales the hourly rate. For
 the serverless successor product, see AwsSagemakerMlflowApp.
 
 ## Example
@@ -41,7 +42,7 @@ spec:
   size: Medium
   mlflowVersion: "3.0"
   automaticModelRegistration: true
-  weeklyMaintenanceWindowStart: TUE:03:30
+  weeklyMaintenanceWindowStart: Tue:03:30
 ```
 
 ## Spec Fields
@@ -121,10 +122,14 @@ requires replacing the server or an out-of-band API call.
 
 `string`
 
-Weekly maintenance window start, UTC 24-hour "DDD:HH:MM" (e.g.
-"TUE:03:30"). Omitted = AWS picks.
+Weekly maintenance window start, UTC 24-hour "Ddd:HH:MM" (e.g.
+"Tue:03:30"). The day token is MIXED-CASE by AWS's server-side
+contract - CreateMlflowTrackingServer rejects "TUE:03:30" with a
+ValidationException naming the exact regex
+(Mon|Tue|Wed|Thu|Fri|Sat|Sun), live-caught 2026-08-25. Omitted =
+AWS picks.
 
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(MON|TUE|WED|THU|FRI|SAT|SUN):([01]\\d|2[0-3]):[0-5]\\d$"}}
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"pattern":"^(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01]\\d|2[0-3]):[0-5]\\d$"}}
 
 ## Outputs
 

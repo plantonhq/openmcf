@@ -1,6 +1,6 @@
 # GCP Cloud Tasks Queue
 
-Deploys a Cloud Tasks queue with configurable rate limits, retry behavior, queue-level HTTP target settings with OAuth or OIDC authentication, URI overrides, and dispatch logging. The queue manages asynchronous task dispatch to HTTP endpoints with controlled concurrency and automatic retry with exponential backoff. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects and service accounts.
+Deploys a Cloud Tasks queue with configurable rate limits, retry behavior, queue-level HTTP target settings with OAuth or OIDC authentication, URI overrides, and dispatch logging. The queue manages asynchronous task dispatch to HTTP endpoints with controlled concurrency and automatic retry with exponential backoff. The GCP project and the token-minting service account wire by ValueFromRef, so the queue composes into an InfraChart beside the service it dispatches to.
 
 ## What Gets Created
 
@@ -54,7 +54,7 @@ spec:
 planton apply -f cloud-tasks-queue.yaml
 ```
 
-This creates a Cloud Tasks queue with GCP-managed defaults for rate limits and retry behavior. No queue-level HTTP target, authentication, or logging is configured -- individual tasks define their own targets.
+This creates a Cloud Tasks queue with GCP-managed defaults for rate limits and retry behavior; no queue-level HTTP target, authentication, or logging is configured -- individual tasks define their own targets. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -81,6 +81,8 @@ The InfraPipeline resolves the dependency graph, deploys the project and service
 ## Key Configuration
 
 These are the most important decisions when configuring a Cloud Tasks queue. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**Queue name is a burned identifier** -- `queueName` and `location` are immutable, and the Cloud Tasks API reserves a deleted queue's ID for up to 7 days after deletion — an accidental rename burns the old name for that window. Choose a stable, explicit name up front.
 
 **Rate limits** -- Set `rateLimits.maxDispatchesPerSecond` to control how fast tasks are dispatched and `rateLimits.maxConcurrentDispatches` to limit parallel task execution. Use rate limits to protect downstream services from being overwhelmed. GCP provides reasonable defaults when not specified.
 

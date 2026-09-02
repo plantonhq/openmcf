@@ -6,11 +6,35 @@ kind: ComponentCostProfile
 metadata:
   name: cloudflarelogpushjob
 spec:
-  billing_model: free
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: dataset
+      sku_meter: Workers Logpush delivery
+      pricing_unit: log requests delivered (per million)
+      impact: >-
+        Whether delivery itself is metered depends on this field. The
+        workers_trace_events dataset bills on the Workers Logpush meter,
+        available only on the Workers Paid plan -- 10 million requests per
+        month included, then $0.05 per additional million, charged "for
+        request logs that reach your end destination after applying
+        filtering or sampling"
+        (https://developers.cloudflare.com/workers/platform/pricing/#workers-trace-events-logpush,
+        retrieved 2026-08-22). AI Gateway log delivery is priced identically
+        on its own pricing page
+        (https://developers.cloudflare.com/ai-gateway/reference/pricing/,
+        retrieved 2026-08-22). Enterprise zone datasets such as
+        http_requests ride the plan entitlement with no per-delivery fee.
+  estimate_exclusions:
+    - delivered log volume tracks the zone's or account's traffic, unknowable from the manifest
+    - destination-side storage and ingest (R2, S3, the log vendor) bill outside Cloudflare
   notes: >-
-    Cloudflare bills nothing for the job object itself and charges no
-    per-delivery fee, but two real costs sit on either side of it. Logpush is
-    an ENTITLEMENT: most datasets require an Enterprise plan (a few, such as
+    Cloudflare bills nothing for the job object itself, and whether delivery
+    carries a fee is DATASET-CONDITIONAL: Enterprise zone datasets ride the
+    plan entitlement with no per-delivery charge, while workers_trace_events
+    and the AI Gateway datasets bill $0.05/million delivered past 10
+    million/month on the Workers Paid plan (URLs above, retrieved
+    2026-08-22). Two real costs sit on either side of it. Logpush is an
+    ENTITLEMENT -- most datasets require an Enterprise plan (a few, such as
     Workers trace events, reach lower tiers), so the plan is the gate on
     using this component at all. And delivery lands at the DESTINATION -- R2,
     S3, or the log vendor bills the storage and ingest, and a busy zone's

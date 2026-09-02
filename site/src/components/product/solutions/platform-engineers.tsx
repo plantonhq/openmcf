@@ -56,7 +56,7 @@ spec:
   },
   {
     label: 'templates/compute.yaml',
-    code: `apiVersion: aws.planton.dev/v1
+    code: `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsCluster
 metadata:
   name: "{{ values.environment }}-ecs"

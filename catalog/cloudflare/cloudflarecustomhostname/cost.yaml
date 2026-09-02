@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarecustomhostname
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloudflare for SaaS
+      sku_meter: custom hostnames
+      pricing_unit: hostname-months
+      description: "The hostname bills by existing once the zone's 100 included hostnames are used -- \"Price per additional hostname: $0.10\" on the Free, Pro, and Business SaaS plans, billed monthly for as long as the hostname exists (https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/plans/, retrieved 2026-08-22). It counts toward billing from creation until deleted, including while pending validation or activation."
+  cost_drivers:
+    - field_path: hostname
+      sku_meter: custom hostnames
+      pricing_unit: hostname-months
+      impact: The hostname itself is the billed unit -- one more custom hostname on the SaaS zone's meter. Past the zone's 100 included hostnames it adds $0.10 per month for as long as it exists, independent of traffic.
+    - field_path: ssl.custom_certificate
+      sku_meter: custom hostnames
+      impact: "Uploading your own certificate is an Enterprise-only SaaS feature -- the zone must be on an Enterprise SaaS plan, where the per-hostname price is \"Custom pricing\" (contract), replacing the published $0.10 rate."
+    - field_path: ssl.custom_cert_bundle
+      sku_meter: custom hostnames
+      impact: Same Enterprise gate as ssl.custom_certificate -- uploaded certificate bundles exist only on Enterprise SaaS plans, whose per-hostname rate is contract-custom.
+    - field_path: ssl.wildcard
+      sku_meter: custom hostnames
+      impact: Wildcard custom hostnames are Enterprise-only -- setting this moves the object onto an Enterprise SaaS plan's contract-custom per-hostname pricing.
+    - field_path: ssl.certificate_authority
+      sku_meter: custom hostnames
+      impact: Selectable CA is Enterprise-only -- setting this moves the object onto an Enterprise SaaS plan's contract-custom per-hostname pricing.
+    - field_path: custom_metadata
+      sku_meter: custom hostnames
+      impact: "Custom metadata is listed on Cloudflare's SaaS plans page as an Enterprise \"Paid add-on\" -- populating it presupposes that contract-priced add-on on the account."
+  free_tier: The zone's first 100 custom hostnames are included at no extra charge on the Free, Pro, and Business SaaS plans; the per-additional-hostname rate applies only past the included 100.
+  estimate_exclusions:
+    - whether this hostname lands inside or past the zone's 100 included hostnames depends on how many custom hostnames the zone already carries -- no single manifest can know its position in the allotment
+    - "Enterprise SaaS zones price hostnames by contract (the plans page's \"Custom pricing\") with custom allotments -- no publishable list rate exists for the Enterprise-only spec surfaces"
+    - traffic-dependent charges (requests, WAF, caching) ride the SaaS zone's plan, not this object
+  notes: "A custom hostname counts toward billing from creation until it is deleted -- including while it sits pending validation or activation (https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/quotas-and-billing/, retrieved 2026-08-22). The $0.10 additional-hostname rate is identical on Free, Pro, and Business, and Cloudflare prices it globally with no regional variants. The managed DV certificate and its auto-renewal add no charge of their own."

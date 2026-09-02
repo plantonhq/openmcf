@@ -1,4 +1,4 @@
-# Preset: SAML Federation
+# SAML Federation
 
 Configures a SAML 2.0 identity provider for enterprise federation. Works with
 Azure AD, ADFS, Salesforce, Okta (SAML mode), and any SAML 2.0 compliant IdP.

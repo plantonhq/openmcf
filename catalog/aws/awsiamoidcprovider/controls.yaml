@@ -41,6 +41,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The provider carries no credential path of its own to weaken -- the only tokens it accepts are short-lived OIDC tokens whose audience must appear in client_id_list, and the credentials they buy are expiring STS sessions.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. IAM management calls on the provider and every AssumeRoleWithWebIdentity exchange through it are recorded by AWS CloudTrail as account-level posture, not per-provider configuration.

@@ -11,11 +11,23 @@ import (
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/manifestgraph"
 	"github.com/plantonhq/planton/pkg/reflection/metadatareflect"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/proto"
 	yamlv3 "gopkg.in/yaml.v3"
 )
+
+// refTarget keys a chart's resources by (kind, raw name) for the
+// cross-document reference pass. Chart validation deliberately keys on the
+// AUTHORED name, not the derived identity slug: within one chart the author
+// writes both sides verbatim, and reporting in their own spelling is the
+// honest granularity. The deployment graph's slug-derived identity lives in
+// pkg/manifestgraph, which owns the walker and rules this pass consumes.
+type refTarget struct {
+	kind cloudresourcekind.CloudResourceKind
+	name string
+}
 
 // Severity of a validation issue.
 type Severity string
@@ -46,7 +58,7 @@ type Doc struct {
 	YAML []byte
 	Msg  proto.Message
 
-	refUses []refUse
+	refUses []manifestgraph.RefUse
 }
 
 // VariantResult is the outcome of validating one render variant of a chart.
@@ -274,7 +286,7 @@ func (r *VariantResult) validateDoc(file string, docYaml []byte) {
 		}
 	}
 
-	doc.refUses = collectRefUses(msg)
+	doc.refUses = manifestgraph.CollectRefUses(msg)
 	r.Docs = append(r.Docs, doc)
 }
 
@@ -337,17 +349,18 @@ func (r *Report) checkReferences() {
 		edges := make([][]int, len(v.Docs))
 		for i, doc := range v.Docs {
 			for _, use := range doc.refUses {
-				target, problems := checkRef(use)
+				checked, problems := manifestgraph.CheckRef(use)
 				for _, p := range problems {
 					v.Issues = append(v.Issues, Issue{
 						Severity: SeverityError, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
 						Message: p,
 					})
 				}
+				target := refTarget{kind: checked.Kind, name: checked.Name}
 				if target.kind == cloudresourcekind.CloudResourceKind_unspecified || target.name == "" {
 					continue
 				}
-				if use.ref.GetEnv() != "" {
+				if use.Ref.GetEnv() != "" {
 					continue
 				}
 				if targetIdx, ok := index[target]; ok {
@@ -355,18 +368,18 @@ func (r *Report) checkReferences() {
 				} else if anyVariant[target] {
 					v.Issues = append(v.Issues, Issue{
 						Severity: SeverityWarning, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
-						Message: fmt.Sprintf("%s: references %s %q, which this chart defines in another variant but not in this one — verify this is a bring-your-own arm resolving to an existing resource, not a toggle that removed the target while the reference still stands", use.fieldPath, target.kind, target.name),
+						Message: fmt.Sprintf("%s: references %s %q, which this chart defines in another variant but not in this one — verify this is a bring-your-own arm resolving to an existing resource, not a toggle that removed the target while the reference still stands", use.FieldPath, target.kind, target.name),
 					})
 				} else {
 					v.Issues = append(v.Issues, Issue{
 						Severity: SeverityWarning, File: doc.File, ResourceKind: doc.Kind, ResourceName: doc.Name,
-						Message: fmt.Sprintf("%s: references %s %q, which this chart does not define — it must already exist in the target environment at deploy time", use.fieldPath, target.kind, target.name),
+						Message: fmt.Sprintf("%s: references %s %q, which this chart does not define — it must already exist in the target environment at deploy time", use.FieldPath, target.kind, target.name),
 					})
 				}
 			}
 		}
 
-		if cycle := findCycle(edges); cycle != nil {
+		if cycle := manifestgraph.FindCycle(edges); cycle != nil {
 			var parts []string
 			for _, idx := range cycle {
 				parts = append(parts, fmt.Sprintf("%s %q", v.Docs[idx].Kind, v.Docs[idx].Name))

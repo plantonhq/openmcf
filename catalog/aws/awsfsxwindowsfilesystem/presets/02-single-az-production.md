@@ -22,7 +22,7 @@ SINGLE_AZ_2 SSD file system with 500 GiB and 256 MB/s throughput. Configured for
 
 ## What to Customize
 
-- Replace placeholders: subnet, security group, KMS key ARN, AD domain details, credentials
+- Replace placeholders: subnet, security group, KMS key ARN, AD domain details; the AD `password` ships as a `$secret/<slug>` managed-secret reference — create the referenced secret, never inline a plaintext password
 - For production, switch to `domain_join_service_account_secret_arn` instead of inline `username`/`password`
 - Increase `storage_capacity_gib` as data grows (can increase but never decrease)
 - Increase `throughput_capacity` (next tiers: 512, 1024) if monitoring shows saturation

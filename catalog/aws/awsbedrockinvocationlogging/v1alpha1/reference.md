@@ -175,7 +175,13 @@ The S3 bucket invocation logs are written to. The bucket must
 already exist in the same region, and its bucket policy must
 allow "bedrock.amazonaws.com" to s3:PutObject (scope it with an
 aws:SourceAccount condition) - Bedrock writes as its own service
-principal, not as an IAM role.
+principal, not as an IAM role. Bedrock validates the policy at
+configure time by writing zero-byte
+"amazon-bedrock-logs-permission-check" objects under every
+configured prefix (no invocation needed), and those canaries
+OUTLIVE the configuration's delete - plan the bucket's lifecycle
+(force-destroy or a cleanup rule) knowing the bucket is never
+empty once this configuration has pointed at it.
 
 - references: AwsS3Bucket (`status.outputs.bucket_id`)
 - rule: {"required":true}
@@ -205,7 +211,13 @@ The S3 bucket invocation logs are written to. The bucket must
 already exist in the same region, and its bucket policy must
 allow "bedrock.amazonaws.com" to s3:PutObject (scope it with an
 aws:SourceAccount condition) - Bedrock writes as its own service
-principal, not as an IAM role.
+principal, not as an IAM role. Bedrock validates the policy at
+configure time by writing zero-byte
+"amazon-bedrock-logs-permission-check" objects under every
+configured prefix (no invocation needed), and those canaries
+OUTLIVE the configuration's delete - plan the bucket's lifecycle
+(force-destroy or a cleanup rule) knowing the bucket is never
+empty once this configuration has pointed at it.
 
 - references: AwsS3Bucket (`status.outputs.bucket_id`)
 - rule: {"required":true}

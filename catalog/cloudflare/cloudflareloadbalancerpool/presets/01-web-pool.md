@@ -1,4 +1,4 @@
-# Preset: Web pool with two origins
+# Web pool with two origins
 
 A pool of two web origins health-checked by an HTTPS monitor, ready to attach to a
 load balancer's `default_pools`.

@@ -32,7 +32,7 @@ spec:
         - field_path: virtual_router_auto_scale_min_capacity
           op: not_equals
           value: "2"
-      reason: the hub fee includes the router's default 2 routing infrastructure units, and a higher floor bills only the units ABOVE that included baseline -- an excess these rules cannot subtract, so a committed figure would either omit the extra units or double-count the included ones
+      reason: the hub fee includes the router's default 2 routing infrastructure units, and a higher floor bills only the units ABOVE that included baseline -- a per-unit meter this price book does not carry (no committed preset raises the floor), so a committed figure would understate every hour
   lines:
     - sku_meter: Standard hub deployment
       applies_when:

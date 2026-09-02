@@ -1,22 +1,20 @@
 # Estimate model: hand-computed capacity footprints for this
 # cluster-capacity component's presets. A derivation cannot state this
-# kind honestly for two reasons: Harbor is a SET of fixed workload
-# classes (core, portal, registry, jobservice, nginx, Trivy, and the
-# internal database/Redis arms) whose sizing fields carry spec-declared
-# defaults (100m CPU / 256Mi requests, 1 CPU / 1Gi limits for the
-# stateless components; their own defaults for the internal arms) that
-# the module applies when a manifest omits resources -- and the
-# derivation grammar reads only explicit manifest values, so BOTH
-# shipped presets (which omit all resources) would show a zero
-# footprint while the pods actually reserve the defaults. Each preset's
-# totals are therefore computed by hand: the sum over workload classes
-# of replicas x (declared resources, or the spec-declared defaults when
-# omitted), plus every volume the manifest binds at its declared or
-# defaulted size. Anything only the chart sizes (the registryctl
-# container in the registry pods, the harbor-exporter) is excluded.
-# Cluster-capacity components carry no priced lines -- the dollar value
-# of the reservation is the target cluster's node and storage-class
-# economics, which this catalog cannot know.
+# kind honestly: Trivy's sizing (200m / 512Mi requests, 1 CPU / 1Gi
+# limits) is the CHART's own default, carried by no spec annotation the
+# capacity estimator could read -- a derived footprint would silently
+# omit an always-scheduled scanner -- and the internal database/Redis
+# arms deploy conditionally on the vendor choices, so their annotated
+# defaults cannot be bound without fabricating reservations for pods an
+# externally-composed install never runs. Each preset's totals are
+# therefore computed by hand: the sum over workload classes of replicas
+# x (declared resources, or the spec-declared defaults when omitted),
+# plus every volume the manifest binds at its declared or defaulted
+# size. Anything only the chart sizes (the registryctl container in the
+# registry pods, the harbor-exporter) is excluded. Cluster-capacity
+# components carry no priced lines -- the dollar value of the
+# reservation is the target cluster's node and storage-class economics,
+# which this catalog cannot know.
 # Schema: finops/componentcostestimatemodel/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimateModel

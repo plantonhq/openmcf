@@ -1,4 +1,4 @@
-# Preset: Standard 30-Day Retention
+# Standard 30-Day Retention
 
 **Use case:** General-purpose application logging with a sensible retention period.
 
@@ -20,5 +20,7 @@ This is the most common pattern — a STANDARD class log group that retains log 
 
 ## Cost
 
-- **Ingestion**: $0.50/GB
-- **Storage**: $0.03/GB/month (first 30 days — then automatically deleted)
+- **Ingestion**: billed per GB written — the dominant line for most log groups
+- **Storage**: billed per GB-month for the 30 days events are retained, then automatically deleted
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awscloudwatchloggroup.yaml` — computed from the pinned price book, never hand-typed here.

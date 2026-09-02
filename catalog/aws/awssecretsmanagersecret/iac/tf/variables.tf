@@ -15,6 +15,7 @@ variable "spec" {
   description = "AwsSecretsManagerSecret specification"
   type = object({
     region              = string
+    secret_name         = optional(string, "")
     description         = optional(string, "")
     kms_key_id          = optional(string, "")
     string_value        = optional(string, "")

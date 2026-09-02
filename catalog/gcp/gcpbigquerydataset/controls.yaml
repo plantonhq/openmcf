@@ -52,6 +52,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The only access path is the IAM-authenticated BigQuery API. The basic dataset roles (OWNER/WRITER/READER) are stored interchangeably with their predefined IAM equivalents -- a naming convention, not a weaker authentication path.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

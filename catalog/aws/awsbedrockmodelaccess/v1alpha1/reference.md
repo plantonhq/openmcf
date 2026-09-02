@@ -16,7 +16,7 @@ component instance per model.
 
 Deploying accepts the model's PUBLIC offer (the modules look the offer
 token up at deploy time, so the spec needs only the model identifier).
-Most offers have a $0 subscription component - invocations bill
+Most offers carry no subscription charge - invocations bill
 per-token regardless. Destroying the component CANCELS the agreement,
 removing the account's access to the model in that region.
 

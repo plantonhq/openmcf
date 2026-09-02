@@ -1,4 +1,4 @@
-# Preset: Multi-Authentication with Full Logging
+# Multi-Authentication with Full Logging
 
 An MSK cluster demonstrating all three authentication methods and all three log destinations
 enabled simultaneously. Useful for organizations with diverse client populations and
@@ -26,8 +26,7 @@ comprehensive audit requirements.
 
 ## Cost Estimate
 
-Approximately $0.50/hr for 3 x kafka.m5.large brokers (~$360/month) plus EBS storage
-and nominal CloudWatch/Firehose/S3 costs.
+The cost drivers are the three kafka.m5.large brokers (billed hourly, the dominant line) plus their EBS storage and nominal CloudWatch/Firehose/S3 log-delivery charges. The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awsmskcluster.yaml` — computed from the pinned price book, never hand-typed here.
 
 ## Customization
 

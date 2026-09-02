@@ -1,6 +1,6 @@
 # AWS Transit Gateway
 
-Deploys a Transit Gateway on AWS as a regional networking hub that interconnects VPCs, VPN connections, and Direct Connect through a centralized hub-and-spoke topology, replacing complex VPC peering meshes. The gateway itself is deliberately lean: VPCs join it through the separate **AWS Transit Gateway VPC Attachment** resource, and custom routing domains live on the separate **AWS Transit Gateway Route Table** resource. Integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys a Transit Gateway on AWS as a regional networking hub that interconnects VPCs, VPN connections, and Direct Connect through a centralized hub-and-spoke topology, replacing complex VPC peering meshes. The gateway itself is deliberately lean: VPCs join it through the separate **AWS Transit Gateway VPC Attachment** resource, and custom routing domains live on the separate **AWS Transit Gateway Route Table** resource. Decide the routing posture up front -- re-enabling a disabled default-route-table dial replaces the gateway and every attachment on it.
 
 ## What Gets Created
 
@@ -34,7 +34,7 @@ Open the deployment store, find **AWS Transit Gateway**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsTransitGateway
 metadata:
   name: network-hub
@@ -50,31 +50,7 @@ spec:
 planton apply -f transit-gateway.yaml
 ```
 
-This creates a Transit Gateway with the AWS defaults: full-mesh routing (auto-association and auto-propagation), DNS support, and VPN ECMP enabled. Attach VPCs afterward with `AwsTransitGatewayVpcAttachment` resources.
-
-### InfraChart
-
-When deploying as part of a multi-resource environment, downstream resources wire to the gateway via ValueFromRef. The attachment resource consumes the gateway ID:
-
-```yaml
-apiVersion: aws.planton.dev/v1
-kind: AwsTransitGatewayVpcAttachment
-metadata:
-  name: app-vpc-attachment
-spec:
-  transitGatewayId:
-    valueFrom:
-      kind: AwsTransitGateway
-      name: network-hub
-      fieldPath: status.outputs.transit_gateway_id
-  vpcId:
-    valueFrom:
-      kind: AwsVpc
-      name: app-vpc
-      fieldPath: status.outputs.vpc_id
-```
-
-The InfraPipeline resolves the dependency graph, deploys the gateway and VPC first, then provisions the attachment with the resolved IDs.
+This creates a Transit Gateway with the AWS defaults: full-mesh routing (auto-association and auto-propagation), DNS support, and VPN ECMP enabled. Attach VPCs afterward with `AwsTransitGatewayVpcAttachment` resources. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
@@ -94,7 +70,7 @@ These are the most important decisions when configuring a Transit Gateway. Explo
 
 ### What This Component Consumes
 
-Nothing -- the gateway is the root of the private-networking family. Attachments, route tables, and Client VPN endpoints consume its outputs.
+This component has no foreign key dependencies -- the gateway is the root of the private-networking family. Attachments, route tables, and Client VPN endpoints consume its outputs.
 
 ### What This Component Provides
 

@@ -17,5 +17,8 @@ go_test(
     name = "controlcatalog_test",
     srcs = ["conformance_test.go"],
     embed = [":controlcatalog"],
-    deps = ["//compliance/controlcatalog/v1:controlcatalog"],
+    deps = [
+        "//compliance/controlcatalog/v1:controlcatalog",
+        "//shared/cloudresourcekind",
+    ],
 )

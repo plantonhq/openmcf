@@ -1,4 +1,4 @@
-# Preset: Route to an Email Worker
+# Route to an Email Worker
 
 Hand mail matching a recipient to an Email Worker for custom processing (parsing,
 webhooks, storage, auto-responses).

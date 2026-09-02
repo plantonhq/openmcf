@@ -50,6 +50,12 @@ type AwsCloudwatchDashboardSpec struct {
 	// alarm / text), position (x, y, width, height), and properties.
 	// AWS normalizes the JSON server-side; both engines diff it
 	// semantically, so key order and whitespace never cause drift.
+	//
+	// YAML authors: manifests parse under YAML 1.2 rules, so the widget
+	// position key y (like yes, no, on, off) is an ordinary string with
+	// or without quotes - only true and false are booleans. Pasting the
+	// console's JSON body verbatim is always safe (JSON keys are quoted
+	// by definition).
 	DashboardBody *structpb.Struct `protobuf:"bytes,3,opt,name=dashboard_body,json=dashboardBody,proto3" json:"dashboard_body,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

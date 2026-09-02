@@ -154,7 +154,10 @@ Valid range: 8 to 29.
 
 `string`
 
-The purpose of this address reservation. Only applicable for INTERNAL addresses.
+The purpose of this address reservation. Only applicable for INTERNAL addresses,
+and REQUIRED for them — the GCP API rejects an internal global reservation
+without a purpose ("The field must be specified for reserving internal IP
+Addresses").
 VPC_PEERING — reserves a CIDR range for VPC network peering. Used by managed services
 like Cloud SQL, Redis, AlloyDB, and Filestore for private networking.
 PRIVATE_SERVICE_CONNECT — reserves an address for a Private Service Connect endpoint.
@@ -192,6 +195,7 @@ destroy:
 - `purpose_requires_internal`: purpose can only be set when address_type is INTERNAL
 - `vpc_peering_requires_prefix_length`: prefix_length is required when purpose is VPC_PEERING
 - `internal_requires_network`: network is required when address_type is INTERNAL
+- `internal_requires_purpose`: purpose is required when address_type is INTERNAL (GCP rejects a purpose-less internal global reservation)
 
 ## Outputs
 

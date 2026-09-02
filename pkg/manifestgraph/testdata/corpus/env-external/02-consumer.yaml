@@ -1,0 +1,14 @@
+apiVersion: _test.planton.dev/v1alpha2
+kind: TestCloudResourceGeneric
+metadata:
+  name: consumer
+  env: dev
+spec:
+  requiredRef:
+    value: literal
+  optionalRef:
+    valueFrom:
+      kind: TestCloudResourceGeneric
+      name: producer
+      env: staging
+      fieldPath: status.outputs.id

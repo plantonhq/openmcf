@@ -25,5 +25,10 @@ output "association_ids" {
 
 output "rule_match_ids" {
   description = "Each rule's match identity keyed by rule name - the domain list ID for standard rules, the threat-protection ID for advanced rules (the second half of the rule's composite import ID)"
-  value       = { for name, rule in aws_route53_resolver_firewall_rule.this : name => (rule.firewall_domain_list_id != null ? rule.firewall_domain_list_id : rule.firewall_threat_protection_id) }
+  # coalesce, not a null ternary: the provider (SDKv2) stores an unset
+  # string attribute as "" - a threat rule's firewall_domain_list_id is
+  # empty, never null, so `!= null` would pick the empty string over
+  # the real rslvr-ftp-... id (live-caught 2026-08-26 by the blind
+  # import round-trip). coalesce skips null AND "".
+  value = { for name, rule in aws_route53_resolver_firewall_rule.this : name => coalesce(rule.firewall_domain_list_id, rule.firewall_threat_protection_id) }
 }

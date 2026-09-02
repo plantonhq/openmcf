@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "cloudresourcekind",
     srcs = [
+        "cloud_provider_service_group.pb.go",
         "cloud_resource_kind.pb.go",
         "cloud_resource_provider.pb.go",
         "kubernetes.pb.go",

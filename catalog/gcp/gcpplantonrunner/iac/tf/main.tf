@@ -149,8 +149,14 @@ resource "google_cloud_run_v2_service" "runner" {
     }
 
     containers {
-      image   = "${var.spec.image_repository}:${var.spec.runner_version}"
-      command = ["start"]
+      image = "${var.spec.image_repository}:${var.spec.runner_version}"
+      # args, NEVER command: Cloud Run's `command` REPLACES the image
+      # entrypoint (the runner binary), so command=["start"] makes the
+      # platform exec a binary literally named "start" -- the instance dies
+      # with "Application exec likely failed" before one log line (proven
+      # live). The image's entrypoint is the bare runner binary; the
+      # subcommand rides args.
+      args = ["start"]
 
       # h2c: the runner's server speaks plaintext HTTP/2 (gRPC) behind
       # Cloud Run's TLS edge.
@@ -192,10 +198,10 @@ resource "google_cloud_run_v2_service" "runner" {
           value = env.value
         }
       }
-      env {
-        name  = "PORT"
-        value = "50051"
-      }
+      # NO explicit PORT env: Cloud Run reserves the name and rejects the
+      # whole create with a 400 when a template sets it (proven live). The
+      # platform injects PORT itself from the ports block's container_port
+      # above, which is how the runner's server learns its port here.
       env {
         name  = "LOG_LEVEL"
         value = "info"

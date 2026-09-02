@@ -1,6 +1,6 @@
-# NATS on Kubernetes
+# NATS
 
-Deploys NATS -- the lightweight, high-speed messaging system (pub/sub, request/reply, queue groups) with JetStream persistence for streams, consumers and key-value/object stores -- from the official `nats` Helm chart. Supports full-mesh clustering for HA and replicated streams, per-user authentication with module-generated passwords exported in a Kubernetes Secret, multi-tenant accounts with isolated subject namespaces, TLS on the client listener from an existing certificate Secret, WebSocket/MQTT/leafnode listeners, Prometheus metrics, and the nats-box utility pod. Uses a Kubernetes Provider Connection for cluster access.
+Deploys NATS -- the lightweight, high-speed messaging system (pub/sub, request/reply, queue groups) with JetStream persistence for streams, consumers and key-value/object stores -- from the official `nats` Helm chart. Supports full-mesh clustering for HA and replicated streams, per-user authentication with module-generated passwords exported in a Kubernetes Secret, multi-tenant accounts with isolated subject namespaces, TLS on the client listener from an existing certificate Secret, WebSocket/MQTT/leafnode listeners, Prometheus metrics, and the nats-box utility pod.
 
 ## What Gets Created
 
@@ -33,14 +33,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **NATS on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **dev** preset for a single-server deployment or **production** for a 3-server cluster with authenticated clients in the [Presets](#presets) tab.
+Open the deployment store, find **NATS**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Dev preset** for a single-server deployment or the **Production preset** for a 3-server cluster with authenticated clients in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNats
 metadata:
   name: event-bus
@@ -92,7 +92,7 @@ The InfraPipeline deploys the namespace first, then provisions the NATS cluster 
 
 ## Key Configuration
 
-These are the most important decisions when configuring NATS on Kubernetes. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+These are the most important decisions when configuring NATS. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Clustering** -- Empty `cluster` means a single server: a complete deployment for dev and modest workloads. For production, enable clustering with an ODD count (3 or 5) -- JetStream placement uses RAFT groups, and odd counts tolerate the most failures per server added. Replicated (R3) streams need at least 3 servers.
 
@@ -102,7 +102,7 @@ These are the most important decisions when configuring NATS on Kubernetes. Expl
 
 **MQTT and JetStream** -- The MQTT bridge stores its sessions and retained messages in JetStream; the server refuses to start MQTT with JetStream explicitly disabled.
 
-**External access** -- By default, NATS is accessible only within the Kubernetes cluster through the exported client endpoint. Set `service.type` to `load_balancer` with the cloud's LB annotations for external clients, or enable the `websocket` listener behind first-class exposure kinds (Ingress, Gateway API). Declare authentication and TLS before exposing.
+**External access** -- By default, NATS is accessible only within the Kubernetes cluster through the exported client endpoint. Set `service.type` to `loadBalancer` with the cloud's LB annotations for external clients, or enable the `websocket` listener behind first-class exposure kinds (Ingress, Gateway API). Declare authentication and TLS before exposing.
 
 ## Outputs and Dependencies
 
@@ -132,13 +132,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single server for development** -- One NATS server with JetStream on by default, the nats-box pod for the `nats` CLI, and no authentication (any in-cluster client connects). Fast to provision. Start from the **dev** preset.
+**Single server for development** -- One NATS server with JetStream on by default, the nats-box pod for the `nats` CLI, and no authentication (any in-cluster client connects). Fast to provision. Start from the **Dev preset**.
 
-**Clustered for production** -- Three servers with RAFT-based JetStream placement, sized file stores, least-privilege authenticated users with module-generated passwords, and the Prometheus exporter scraped by an operator PodMonitor. Start from the **production** preset.
+**Clustered for production** -- Three servers with RAFT-based JetStream placement, sized file stores, least-privilege authenticated users with module-generated passwords, and the Prometheus exporter scraped by an operator PodMonitor. Start from the **Production preset**.
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the NATS deployment
-- [**Kubernetes Storage Class**](/cloud-catalog/kubernetes-storage-class) -- backs the JetStream volumes with provisioned-IOPS storage
-- [**Kubernetes Certificate**](/cloud-catalog/kubernetes-certificate) -- issues the TLS Secret for the client listener, with rotation handled by cert-manager
-- [**Kubernetes Kube Prometheus Stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- provides the Prometheus Operator that scrapes the exporter's PodMonitor
+- [**Kubernetes StorageClass**](/cloud-catalog/kubernetes-storage-class) -- backs the JetStream volumes with provisioned-IOPS storage
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) -- issues the TLS Secret for the client listener, with rotation handled by cert-manager
+- [**kube-prometheus-stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- provides the Prometheus Operator that scrapes the exporter's PodMonitor

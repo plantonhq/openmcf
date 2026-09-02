@@ -21,6 +21,14 @@ metadata:
     - planton-e2e
 spec:
   region: us-west-2
+  # Bedrock validates the bucket policy at PutModelInvocationLogging
+  # Configuration time by writing zero-byte amazon-bedrock-logs-
+  # permission-check objects into EVERY configured S3 destination
+  # (both the archive and the CloudWatch large-data spillover prefixes)
+  # -- with zero model invocations ever made. The canaries survive the
+  # configuration's delete, so the fixture bucket must force-destroy
+  # or its teardown fails BucketNotEmpty (live-caught).
+  forceDestroy: true
   policy:
     Version: "2012-10-17"
     Statement:

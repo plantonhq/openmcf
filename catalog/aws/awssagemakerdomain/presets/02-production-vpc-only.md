@@ -1,4 +1,4 @@
-# Preset: Production VPC-Only Domain
+# Production VPC-Only Domain
 
 A security-hardened SageMaker Domain for production ML teams with SSO authentication,
 VPC-only networking, KMS encryption, and cost management via idle shutdown.
@@ -26,10 +26,10 @@ VPC-only networking, KMS encryption, and cost management via idle shutdown.
 
 ## Cost Estimate
 
-Domain infrastructure: ~$0.30/GB-month for EFS storage.
-Per-user compute (with 2-hour idle timeout, 8-hour workday):
-- `ml.t3.medium`: ~$0.40/day per user (~$12/month)
-- EBS storage: $0.10/GB-month
+Domain infrastructure: EFS home-directory storage, billed per GB-month.
+Per-user compute is the main driver — the `ml.t3.medium` default instance bills hourly while running, and the 2-hour idle timeout is what keeps that line small by shutting instances down outside working hours. EBS space storage bills per GB-month.
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awssagemakerdomain.yaml` — computed from the pinned price book, never hand-typed here.
 
 ## Customization
 

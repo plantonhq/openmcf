@@ -1,8 +1,8 @@
-# Listener Set on Kubernetes
+# Kubernetes ListenerSet
 
 Creates a namespaced Kubernetes Gateway API `ListenerSet` -- a set of additional listeners **merged into an existing Gateway**. ListenerSets are the per-tenant/per-team delegation model for shared gateways: a platform team runs the Gateway centrally, and application teams attach their own listeners (ports, hostnames, TLS certificates) from their own namespaces -- without editing the Gateway itself. The listener entries carry the same shape as a Gateway's own listeners (port, protocol, optional hostname and TLS, route-attachment policy). This component mirrors the upstream Gateway API `ListenerSet` (standard channel from v1.5, `gateway.networking.k8s.io/v1`) spec with full fidelity while adding proto validation, typed SDKs, and InfraChart composability.
 
-> **Attachment is opt-in.** Gateways allow **no** ListenerSet attachment by default: the parent Gateway must explicitly allow it through its `allowed_listeners` configuration, naming which namespaces may attach.
+> **Attachment is opt-in.** Gateways allow **no** ListenerSet attachment by default: the parent Gateway must explicitly allow it through its `allowedListeners` configuration, naming which namespaces may attach.
 
 ## What Gets Created
 
@@ -23,7 +23,7 @@ The Gateway controller merges listeners from the Gateway and all attached Listen
 ### Kubernetes Cluster
 
 - **Gateway API CRDs at v1.5.0+ installed** -- deploy the `KubernetesGatewayApiCrds` component first (ListenerSet joined the standard channel in v1.5; the catalog targets v1.6.1).
-- **A parent Gateway that allows attachment** -- `spec.parentRef` should resolve to a `KubernetesGateway` whose `allowed_listeners` policy admits this ListenerSet's namespace.
+- **A parent Gateway that allows attachment** -- `spec.parentRef` should resolve to a `KubernetesGateway` whose `allowedListeners` policy admits this ListenerSet's namespace.
 - **The target namespace exists** -- `spec.namespace` should resolve to a real `KubernetesNamespace`.
 - **TLS certificate Secrets exist** -- terminating listeners reference `kubernetes.io/tls` Secrets, resolved in the ListenerSet's OWN namespace without a `ReferenceGrant` (not the parent Gateway's).
 
@@ -31,14 +31,14 @@ The Gateway controller merges listeners from the Gateway and all attached Listen
 
 ### Console
 
-Open the deployment store, find **Listener Set on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (immutable -- the delegation boundary), then **Parent Gateway** (the Gateway these listeners merge into), then **Listeners** (the endpoints to add, with the same editor a Gateway's own listeners use). Start from the **Team HTTPS Listeners** or **TLS Passthrough Listener** preset in the [Presets](#presets) tab for a directly deployable configuration.
+Open the deployment store, find **Kubernetes ListenerSet**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and three spec steps: **Namespace** (immutable -- the delegation boundary), then **Parent Gateway** (the Gateway these listeners merge into), then **Listeners** (the endpoints to add, with the same editor a Gateway's own listeners use). Start from the **Team HTTPS Listeners** or **TLS Passthrough Listener** preset in the [Presets](#presets) tab for a directly deployable configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesListenerSet
 metadata:
   name: team-a-listeners
@@ -66,7 +66,41 @@ spec:
 planton apply -f listener-set.yaml
 ```
 
-This merges an HTTPS listener for `team-a.example.com` into `shared-gateway` (in `platform-ingress`), terminating with the `team-a-tls` Secret from the ListenerSet's own `team-a` namespace.
+This merges an HTTPS listener for `team-a.example.com` into `shared-gateway` (in `platform-ingress`), terminating with the `team-a-tls` Secret from the ListenerSet's own `team-a` namespace. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the ListenerSet to its namespace, parent Gateway, and certificate:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: team-a-namespace
+      fieldPath: spec.name
+  parentRef:
+    name:
+      valueFrom:
+        kind: KubernetesGateway
+        name: shared-gateway
+        fieldPath: status.outputs.gateway_name
+    namespace: platform-ingress
+  listeners:
+    - name: team-a-https
+      port: 443
+      protocol: HTTPS
+      hostname: team-a.example.com
+      tls:
+        certificateRefs:
+          - name:
+              valueFrom:
+                kind: KubernetesCertificate
+                name: team-a-cert
+                fieldPath: status.outputs.secret_name
+```
+
+The InfraPipeline deploys the namespace, Gateway, and certificate first, then attaches the ListenerSet.
 
 ## Key Configuration
 
@@ -82,7 +116,13 @@ These are the most important decisions when configuring a ListenerSet. Explore t
 
 ### What This Component Consumes
 
-This component takes foreign-key references to a `KubernetesNamespace` (via `spec.namespace`), to `KubernetesGateway` (via `spec.parentRef.name`), and to `KubernetesSecret` (listener `certificateRefs`), so an InfraChart deploys those targets before the ListenerSet and the resource graph carries the edges. Literal names cover targets created outside Planton.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesGateway** | `parentRef.name` | `status.outputs.gateway_name` |
+| **KubernetesSecret** | `listeners[].tls.certificateRefs[].name` | `status.outputs.secret_name` |
+
+Literal names cover targets created outside Planton; certificate references typically wire against a KubernetesCertificate's `status.outputs.secret_name` instead, terminating with cert-manager-issued material the moment it is issued.
 
 ### What This Component Provides
 
@@ -104,8 +144,12 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **KubernetesGatewayApiCrds** -- installs the Gateway API CRDs (v1.5.0+ standard channel carries ListenerSet); deploy first (prerequisite).
-- **KubernetesGateway** -- the parent Gateway (`spec.parentRef`) whose `allowed_listeners` policy must admit this namespace; install first.
-- **KubernetesNamespace** -- the namespace (`spec.namespace`) the ListenerSet runs in.
-- **KubernetesCertificate** -- issues the TLS Secrets terminating listeners reference (via its `secret_name` output).
-- **KubernetesHttpRoute / KubernetesTlsRoute / KubernetesTcpRoute / KubernetesUdpRoute / KubernetesGrpcRoute** -- routes attach to this ListenerSet by naming it as a parentRef (optionally one listener via `sectionName`).
+- [**Kubernetes Gateway API CRDs**](/cloud-catalog/kubernetes-gateway-api-crds) -- installs the Gateway API CRDs (v1.5.0+ standard channel carries ListenerSet); deploy first
+- [**Kubernetes Gateway**](/cloud-catalog/kubernetes-gateway) -- the parent Gateway (`spec.parentRef`) whose `allowedListeners` policy must admit this namespace; install first
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- the namespace (`spec.namespace`) the ListenerSet runs in
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) -- issues the TLS Secrets terminating listeners reference (via its `secret_name` output)
+- [**Kubernetes HTTPRoute**](/cloud-catalog/kubernetes-http-route) -- attaches to this ListenerSet by naming it as a parentRef (optionally one listener via `sectionName`)
+- [**Kubernetes TLSRoute**](/cloud-catalog/kubernetes-tls-route) -- pairs with a Passthrough TLS listener so the backend terminates TLS itself
+- [**Kubernetes TCPRoute**](/cloud-catalog/kubernetes-tcp-route) -- attaches raw TCP forwarding to a merged listener
+- [**Kubernetes UDPRoute**](/cloud-catalog/kubernetes-udp-route) -- attaches UDP forwarding to a merged listener
+- [**Kubernetes GRPCRoute**](/cloud-catalog/kubernetes-grpc-route) -- attaches gRPC method routing to a merged HTTPS listener

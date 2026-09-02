@@ -48,6 +48,9 @@ spec:
         type: spec_default
         reference: The weaker path is explicit in the spec -- a SQL administrator login/password for the SSISDB catalog (stored by Azure as a hidden secure string), inline SAS tokens for custom setup scripts, and inline passwords/licenses in express custom setup -- while every one of them has a stronger form alongside it (managed-identity catalog auth, Key-Vault-sourced command keys and component licenses).
       notes: Deploying a secret-based form is a visible, reviewable manifest choice, never a hidden default.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Create/start/stop/delete operations land in the Azure Activity Log automatically; package- and run-level history rides the factory's diagnostic settings and, for SSIS, the SSISDB catalog's own logging -- none of it toggled here.

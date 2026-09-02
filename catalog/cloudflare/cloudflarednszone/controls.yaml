@@ -1,0 +1,72 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarednszone
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A DNS zone's contents are public data by design -- records exist to be resolved by the world. Cloudflare's storage of the zone file is provider infrastructure, not a component-configurable data store.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no component-owned data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: "Plain DNS resolution is unencrypted by protocol; encrypted transport (DoH/DoT) is Cloudflare resolver-side infrastructure, not a zone dial. The zone's REAL transit-security surface is dnssec.enabled -- Cloudflare signs the zone and publishes the DS material as stack outputs for the registrar, giving resolvers origin authentication and response integrity (with multi_signer, presigned, and use_nsec3 refinements). That is authenticity, not encryption, so it is recorded here as the honest adjudication rather than claimed against an encryption control."
+    - control_id: no-public-access
+      status: configurable
+      field_path: type
+      evidence:
+        type: spec_default
+        reference: "The default zone type (full) is public authoritative DNS -- public by purpose. The spec's internal type exists for internal-only resolution (with dns_settings.internal_dns.reference_zone_id as its fallback), and each record additionally carries private_routing, which restricts it to Cloudflare's internal routing (Magic WAN scenarios) so it is never served over the public internet."
+      notes: Public is the honest default for an authoritative zone; the internal arm is a real, spec-level private-resolution mode rather than a bolt-on.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: An authoritative DNS zone answers queries from the entire internet by design -- there is no source-restriction surface for resolution.
+    - control_id: edge-protection
+      status: configurable
+      field_path: records
+      evidence:
+        type: spec_default
+        reference: "Each A/AAAA/CNAME record's proxied flag (orange cloud) routes the hostname's traffic through Cloudflare's edge, where the zone's protections apply -- unmetered DDoS protection and the free managed WAF ruleset are included on every plan (https://www.cloudflare.com/plans/, retrieved 2026-08-22). Unproxied (gray cloud) records expose the origin address directly."
+      notes: The 03-typed-records preset proxies its web record; MX/TXT and other non-proxiable types resolve directly by protocol necessity. A paused zone (paused true) also bypasses all proxy protections -- DNS-only.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management access is Cloudflare account-membership and API-token posture, not a component choice.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The component runs no workloads and holds no credentials.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication paths of its own -- resolution is anonymous by protocol.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records zone and record changes in the account audit log unconditionally at the account level -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: DNS analytics are a built-in zone feature in the Cloudflare dashboard, always on -- this spec adds or removes no monitoring signal.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable -- the zone and every record re-apply from the manifest; there is no runtime data to restore.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The zone is served by Cloudflare's global anycast nameserver network by design -- replication across failure domains is Cloudflare's infrastructure property, not a component choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Cloudflare exposes no refuse-deletion flag for zones. The adjacent guard the spec DOES carry is the zone hold (hold.enabled, with include_subdomains and a hold_after migration window): while active, Cloudflare rejects attempts to create this zone's hostname as a zone in ANY OTHER account -- hostname-takeover protection during migrations. It protects the name from hostile re-creation elsewhere; it does not refuse deletion of this zone, so it cannot honestly satisfy this control and is recorded here as the adjudication."
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed authoritative DNS -- Cloudflare operates and patches the nameserver fleet; no customer-visible patch surface exists.

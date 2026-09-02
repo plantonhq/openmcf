@@ -19,13 +19,13 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the network will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef. In a Shared VPC design this is the HOST project.
-- **IAM permissions** -- `roles/compute.networkAdmin` on the target project.
+- **IAM permissions** -- the connection's principal needs network administration on the target project (`compute.networks.*`) plus `serviceusage.services.enable` for the module's Compute API enablement step; `compute.routes.list`/`delete` are additionally required only when `deleteDefaultRoutesOnCreate` is true.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP VPC Network**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Custom Mode Regional** preset in the [Presets](#presets) tab for the production-standard network.
+Open the deployment store, find **GCP VPC Network**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Custom Mode VPC with Regional Routing** preset in the [Presets](#presets) tab for the production-standard network.
 
 ### CLI
 
@@ -50,22 +50,24 @@ spec:
 planton apply -f vpc.yaml
 ```
 
-This creates an empty custom-mode network — the deliberate starting point. Subnetworks, firewall rules, and NAT are then authored as their own resources against its self link.
+This creates an empty custom-mode network — the deliberate starting point. Subnetworks, firewall rules, and NAT are then authored as their own resources against its self link. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, downstream resources wire to the network via ValueFromRef:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the network to a GCP project deployed in the same InfraPipeline:
 
 ```yaml
 spec:
-  vpcSelfLink:
+  projectId:
     valueFrom:
-      kind: GcpVpcNetwork
-      name: prod-vpc
-      fieldPath: status.outputs.network_self_link
+      kind: GcpProject
+      name: production-project
+      fieldPath: status.outputs.project_id
+  networkName: prod-vpc
+  autoCreateSubnetworks: false
 ```
 
-This is the composition backbone: one GcpVpcNetwork node, with GcpSubnetwork, GcpFirewallRule, and GcpRouterNat nodes hanging off its `network_self_link` output.
+The InfraPipeline resolves the dependency graph, deploys the project first, then provisions the network. This node is the composition backbone: GcpSubnetwork, GcpFirewallRule, and GcpRouterNat nodes hang off its `network_self_link` output.
 
 ## Key Configuration
 
@@ -78,6 +80,10 @@ These are the most important decisions when configuring a VPC network. Explore t
 **MTU** -- 1460 by default; up to 8896 for jumbo frames inside the VPC. Internet-bound and cross-VPC paths still clamp lower, and every VM OS must match.
 
 **Default routes** -- `deleteDefaultRoutesOnCreate: true` births the network with NO internet path — the fail-closed posture for regulated egress. Nothing (including Cloud NAT) reaches the internet until routes are authored deliberately. Create-time only.
+
+**Description is not a free edit** -- `description` is immutable on this resource: changing it destroys and recreates the network, and GCP refuses to delete a network that still holds subnets, peerings, or attached resources. Write it once, deliberately.
+
+**Deletion policy** -- `PREVENT` protects the network every subnet, route, and peering depends on — destroy fails instead of cascading. `ABANDON` removes it from management while it keeps serving in GCP. The default `DELETE` already refuses while dependent resources remain.
 
 ## Outputs and Dependencies
 
@@ -103,9 +109,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Custom Mode Regional** -- The production standard: an empty custom-mode network with regional routing, ready for deliberate GcpSubnetwork authoring. Start from the **Custom Mode Regional** preset.
+**Custom mode with regional routing** -- The production standard: an empty custom-mode network with regional routing, ready for deliberate GcpSubnetwork authoring. Start from the **Custom Mode VPC with Regional Routing** preset.
 
-**Custom Mode Global** -- The multi-region/hybrid variant: global routing lets a single Cloud VPN or Interconnect attachment serve subnets in every region. Start from the **Custom Mode Global** preset.
+**Custom mode with global routing** -- The multi-region/hybrid variant: global routing lets a single Cloud VPN or Interconnect attachment serve subnets in every region. Start from the **Custom Mode VPC with Global Routing** preset.
 
 ## Works With
 
@@ -115,5 +121,6 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**GCP Serverless VPC Connector**](/cloud-catalog/gcp-serverless-vpc-connector) -- bridges Cloud Run / Cloud Functions into this network
 - [**GCP Address**](/cloud-catalog/gcp-address) -- anchors peering and interconnect ranges to this network
 - [**GCP Global Address**](/cloud-catalog/gcp-global-address) -- reserves the private-services-access range for managed services
+- [**GCP Service Networking Connection**](/cloud-catalog/gcp-service-networking-connection) -- peers the reserved range to Google's service producers for Cloud SQL / AlloyDB / Memorystore private IP
 - [**GCP GKE Cluster**](/cloud-catalog/gcp-gke-cluster) -- VPC-native clusters consume this network and its subnets
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the network is created

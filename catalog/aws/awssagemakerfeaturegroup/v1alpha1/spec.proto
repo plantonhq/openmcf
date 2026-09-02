@@ -43,7 +43,13 @@ message AwsSagemakerFeatureGroupSpec {
 
   // IAM role used to persist data into the offline store's S3 location.
   // The role must trust sagemaker.amazonaws.com and be able to write
-  // the bucket.
+  // the bucket. When offline_store is configured, CreateFeatureGroup
+  // validates the role AGAINST THE BUCKET at create time - it assumes
+  // the role and calls s3:GetBucketAcl, and writes carry
+  // s3:PutObjectAcl (the verbs AWS's own AmazonSageMakerFeatureStoreAccess
+  // managed policy grants). A role that can only read/write objects
+  // fails the create with ValidationException "Invalid S3Uri" wrapping
+  // the S3 AccessDenied (live-verified 2026-08-25).
   dev.planton.shared.foreignkey.v1.StringValueOrRef role_arn = 5 [
     (buf.validate.field).required = true,
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsIamRole,

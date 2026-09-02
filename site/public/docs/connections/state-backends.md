@@ -35,14 +35,14 @@ Platform-managed backends are the default for new organizations. When a stack jo
 
 **Limitations:**
 
-- Platform-managed backends are only available when using Planton-hosted runners. If you deploy a runner in your own infrastructure, you need a self-managed backend (S3, GCS, Azure Blob, or Pulumi Cloud) because customer-deployed runners cannot access platform-managed storage.
+- Platform-managed backends are only available when using Planton-hosted runners. If you deploy a runner in your own infrastructure, you need a self-managed backend (S3, GCS, Azure Blob, Cloudflare R2, Terraform Cloud/Enterprise, or Pulumi Cloud) because customer-deployed runners cannot access platform-managed storage.
 - You do not control the storage location or encryption keys. If compliance requirements mandate that state files remain in your cloud account, configure a self-managed backend instead.
 
 To switch away from platform-managed defaults, create a new state backend connection, configure it with your preferred storage, and mark it as the default for your organization. See [Switching from Platform-Managed to Self-Managed](#switching-from-platform-managed-to-self-managed) for details.
 
 ## Authentication Mode
 
-When you configure a self-managed state backend (S3, GCS, Azure Blob, or Pulumi Cloud), you choose how the runner authenticates with the storage provider. This choice appears as the first step in the connection wizard.
+When you configure a self-managed state backend (S3, GCS, Azure Blob, Cloudflare R2, Terraform Cloud/Enterprise, or Pulumi Cloud), you choose how the runner authenticates with the storage provider. This choice appears as the first step in the connection wizard.
 
 ### Provide Credentials
 
@@ -158,7 +158,7 @@ This is not needed for the Pulumi Cloud backend, which handles encryption intern
 
 Terraform and OpenTofu share the same state format and backend configuration. A state backend configured for Terraform works identically for OpenTofu — you do not need separate backends for each.
 
-State can be stored in three locations:
+State can be stored in several locations:
 
 ### S3 Backend
 
@@ -200,13 +200,28 @@ The S3 backend supports S3-compatible storage providers (Cloudflare R2, MinIO) b
 
 **When to use**: State must stay in your Azure subscription.
 
+### Remote Backend (Terraform Cloud, Terraform Enterprise, Scalr)
+
+Store state in any service speaking the TFE protocol — HCP Terraform (app.terraform.io), self-hosted Terraform Enterprise, or Scalr. Planton uses these services for **state storage only**: your HCL always executes on Planton's OpenTofu engine, and Planton keeps each workspace in local execution mode — no remote runs, ever.
+
+| Field | Description |
+|-------|-------------|
+| Hostname | The service hostname (`app.terraform.io` for HCP Terraform; your own for Terraform Enterprise or Scalr) |
+| Organization | The organization that owns the workspaces (for Scalr, this is an environment ID like `env-xxxx`) |
+| Workspace Prefix | Planton derives one workspace per resource, named from this prefix plus the resource's identity |
+| Token | A TFE API token — use a **team token** (organization tokens cannot upload state) |
+
+Authentication supports three modes: a token stored as a Planton secret reference, the runner's own environment (`TF_TOKEN_<hostname>` — nothing stored in Planton), or short-lived tokens minted at deploy time by your own Vault through its Terraform Cloud secrets engine.
+
+**When to use**: Your team already lives in Terraform Cloud or Terraform Enterprise and state should stay there while Planton handles provisioning.
+
 ---
 
 ## Connecting via the Web Console
 
 1. Navigate to **Connections** and click the **Pulumi** or **Terraform** card under Infrastructure as Code. (The Terraform card serves both Terraform and OpenTofu deployments.)
 2. **Name your connection**.
-3. **Select the backend type**. Choose **Platform Managed** to use Planton's built-in storage with no further configuration, or select a self-managed option (Pulumi Cloud, S3, GCS, or Azure for Pulumi; S3, GCS, or Azure RM for Terraform/OpenTofu).
+3. **Select the backend type**. Choose **Platform Managed** to use Planton's built-in storage with no further configuration, or select a self-managed option (Pulumi Cloud, S3, GCS, Azure, or Cloudflare R2 for Pulumi; Terraform Cloud, S3, GCS, Azure RM, or Cloudflare R2 for Terraform/OpenTofu).
 4. **Choose the authentication mode** (self-managed backends only). Select **Provide Credentials** to store secrets in Planton, or **Runner Environment** if your runner already has access to the storage provider.
 5. **Provide the backend-specific credentials** if you selected Provide Credentials. This step is skipped when using Runner Environment or Platform Managed.
 6. **Create the connection**.
@@ -245,7 +260,7 @@ Pulumi, Terraform, and OpenTofu all support state locking to prevent concurrent 
 To move from the platform-managed default to your own storage:
 
 1. Create a new state backend connection (Pulumi or Terraform/OpenTofu) through the web console or CLI.
-2. Select your preferred backend type (S3, GCS, Azure Blob, or Pulumi Cloud for Pulumi; S3, GCS, or Azure RM for Terraform/OpenTofu).
+2. Select your preferred backend type (S3, GCS, Azure Blob, Cloudflare R2, or Pulumi Cloud for Pulumi; Terraform Cloud, S3, GCS, Azure RM, or Cloudflare R2 for Terraform/OpenTofu).
 3. Choose the authentication mode and provide credentials if using Provide Credentials.
 4. Mark the new connection as the default for your organization.
 

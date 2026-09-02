@@ -181,7 +181,9 @@ type GcpDataprocAutoscalingPolicyYarnConfig struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// How long the autoscaler waits for a graceful YARN decommission
 	// before forcefully removing a worker during scale-down. Running
-	// tasks get this window to finish. Bounds: 0s to 1 day.
+	// tasks get this window to finish. Bounds: 0s to 1 day (86400s) —
+	// the Dataproc API's own limit, enforced below so an out-of-range
+	// value fails at spec time instead of at the provider.
 	// Format: duration in seconds with "s" suffix (e.g., "3600s").
 	GracefulDecommissionTimeout string `protobuf:"bytes,1,opt,name=graceful_decommission_timeout,json=gracefulDecommissionTimeout,proto3" json:"graceful_decommission_timeout,omitempty"`
 	// Fraction of pending YARN memory the autoscaler adds capacity for
@@ -279,8 +281,11 @@ func (x *GcpDataprocAutoscalingPolicyYarnConfig) GetScaleDownMinWorkerFraction()
 type GcpDataprocAutoscalingPolicyBasicAlgorithm struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// How long the autoscaler waits between evaluations, letting the
-	// cluster settle after a scaling event. Bounds: 2 minutes to 1 day.
-	// Format: duration in seconds with "s" suffix. Default: "120s".
+	// cluster settle after a scaling event. Bounds: 2 minutes (120s) to
+	// 1 day (86400s) — the Dataproc API's own limits, enforced below so
+	// an out-of-range value fails at spec time instead of at the
+	// provider. Format: duration in seconds with "s" suffix.
+	// Default: "120s".
 	CooldownPeriod string `protobuf:"bytes,1,opt,name=cooldown_period,json=cooldownPeriod,proto3" json:"cooldown_period,omitempty"`
 	// YARN memory-based scaling behavior.
 	YarnConfig    *GcpDataprocAutoscalingPolicyYarnConfig `protobuf:"bytes,2,opt,name=yarn_config,json=yarnConfig,proto3" json:"yarn_config,omitempty"`
@@ -471,18 +476,20 @@ const file_catalog_gcp_gcpdataprocautoscalingpolicy_v1alpha1_spec_proto_rawDesc 
 	"\rmax_instances\x18\x01 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\fmaxInstances\x12,\n" +
 	"\rmin_instances\x18\x02 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\fminInstances\x12\x1f\n" +
 	"\x06weight\x18\x03 \x01(\x05B\a\xbaH\x04\x1a\x02(\x00R\x06weight:\xbb\x01\xbaH\xb7\x01\x1a\xb4\x01\n" +
-	"\x15max_gte_min_instances\x12Vmax_instances must be greater than or equal to min_instances when min_instances is set\x1aCthis.min_instances == 0 || this.max_instances >= this.min_instances\"\xf7\x03\n" +
-	"&GcpDataprocAutoscalingPolicyYarnConfig\x12W\n" +
-	"\x1dgraceful_decommission_timeout\x18\x01 \x01(\tB\x13\xbaH\x10\xc8\x01\x01r\v2\t^[0-9]+s$R\x1bgracefulDecommissionTimeout\x12G\n" +
+	"\x15max_gte_min_instances\x12Vmax_instances must be greater than or equal to min_instances when min_instances is set\x1aCthis.min_instances == 0 || this.max_instances >= this.min_instances\"\xe4\x05\n" +
+	"&GcpDataprocAutoscalingPolicyYarnConfig\x12\xc3\x02\n" +
+	"\x1dgraceful_decommission_timeout\x18\x01 \x01(\tB\xfe\x01\xbaH\xfa\x01\xba\x01\xe6\x01\n" +
+	"#graceful_decommission_timeout_bound\x12<graceful_decommission_timeout must be at most 1 day (86400s)\x1a\x80\x01this == '' || !this.matches('^[0-9]+s$') || this.matches('^0*([0-9]{1,4}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)s$')\xc8\x01\x01r\v2\t^[0-9]+s$R\x1bgracefulDecommissionTimeout\x12G\n" +
 	"\x0fscale_up_factor\x18\x02 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00H\x00R\rscaleUpFactor\x88\x01\x01\x12K\n" +
 	"\x11scale_down_factor\x18\x03 \x01(\x01B\x1a\xbaH\x17\xc8\x01\x01\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00H\x01R\x0fscaleDownFactor\x88\x01\x01\x12W\n" +
 	"\x1cscale_up_min_worker_fraction\x18\x04 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00R\x18scaleUpMinWorkerFraction\x12[\n" +
 	"\x1escale_down_min_worker_fraction\x18\x05 \x01(\x01B\x17\xbaH\x14\x12\x12\x19\x00\x00\x00\x00\x00\x00\xf0?)\x00\x00\x00\x00\x00\x00\x00\x00R\x1ascaleDownMinWorkerFractionB\x12\n" +
 	"\x10_scale_up_factorB\x14\n" +
-	"\x12_scale_down_factor\"\xe8\x02\n" +
-	"*GcpDataprocAutoscalingPolicyBasicAlgorithm\x12\xb0\x01\n" +
-	"\x0fcooldown_period\x18\x01 \x01(\tB\x86\x01\xbaH\x82\x01\xba\x01\x7f\n" +
-	"\x16cooldown_period_format\x12<cooldown_period must be a duration in seconds (e.g., '120s')\x1a'this == '' || this.matches('^[0-9]+s$')R\x0ecooldownPeriod\x12\x86\x01\n" +
+	"\x12_scale_down_factor\"\xe8\x04\n" +
+	"*GcpDataprocAutoscalingPolicyBasicAlgorithm\x12\xb0\x03\n" +
+	"\x0fcooldown_period\x18\x01 \x01(\tB\x86\x03\xbaH\x82\x03\xba\x01\x7f\n" +
+	"\x16cooldown_period_format\x12<cooldown_period must be a duration in seconds (e.g., '120s')\x1a'this == '' || this.matches('^[0-9]+s$')\xba\x01\xfc\x01\n" +
+	"\x15cooldown_period_bound\x12Ccooldown_period must be between 2 minutes (120s) and 1 day (86400s)\x1a\x9d\x01this == '' || !this.matches('^[0-9]+s$') || this.matches('^0*(1[2-9][0-9]|[2-9][0-9]{2}|[1-9][0-9]{3}|[1-7][0-9]{4}|8[0-5][0-9]{3}|86[0-3][0-9]{2}|86400)s$')R\x0ecooldownPeriod\x12\x86\x01\n" +
 	"\vyarn_config\x18\x02 \x01(\v2].dev.planton.gcp.gcpdataprocautoscalingpolicy.v1alpha1.GcpDataprocAutoscalingPolicyYarnConfigB\x06\xbaH\x03\xc8\x01\x01R\n" +
 	"yarnConfig\"\xb6\a\n" +
 	" GcpDataprocAutoscalingPolicySpec\x12u\n" +

@@ -45,6 +45,7 @@ message GcpCertManagerCertSpec {
   // The GCP project to create the certificate in.
   // Can be a literal project ID or a reference to a GcpProject resource.
   // If omitted, the provider's default project is used.
+  // Immutable: changing the project destroys and recreates the certificate.
   dev.planton.shared.foreignkey.v1.StringValueOrRef project_id = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = GcpProject,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.project_id"
@@ -166,15 +167,14 @@ message GcpCertManagerCertSelfManaged {
     }
   ];
 
-  // The leaf certificate's private key in PEM form. Secret material —
-  // never logged, masked in outputs.
+  // The leaf certificate's private key in PEM form — a PRIVATE KEY block
+  // (take care not to swap the certificate and the key). Secret material —
+  // never logged, masked in outputs. The PEM framing is taught here rather
+  // than enforced by a validation rule, because sensitive fields hold a
+  // managed-secret reference on consuming platforms and a content-shape
+  // rule would reject every reference.
   string pem_private_key = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "pem_private_key.framing"
-      message: "pem_private_key must be a PEM PRIVATE KEY block (did you swap the certificate and private key?)"
-      expression: "this.contains('PRIVATE KEY')"
-    },
     (dev.planton.shared.options.sensitive) = true
   ];
 }

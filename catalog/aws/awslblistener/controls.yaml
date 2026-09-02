@@ -48,6 +48,9 @@ spec:
         type: spec_default
         reference: Omitted, AWS applies its default security policy, which still negotiates TLS 1.0 and 1.1 with legacy cipher suites; setting a modern policy such as "ELBSecurityPolicy-TLS13-1-2-2021-06" (the spec's recommendation) retires the legacy protocol versions and ciphers so old clients cannot negotiate down.
       notes: Applies to "HTTPS" and "TLS" listeners; plaintext protocols have no handshake to police. mutual_authentication mode "verify" further replaces bearer-anything access with certificate-verified clients.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Request-level access logging is a load-balancer attribute (the AwsAlb spec's access_logs block), not a listener setting -- the listener's traffic appears in the parent's access logs when the parent enables them. Administrative actions on the listener land in CloudTrail as account-level posture.

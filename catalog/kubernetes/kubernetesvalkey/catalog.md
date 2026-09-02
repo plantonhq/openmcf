@@ -11,7 +11,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Auth Secret** (optional) -- when ACL users are declared, their passwords are materialized as the `<name>-auth` Kubernetes Secret (one key per username) the chart consumes; they never appear in rendered chart values
 - **PersistentVolumeClaims** (optional) -- the dataset volume (standalone), or one per pod (replication, where persistence is required)
 - **Metrics sidecar + ServiceMonitor** (optional) -- the redis_exporter sidecar with its metrics Service, and a ServiceMonitor for the Prometheus operator
-- **Namespace** (optional) -- created with standard governance labels when `create_namespace` is true
+- **Namespace** (optional) -- created with standard governance labels when `createNamespace` is true
 
 ## Before You Deploy
 
@@ -19,7 +19,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Kubernetes Provider Connection** -- an active connection in the Connect module with credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
 
-### Cluster
+### Kubernetes Cluster
 
 - A StorageClass for the persistence volume (or accept the cluster default). Replication mode REQUIRES persistence — replicas bootstrap by syncing the primary's on-disk dataset.
 - For TLS: an existing `kubernetes.io/tls` Secret — issue a `KubernetesCertificate` and wire its Secret name through the reference (the cert-manager seam).
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Valkey**, and click **Deploy**. The creation wizard walks you through placement, the chart pin, the standalone-vs-replication topology decision, persistence, the valkey.conf memory and durability dials, ACL authentication, TLS, exposure, observability, and scheduling. Start from the **Single Instance** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Valkey**, and click **Deploy**. The creation wizard walks you through placement, the chart pin, the standalone-vs-replication topology decision, persistence, the valkey.conf memory and durability dials, ACL authentication, TLS, exposure, observability, and scheduling. Start from the **Single Instance Valkey** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesValkey
 metadata:
   name: sessions-cache
@@ -61,7 +61,29 @@ spec:
 planton apply -f valkey.yaml
 ```
 
-Applications then reach the store at the exported in-cluster endpoint, authenticating as `default` with the password from the `sessions-cache-auth` Secret.
+This creates a standalone instance with a 5Gi persistent volume, append-only durability, a 256mb memory ceiling with LRU eviction, and ACL auth on -- applications reach the store at the exported in-cluster endpoint, authenticating as `default` with the password from the `sessions-cache-auth` Secret. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the instance to a namespace and storage class managed by other Cloud Resources:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: app-namespace
+      fieldPath: spec.name
+  persistence:
+    size: 5Gi
+    storageClass:
+      valueFrom:
+        kind: KubernetesStorageClass
+        name: fast-ssd
+        fieldPath: status.outputs.storage_class_name
+```
+
+The InfraPipeline resolves the dependency graph, deploys the namespace and storage class first, then provisions Valkey with the resolved values.
 
 ## Key Configuration
 
@@ -81,17 +103,17 @@ These are the most important decisions when configuring Valkey. Explore the full
 
 **Exposure is composed** -- the store is in-cluster plumbing reachable at the exported endpoint; the LoadBalancer arm exists for managed-cloud recipes carried by the Service annotations. Compose a first-class exposure kind for anything else, and never expose an unauthenticated store.
 
-**The escape hatch** -- `helm_values` carries additional chart values as a YAML document, merged LAST — never the substitute for typed fields, and never a place for secrets.
+**The escape hatch** -- `helmValues` carries additional chart values as a YAML document, merged LAST — never the substitute for typed fields, and never a place for secrets.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the instance is deployed into |
-| `spec.persistence.storage_class` / `spec.replication.persistence.storage_class` | KubernetesStorageClass (`status.outputs.storage_class_name`) | The StorageClass backing the dataset volume |
-| `spec.tls.certificate_secret` | KubernetesCertificate (`status.outputs.secret_name`) | The kubernetes.io/tls Secret serving client TLS |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesStorageClass** (optional) | `persistence.storageClass` / `replication.persistence.storageClass` | `status.outputs.storage_class_name` |
+| **KubernetesCertificate** (with TLS) | `tls.certificateSecret` | `status.outputs.secret_name` |
 
 ### What This Component Provides
 
@@ -112,13 +134,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single-instance cache** -- one instance with append-only persistence, a memory ceiling with LRU eviction, and ACL auth. Start from the **Single Instance** preset.
+**Single-instance cache** -- one instance with append-only persistence, a memory ceiling with LRU eviction, and ACL auth. Start from the **Single Instance Valkey** preset.
 
-**Production read scaling** -- a primary plus two replicas with per-pod persistence, write safety, the read Service, and a PodDisruptionBudget. Start from the **Persistent With Replicas** preset.
+**Production read scaling** -- a primary plus two replicas with per-pod persistence, write safety, the read Service, and a PodDisruptionBudget. Start from the **Production Valkey with Replicas** preset.
 
 ## Works With
 
-- **Kubernetes Namespace** -- the placement target; deploy the cache beside the application that uses it.
-- **Kubernetes Certificate** -- issues and rotates the kubernetes.io/tls Secret the TLS block references.
-- **Kubernetes Deployment / StatefulSet** -- the applications that consume the exported endpoint and the auth Secret.
-- **Metrics / monitoring stack** -- the ServiceMonitor needs the Prometheus operator CRDs and turns cache health (memory, evictions, hit ratio, replica lag) into alerts.
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- the placement target; deploy the cache beside the application that uses it
+- [**Kubernetes StorageClass**](/cloud-catalog/kubernetes-storage-class) -- backs the persistence volume the dataset (and replication bootstrap) depends on
+- [**Cert Manager Certificate**](/cloud-catalog/kubernetes-certificate) -- issues and rotates the kubernetes.io/tls Secret the TLS block references
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- the applications that consume the exported endpoint and the auth Secret
+- [**kube-prometheus-stack**](/cloud-catalog/kubernetes-kube-prometheus-stack) -- provides the Prometheus operator CRDs the ServiceMonitor needs, turning cache health (memory, evictions, hit ratio, replica lag) into alerts

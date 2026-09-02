@@ -137,6 +137,27 @@ func TestFactSheetCargoRoundTrip(t *testing.T) {
 		t.Errorf("AwsAlb permissions provenance = %q, want derived", exemplar.PermissionsProvenance)
 	}
 
+	// The token-scoped providers' arms fold into the provenance summary
+	// like every IAM arm: a component whose manifest declares only a
+	// cloudflare or digital_ocean section still summarizes as derived --
+	// an empty summary here would mean the fold silently skips the new
+	// sections.
+	for _, tokenExemplar := range []string{"CloudflareDnsRecord", "DigitalOceanDatabaseUser"} {
+		found := false
+		for _, entry := range bundle.CatalogEntries() {
+			if entry.Kind != tokenExemplar {
+				continue
+			}
+			found = true
+			if entry.PermissionsProvenance != "derived" {
+				t.Errorf("%s permissions provenance = %q, want derived (the token-provider arms must fold into the summary)", tokenExemplar, entry.PermissionsProvenance)
+			}
+		}
+		if !found {
+			t.Errorf("%s has no catalog entry", tokenExemplar)
+		}
+	}
+
 	// An uncovered component's entry document carries no summary keys at
 	// all (omitempty holds) -- absence is the honest state. The exemplar is
 	// chosen DYNAMICALLY (the first entry document, in name order, whose

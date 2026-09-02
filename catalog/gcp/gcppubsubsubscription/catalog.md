@@ -1,11 +1,12 @@
 # GCP Pub/Sub Subscription
 
-Deploys a Pub/Sub subscription attached to a topic with configurable delivery method (pull, push, BigQuery, or Cloud Storage), acknowledgement deadlines, message ordering, exactly-once delivery, dead-letter handling, and retry policies. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects, topics, and GCS buckets.
+Deploys a Pub/Sub subscription attached to a topic with configurable delivery method (pull, push, BigQuery, or Cloud Storage), acknowledgement deadlines, message ordering, exactly-once delivery, dead-letter handling, and retry policies. Per-consumer message transforms (JavaScript UDFs or Vertex AI inference) reshape payloads for this subscription without changing what other subscriptions on the topic see, and attribute filters auto-acknowledge non-matching messages before they reach the consumer.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Pub/Sub API enablement** -- the module enables `pubsub.googleapis.com` in the target project before creating the subscription (never disabled on destroy)
 - **Pub/Sub Subscription** -- a named subscription resource in the specified GCP project, attached to the referenced topic, with the configured delivery method and message handling policies
 - **Push Configuration** -- created only when `pushConfig` is set; configures HTTP POST delivery to an HTTPS endpoint with optional OIDC authentication and unwrapped payload mode
 - **BigQuery Configuration** -- created only when `bigqueryConfig` is set; streams messages directly into a BigQuery table with optional schema mapping and metadata columns
@@ -24,16 +25,16 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the subscription will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **An existing Pub/Sub topic** to subscribe to. Provide the fully qualified topic ID or reference a GcpPubSubTopic Cloud Resource via ValueFromRef.
-- **Cloud Pub/Sub API** enabled in the target project.
-- **BigQuery Data Editor role** on the target table (if using BigQuery delivery).
-- **Storage Object Creator role** on the target bucket (if using Cloud Storage delivery).
+- **An existing Pub/Sub topic** to subscribe to. Provide the fully qualified topic ID or reference a GcpPubSubTopic Cloud Resource via ValueFromRef. The module enables the Pub/Sub API itself — no manual API setup is needed.
+- **BigQuery Data Editor role** on the target table for the writing identity (only for BigQuery delivery) — the Pub/Sub service agent by default, or the `serviceAccountEmail` you set.
+- **Storage Object Creator role** on the target bucket for the writing identity (only for Cloud Storage delivery).
+- **Dead-letter grants** (only for `deadLetterPolicy`) — the Pub/Sub service agent needs Subscriber on this subscription and Publisher on the dead-letter topic.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Pub/Sub Subscription**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Pull** preset in the [Presets](#presets) tab to pre-populate a minimal pull subscription.
+Open the deployment store, find **GCP Pub/Sub Subscription**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Basic Pull Subscription** preset in the [Presets](#presets) tab to pre-populate a minimal pull subscription.
 
 ### CLI
 
@@ -94,16 +95,27 @@ These are the most important decisions when configuring a Pub/Sub subscription. 
 
 **Message ordering** -- Set `enableMessageOrdering: true` to deliver messages with the same ordering key in publish order. Immutable after creation. Requires publishers to set an ordering key on messages.
 
+**Idle expiry is on by default** -- With no `expirationPolicy`, GCP deletes the subscription after 31 days without an active consumer — a staging queue nobody polls quietly vanishes along with its backlog. Set `expirationPolicy.ttl: ""` for a subscription that never expires.
+
+**Per-consumer transforms** -- `messageTransforms` run in list order on every message before delivery: a JavaScript UDF or a Vertex AI inference call per step, and a step returning null drops the message. Use them to reshape or redact payloads for THIS consumer; a transform the topic applies changes what every subscription sees. The `disabled` flag stages a transform in or out without losing its pipeline position.
+
+**Destroy semantics** -- Deleting a subscription drops its unacknowledged backlog immediately. For consumers whose backlog must never silently disappear, set `deletionPolicy: PREVENT` so destroy fails instead; `ABANDON` unmanages the subscription but leaves it accumulating messages in GCP.
+
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **GcpProject** | `projectId` | `status.outputs.project_id` |
+| **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
 | **GcpPubSubTopic** | `topic` | `status.outputs.topic_id` |
 | **GcpPubSubTopic** (optional) | `deadLetterPolicy.deadLetterTopic` | `status.outputs.topic_id` |
+| **GcpCloudRun** (optional) | `pushConfig.pushEndpoint` | `status.outputs.url` |
+| **GcpServiceAccount** (optional) | `pushConfig.oidcToken.serviceAccountEmail` | `status.outputs.email` |
+| **GcpBigQueryTable** (optional) | `bigqueryConfig.table` | `status.outputs.qualified_name` |
+| **GcpServiceAccount** (optional) | `bigqueryConfig.serviceAccountEmail` / `cloudStorageConfig.serviceAccountEmail` | `status.outputs.email` |
 | **GcpGcsBucket** (optional) | `cloudStorageConfig.bucket` | `status.outputs.bucket_id` |
+| **GcpVertexAiEndpoint** (optional, per transform) | `messageTransforms[].aiInference.endpoint` | `status.outputs.endpoint_id` |
 
 ### What This Component Provides
 
@@ -111,23 +123,26 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `subscription_id` | Fully qualified subscription ID (`projects/{project}/subscriptions/{name}`) | Application configuration, monitoring filters |
-| `subscription_name` | Short subscription name | Display, logging, consumer identification |
+| `subscription_id` | Fully qualified subscription ID (`projects/{project}/subscriptions/{name}`) | The handle pull consumers and monitoring filters address the subscription by |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Basic pull** -- Minimal pull subscription with default ack deadline and retention. Suitable for application-driven message consumption where the subscriber controls the pull rate. Start from the **Basic Pull** preset.
+**Basic pull** -- Minimal pull subscription with default ack deadline and retention. Suitable for application-driven message consumption where the subscriber controls the pull rate. Start from the **Basic Pull Subscription** preset.
 
-**Push with OIDC** -- Push delivery to an HTTPS endpoint with OIDC-based authentication. Suitable for webhook integrations, Cloud Run services, and serverless backends that receive messages as HTTP POST requests. Start from the **Push with OIDC** preset.
+**Push with OIDC** -- Push delivery to an HTTPS endpoint with OIDC-based authentication. Suitable for webhook integrations, Cloud Run services, and serverless backends that receive messages as HTTP POST requests. Start from the **Push with OIDC Authentication** preset.
 
 **BigQuery delivery** -- Direct streaming into a BigQuery table with topic schema mapping and metadata columns. Suitable for analytics pipelines, event archival, and real-time dashboards without writing consumer code. Start from the **BigQuery Delivery** preset.
 
-**Dead letter** -- Subscription with exactly-once delivery, 14-day retention, retained ack'd messages, dead-letter routing after 10 attempts, and exponential retry backoff. Suitable for payment processing, order fulfillment, and other workflows that require reliable delivery with poison message isolation. Start from the **Dead Letter** preset.
+**Dead letter** -- Subscription with exactly-once delivery, 14-day retention, retained ack'd messages, dead-letter routing after 10 attempts, and exponential retry backoff. Suitable for payment processing, order fulfillment, and other workflows that require reliable delivery with poison message isolation. Start from the **Reliable Processing with Dead-Lettering** preset.
 
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the subscription is created
 - [**GCP Pub/Sub Topic**](/cloud-catalog/gcp-pub-sub-topic) -- provides the topic that the subscription receives messages from, and optionally the dead-letter topic
+- [**GCP Cloud Run**](/cloud-catalog/gcp-cloud-run) -- the canonical push target; its `url` output feeds `pushConfig.pushEndpoint`
+- [**GCP Service Account**](/cloud-catalog/gcp-service-account) -- the OIDC identity for authenticated push, or the writing identity for BigQuery/Cloud Storage delivery
+- [**GCP BigQuery Table**](/cloud-catalog/gcp-big-query-table) -- the destination table for BigQuery delivery
 - [**GCP GCS Bucket**](/cloud-catalog/gcp-gcs-bucket) -- provides the destination bucket for Cloud Storage delivery
+- [**GCP Vertex AI Endpoint**](/cloud-catalog/gcp-vertex-ai-endpoint) -- the model endpoint behind AI-inference message transforms

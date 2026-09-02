@@ -1,6 +1,6 @@
 # Azure Key Vault Key
 
-Deploys a cryptographic key inside an Azure Key Vault -- the customer-managed-key (CMK) building block of an Azure platform. The private part never leaves the vault (or its HSM on the Premium tier); consumers call the vault to encrypt/decrypt, wrap/unwrap, or sign/verify. This is how "bring your own key" works across Azure: storage accounts, disk encryption sets, container registries, and database services all encrypt their data with a data-encryption key that THIS key wraps -- revoking or rotating it revokes access to everything downstream. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys a cryptographic key inside an Azure Key Vault -- the customer-managed-key (CMK) building block of an Azure platform. The private part never leaves the vault (or its HSM on the Premium tier); consumers call the vault to encrypt/decrypt, wrap/unwrap, or sign/verify. This is how "bring your own key" works across Azure: storage accounts, disk encryption sets, container registries, and database services all encrypt their data with a data-encryption key that THIS key wraps -- revoking or rotating it revokes access to everything downstream.
 
 ## What Gets Created
 
@@ -11,13 +11,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Rotation policy** -- when the `rotationPolicy` block is configured: per-version expiry with Event Grid near-expiry notification, and automatic rotation triggers
 - **Lifetime instants** -- optional not-before and expiration timestamps on the key
 
-## The Key in the Vault Family
-
-The key composes with the rest of the security family:
-
-- **AzureKeyVault** -- the parent security boundary, referenced by `keyVaultId`; its authorization mode, network posture, and purge protection govern this key wholesale
-- **AzureDiskEncryptionSet** -- bridges this key to server-side disk encryption for VMs and managed disks
-- **CMK consumers** -- storage accounts, Cosmos DB, container registries, flexible servers, and Service Bus namespaces reference this key's `versionless_id` output so rotation follows automatically
+The key lives entirely inside the referenced vault, whose authorization mode, network posture, and purge protection govern it wholesale.
 
 ## Before You Deploy
 
@@ -29,20 +23,20 @@ The key composes with the rest of the security family:
 ### Azure Subscription
 
 - **An Azure Key Vault** for the key to live in. Reference an AzureKeyVault Cloud Resource via ValueFromRef, or provide the vault ARM ID directly. HSM key types (RSA_HSM/EC_HSM) require the vault on the PREMIUM SKU.
-- **Data-plane key permissions** for the deploying credential -- subscription Owner alone is not enough; the full deployer grant set is cataloged in [`iac/permissions.yaml`](iac/permissions.yaml).
+- **Data-plane key permissions** for the deploying credential -- subscription Owner alone is not enough; the deployer needs data-plane key permissions on the vault (the "Key Vault Administrator" or "Key Vault Crypto Officer" RBAC role, or key permissions in a legacy access policy).
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Azure Key Vault Key**, and click **Deploy**. The creation wizard walks you through placement (the vault and the key's name), the algorithm family and strength, the permitted operations with persona quick-picks, and the rotation policy. Start from the **RSA CMK** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Key Vault Key**, and click **Deploy**. The creation wizard walks you through placement (the vault and the key's name), the algorithm family and strength, the permitted operations with persona quick-picks, and the rotation policy. Start from the **RSA Customer-Managed Key** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureKeyVaultKey
 metadata:
   name: storage-cmk
@@ -71,7 +65,7 @@ spec:
 planton apply -f key-vault-key.yaml
 ```
 
-This creates a rotating RSA 2048 CMK -- the shape every Azure CMK integration accepts, rotating roughly quarterly with versionless consumers following automatically.
+This creates a rotating RSA 2048 CMK -- the shape every Azure CMK integration accepts, rotating roughly quarterly with versionless consumers following automatically. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -127,13 +121,11 @@ The key outputs no secret material -- the private part never leaves the vault.
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**RSA customer-managed key** -- RSA 2048 with wrap/unwrap only, the shape every CMK-consuming service accepts. Granting nothing beyond `WRAP_KEY` + `UNWRAP_KEY` keeps the capability boundary tight: the key can enroll in CMK integrations but cannot be misused for direct encryption or signing. Start from the **RSA Customer-Managed Key** preset.
 
-**RSA CMK** -- RSA 2048 with wrap/unwrap, the shape every CMK-consuming service accepts. Start from the **RSA CMK** preset.
+**HSM-backed auto-rotating production CMK** -- RSA-HSM with a full rotation policy (per-version expiry, notification lead, age-based rotation trigger), for compliance regimes mandating FIPS 140-2 Level 3 hardware. The trades: the vault must be on the PREMIUM SKU, and HSM operations carry higher per-operation cost. Start from the **HSM Auto-Rotating Production CMK** preset.
 
-**HSM auto-rotating** -- RSA-HSM with a full rotation policy, for compliance regimes mandating hardware protection. Start from the **HSM Auto-Rotating** preset.
-
-**EC signing** -- an elliptic-curve key with sign/verify, for JWTs and code signing. Start from the **EC Signing** preset.
+**EC signing key** -- an elliptic-curve key with sign/verify, for JWTs and code signing; smaller signatures and faster verification than RSA. Remember an EC key cannot encrypt -- it can never serve as a CMK, so pick this shape only for signature workloads. Start from the **EC Signing Key** preset.
 
 ## Works With
 

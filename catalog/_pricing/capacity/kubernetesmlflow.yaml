@@ -34,7 +34,7 @@ spec:
           size_path: artifact_store.pvc.storage_size
   exclusions:
     - text: the dollar value of this capacity is the target cluster's node and storage-class economics
-    - text: backend and artifact volumes left undeclared still provision at their 5Gi and 10Gi module defaults, which this footprint cannot count -- declare the sizes to make the footprint complete
+    - text: a backend or artifact pvc block declared without a size is stated at its 5Gi or 10Gi spec-declared default; with no pvc block at all the modules still provision the volume, a reservation this footprint cannot count
     - applies_when:
         - field_path: artifact_store
           op: is_set

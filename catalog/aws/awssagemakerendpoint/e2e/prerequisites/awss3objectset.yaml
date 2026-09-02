@@ -1,0 +1,36 @@
+# Consumer-scoped AwsS3ObjectSet install profile staging the endpoint
+# lanes' SERVABLE model artifact: a ~650-byte XGBoost booster (trained
+# on four points, saved with xgboost 1.7.6 - the same line the
+# sagemaker-xgboost:1.7-1 container serves) tarred as model.tar.gz.
+# The artifact exists because an artifact-less framework container can
+# NEVER pass an endpoint's ping health checks - CreateModel accepts it,
+# but the endpoint parks at Failed ("Unable to successfully stand up
+# your model within the allotted 180 second timeout", live-caught
+# 2026-08-25). Any other kind composing the AwsSagemakerModel install
+# profile needs its own copy of this override (transitive prerequisites
+# resolve against the component under test).
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsS3ObjectSet
+metadata:
+  name: planton-oss-e2e-awssgmep-model-artifact
+  id: planton-oss-e2e-awssgmep-model-artifact
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awss3objectset
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-west-2
+  bucket:
+    valueFrom:
+      kind: AwsS3Bucket
+      name: planton-oss-e2e-awss3bucket-prereq
+      fieldPath: status.outputs.bucket_id
+  objects:
+    - key: e2e/sagemaker-xgboost-model.tar.gz
+      content_base64: H4sIADQxjWoAA+2Vz08TQRTHp0VEamK46HmzXrXO/ui2NvaXhkiTGhCIyMFspstY1nR/sLv9kRCSxlO96NUSL4YbJv4HEg3X6pW7/wNnnYGplKVQY7qQyH6S2e+81/cmr6/7OnG1WSlbluvdNawVXAVBACFUZJmjmlSUAyX0FEJRljghQZ6iBGVF5qAgy4oEOBhINT5qroccUorbQE7NPj2usYrPbM/xL8WNuszAGL81AaIAPEEaN7vAPecY1AcmyRLJWiOL2lt/d2RhcXGebWnGe7Ku+0IiR/6bmmXEkW1Xcdx2rDo2kalhEImC7Le3P/c/fAzmnQw5ZA41ZzBawc694P4Hhs6/AH3zr4iCALjmSKs4hUs+/xLkDE83cEZIppKKlIJKKi4nFCkBJVGMJZJcqfiwMP9opvhsOt5EnufEB41rpvC0WJhzH8/K9SXNWmrE5PvcAkkqLZ+V1DfjsYvuw2Ul+Nt/6PyLouiff5kY4f1/HpR18yWRXITZ/TrBNDIoMQCmmDq4knbXasjB5F5yLOcq81fKnoNx9Bwr+hdobeM++6L5RaB1RA/NFgBfc1THyOPKHx/I9WIpdP+j282SvFa/b7PT+RLxxRFf5k37Wp6E5r93Szl2ZJY88uzsHvlP29u5I7NF9q0dn03z/qs+xva2TvTxxbvXJ/pIfJkHu59pD/KxvdsH5+zupwb2sd1uH+vjZmd5x2dn+2sfY3qDaRm7nqp72EGebpm97gpT/R+bdODUqm7oXi9AnGQbq/wKa55ex9PMsc6byMB8mvfPL3+HutSq5bqqjRxk8Ol13tVQFau25aoNrFdWPZIn8BsbQ36AkJCQkJAR8RvZEPauABQAAA==
+      content_type: application/gzip

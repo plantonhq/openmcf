@@ -1,6 +1,6 @@
 # AWS Redshift Cluster
 
-Deploys a managed Amazon Redshift data warehouse cluster with configurable node topology, availability posture (Multi-AZ or zone relocation), managed password storage in AWS Secrets Manager, KMS encryption, audit logging, cross-region snapshot copy, and VPC placement. The cluster integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, IAM roles, KMS keys, and Elastic IPs.
+Deploys a managed Amazon Redshift data warehouse cluster with configurable node topology, availability posture (Multi-AZ or zone relocation), managed password storage in AWS Secrets Manager, KMS encryption, audit logging, cross-region snapshot copy, and VPC placement. Cost governance is first-class: usage limits cap what Spectrum and concurrency scaling may consume, and scheduled actions pause, resume, or resize the cluster on cron schedules.
 
 ## What Gets Created
 
@@ -11,6 +11,10 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Parameter Group** -- created only when inline `parameters` entries are configured; applies Redshift-specific tuning parameters (family `redshift-1.0` unless `parameterGroupFamily` selects another)
 - **Logging Configuration** -- created only when `logging` is configured; delivers audit logs (connection, user activity, user DDL) to S3 or CloudWatch Logs
 - **Snapshot Copy Configuration** -- created only when `snapshotCopy` names a destination region; automatically copies the cluster's snapshots there for disaster recovery
+- **Snapshot Schedule Association** -- created only when `snapshotScheduleIdentifier` names an existing account-level schedule; replaces the default automated snapshot cadence
+- **Usage Limits** -- one per `usageLimits[]` entry; feature-scoped spend caps with escalating breach actions
+- **Scheduled Actions** -- one per `scheduledActions[]` entry; pause, resume, or resize on `cron()`/`at()` schedules
+- **Managed VPC Endpoints and Cross-Account Grants** -- one endpoint per `endpointAccesses[]` entry (RA3 only) and one authorization per `endpointAuthorizations[]` entry
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 Security groups are composed, never created: the cluster attaches the referenced `securityGroupIds`, and the ingress rules that open the warehouse port belong on those first-class AwsSecurityGroup resources.
@@ -34,14 +38,14 @@ Security groups are composed, never created: the cluster attaches the referenced
 
 ### Console
 
-Open the deployment store, find **AWS Redshift Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single Node Dev** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS Redshift Cluster**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single-Node Development Cluster** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRedshiftCluster
 metadata:
   name: analytics-warehouse
@@ -65,7 +69,7 @@ spec:
 planton apply -f redshift-cluster.yaml
 ```
 
-This creates a two-node RA3 Redshift cluster with a managed master password (stored in Secrets Manager), encrypted storage using the default AWS-managed key, and a final-snapshot deletion contract. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a two-node RA3 Redshift cluster with a managed master password (stored in Secrets Manager), encrypted storage using the default AWS-managed key, and a final-snapshot deletion contract. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -166,13 +170,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single-node development** -- An RA3 single-node cluster for development and prototyping with minimal cost. No Multi-AZ, no audit logging, managed master password. Start from the **Single Node Dev** preset.
+**Single-node development** -- An RA3 single-node cluster for development and prototyping with minimal cost. No Multi-AZ, no audit logging, managed master password. Start from the **Single-Node Development Cluster** preset.
 
-**Multi-node production** -- RA3 nodes with managed master password, encrypted storage, 7-day automated snapshot retention, and deletion protection via final snapshot. Suitable for production analytics workloads. Start from the **Multi-Node Production** preset.
+**Multi-node production** -- RA3 nodes with managed master password, encrypted storage, 7-day automated snapshot retention, and deletion protection via final snapshot. Suitable for production analytics workloads. Start from the **Multi-Node Production Data Warehouse** preset.
 
-**Analytics workload** -- Multi-node RA3 cluster with IAM roles attached for Spectrum queries, enhanced VPC routing for network governance, CloudWatch audit logging, cross-region snapshot copy, and Multi-AZ. Designed for data lake analytics with S3 integration. Start from the **Analytics Workload** preset.
+**Analytics workload** -- Multi-node RA3 cluster with IAM roles attached for Spectrum queries, enhanced VPC routing for network governance, CloudWatch audit logging, cross-region snapshot copy, and Multi-AZ. Designed for data lake analytics with S3 integration. Start from the **High-Performance Analytics Cluster** preset.
 
-**Governed warehouse** -- Production cluster with daily Spectrum and concurrency-scaling spend caps, scheduled nightly pause / morning resume, a managed VPC endpoint for a BI-tooling VPC, and a cross-account endpoint grant. Start from the **Governed Warehouse** preset.
+**Governed warehouse** -- Production cluster with daily Spectrum and concurrency-scaling spend caps, scheduled nightly pause / morning resume, a managed VPC endpoint for a BI-tooling VPC, and a cross-account endpoint grant. Start from the **Governed Warehouse with Cost Controls and Cross-VPC Access** preset.
 
 ## Works With
 

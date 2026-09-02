@@ -1,0 +1,50 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: digitaloceanapp
+spec:
+  presets:
+    - preset: 01-git-source-web
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: App Platform
+          sku_meter: container instances
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: one service (web) with instanceCount 1 on the basic-xxs slug -- a single always-on container billed per second at the slug's 5.00 USD monthly rate
+          list_unit_price: "5.00"
+          price_source: https://docs.digitalocean.com/products/app-platform/details/pricing/
+          retrieved_on: "2026-08-22"
+          list_cost: "5.0000"
+      total_list_cost: "5.0000"
+      exclusions:
+        - outbound transfer beyond the instance's included monthly allowance bills 0.02 USD/GiB
+      notes: Committed total is one basic-xxs instance-month (5.00 USD). Build minutes, automatic HTTPS, and the platform ingress are included.
+    - preset: 02-container-image
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: App Platform
+          sku_meter: container instances
+          pricing_unit: months
+          pricing_quantity: "2"
+          quantity_basis: one service (web) on professional-xs with autoscaling minInstanceCount 2 -- the committed FLOOR is two always-on instances (2 x 12.00 = 24.00 USD/mo); the maxInstanceCount 5 ceiling follows CPU demand and rides the exclusions
+          list_unit_price: "12.00"
+          price_source: https://docs.digitalocean.com/products/app-platform/details/pricing/
+          retrieved_on: "2026-08-22"
+          list_cost: "24.0000"
+      total_list_cost: "24.0000"
+      exclusions:
+        - autoscaling can grow the service above the 2-instance floor up to 5 instances at 80 percent CPU -- each extra instance bills 12.00 USD/mo while it runs
+        - outbound transfer beyond the pooled per-instance allowance bills 0.02 USD/GiB
+      notes: Committed total is two professional-xs instance-months (24.00 USD). Both presets pin LEGACY slugs whose rates DigitalOcean still publishes but intends to deprecate (apps-s-*/apps-d-* are the forward path), and the current plan tables mark autoscaling as dedicated-only -- the legacy professional-xs predates that split. Flagged for preset review.

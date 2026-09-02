@@ -1,4 +1,4 @@
-# Preset: Single-AZ Production
+# Single-AZ Production
 
 **Use case**: Production workloads in a single availability zone where NFS performance, data compression, encryption, and daily backups are required.
 

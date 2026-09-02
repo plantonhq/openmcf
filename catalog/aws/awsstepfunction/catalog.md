@@ -1,6 +1,6 @@
 # AWS Step Functions
 
-Deploys a Step Functions state machine that orchestrates distributed workflows using Amazon States Language (ASL) definitions expressed as native YAML. The component supports both STANDARD (long-running, exactly-once) and EXPRESS (high-volume, short-duration) state machine types, with configurable CloudWatch Logs logging, X-Ray tracing, and customer-managed KMS encryption. It integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring IAM role, log group, and KMS key dependencies.
+Deploys a Step Functions state machine that orchestrates distributed workflows using Amazon States Language (ASL) definitions expressed as native YAML. The component supports both STANDARD (long-running, exactly-once) and EXPRESS (high-volume, short-duration) state machine types, with configurable CloudWatch Logs logging, X-Ray tracing, and customer-managed KMS encryption. The execution role, log group, and KMS key all accept ValueFromRef wiring, so a state machine composes with AwsIamRole, AwsCloudwatchLogGroup, and AwsKmsKey resources in the same InfraChart. The state machine type is a one-way door — it cannot be changed after creation.
 
 ## What Gets Created
 
@@ -36,7 +36,7 @@ Open the deployment store, find **AWS Step Functions**, and click **Deploy**. Th
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsStepFunction
 metadata:
   name: order-processor
@@ -125,6 +125,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `state_machine_arn` | Amazon Resource Name of the state machine | EventBridge rule targets, API Gateway integrations, IAM policies |
 | `state_machine_name` | Name of the state machine | Dashboards, monitoring, human-readable log references |
 | `state_machine_version_arn` | ARN of the most recently published version (populated only when `publish` is true) | Version-pinned EventBridge targets and aliases for safe rollouts |
+| `alias_arns` | Alias ARNs keyed by alias name (populated only when `aliases` are defined) | Stable invocation targets that follow deployments, e.g. `status.outputs.alias_arns.live` |
 | `revision_id` | Revision identifier of the current definition (changes on every update) | Change auditing |
 | `status` | Lifecycle status reported by AWS (e.g. ACTIVE) | Health dashboards |
 | `creation_date` | RFC3339 creation timestamp | Auditing and inventory |

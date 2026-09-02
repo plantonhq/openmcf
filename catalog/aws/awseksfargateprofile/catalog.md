@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS EKS Fargate Profile**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Namespace** preset in the [Presets](#presets) tab to run one namespace's pods on Fargate.
+Open the deployment store, find **AWS EKS Fargate Profile**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Namespace on Fargate** preset in the [Presets](#presets) tab to run one namespace's pods on Fargate.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEksFargateProfile
 metadata:
   name: batch-workloads
@@ -72,6 +72,34 @@ planton apply -f fargate-profile.yaml
 
 This schedules every pod in the `batch` namespace onto Fargate — no nodes to provision, patch, or scale for those workloads. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the profile deploys alongside its cluster, role, and subnets in one chart, wire the references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  clusterName:
+    valueFrom:
+      kind: AwsEksCluster
+      name: platform-cluster
+      fieldPath: status.outputs.name
+  podExecutionRoleArn:
+    valueFrom:
+      kind: AwsIamRole
+      name: fargate-pod-execution
+      fieldPath: status.outputs.role_arn
+  subnetIds:
+    - valueFrom:
+        kind: AwsSubnet
+        name: private-subnet-a
+        fieldPath: status.outputs.subnet_id
+  selectors:
+    - namespace: batch
+```
+
+The InfraPipeline resolves the dependency graph, deploys the cluster, role, and subnets first, then creates the profile.
+
 ## Key Configuration
 
 These are the most important decisions when configuring a Fargate profile. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -90,15 +118,15 @@ These are the most important decisions when configuring a Fargate profile. Explo
 
 ### What This Component Consumes
 
-| Field | References | Via |
-|-------|-----------|-----|
-| `clusterName` | AwsEksCluster | `status.outputs.name` |
-| `podExecutionRoleArn` | AwsIamRole | `status.outputs.role_arn` |
-| `subnetIds[]` | AwsSubnet | `status.outputs.subnet_id` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsEksCluster** | `clusterName` | `status.outputs.name` |
+| **AwsIamRole** | `podExecutionRoleArn` | `status.outputs.role_arn` |
+| **AwsSubnet** | `subnetIds[]` | `status.outputs.subnet_id` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
@@ -110,13 +138,13 @@ After provisioning, `status.outputs` contains:
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**One namespace on Fargate** -- Everything in a namespace (batch jobs, a team's sandbox) runs serverless. Start from the **Namespace** preset.
+**One namespace on Fargate** -- Everything in a namespace (batch jobs, a team's sandbox) runs serverless. Start from the **Namespace on Fargate** preset.
 
-**Label-selected workloads** -- Only pods carrying a label (e.g. `compute: fargate`) inside a namespace move to Fargate, letting the same namespace mix node-group and Fargate scheduling. Start from the **Labeled Workloads** preset.
+**Label-selected workloads** -- Only pods carrying a label (e.g. `compute: fargate`) inside a namespace move to Fargate, letting the same namespace mix node-group and Fargate scheduling. Start from the **Label-Scoped Fargate** preset.
 
 ## Works With
 
-- **AwsEksCluster** -- the cluster the profile attaches to, referenced by `clusterName`.
-- **AwsIamRole** -- the pod execution role, referenced by `podExecutionRoleArn`.
-- **AwsSubnet** -- the private subnets the pods launch into, referenced by `subnetIds`.
-- **AwsEksAddon** -- CoreDNS as a managed add-on pairs with a `kube-system` selector on Fargate-only clusters.
+- [**AWS EKS Cluster**](/cloud-catalog/aws-eks-cluster) -- the cluster the profile attaches to, referenced by `clusterName`.
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the pod execution role, referenced by `podExecutionRoleArn`.
+- [**AWS Subnet**](/cloud-catalog/aws-subnet) -- the private subnets the pods launch into, referenced by `subnetIds`.
+- [**AWS EKS Addon**](/cloud-catalog/aws-eks-addon) -- CoreDNS as a managed add-on pairs with a `kube-system` selector on Fargate-only clusters.

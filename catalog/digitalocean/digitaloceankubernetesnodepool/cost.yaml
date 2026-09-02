@@ -1,0 +1,41 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceankubernetesnodepool
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Kubernetes
+      sku_meter: worker nodes
+      pricing_unit: months
+      description: Every node in the pool is a worker droplet billing monthly (prorated hourly) from creation, whether or not pods run on it -- the pool's whole bill is its nodes.
+  cost_drivers:
+    - field_path: size
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "The droplet size slug sets the per-node monthly rate -- DOKS worker nodes bill at droplet rates (s-2vcpu-4gb is 24.00 USD/mo, s-4vcpu-8gb is 48.00 USD/mo per https://www.digitalocean.com/pricing/droplets, retrieved 2026-08-22; https://www.digitalocean.com/pricing/kubernetes, retrieved 2026-08-22, charges only the underlying droplets). Changing it replaces the pool."
+    - field_path: node_count
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "Each node is a full billed droplet; the bill scales linearly. With auto_scale enabled this is only the initial count."
+    - field_path: auto_scale
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "Hands the node count to the cluster autoscaler between min_nodes and max_nodes -- the committed floor is min_nodes always-running droplets; everything above follows workload demand."
+    - field_path: min_nodes
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "The autoscaling floor: this many nodes run and bill even at zero load."
+    - field_path: max_nodes
+      sku_meter: worker nodes
+      pricing_unit: months
+      impact: "The autoscaling ceiling: the worst-case node bill is max_nodes at the size's monthly rate."
+  free_tier: ""
+  estimate_exclusions:
+    - "outbound data transfer past the account's pooled free allowance (starting at 2,000 GiB per Basic node per month) bills 0.01 USD/GiB; inbound and node-to-node transfer are free"
+    - "with auto_scale enabled, nodes above min_nodes up to max_nodes follow actual workload demand"
+    - "the owning cluster's control plane, default pool, and any workload-created volumes or load balancers bill on their own components"
+  notes: "A pool is a set of worker droplets billed at droplet rates from creation. Labels, taints, and tags are free scheduling and grouping metadata -- size and node count carry the entire bill. Deleting the pool destroys its droplets and stops the meter; the owning cluster keeps running on its other pools. DigitalOcean prices DOKS identically across regions -- the pool inherits the cluster's region and no region moves the rate."

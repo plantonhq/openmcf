@@ -91,8 +91,10 @@ cat aws/awsalb/iac/permissions.yaml         # least-privilege runner manifest
   `retrieved_on` is the citation to hand the user.
 - Resolve `control_id` values against `_compliance/controls-catalog.yaml`
   (names + statements); framework questions read
-  `_compliance/frameworks/<framework>.yaml` on top. Posture is never
-  "compliant" -- see the honesty grammar in SKILL.md.
+  `_compliance/frameworks/<framework>.yaml` on top -- check the crosswalk's
+  `spec.providers` first, and never apply a provider-scoped framework to
+  another provider's component. Posture is never "compliant" -- see the
+  honesty grammar in SKILL.md.
 - Which kinds are covered at a glance:
 
 ```

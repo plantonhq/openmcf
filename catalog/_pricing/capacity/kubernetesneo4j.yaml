@@ -30,9 +30,15 @@ spec:
       text: the helm_values overlay merges last over the typed rendering and can override modeled values, including resources
   notes:
     - applies_when:
+        - field_path: data_volume
+          op: is_set
         - field_path: data_volume.size
           op: is_unset
-      text: the chart provisions a 10Gi data volume by default even without a declared size -- a reservation this footprint cannot count
+      text: the data volume is stated at its 10Gi spec-declared default size when data_volume declares no size
+    - applies_when:
+        - field_path: data_volume
+          op: is_unset
+      text: the chart still provisions a 10Gi data volume with no data_volume block at all -- a reservation this footprint cannot count
     - applies_when:
         - field_path: cluster_name
           op: is_set

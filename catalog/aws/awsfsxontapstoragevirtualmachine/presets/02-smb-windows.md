@@ -19,8 +19,8 @@ Windows-focused Storage Virtual Machine with NTFS security style and Active Dire
 
 ## What to Customize
 
-- Replace all `<REPLACE>` placeholders with actual values
-- **Critical**: Replace password placeholders with real credentials. For production, inject via CI/CD secrets
+- Replace the angle-bracket placeholders with actual values
+- **Passwords are managed-secret references**: `svm_admin_password` and the AD `password` ship as `$secret/<slug>` references — create the referenced secrets (or rename the slugs to yours); never inline a plaintext password
 - Adjust `netbios_name` (1-15 characters, must be unique in the AD domain)
 - Adjust `dns_ips` to point to your actual AD DNS servers
 - Adjust `organizational_unit_distinguished_name` to your AD OU structure

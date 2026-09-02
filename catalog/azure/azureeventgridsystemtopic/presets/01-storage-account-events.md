@@ -18,5 +18,5 @@ This preset creates a system topic on a storage account -- the most common sourc
 | Placeholder | Description | Where to Find |
 | --- | --- | --- |
 | `<your-resource-group>` | The Planton name of your `AzureResourceGroup` resource | Planton console (or replace `valueFrom` with `value:` and a literal group name) |
-| `<your-storage-account>` | The Planton name of your `AzureStorageAccount` resource | Planton console (or replace `valueFrom` with `value:` and the account's ARM ID) |
+| `<your-storage-account>` | The Planton name of your `AzureStorageAccount` resource -- the reference names the kind and its ARM-id output explicitly because a system topic's source can be ANY Azure resource, so the platform cannot infer them | Planton console (or replace the whole `valueFrom` block with `value:` and the account's ARM ID) |
 | `eastus` | The storage account's own region | The account's overview blade |

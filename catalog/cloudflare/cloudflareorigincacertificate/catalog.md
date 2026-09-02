@@ -1,6 +1,6 @@
-# Origin CA Certificate on Cloudflare
+# Cloudflare Origin CA Certificate
 
-Provisions a Cloudflare Origin CA certificate: a free TLS certificate that Cloudflare's edge trusts, installed on your origin server so the Cloudflare-to-origin hop runs encrypted end-to-end (the "Full (Strict)" SSL mode). It is not browser-trusted -- it is valid only between Cloudflare and your origin. By default Cloudflare generates the private key and CSR for you and returns both, so a downstream origin can mount the certificate and key without any out-of-band key handling. Integrates with Planton's Provider Connections for Cloudflare credential management.
+Provisions a Cloudflare Origin CA certificate: a free TLS certificate that Cloudflare's edge trusts, installed on your origin server so the Cloudflare-to-origin hop runs encrypted end-to-end (the "Full (Strict)" SSL mode). It is not browser-trusted -- it is valid only between Cloudflare and your origin. By default the module generates the private key and CSR for you and returns both, so a downstream origin can mount the certificate and key without any out-of-band key handling.
 
 ## What Gets Created
 
@@ -20,14 +20,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Origin CA Certificate on Cloudflare**, and click **Deploy**. The creation wizard captures the hostnames, how the key is obtained (Cloudflare generates it, or bring your own CSR), and the validity.
+Open the deployment store, find **Cloudflare Origin CA Certificate**, and click **Deploy**. The creation wizard captures the hostnames, how the key is obtained (Cloudflare generates it, or bring your own CSR), and the validity. Start from the **Generated Key (recommended)** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareOriginCaCertificate
 metadata:
   name: edge-origin-cert
@@ -61,25 +61,30 @@ These are the most important decisions when configuring an Origin CA certificate
 
 ## Outputs and Dependencies
 
+### What This Component Consumes
+
+This component has no foreign key dependencies -- it is account-scoped (there is no `zoneId`), and the covered hostnames travel as plain strings.
+
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `certificate_id` | The Origin CA certificate identifier | Verification, dashboards |
-| `certificate` | The issued certificate (PEM) | Install on the origin |
+| `certificate` | The issued certificate (PEM) | Install on the origin, e.g. as the `tls.crt` of a Kubernetes TLS secret |
 | `private_key` | The generated private key (PEM), when no CSR was supplied. Sensitive. | Mount on the origin alongside the certificate |
-| `expires_on` | RFC3339 expiry timestamp | Rotation reminders |
+| `expires_on` | RFC3339 expiry timestamp | Rotation tracking before the certificate lapses |
+
+`status.outputs` also carries `certificate_id`, the identifier you would use to revoke the certificate.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**One-click cert + key** -- let Cloudflare generate everything and mount both outputs into a Kubernetes TLS secret on the origin.
+**One-click cert + key** -- let the module generate everything and mount both outputs into a Kubernetes TLS secret on the origin. This is the right default when your key-handling story is "keep it inside Planton outputs". Start from the **Generated Key (recommended)** preset.
 
-**Bring your own key** -- supply a CSR so the private key never leaves your infrastructure.
+**Bring your own key** -- supply a CSR so the private key never leaves your infrastructure; `status.outputs.private_key` stays empty. Choose this when key custody policy forbids generated keys. Start from the **Bring Your Own CSR** preset.
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- the zone whose origin serves traffic behind this certificate
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- the zone whose origin serves traffic behind this certificate

@@ -30,7 +30,8 @@ const (
 //
 // Operational facts worth planning around: creation takes ~25 minutes
 // and deletion is similar (AWS provisions dedicated capacity), and the
-// server bills hourly from Created onward - Small is ~$0.6/hour. For
+// server bills hourly from Created onward, whether or not anyone is
+// tracking - the size ladder scales the hourly rate. For
 // the serverless successor product, see AwsSagemakerMlflowApp.
 type AwsSagemakerMlflowServerSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -57,8 +58,12 @@ type AwsSagemakerMlflowServerSpec struct {
 	// (a true-to-false change is silently not transmitted) - disabling
 	// requires replacing the server or an out-of-band API call.
 	AutomaticModelRegistration bool `protobuf:"varint,6,opt,name=automatic_model_registration,json=automaticModelRegistration,proto3" json:"automatic_model_registration,omitempty"`
-	// Weekly maintenance window start, UTC 24-hour "DDD:HH:MM" (e.g.
-	// "TUE:03:30"). Omitted = AWS picks.
+	// Weekly maintenance window start, UTC 24-hour "Ddd:HH:MM" (e.g.
+	// "Tue:03:30"). The day token is MIXED-CASE by AWS's server-side
+	// contract - CreateMlflowTrackingServer rejects "TUE:03:30" with a
+	// ValidationException naming the exact regex
+	// (Mon|Tue|Wed|Thu|Fri|Sat|Sun), live-caught 2026-08-25. Omitted =
+	// AWS picks.
 	WeeklyMaintenanceWindowStart string `protobuf:"bytes,7,opt,name=weekly_maintenance_window_start,json=weeklyMaintenanceWindowStart,proto3" json:"weekly_maintenance_window_start,omitempty"`
 	unknownFields                protoimpl.UnknownFields
 	sizeCache                    protoimpl.SizeCache
@@ -156,7 +161,7 @@ const file_catalog_aws_awssagemakermlflowserver_v1alpha1_spec_proto_rawDesc = ""
 	"\x0emlflow_version\x18\x05 \x01(\tB\x14\xbaH\x11\xd8\x01\x01r\f2\n" +
 	"^\\d+\\.\\d+$R\rmlflowVersion\x12@\n" +
 	"\x1cautomatic_model_registration\x18\x06 \x01(\bR\x1aautomaticModelRegistration\x12\x88\x01\n" +
-	"\x1fweekly_maintenance_window_start\x18\a \x01(\tBA\xbaH>\xd8\x01\x01r927^(MON|TUE|WED|THU|FRI|SAT|SUN):([01]\\d|2[0-3]):[0-5]\\d$R\x1cweeklyMaintenanceWindowStartB\x98\x03\n" +
+	"\x1fweekly_maintenance_window_start\x18\a \x01(\tBA\xbaH>\xd8\x01\x01r927^(Mon|Tue|Wed|Thu|Fri|Sat|Sun):([01]\\d|2[0-3]):[0-5]\\d$R\x1cweeklyMaintenanceWindowStartB\x98\x03\n" +
 	"5com.dev.planton.aws.awssagemakermlflowserver.v1alpha1B\tSpecProtoP\x01Zkgithub.com/plantonhq/planton/catalog/aws/awssagemakermlflowserver/v1alpha1;awssagemakermlflowserverv1alpha1\xa2\x02\x04DPAA\xaa\x021Dev.Planton.Aws.Awssagemakermlflowserver.V1alpha1\xca\x021Dev\\Planton\\Aws\\Awssagemakermlflowserver\\V1alpha1\xe2\x02=Dev\\Planton\\Aws\\Awssagemakermlflowserver\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Aws::Awssagemakermlflowserver::V1alpha1b\x06proto3"
 
 var (

@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "ui",
@@ -8,13 +8,25 @@ go_library(
         "manifest.go",
         "manifest_diagnosis.go",
         "messages.go",
+        "stack_outputs.go",
         "styles.go",
     ],
     importpath = "github.com/plantonhq/planton/internal/cli/ui",
     visibility = ["//:__subpackages__"],
     deps = [
         "//pkg/iac/tofu/backendconfig",
+        "//pkg/outputs",
         "//pkg/yamldiag",
         "@com_github_charmbracelet_lipgloss//:lipgloss",
+    ],
+)
+
+go_test(
+    name = "ui_test",
+    srcs = ["stack_outputs_test.go"],
+    embed = [":ui"],
+    deps = [
+        "//pkg/outputs",
+        "@com_github_stretchr_testify//assert",
     ],
 )

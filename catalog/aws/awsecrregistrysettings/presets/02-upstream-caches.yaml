@@ -7,10 +7,14 @@ spec:
   pullThroughCacheRules:
     - ecrRepositoryPrefix: docker-hub
       upstreamRegistryUrl: registry-1.docker.io
+      # ECR requires credentialed pull-through-cache secrets to be NAMED
+      # under the `ecr-pullthroughcache/` prefix (slash, not hyphen).
+      # Deploy an AwsSecretsManagerSecret with
+      # `secretName: ecr-pullthroughcache/dockerhub` and reference it here.
       credentialArn:
         valueFrom:
           kind: AwsSecretsManagerSecret
-          name: ecr-pullthroughcache-dockerhub
+          name: <dockerhub-credential-resource-name>
           fieldPath: status.outputs.secret_arn
     - ecrRepositoryPrefix: k8s
       upstreamRegistryUrl: registry.k8s.io

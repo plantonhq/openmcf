@@ -1,8 +1,6 @@
 # Azure Firewall
 
-Deploys an Azure Firewall — the managed, stateful network firewall data plane that enforces an AzureFirewallPolicy. The firewall carries WHERE enforcement runs (the dedicated subnet, public IPs, availability zones, deployment model) while the attached policy carries WHAT is enforced (rules, threat intelligence, TLS inspection, IDPS). Its `private_ip_address` output anchors the hub-spoke pattern: spoke route tables send 0.0.0.0/0 to it as a VIRTUAL_APPLIANCE next hop, and everything egresses through one inspected chokepoint.
-
-**Two deployment models**, fixed at creation: **AZFW_VNET** (the default) deploys into a dedicated subnet of your virtual network — named exactly `AzureFirewallSubnet`, /26 or larger; **AZFW_HUB** deploys into a Virtual WAN hub, where Azure manages the addressing.
+Deploys an Azure Firewall — the managed, stateful network firewall data plane that enforces an AzureFirewallPolicy. The firewall carries WHERE enforcement runs (the dedicated subnet, public IPs, availability zones, deployment model) while the attached policy carries WHAT is enforced (rules, threat intelligence, TLS inspection, IDPS). Its `private_ip_address` output anchors the hub-spoke pattern: spoke route tables send 0.0.0.0/0 to it as a VIRTUAL_APPLIANCE next hop, and everything egresses through one inspected chokepoint. Two deployment models are fixed at creation — AZFW_VNET deploys into a dedicated subnet of your virtual network (named exactly `AzureFirewallSubnet`, /26 or larger), AZFW_HUB into a Virtual WAN hub where Azure manages the addressing.
 
 ## What Gets Created
 
@@ -31,14 +29,14 @@ The subnet, public IPs, and policy are NOT created here — they are referenced 
 
 ### Console
 
-Open the deployment store, find **Azure Firewall**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Hub-Spoke Egress** preset in the [Presets](#presets) tab for the classic chokepoint.
+Open the deployment store, find **Azure Firewall**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Hub-Spoke Egress Firewall** preset in the [Presets](#presets) tab for the classic chokepoint.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFirewall
 metadata:
   name: hub-egress-fw
@@ -71,7 +69,7 @@ spec:
 planton apply -f firewall.yaml
 ```
 
-After deploy, point spoke route tables' 0.0.0.0/0 at the firewall's `private_ip_address` output — the last step that closes the hub-spoke loop.
+This creates a zone-redundant STANDARD VNet firewall in the hub, enforcing the `egress-baseline` policy through one public IP. A Stack Job tracks the provisioning in real time. After deploy, point spoke route tables' 0.0.0.0/0 at the firewall's `private_ip_address` output — the last step that closes the hub-spoke loop.
 
 ### InfraChart
 
@@ -134,19 +132,19 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `private_ip_address` | The firewall's private IP in AzureFirewallSubnet | Route tables' VIRTUAL_APPLIANCE next hop (`routes[].nextHopInIpAddress`) — the hub-spoke seam |
-| `firewall_id` | Azure Resource Manager ID of the firewall | Automation scripts, diagnostics wiring |
-| `firewall_name` | Name of the firewall | Automation scripts, inventory |
 | `management_private_ip_address` | The management path's private IP (empty without the block) | Forced-tunneling diagnostics |
 | `virtual_hub_public_ip_addresses` | Azure-assigned public IPs (hub model only) | Partner allowlists |
 | `virtual_hub_private_ip_address` | The hub firewall's private IP (hub model only) | Hub route intent |
+
+`firewall_id` and `firewall_name` are also exported for tooling that addresses the firewall as an ARM resource; they have no ValueFromRef consumers.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Hub-spoke egress** -- the zone-redundant VNet firewall enforcing the baseline policy, with spoke route tables steering 0.0.0.0/0 through it. Start from the **Hub-Spoke Egress** preset.
+**Hub-spoke egress** -- the zone-redundant VNet firewall enforcing the baseline policy, with spoke route tables steering 0.0.0.0/0 through it. Start from the **Hub-Spoke Egress Firewall** preset.
 
-**Forced tunneling** -- a fully-private data path with the management block: all egress leaves via ExpressRoute/VPN to on-premises inspection. Start from the **Forced Tunneling** preset.
+**Forced tunneling** -- a fully-private data path with the management block: all egress leaves via ExpressRoute/VPN to on-premises inspection. Start from the **Forced-Tunneling Firewall (Private Data Path)** preset.
 
 ## Works With
 

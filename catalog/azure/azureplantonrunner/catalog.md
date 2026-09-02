@@ -50,7 +50,7 @@ spec:
 planton apply -f runner.yaml
 ```
 
-This minimal manifest deploys a single always-on worker at the default Consumption-plan sizing (0.5 vCPU, 1Gi) tracking the latest runner release -- sizing, version pinning, and the control-plane endpoint are not configured.
+This minimal manifest deploys a single always-on worker at the default Consumption-plan sizing (0.5 vCPU, 1Gi) tracking the latest runner release -- sizing, version pinning, and the control-plane endpoint are not configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -99,6 +99,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `token_secret_name` | The Container App secret holding the runner token | Auditing secret configuration; rotation tooling |
 | `runner_name` | The name the runner registers itself under | Finding the runner in `planton runner list` |
 | `resource_group_name` | The resource group the runner was deployed in | Targeting follow-up Azure operations correctly |
+
+## Common Patterns
+
+**One runner per network perimeter** -- deploy a runner only when a target is invisible from outside the network (a private AKS API server, a private-endpoint database); if every endpoint is public, Planton's hosted runner fleet already covers you, and a self-hosted runner buys nothing except standing infrastructure to size, pin, and pay for. One runner covers a VNet, not a workload: whatever the environment's network can reach, the runner can deploy to, so deploy one per VNet rather than one per cluster. Start from the **Environment Runner** preset.
+
+**Production hardening with a pinned version and full sizing** -- pin `runnerVersion` so nothing tracks the latest release (upgrades and rollbacks become deliberate re-pins), and take the largest Consumption pairing (2 vCPU / 4Gi) when stacks are large or operations run concurrently -- memory pressure shows up as failed IaC operations mid-apply, and the pairing law means sizing memory up always means sizing CPU with it. Start from the **High Capacity (Production Hardened)** preset.
+
+**Calm token rotation** -- the token is only read at join, so rotating it interrupts nothing: the running replica keeps serving on its minted identity, and the next replica replacement joins with the new value. Revoke the runner's own identity (not the token) to cut off a runner; revoking the token never touches runners it already admitted.
+
+**Destroy the runner last** -- the runner is the deploy path for the private workloads behind it. Tear down in-cluster workloads through the runner, then the cluster over the Azure path, then the runner at the end; destroying the runner first strands everything it deploys, because nothing else can reach the private endpoints to tear them down. The environment and resource group are referenced, never owned, so destroying the runner never disturbs neighbors sharing them.
 
 ## Works With
 

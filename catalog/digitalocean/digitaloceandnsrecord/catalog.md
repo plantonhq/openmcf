@@ -1,6 +1,6 @@
-# DNS Record on DigitalOcean
+# DigitalOcean DNS Record
 
-Creates a single DNS record within an existing DigitalOcean DNS zone. Supports every record type the DigitalOcean API accepts -- A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, and SOA -- with type-specific fields for priority, weight, port, flags, and tag applied conditionally and enforced at validation time. Integrates with Planton's Provider Connections for DigitalOcean credential management and ValueFromRef for DNS zone and target dependency wiring.
+Creates a single DNS record within an existing DigitalOcean DNS zone. Supports every record type the DigitalOcean API accepts -- A, AAAA, CNAME, MX, TXT, SRV, NS, CAA, and SOA -- with type-specific fields for priority, weight, port, flags, and tag applied conditionally and enforced at validation time. This is the kind for records whose owner or lifecycle differs from their zone's -- an application adding its own hostname to a shared company zone -- while records that ship with the zone belong in the zone's inline list; pick one home per record so ownership is never split.
 
 ## What Gets Created
 
@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **DNS Record on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **A Record** preset in the [Presets](#presets) tab to point a hostname to an IP address.
+Open the deployment store, find **DigitalOcean DNS Record**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Apex A Record** preset in the [Presets](#presets) tab to point a zone's apex at an IP address.
 
 ### CLI
 
@@ -52,7 +52,7 @@ spec:
 planton apply -f dns-record.yaml
 ```
 
-This creates an A record pointing `www.example.com` to `192.0.2.1` with a one-hour TTL. No MX, SRV, or CAA-specific fields are configured.
+This creates an A record pointing `www.example.com` to `192.0.2.1` with a one-hour TTL; no MX, SRV, or CAA-specific fields are configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -73,7 +73,7 @@ The InfraPipeline resolves the dependency graph, deploys the DNS zone first, the
 
 These are the most important decisions when configuring a DNS record. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Record type** -- The `type` field determines the DNS record type. A and AAAA resolve to IP addresses. CNAME creates an alias to another hostname (cannot be used on the root domain `@` on DigitalOcean). MX routes mail to a specified server. TXT stores arbitrary text (SPF, DKIM, domain verification). SRV and CAA have additional required fields.
+**Record type** -- Changing `type` recreates the record, so a wrong pick costs a delete-and-create, not an edit. The apex constraint matters most: CNAME cannot exist at `@` (DNS forbids it) -- use A/AAAA there and CNAME only on subdomains. NS and SOA are writable but almost never yours to write: apex NS records belong to the zone's delegation and the SOA is DigitalOcean's operational record; the one legitimate NS use is delegating a subdomain to other nameservers.
 
 **TTL** -- The `ttlSeconds` field controls how long DNS resolvers cache this record, defaulting to 1800 seconds (30 minutes). Use lower values (60-300) during migrations or when records change frequently, and higher values (3600-86400) for stable production records.
 
@@ -93,24 +93,16 @@ These are the most important decisions when configuring a DNS record. Explore th
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `record_id` | Unique identifier of the DNS record in DigitalOcean | API operations, record management |
-| `hostname` | Fully qualified hostname (e.g., `www.example.com`) | Application configuration, health check targets |
-| `record_type` | DNS record type that was created (A, CNAME, etc.) | Audit logs, inventory tracking |
-| `domain` | Domain name (DNS zone) where the record was created | Cross-referencing with zone management |
-| `ttl_seconds` | TTL in seconds applied to the record | Cache behavior verification |
+After provisioning, `status.outputs` carries `record_id`, `hostname`, `record_type`, `domain`, and `ttl_seconds` -- but no other catalog component consumes them via ValueFromRef: a DNS record is a leaf of the dependency graph. `record_type`, `domain`, and `ttl_seconds` echo the manifest back for audit (`ttl_seconds` carries the API's applied default when the spec left it unset). The genuinely new values are `record_id` -- the numeric id that, together with the domain, addresses the record in the DigitalOcean API and in imports (`{domain},{record_id}`) -- and `hostname`, the provider-computed fully qualified name to verify resolution against.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**A record** -- Points a hostname to an IPv4 address with a one-hour TTL. Use for root domain or subdomain records targeting Droplets, Load Balancers, or external IP addresses. Start from the **A Record** preset.
+**Apex A record** -- Points the zone apex (`@`) at an IPv4 address with a one-hour TTL -- the record CNAME cannot provide. Targets Droplets, Load Balancers, or external IPs; pair it with ValueFromRef to track the target resource's IP instead of hardcoding it. Start from the **Apex A Record** preset.
 
-**CNAME record** -- Aliases a subdomain to another hostname. Common for `www` pointing to the root domain, subdomains pointing to CDN origins, or third-party service integrations. Start from the **CNAME Record** preset.
+**WWW CNAME record** -- Aliases `www` to the apex (note the fully qualified target with its trailing dot). The same shape serves subdomains pointing to CDN origins or third-party services. Start from the **WWW CNAME Record** preset.
 
 ## Works With
 
-- [**DNS Zone on DigitalOcean**](/cloud-catalog/digital-ocean-dns-zone) -- provides the domain (DNS zone) in which records are created
+- [**DigitalOcean DNS Zone**](/cloud-catalog/digital-ocean-dns-zone) -- provides the domain (DNS zone) in which records are created

@@ -27,9 +27,14 @@ func costCategory(ctx *pulumi.Context, locals *Locals, provider pulumi.ProviderR
 	rules := costexplorer.CostCategoryRuleArray{}
 	for _, r := range spec.Rules {
 		rule := costexplorer.CostCategoryRuleArgs{}
-		if r.Type != "" {
-			rule.Type = pulumi.StringPtr(r.Type)
+		// Always sent: AWS materializes type = "REGULAR" on expression
+		// rules, so an omitted type is a perpetual post-apply diff (the
+		// materialized-default class; server-verified 2026-08-25).
+		ruleType := r.Type
+		if ruleType == "" {
+			ruleType = "REGULAR"
 		}
+		rule.Type = pulumi.StringPtr(ruleType)
 		if r.Value != "" {
 			rule.Value = pulumi.StringPtr(r.Value)
 		}

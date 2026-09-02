@@ -1,9 +1,10 @@
 locals {
-  # The AWS secret name is create-time immutable -- metadata.name is the
-  # naming basis both engines share so a manifest deploys identically on
-  # either. AWS allows up to 512 characters of alphanumeric plus /_+=.@-
-  # (hierarchical names like "prod/payments/db" are legal).
-  secret_name = var.metadata.name
+  # The AWS secret name is create-time immutable -- spec.secret_name when
+  # set (hierarchical paths and service-required prefixes like
+  # "ecr-pullthroughcache/..." that metadata.name cannot carry), else
+  # metadata.name. Both engines share this resolution so a manifest
+  # deploys identically on either.
+  secret_name = var.spec.secret_name != "" ? var.spec.secret_name : var.metadata.name
 
   # Resource-identity tags match the Pulumi module key-for-key.
   aws_tags = {

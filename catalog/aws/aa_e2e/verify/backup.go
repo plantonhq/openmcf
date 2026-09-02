@@ -76,6 +76,17 @@ func (*backupVaultVerifier) VerifyAbsent(ctx context.Context, cfg aws.Config, id
 		if isBackupNotFound(err) {
 			return nil
 		}
+		// AWS Backup MASKS not-found as AccessDeniedException
+		// ("Insufficient privileges to perform this action") on
+		// DescribeBackupVault -- a deleted vault's name answers 403,
+		// never ResourceNotFound (live-probed: the identical call on an
+		// existing vault succeeds under the same credentials). Accepting
+		// it as the gone-signal is safe because VerifyExists uses the
+		// SAME call moments earlier in the lane -- a real permission
+		// loss fails loudly there, never here.
+		if strings.Contains(err.Error(), "AccessDeniedException") {
+			return nil
+		}
 		return errors.Wrapf(err, "DescribeBackupVault(%s)", id)
 	}
 	return errors.Errorf("backup vault (%s) still exists after destroy", id)

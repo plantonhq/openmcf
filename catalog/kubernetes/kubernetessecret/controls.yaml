@@ -40,6 +40,9 @@ spec:
         type: spec_default
         reference: Every secret_data variant except service_account_token mints no API credential; selecting service_account_token asks the cluster's token controller to populate a long-lived, non-expiring API token bound to a ServiceAccount -- the pattern Kubernetes has superseded with short-lived projected tokens since v1.24, which the spec reserves for integrations that genuinely cannot refresh.
       notes: None of the presets use it -- they cover opaque, tls, and docker-registry data. Creating a non-expiring token is a deliberate, reviewable spec choice, never a default.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Creating, reading, or changing the Secret are Kubernetes API operations, captured (or not) by the target cluster's audit policy. The object itself emits nothing.

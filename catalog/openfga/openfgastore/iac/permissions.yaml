@@ -1,0 +1,46 @@
+# Least-privilege permissions the IaC runner's OpenFGA credential needs to
+# provision, update, and destroy this component with the official modules.
+# Schema: iac/componentpermissions/v1.
+#
+# OpenFGA authenticates with a bearer credential against the customer-run
+# OpenFGA server, not IAM-statement policies, so none of the schema's
+# provider sections (aws/gcp/azure/kubernetes) applies -- their absence is
+# the schema's own claim that the modules touch no such API. The credential
+# the openfga/openfga Terraform provider (>= 0.5.0 per iac/tf/provider.tf)
+# takes is one of (verified against the provider registry docs and
+# openfga.dev/docs/getting-started/setup-openfga/configure-openfga,
+# retrieved 2026-08-22):
+#
+#   Pre-shared key:      FGA_API_URL + FGA_API_TOKEN (a key from the server's
+#                        authn.preshared.keys list, sent as a Bearer header)
+#   OIDC client creds:   FGA_API_URL + FGA_CLIENT_ID + FGA_CLIENT_SECRET +
+#                        FGA_API_TOKEN_ISSUER (optional FGA_API_SCOPES,
+#                        FGA_API_AUDIENCE)
+#   No authentication:   FGA_API_URL alone, when the server runs authn
+#                        method "none" (local development only)
+#
+# OpenFGA's API credentials carry no scope granularity: a valid pre-shared
+# key grants the server's ENTIRE API -- every store, every endpoint -- and
+# OIDC validates who may call (issuer/audience/optional subjects) without
+# scoping which endpoints they may hit. The only finer-grained mechanism is
+# the server's experimental access-control feature (>= 1.7.0, off by
+# default), so least privilege today means a dedicated OpenFGA server (or
+# dedicated pre-shared key) per trust boundary, not a narrower token. Should
+# the schema grow an OpenFGA section, this inventory converts mechanically:
+#
+#   Store lifecycle (provenance: derived):
+#     "POST /stores"                 -- create the store (CreateStore)
+#     "GET /stores/{store_id}"       -- read it back on refresh (GetStore)
+#     "DELETE /stores/{store_id}"    -- destroy it (DeleteStore)
+#   There is no update path: the name is the only spec field and the
+#   provider replaces the store when it changes.
+#
+# All entries are derived from static analysis of the official module
+# (openfga_store's create/read/delete paths in the provider's
+# store_client.go, github.com/openfga/terraform-provider-openfga, retrieved
+# 2026-08-22); the live capture lane upgrades them to proven.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: openfgastore
+spec: {}

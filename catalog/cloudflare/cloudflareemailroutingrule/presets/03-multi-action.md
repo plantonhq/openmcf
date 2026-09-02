@@ -1,4 +1,4 @@
-# Preset: Forward AND Process with a Worker
+# Forward AND Process with a Worker
 
 One rule, two actions: forward matched mail to a verified inbox AND hand a copy to an Email Worker (e.g. to file a ticket or post to a channel). Actions apply in order.
 

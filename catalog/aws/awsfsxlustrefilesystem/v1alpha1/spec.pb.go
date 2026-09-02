@@ -616,9 +616,12 @@ func (x *AwsFsxLustreFileSystemRootSquashConfiguration) GetNoSquashNids() []stri
 // between the file system and its linked S3 data repositories.
 type AwsFsxLustreFileSystemLogConfiguration struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// CloudWatch Logs log group ARN to receive the events. The log group must
-	// exist and have a resource policy allowing FSx to write to it. If not set,
-	// logging is disabled regardless of the level setting.
+	// CloudWatch Logs log group ARN to receive the events. When set, the log
+	// group must exist and have a resource policy allowing FSx to write to it.
+	// When left empty with a level set, FSx logs to its DEFAULT log group
+	// (/aws/fsx/lustre) -- logging is NOT disabled by omitting the
+	// destination. Logging is off only when the whole log_configuration
+	// message is absent (or the level is DISABLED).
 	Destination *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=destination,proto3" json:"destination,omitempty"`
 	// Log level controlling which events are logged.
 	//

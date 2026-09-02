@@ -1,9 +1,12 @@
 # A DISABLED window live (the presence-typed explicit-false enabled -
 # the tri-state heal's live proof) with one tag-based target matching
-# nothing and two tasks: an untargeted run-command (no rate controls -
-# AWS rejects them on untargeted tasks) and an automation runbook.
-# Disabled window + no matching instances = nothing ever executes;
-# windows, targets, and tasks are free. ~$0.
+# nothing and two tasks: a run-command task bound to the registered
+# target BY NAME (RUN_COMMAND tasks require targets server-side -
+# live-caught 400; the module resolves the name to the cloud-generated
+# registration ID) with rate controls (legal on targeted tasks), and an
+# untargeted automation runbook (untargeted stays legal for Automation
+# tasks). Disabled window + no matching instances = nothing ever
+# executes; windows, targets, and tasks are free. ~$0.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSsmMaintenanceWindow
 metadata:
@@ -41,6 +44,14 @@ spec:
         value: AWS-RunPatchBaseline
       priority: 1
       cutoffBehavior: CANCEL_TASK
+      # The in-spec target's NAME - the module resolves it to the
+      # cloud-generated registration ID (the name-based join).
+      targets:
+        - key: WindowTargetIds
+          values:
+            - e2e-never-matches
+      maxConcurrency: "2"
+      maxErrors: "1"
       invocation:
         runCommand:
           comment: E2E patch scan (never executes - window disabled)

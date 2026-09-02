@@ -1,6 +1,6 @@
 # Azure Container App Custom Domain
 
-Binds a custom domain to a Container App -- your own hostname (`app.example.com`) serving the app instead of the generated `*.azurecontainerapps.io` address. Azure models the binding as an entry in the app's ingress configuration: every field replaces it when changed, and TLS arrives exactly one of two ways -- an Azure-managed certificate attached asynchronously (the common path, certificate-less by design) or a bring-your-own certificate stored on the app's environment. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Binds a custom domain to a Container App -- your own hostname (`app.example.com`) serving the app instead of the generated `*.azurecontainerapps.io` address. Azure models the binding as an entry in the app's ingress configuration: every field replaces it when changed, and TLS arrives exactly one of two ways -- an Azure-managed certificate attached asynchronously (the common path, certificate-less by design) or a bring-your-own certificate stored on the app's environment.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Container App Custom Domain**, and click **Deploy**. The creation wizard leads hostname-first -- the domain and the app, with a live preview of the exact DNS records ownership validation requires -- then the TLS choice as a two-card selector (Azure-managed, certificate-less by design, or bring-your-own with SNI pre-selected). Start from the **Managed Certificate Domain** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Container App Custom Domain**, and click **Deploy**. The creation wizard leads hostname-first -- the domain and the app, with a live preview of the exact DNS records ownership validation requires -- then the TLS choice as a two-card selector (Azure-managed, certificate-less by design, or bring-your-own with SNI pre-selected). Start from the **Managed-Certificate Domain** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppCustomDomain
 metadata:
   name: app-example-com-binding
@@ -51,7 +51,7 @@ spec:
 planton apply -f custom-domain.yaml
 ```
 
-Every field replaces the binding when changed -- Azure exposes no update surface. The replacement re-validates ownership against the existing DNS records and the hostname briefly stops serving during the apply.
+This creates the certificate-less managed-flow binding: Azure validates ownership against the published DNS records during the create, and the managed certificate you deploy for the same hostname attaches out of band. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -107,9 +107,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Managed TLS end to end** -- bind the hostname certificate-less, publish the DNS records, then deploy a managed certificate for the same hostname; Azure wires them together. Start from the **Managed Certificate Domain** preset.
+**Managed TLS end to end** -- bind the hostname certificate-less, publish the DNS records, then deploy a managed certificate for the same hostname; Azure wires them together. Start from the **Managed-Certificate Domain** preset.
 
-**Wildcard-backed hostnames** -- several bindings (`app.example.com`, `api.example.com`) each referencing the SAME wildcard environment certificate. Start from the **BYO Certificate Domain** preset.
+**Wildcard-backed hostnames** -- several bindings (`app.example.com`, `api.example.com`) each referencing the SAME wildcard environment certificate. Start from the **BYO-Certificate Domain** preset.
 
 **Apex domain** -- `example.com` routes with an A record to the environment's static IP (it cannot CNAME); the TXT proof and the TLS story are unchanged.
 

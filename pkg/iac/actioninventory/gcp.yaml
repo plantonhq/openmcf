@@ -967,6 +967,26 @@ services:
       - trustconfigs.listTagBindings
       - trustconfigs.update
       - trustconfigs.use
+  - prefix: cloudfunctions
+    source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
+    retrieved_on: "2026-08-22"
+    actions:
+      - functions.call
+      - functions.create
+      - functions.delete
+      - functions.generateUploadUrl
+      - functions.generationUpgrade
+      - functions.get
+      - functions.getIamPolicy
+      - functions.invoke
+      - functions.list
+      - functions.setIamPolicy
+      - functions.sourceCodeGet
+      - functions.sourceCodeSet
+      - functions.update
+      - locations.list
+      - operations.get
+      - operations.list
   - prefix: cloudkms
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
     retrieved_on: "2026-08-18"
@@ -1207,7 +1227,7 @@ services:
       - userworkloadssecrets.update
   - prefix: compute
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-18"
+    retrieved_on: "2026-08-22"
     actions:
       - acceleratorTypes.get
       - acceleratorTypes.list
@@ -1513,10 +1533,12 @@ services:
       - instances.getSerialPortOutput
       - instances.getShieldedInstanceIdentity
       - instances.getShieldedVmIdentity
+      - instances.getVmExtensionState
       - instances.list
       - instances.listEffectiveTags
       - instances.listReferrers
       - instances.listTagBindings
+      - instances.listVmExtensionStates
       - instances.osAdminLogin
       - instances.osLogin
       - instances.pscInterfaceCreate
@@ -3003,6 +3025,21 @@ services:
       - snapshots.listEffectiveTags
       - snapshots.listTagBindings
       - snapshots.update
+  - prefix: firebaseauth
+    source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
+    retrieved_on: "2026-08-22"
+    actions:
+      - configs.create
+      - configs.get
+      - configs.getHashConfig
+      - configs.getSecret
+      - configs.update
+      - users.create
+      - users.createSession
+      - users.delete
+      - users.get
+      - users.sendEmail
+      - users.update
   - prefix: iam
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
     retrieved_on: "2026-08-18"
@@ -3256,6 +3293,17 @@ services:
       - workspacePools.deletePolicyBinding
       - workspacePools.searchPolicyBindings
       - workspacePools.updatePolicyBinding
+  - prefix: identitytoolkit
+    source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
+    retrieved_on: "2026-08-22"
+    actions:
+      - tenants.create
+      - tenants.delete
+      - tenants.get
+      - tenants.getIamPolicy
+      - tenants.list
+      - tenants.setIamPolicy
+      - tenants.update
   - prefix: logging
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
     retrieved_on: "2026-08-18"
@@ -3960,7 +4008,7 @@ services:
       - tagValues.update
   - prefix: run
     source_url: https://iam.googleapis.com/v1/permissions:queryTestablePermissions
-    retrieved_on: "2026-08-18"
+    retrieved_on: "2026-08-22"
     actions:
       - configurations.get
       - configurations.list
@@ -3996,6 +4044,7 @@ services:
       - jobs.sshRoot
       - jobs.update
       - locations.list
+      - locations.uploadSource
       - operations.delete
       - operations.get
       - operations.list

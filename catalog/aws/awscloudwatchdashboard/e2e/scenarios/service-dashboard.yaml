@@ -2,6 +2,9 @@
 # widget path and the metric graph proves the metric widget path
 # (charting a metric requires no data to exist). Dashboards above the
 # free tier bill ~$3/month prorated - a minutes-lived lane costs ~$0.
+# The widget position key "y" is quoted for readability only:
+# manifests parse under YAML 1.2 rules, where a bare y is an ordinary
+# string.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchDashboard
 metadata:
@@ -23,14 +26,14 @@ spec:
     widgets:
       - type: text
         x: 0
-        y: 0
+        "y": 0
         width: 24
         height: 2
         properties:
           markdown: "# Planton E2E service dashboard"
       - type: metric
         x: 0
-        y: 2
+        "y": 2
         width: 12
         height: 6
         properties:

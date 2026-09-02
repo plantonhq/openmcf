@@ -3,17 +3,32 @@ kind: ComponentE2EProfile
 metadata:
   name: azureeventgrideventsubscription
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plans green); live dual-engine
-  # proof has not yet run. TWO scenarios run, one per addressing
-  # wiring: `minimal` (scope-addressed on the Event Grid topic kind's
-  # smoke instance) and `system-topic` (a child of the system topic
-  # kind's smoke instance) -- both delivering to scenario-local
-  # storage queues on the fixture account. The system-topic scenario
-  # stands up a system topic on the fixture storage account, so this
-  # kind's lane must never run concurrently with the system topic
-  # kind's own lane (one system topic per source per topic type).
+  # Live-proven on BOTH engines (2026-08-22), both scenarios -- one per
+  # addressing wiring. `minimal` (scope-addressed on the Event Grid
+  # topic kind's smoke instance, subject + advanced filters, tuned
+  # retry policy): deploy ~23-34s, idempotency clean, full lane
+  # ~6-7.5 min. `system-topic` (a child of the system topic kind's
+  # smoke instance, narrowing to Microsoft.Storage.BlobCreated): deploy
+  # ~21-34s, idempotency clean -- including the retry-policy echo with
+  # the block UNSET -- full lane ~7-8 min. Both blind import
+  # round-trips zero-change with zero tolerances, ONE import map
+  # serving TWO provider resources discriminated by id shape: the
+  # scoped extension id ({scope}/providers/Microsoft.EventGrid/
+  # eventSubscriptions/{name}) imported
+  # azurerm_eventgrid_event_subscription; the system-topic child id
+  # ({system_topic_id}/eventSubscriptions/{name}) imported
+  # azurerm_eventgrid_system_topic_event_subscription. ONE live-caught
+  # contract fixed at the full bar: ARM rejects a delivery schema the
+  # source cannot map (InvalidRequest -- a CloudEvents-input topic
+  # cannot deliver EventGridSchema; server-side only, the provider
+  # never validates the pairing), so the minimal scenario pins
+  # eventDeliverySchema to the fixture topic's CloudEventSchemaV1_0 and
+  # the teaching lives on the spec field, both modules, the GUIDE, and
+  # the queue-fan-out preset. The system-topic scenario stands up a
+  # system topic on the fixture storage account, so this kind's lane
+  # must never run concurrently with the system topic kind's own lane
+  # (one system topic per source per topic type).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 45

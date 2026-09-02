@@ -41,7 +41,7 @@ const onboardingSteps: FlowStep[] = [
 const deployTerminalLines: TerminalLine[] = [
   { text: '$ planton apply -f postgres.yaml', className: 'text-white' },
   { text: '' },
-  { text: '▶ Applying GcpCloudSqlInstance/my-postgres', className: 'text-[#b0b0b0]' },
+  { text: '▶ Applying GcpCloudSql/my-postgres', className: 'text-[#b0b0b0]' },
   { text: '  Organization: my-startup', className: 'text-[#666]' },
   { text: '  Environment:  production', className: 'text-[#666]' },
   { text: '' },
@@ -85,7 +85,7 @@ const valueProps = [
   {
     title: 'Enterprise-Ready When You Get There',
     description:
-      'Start with the free tier. When you raise your Series A and need SOC 2, RBAC, and audit trails — Planton already has them.',
+      'Start with the free tier. When you raise your Series A and need RBAC, audit trails, and control-posture evidence — Planton already has them.',
     icon: <ShieldIcon />,
   },
 ];

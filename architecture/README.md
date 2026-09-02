@@ -79,8 +79,8 @@ Planton is built on three foundational components that work together seamlessly:
         │               │               │
         ▼               ▼               ▼
 ┌────────────────────────────────────────────────┐
-│        Components (600+)            │
-│  PostgresKubernetes | AwsRdsInstance | etc.   │
+│        Components (700+)            │
+│  KubernetesPostgres | AwsRdsInstance | etc.   │
 └────────────────────────────────────────────────┘
 ```
 
@@ -198,51 +198,27 @@ A **component** is a complete, production-ready package for deploying a specific
 
 #### What's in a Component?
 
-Every component contains:
+The authoritative, gate-enforced component anatomy — the versioned contract under the version directory, the living module set, docs, presets, e2e profile, and the verified fact-sheets (`cost.yaml`, `controls.yaml`, `iac/permissions.yaml`) — is defined once, in [component.md](component.md) (see "Folder Structure" and "Verified Fact-Sheets" in its Ideal State Checklist). This overview deliberately does not duplicate that tree: the anatomy is machine-enforced by CI, and `component.md` is its single written home.
 
-```
-<provider>/<component>/v1/
-├── api.proto                    # Main API definition (KRM structure)
-├── spec.proto                   # Spec section (configuration options)
-├── spec_test.go                 # Unit tests for validation rules
-├── input.proto            # Input to IaC modules
-├── outputs.proto          # Output from IaC modules
-├── README.md                    # User-facing documentation
-├── docs/
-│   └── README.md                # Deep research and design rationale
-└── iac/
-    ├── pulumi/                  # Pulumi module
-    │   ├── main.go
-    │   ├── locals.go
-    │   ├── outputs.go
-    │   └── docs/
-    │       └── README.md        # Pulumi architecture overview
-    ├── terraform/               # Terraform module
-    │   ├── main.tf
-    │   ├── variables.tf
-    │   ├── outputs.tf
-    │   └── README.md
-    └── hack/
-        └── manifest.yaml        # Test manifest for local development
-```
+In one sentence: a component is the versioned Protobuf contract, both IaC engines, layered documentation, ready-to-deploy presets, an e2e profile, and machine-checked cost/controls/permissions data — everything a surface needs to deploy it and to answer what it costs, what it enforces, and what its runner needs.
 
 #### Categories of Components
 
 **1. Kubernetes Components**
 
 Deploy applications and addons to any Kubernetes cluster:
-- `PostgresKubernetes` - PostgreSQL with operator (CloudNativePG)
-- `RedisKubernetes` - Redis with Helm chart
-- `KafkaKubernetes` - Apache Kafka with Strimzi operator
-- `CertManagerKubernetes` - cert-manager addon
-- `MicroserviceKubernetes` - Containerized applications
+- `KubernetesPostgres` - PostgreSQL with operator (CloudNativePG)
+- `KubernetesValkey` - Valkey (Redis-compatible) workload
+- `KubernetesKafka` - Apache Kafka with Strimzi operator
+- `KubernetesCertManager` - cert-manager addon
+- `KubernetesDeployment` - Containerized applications
 
 **2. Cloud Provider Managed Services**
 
 Deploy managed services on cloud providers:
 - **AWS:** `AwsRdsInstance`, `AwsRdsCluster`, `AwsEksCluster`, `AwsS3Bucket`, `AwsAlb`
-- **GCP:** `GcpCloudSql`, `GcpGkeCluster`, `GcpStorageBucket`, `GcpCloudRun`
-- **Azure:** `AzureAksCluster`, `AzureSqlDatabase`, `AzureStorageAccount`
+- **GCP:** `GcpCloudSql`, `GcpGkeCluster`, `GcpCloudRun`
+- **Azure:** `AzureAksCluster`, `AzureStorageAccount`
 
 **3. SaaS Platform Integrations**
 
@@ -257,59 +233,35 @@ Provision and manage third-party SaaS platforms:
 
 ```
 planton/
-├── apis/                        # Protocol Buffer definitions
-│   └── org/
-│       └── planton/
-│           ├── shared/          # Shared types and enums
-│           │   └── cloudresourcekind/
-│           │       └── cloud_resource_kind.proto  # Registry of all components
-│           └── provider/        # Provider-specific components
-│               ├── aws/
-│               │   ├── awsrdsinstance/v1/
-│               │   ├── awsekscluster/v1/
-│               │   └── ...
-│               ├── gcp/
-│               │   ├── gcpcloudsql/v1/
-│               │   ├── gcpgkecluster/v1/
-│               │   └── ...
-│               ├── azure/
-│               │   └── ...
-│               └── kubernetes/
-│                   ├── workload/
-│                   │   ├── postgreskubernetes/v1/
-│                   │   ├── rediskubernetes/v1/
-│                   │   └── ...
-│                   └── addon/
-│                       ├── certmanager/v1/
-│                       └── ...
+├── catalog/                     # The multi-cloud component catalog
+│   ├── <provider>/<kind>/       # One folder per component (aws, gcp, azure,
+│   │                            #   kubernetes, digitalocean, cloudflare,
+│   │                            #   auth0, openfga)
+│   ├── _compliance/             # Central control catalog + framework crosswalks
+│   ├── _pricing/                # Price books, derivations, generated estimates
+│   ├── _patterns/               # Multi-component architecture patterns
+│   └── _docs/                   # Catalog-wide guides and conventions
+├── shared/                      # Shared types and enums
+│   └── cloudresourcekind/       # Registry of all components (cloud_resource_kind.proto)
+├── charts/                      # Ready-made infra charts composed from components
+├── cmd/planton/                 # The open-source CLI and IaC engine (Go)
+├── pkg/                         # Go libraries (generators, gates, engines)
+├── skills/                      # Agent skills (incl. the multi-cloud-catalog skill)
+├── site/                        # planton.ai website, docs, and blog
 ├── architecture/                # Architecture documentation
-│   ├── README.md               # This file
-│   └── component.md # Component ideal state
-├── .cursor/                     # Cursor AI rules
-│   └── rules/
-│       └── component/
-│           ├── forge/          # Create new components
-│           ├── audit/          # Assess completeness
-│           ├── update/         # Enhance existing
-│           ├── complete/       # Auto-improve workflow
-│           ├── fix/            # Targeted fixes
-│           └── delete/         # Remove components
-├── cli/                         # CLI implementation (Go)
+│   ├── README.md                # This file
+│   └── component.md             # Component ideal state (the anatomy's one home)
+├── _rules/                      # AI workflow rules (component forge/audit/update, docs, protos)
 ├── buf.yaml                     # Buf configuration
-├── buf.gen.yaml                # Buf code generation
-├── Makefile                    # Build automation
-└── README.md                   # Project README
+├── Makefile                     # Build automation
+└── README.md                    # Project README
 ```
 
 ### Key Directories Explained
 
-#### `/apis`
+#### `/catalog`
 
-All Protocol Buffer definitions organized by provider. Each component directory contains:
-- API definitions in the version dir (api.proto, spec.proto, input.proto, outputs.proto)
-- Validation tests (spec_test.go)
-- IaC modules at the component root (iac/pulumi, iac/tf)
-- Documentation at the component root (README.md, catalog.md, GUIDE.md)
+The component catalog, organized by provider. Each component's root carries its IaC modules (`iac/pulumi`, `iac/tf`), documentation (`README.md`, `catalog.md`, `GUIDE.md`), presets, e2e profile, and verified fact-sheets (`cost.yaml`, `controls.yaml`, `iac/permissions.yaml`); the version directory carries only the versioned contract (api.proto, spec.proto, outputs.proto, spec_test.go, generated reference.md). The catalog root's central trees hold what spans components: `_compliance/` (the control catalog and the HIPAA/SOC 2/FedRAMP/CIS crosswalks) and `_pricing/` (pinned price books, derivation rules, and generated estimates).
 
 #### `/architecture`
 
@@ -319,15 +271,15 @@ High-level architecture documentation:
 
 #### `/_rules/component`
 
-Cursor AI rules for managing components:
-- **forge**: Create new components from scratch (21-step workflow)
-- **audit**: Assess component completeness (9-category scoring)
-- **update**: Enhance existing components (6 scenarios)
+AI workflow rules for managing components:
+- **forge**: Create new components from scratch (step-by-step flow)
+- **audit**: Assess component completeness
+- **update**: Enhance existing components
 - **complete**: Automated workflow (audit + fill gaps + verify)
 - **fix**: Targeted fixes with cascading updates
 - **delete**: Safe component removal
 
-#### `/cli`
+#### `/cmd/planton`
 
 Go implementation of the CLI:
 - Command structure
@@ -1612,7 +1564,7 @@ Planton is a multi-cloud deployment framework that provides **consistency withou
 - ✅ Provider-specific power (no artificial abstraction)
 - ✅ Dual IaC support (Pulumi and Terraform)
 - ✅ Language-neutral APIs (Protocol Buffers)
-- ✅ 600+ components (AWS, GCP, Azure, K8s, DigitalOcean, Cloudflare, Auth0, OpenFGA)
+- ✅ 700+ components (AWS, GCP, Azure, K8s, DigitalOcean, Cloudflare, Auth0, OpenFGA)
 
 **Architecture:**
 1. **APIs** - Proto definitions with validations (buf.build)

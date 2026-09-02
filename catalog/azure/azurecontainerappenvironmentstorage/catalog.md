@@ -1,6 +1,6 @@
 # Azure Container App Environment Storage
 
-Registers an Azure Files share as a named storage resource on a Container App Environment -- the mount bridge of the Container Apps family. Apps and jobs cannot mount a file share directly: the share is first registered on the environment, and workload volumes then declare AZURE_FILE (SMB) or NFS_AZURE_FILE volumes that reference the registration by its `storageName`. One registration can back volumes in any number of apps and jobs in the environment. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Registers an Azure Files share as a named storage resource on a Container App Environment -- the mount bridge of the Container Apps family. Apps and jobs cannot mount a file share directly: the share is first registered on the environment, and workload volumes then declare AZURE_FILE (SMB) or NFS_AZURE_FILE volumes that reference the registration by its `storageName`. One registration can back volumes in any number of apps and jobs in the environment, over exactly one protocol: SMB (the common case) or NFS (VNet-injected environments only).
 
 ## What Gets Created
 
@@ -24,19 +24,43 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Container App Environment Storage**, and click **Deploy**. The creation wizard walks you through the registration identity (environment + the name workload volumes reference), the share and its protocol (with a same-account quick-fill wiring the SMB key from the chosen account), and the read-write-or-read-only access mode. Start from the **SMB Share** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Container App Environment Storage**, and click **Deploy**. The creation wizard walks you through the registration identity (environment + the name workload volumes reference), the share and its protocol (with a same-account quick-fill wiring the SMB key from the chosen account), and the read-write-or-read-only access mode. Start from the **SMB Azure Files Share (Read-Write)** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironmentStorage
 metadata:
   name: app-data-registration
   org: acme-corp
   env: prod
+spec:
+  containerAppEnvironmentId:
+    value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/acme-prod-rg/providers/Microsoft.App/managedEnvironments/prod-apps-env"
+  storageName: app-data
+  shareName:
+    value: "app-data-share"
+  accessMode: READ_WRITE
+  accountName:
+    value: "acmeproddata001"
+  accessKey:
+    value: $secret/prod-storage-primary-key
+```
+
+```shell
+planton apply -f storage.yaml
+```
+
+This registers the SMB share `app-data-share` on the environment as `app-data`, mountable read-write by any app or job volume that references it. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the registration to the environment, share, and account deployed in the same InfraPipeline:
+
+```yaml
 spec:
   containerAppEnvironmentId:
     valueFrom:
@@ -62,29 +86,7 @@ spec:
       fieldPath: status.outputs.primary_access_key
 ```
 
-```shell
-planton apply -f storage.yaml
-```
-
-Only the SMB `accessKey` updates in place (key rotation) -- every other field is **fixed at creation**, and recreating a registration briefly breaks every volume mount that references it, so plan changes deliberately.
-
-### InfraChart
-
-When deploying as part of a multi-resource environment, use ValueFromRef to wire app and job volumes onto the registration deployed in the same InfraPipeline:
-
-```yaml
-spec:
-  volumes:
-    - name: work
-      storageType: AZURE_FILE
-      storageName:
-        valueFrom:
-          kind: AzureContainerAppEnvironmentStorage
-          name: app-data-registration
-          fieldPath: status.outputs.storage_name
-```
-
-The InfraPipeline resolves the dependency graph, deploys the account, share, and registration first, then provisions the workloads that mount it.
+The InfraPipeline resolves the dependency graph, deploys the account, share, and environment first, then registers the storage with the resolved values -- apps and jobs mount it by referencing its `storage_name` output in their volumes.
 
 ## Key Configuration
 
@@ -96,7 +98,7 @@ These are the most important decisions when configuring a registration. Explore 
 
 **Access mode** -- `READ_WRITE` for working storage, `READ_ONLY` for shared configuration and reference data. The mode applies to EVERY volume the registration backs; an environment that needs both postures registers the same share twice under two names.
 
-**Key rotation** -- the SMB `accessKey` is the one in-place update. Referencing the account's `primary_access_key` output (rather than pasting a copied key) keeps the registration correct across out-of-band regenerations.
+**Key rotation** -- the SMB `accessKey` is the one in-place update. Referencing the account's `primary_access_key` output (rather than pasting a copied key) keeps the registration correct across out-of-band regenerations. Every other field is fixed at creation, and recreating a registration briefly breaks every volume mount that references it -- plan changes deliberately.
 
 ## Outputs and Dependencies
 
@@ -122,11 +124,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Persistent app storage** -- an SMB share registered read-write, mounted by one or more apps as their durable working directory. Start from the **SMB Share** preset.
+**Persistent app storage** -- an SMB share registered read-write, mounted by one or more apps as their durable working directory. Start from the **SMB Azure Files Share (Read-Write)** preset.
 
 **Producer/consumer split** -- the SAME share registered twice: read-write for the batch job that writes results, read-only for the serving app that reads them -- one share, two registrations, two postures.
 
-**High-throughput NFS** -- a premium FileStorage NFS share for POSIX-style workloads in a VNet-injected environment. Start from the **NFS Share** preset.
+**High-throughput NFS** -- a premium FileStorage NFS share for POSIX-style workloads in a VNet-injected environment. Start from the **NFS Azure Files Share** preset.
 
 ## Works With
 

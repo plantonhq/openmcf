@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS FSx Data Repository Association**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Training Data Import** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS FSx Data Repository Association**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Training Data Import Link** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxDataRepositoryAssociation
 metadata:
   name: training-data-link
@@ -65,16 +65,23 @@ This links `/datasets/2026` on the file system to the bucket prefix, imports the
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the association typically rides beside its file system in the same InfraPipeline -- the `fileSystemId` reference above resolves the dependency graph so the file system deploys first. A second association can wire an output directory back to S3:
+When the association deploys alongside its file system in one chart, wire the file-system reference via ValueFromRef -- here an export link writing an output directory back to S3:
 
 ```yaml
 spec:
+  fileSystemId:
+    valueFrom:
+      kind: AwsFsxLustreFileSystem
+      name: training-fs
+      fieldPath: status.outputs.file_system_id
   fileSystemPath: /output
   dataRepositoryPath: s3://model-artifacts/
   autoExportEvents:
     - NEW
     - CHANGED
 ```
+
+The InfraPipeline resolves the dependency graph, deploys the file system first, then creates the association on it.
 
 ## Key Configuration
 
@@ -110,9 +117,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Training data import** -- link an input path to a dataset prefix with all three import events and a creation-time batch import. Compute jobs get POSIX access to the bucket's contents, kept current automatically. Start from the **Training Data Import** preset.
+**Training data import** -- link an input path to a dataset prefix with all three import events and a creation-time batch import. Compute jobs get POSIX access to the bucket's contents, kept current automatically. Start from the **Training Data Import Link** preset.
 
-**Results export** -- link an output path to an artifacts bucket with NEW and CHANGED export events. Job outputs land in S3 without any copy step. Start from the **Results Export** preset.
+**Results export** -- link an output path to an artifacts bucket with NEW and CHANGED export events. Job outputs land in S3 without any copy step. Start from the **Results Export Link** preset.
 
 **Both on one file system** -- the canonical ML topology pairs an import link (`/datasets` ← training data) with an export link (`/output` → artifacts) on the same PERSISTENT_2 file system; jobs mount Lustre once and see both.
 

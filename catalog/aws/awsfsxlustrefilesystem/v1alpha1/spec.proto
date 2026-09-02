@@ -551,9 +551,12 @@ message AwsFsxLustreFileSystemRootSquashConfiguration {
 // data repository events — imports, exports, and repository task activity
 // between the file system and its linked S3 data repositories.
 message AwsFsxLustreFileSystemLogConfiguration {
-  // CloudWatch Logs log group ARN to receive the events. The log group must
-  // exist and have a resource policy allowing FSx to write to it. If not set,
-  // logging is disabled regardless of the level setting.
+  // CloudWatch Logs log group ARN to receive the events. When set, the log
+  // group must exist and have a resource policy allowing FSx to write to it.
+  // When left empty with a level set, FSx logs to its DEFAULT log group
+  // (/aws/fsx/lustre) -- logging is NOT disabled by omitting the
+  // destination. Logging is off only when the whole log_configuration
+  // message is absent (or the level is DISABLED).
   dev.planton.shared.foreignkey.v1.StringValueOrRef destination = 1 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsCloudwatchLogGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.log_group_arn"

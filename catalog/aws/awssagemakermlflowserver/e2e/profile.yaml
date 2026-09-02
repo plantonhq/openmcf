@@ -4,16 +4,19 @@ metadata:
   name: awssagemakermlflowserver
 spec:
   # An MLflow tracking server under live E2E: ONE lane, deliberately -
-  # creation takes ~25 minutes and deletion similar (the provider's own
-  # timeouts are 45m per operation), and the server bills ~$0.6/hour
-  # (Small) from Created onward, so the single full-surface lane
-  # carries every cheap arm (Small size, auto-registration ON, explicit
-  # maintenance window, the shared-bucket artifact store).
-  # Per-engine-pair budget: ~50-60 min wall clock, ~$0.6-1 spend - THE
-  # cost and wall-clock driver of the whole queue entry. Verification
-  # is DescribeMlflowTrackingServer keyed on tracking_server_name
-  # (status Created) plus the tracking_server_url output and the
-  # window/registration echoes.
+  # live-measured 2026-08-25: create 17m36s and destroy 16m36s (Pulumi),
+  # 17m37s/16m15s (Terraform) - the provider's own timeouts are 45m per
+  # operation - and the server bills ~$0.6/hour (Small) from Created
+  # onward, so the single full-surface lane carries every cheap arm
+  # (Small size, auto-registration ON, explicit maintenance window, the
+  # shared-bucket artifact store). Per-engine-pair budget: ~40 min wall
+  # clock measured, ~$0.5-1 spend - THE cost and wall-clock driver of
+  # the whole queue entry. Verification is DescribeMlflowTrackingServer
+  # keyed on tracking_server_name (status Created) plus the
+  # tracking_server_url output and the window/registration echoes.
+  # NOTE the maintenance window day token is MIXED-case ("Tue:03:30") -
+  # AWS rejected the uppercase form at create, live-caught; the spec
+  # CEL now mirrors the API's exact regex.
   #
   # Deliberately not exercised live: Medium/Large sizes (pure billing)
   # and the mlflow_version pin (AWS picks the latest when omitted;
@@ -21,9 +24,9 @@ spec:
   # auto-registration un-disable trap (an upstream update-guard gap) is
   # taught on the spec field - the lane never attempts the un-disable.
   #
-  # pending_proof: forged this session to the full offline bar -- Q36
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners:
+    - pulumi
+    - terraform
   timeout_minutes: 90

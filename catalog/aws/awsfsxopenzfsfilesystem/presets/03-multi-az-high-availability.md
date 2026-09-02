@@ -1,4 +1,4 @@
-# Preset: Multi-AZ High Availability
+# Multi-AZ High Availability
 
 **Use case**: Mission-critical production workloads requiring automatic failover across availability zones, provisioned IOPS, storage quotas, and extended backup retention.
 

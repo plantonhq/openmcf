@@ -58,9 +58,12 @@ type AwsIamGroupSpec struct {
 	// Managed policies attached to this group. Reference an
 	// AwsIamPolicy's policy_arn output or a literal ARN (literals are
 	// how AWS-managed policies like arn:aws:iam::aws:policy/
-	// ReadOnlyAccess attach). Prefer managed policies for anything
-	// reusable; use inline_policies for permissions unique to this one
-	// group.
+	// ReadOnlyAccess attach). Attachments are reconciled in place:
+	// adding or removing an entry attaches or detaches without touching
+	// the group, and a policy attached outside this resource stays
+	// attached (unlike `users`, which IS authoritative). Prefer managed
+	// policies for anything reusable; use inline_policies for
+	// permissions unique to this one group.
 	ManagedPolicyArns []*v1.StringValueOrRef `protobuf:"bytes,4,rep,name=managed_policy_arns,json=managedPolicyArns,proto3" json:"managed_policy_arns,omitempty"`
 	// Inline policies embedded in this group: a map of policy name to a
 	// free-form JSON permission document. An inline policy lives and

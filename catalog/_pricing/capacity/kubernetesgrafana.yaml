@@ -45,7 +45,7 @@ spec:
           op: is_set
         - field_path: storage.size
           op: is_unset
-      text: "storage is declared without a size -- the modules default the volume to 10Gi, a reservation this manifest-value footprint cannot state"
+      text: "storage is declared without a size -- the footprint states the 10Gi spec-declared default the modules apply, named in its basis"
     - applies_when:
         - field_path: storage
           op: is_unset

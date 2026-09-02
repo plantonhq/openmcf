@@ -4,11 +4,14 @@ Judgment that does not fit in field references.
 
 ## It bills from creation, before any circuit is connected
 
-Each scale unit costs ~$0.42/hr the moment ARM accepts the create --
-roughly $300/month per unit -- whether or not a single connection
-exists. Create the gateway when a circuit is genuinely imminent, not
-when the hub is. Deleting and recreating later costs only the
-provisioning time (measured live: create ~27 minutes, delete ~13).
+Each scale unit bills hourly, around the clock, the moment ARM accepts
+the create -- whether or not a single connection exists. Create the
+gateway when a circuit is genuinely imminent, not when the hub is.
+Deleting and recreating later costs only the provisioning time
+(measured live: create ~27 minutes, delete ~13). Verified figures live
+in the generated estimate at
+`catalog/_pricing/estimates/azureexpressroutegateway.yaml`, computed
+from the pinned, source-dated price book.
 
 ## Scale units are a floor, not a size
 

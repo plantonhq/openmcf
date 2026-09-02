@@ -224,8 +224,13 @@ func (x *AwsBedrockAgentCoreEvaluator) GetCodeBased() *AwsBedrockAgentCoreCodeEv
 type AwsBedrockAgentCoreLlmJudge struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The judge prompt - what to assess and how to decide the score.
-	// Treated as sensitive: prompts routinely embed proprietary evaluation
-	// criteria.
+	// AWS substitutes single-brace placeholders (e.g. "{context}") with
+	// run data, and each evaluator level REQUIRES at least one of its
+	// allowed placeholders: for SESSION the set is {available_tools},
+	// {context}, {actual_tool_trajectory}, {expected_tool_trajectory},
+	// {assertions} (CreateEvaluator names the level's set when it
+	// rejects). Treated as sensitive: prompts routinely embed
+	// proprietary evaluation criteria.
 	Instructions string `protobuf:"bytes,1,opt,name=instructions,proto3" json:"instructions,omitempty"`
 	// The Bedrock model that judges.
 	Model *AwsBedrockAgentCoreJudgeModel `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
@@ -289,10 +294,13 @@ func (x *AwsBedrockAgentCoreLlmJudge) GetRatingScale() *AwsBedrockAgentCoreRatin
 // AwsBedrockAgentCoreJudgeModel selects and tunes the judging model.
 type AwsBedrockAgentCoreJudgeModel struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Bedrock model identifier the judge runs on. Accepts a foundation
-	// model ID ("anthropic.claude-3-5-sonnet-20241022-v2:0"), an inference
-	// profile ID, or a model ARN. The account must have access to the
-	// model in this region.
+	// Bedrock model identifier the judge runs on. Prefer a cross-region
+	// inference profile ID ("us.amazon.nova-2-lite-v1:0") - CreateEvaluator
+	// validates the judge model against the region's INFERENCE set and
+	// rejects models it cannot invoke there with "not available in region",
+	// even when the bare foundation-model ID is regionally listed (the
+	// harness model field has no such create-time gate). A model ARN also
+	// works; the account must have access to the model.
 	ModelId string `protobuf:"bytes,1,opt,name=model_id,json=modelId,proto3" json:"model_id,omitempty"`
 	// Model-specific request fields passed through verbatim (the shape the
 	// model's own InvokeModel API documents), for parameters the typed
@@ -670,9 +678,11 @@ func (x *AwsBedrockAgentCoreCodeEvaluator) GetTimeoutSeconds() int32 {
 // Evaluation runs execute the harness and score the results.
 type AwsBedrockAgentCoreHarness struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Harness name in AWS (1-40 characters). The for_each key on both
-	// engines and the key in the `harness_ids` output map. AWS exposes no
-	// rename - changing it replaces the harness.
+	// Harness name in AWS (a letter, then up to 39 letters/digits/
+	// underscores - hyphens are rejected; CreateHarness names this exact
+	// regex server-side). The for_each key on both engines and the key in
+	// the `harness_ids` output map. AWS exposes no rename - changing it
+	// replaces the harness.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// IAM role the harness assumes to run the agent under test (invoking
 	// models, calling tools, reading memory). Must trust
@@ -686,7 +696,9 @@ type AwsBedrockAgentCoreHarness struct {
 	Tools []*AwsBedrockAgentCoreHarnessTool `protobuf:"bytes,5,rep,name=tools,proto3" json:"tools,omitempty"`
 	// Skill bundle paths loaded into the harness.
 	SkillPaths []string `protobuf:"bytes,6,rep,name=skill_paths,json=skillPaths,proto3" json:"skill_paths,omitempty"`
-	// AgentCore memory the harness reads/writes during runs.
+	// AgentCore memory the harness reads/writes during runs. Omitted =
+	// AWS auto-provisions a managed memory for the harness (the common
+	// case) - the harness still HAS a memory, it is just AWS-owned.
 	Memory *AwsBedrockAgentCoreHarnessMemory `protobuf:"bytes,7,opt,name=memory,proto3" json:"memory,omitempty"`
 	// Environment variables injected into the harness runtime. Treated as
 	// sensitive: env maps routinely carry tokens and connection strings.
@@ -3271,7 +3283,7 @@ const file_catalog_aws_awsbedrockagentcoreevaluation_v1alpha1_spec_proto_rawDesc
 	"\x16evaluator_names_unique\x12)evaluators entries must have unique names\x1a'this.evaluators.map(e, e.name).unique()\x1ah\n" +
 	"\x14harness_names_unique\x12(harnesses entries must have unique names\x1a&this.harnesses.map(h, h.name).unique()\x1a\x99\x01\n" +
 	"%online_evaluation_config_names_unique\x128online_evaluation_configs entries must have unique names\x1a6this.online_evaluation_configs.map(c, c.name).unique()\x1a\xaa\x03\n" +
-	"#online_config_evaluators_resolvable\x12\xb1\x01each online_evaluation_configs evaluator entry must be an AWS builtin (Builtin.*), a full custom evaluator ID (name-XXXXXXXXXX), or the name of an evaluator defined in this spec\x1a\xce\x01this.online_evaluation_configs.all(c, c.evaluator_ids.all(e, e.matches('^Builtin\\\\.[a-zA-Z0-9_-]+$') || e.matches('^[a-zA-Z][a-zA-Z0-9-_]{0,99}-[a-zA-Z0-9]{10}$') || this.evaluators.exists(v, v.name == e)))\"\xbf\x05\n" +
+	"#online_config_evaluators_resolvable\x12\xb1\x01each online_evaluation_configs evaluator entry must be an AWS builtin (Builtin.*), a full custom evaluator ID (name-XXXXXXXXXX), or the name of an evaluator defined in this spec\x1a\xce\x01this.online_evaluation_configs.all(c, c.evaluator_ids.all(e, e.matches('^Builtin\\\\.[a-zA-Z0-9_-]+$') || e.matches('^[a-zA-Z][a-zA-Z0-9-_]{0,99}-[a-zA-Z0-9]{10}$') || this.evaluators.exists(v, v.name == e)))\"\xfb\b\n" +
 	"\x1cAwsBedrockAgentCoreEvaluator\x129\n" +
 	"\x04name\x18\x01 \x01(\tB%\xbaH\"r \x10\x012\x1c^[a-zA-Z][a-zA-Z0-9_]{0,47}$R\x04name\x12-\n" +
 	"\vdescription\x18\x02 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\xc8\x01R\vdescription\x126\n" +
@@ -3279,8 +3291,9 @@ const file_catalog_aws_awsbedrockagentcoreevaluation_v1alpha1_spec_proto_rawDesc
 	"\vkms_key_arn\x18\x04 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xfb\a\x92\xd4a\x16status.outputs.key_arnR\tkmsKeyArn\x12x\n" +
 	"\x0ellm_as_a_judge\x18\x05 \x01(\v2S.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreLlmJudgeR\vllmAsAJudge\x12w\n" +
 	"\n" +
-	"code_based\x18\x06 \x01(\v2X.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreCodeEvaluatorR\tcodeBased:\x94\x01\xbaH\x90\x01\x1a\x8d\x01\n" +
-	"\x19evaluator_exactly_one_arm\x12>evaluator must set exactly one of llm_as_a_judge or code_based\x1a0has(this.llm_as_a_judge) != has(this.code_based)\"\xc6\x02\n" +
+	"code_based\x18\x06 \x01(\v2X.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreCodeEvaluatorR\tcodeBased:\xd0\x04\xbaH\xcc\x04\x1a\x8d\x01\n" +
+	"\x19evaluator_exactly_one_arm\x12>evaluator must set exactly one of llm_as_a_judge or code_based\x1a0has(this.llm_as_a_judge) != has(this.code_based)\x1a\xb9\x03\n" +
+	"&session_judge_instructions_placeholder\x12\xaf\x01SESSION-level llm_as_a_judge instructions must embed at least one placeholder: {available_tools}, {context}, {actual_tool_trajectory}, {expected_tool_trajectory}, {assertions}\x1a\xdc\x01this.level != 'SESSION' || !has(this.llm_as_a_judge) || ['{available_tools}', '{context}', '{actual_tool_trajectory}', '{expected_tool_trajectory}', '{assertions}'].exists(p, this.llm_as_a_judge.instructions.contains(p))\"\xc6\x02\n" +
 	"\x1bAwsBedrockAgentCoreLlmJudge\x12.\n" +
 	"\finstructions\x18\x01 \x01(\tB\n" +
 	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\finstructions\x12s\n" +
@@ -3318,9 +3331,9 @@ const file_catalog_aws_awsbedrockagentcoreevaluation_v1alpha1_spec_proto_rawDesc
 	"\n" +
 	"lambda_arn\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB*\xbaH\x03\xc8\x01\x01\x88\xd4a\xf1\a\x92\xd4a\x1bstatus.outputs.function_arnR\tlambdaArn\x126\n" +
 	"\x0ftimeout_seconds\x18\x02 \x01(\x05B\r\xbaH\n" +
-	"\xd8\x01\x01\x1a\x05\x18\xac\x02(\x01R\x0etimeoutSeconds\"\x98\x0e\n" +
-	"\x1aAwsBedrockAgentCoreHarness\x12\x1d\n" +
-	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18(R\x04name\x12\x88\x01\n" +
+	"\xd8\x01\x01\x1a\x05\x18\xac\x02(\x01R\x0etimeoutSeconds\"\xb4\x0e\n" +
+	"\x1aAwsBedrockAgentCoreHarness\x129\n" +
+	"\x04name\x18\x01 \x01(\tB%\xbaH\"r \x10\x012\x1c^[a-zA-Z][a-zA-Z0-9_]{0,39}$R\x04name\x12\x88\x01\n" +
 	"\x12execution_role_arn\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB&\xbaH\x03\xc8\x01\x01\x88\xd4a\xf0\a\x92\xd4a\x17status.outputs.role_arnR\x10executionRoleArn\x12u\n" +
 	"\x05model\x18\x03 \x01(\v2W.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreHarnessModelB\x06\xbaH\x03\xc8\x01\x01R\x05model\x12\x85\x01\n" +
 	"\x0esystem_prompts\x18\x04 \x03(\v2^.dev.planton.aws.awsbedrockagentcoreevaluation.v1alpha1.AwsBedrockAgentCoreHarnessSystemPromptR\rsystemPrompts\x12l\n" +

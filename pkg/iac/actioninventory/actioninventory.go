@@ -54,10 +54,33 @@
 // organization, and a billing-account scope and unions the results;
 // permissions a provider enforces but publishes under NO scope (Cloud
 // Run's domainmappings family) stay teachable only in manifest notes,
-// exactly as before. Providers without a machine-readable inventory
-// arm (kubernetes) are exempt from existence checking (their structural
-// validation lives in pkg/iac/permissions) -- exemption is stated here,
-// never silent.
+// exactly as before.
+//
+// DigitalOcean is the fourth arm, read from the provider's published
+// token-scope reference (docs.digitalocean.com serves it as
+// machine-readable markdown; DigitalOcean exposes no scope-inventory
+// API). A token scope is "resource:action" -- the same prefix-colon-name
+// grammar as an AWS IAM action -- so the snapshot rides the Service
+// shape verbatim: prefix = the scope's resource segment, actions = its
+// verbs (which go beyond CRUD: view_credentials, access_cluster, admin).
+// Matching is EXACT, never MatchAction's IAM glob semantics --
+// DigitalOcean does not evaluate wildcards, and borrowing IAM's matcher
+// would claim semantics the provider does not have. The docs page
+// publishes no modification stamp, so provenance is the URL plus the
+// retrieval date.
+//
+// Cloudflare is the fifth arm and the first on the GroupInventory shape:
+// its inventory is a FLAT catalog of named permission groups (the units
+// an API token is assembled from), each with a stable id and the scope
+// levels it applies at, served whole by one authenticated endpoint
+// (GET /accounts/{account_id}/tokens/permission_groups; the catalog is
+// global -- every account sees the same list). Group names are NOT
+// unique across scopes, so the gate proves each manifest's (name, scope)
+// pair; a group renamed by Cloudflare surfaces as a gate failure at the
+// next refresh, which is the staleness detection working. Providers
+// without a machine-readable inventory arm (kubernetes) are exempt from
+// existence checking (their structural validation lives in
+// pkg/iac/permissions) -- exemption is stated here, never silent.
 package actioninventory
 
 import (
@@ -68,6 +91,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/plantonhq/planton/pkg/yamlemit"
 )
 
 // AwsFileName is the AWS inventory snapshot's name inside this package's
@@ -81,6 +106,14 @@ const AzureFileName = "azure.yaml"
 // GcpFileName is the GCP inventory snapshot's name inside this package's
 // directory.
 const GcpFileName = "gcp.yaml"
+
+// DigitalOceanFileName is the DigitalOcean inventory snapshot's name
+// inside this package's directory.
+const DigitalOceanFileName = "digitalocean.yaml"
+
+// CloudflareFileName is the Cloudflare permission-group inventory
+// snapshot's name inside this package's directory.
+const CloudflareFileName = "cloudflare.yaml"
 
 // Inventory is one provider's committed action-inventory snapshot.
 type Inventory struct {
@@ -151,6 +184,17 @@ func LoadAzure(dir string) (*Inventory, error) {
 // modification stamp, so GCP services carry only the retrieval date.
 func LoadGcp(dir string) (*Inventory, error) {
 	return load(dir, GcpFileName, "gcp", false)
+}
+
+// LoadDigitalOcean reads and strictly parses the committed DigitalOcean
+// inventory snapshot under the same structural invariants. A DigitalOcean
+// token scope is "resource:action" -- the same prefix-colon-name grammar
+// as an AWS IAM action -- so the scope inventory rides the Service shape
+// verbatim: prefix = the scope's resource segment, actions = its verbs.
+// The scopes reference publishes no modification stamp, so DigitalOcean
+// services carry only the retrieval date.
+func LoadDigitalOcean(dir string) (*Inventory, error) {
+	return load(dir, DigitalOceanFileName, "digitalocean", false)
 }
 
 func load(dir, fileName, provider string, requireSourceModified bool) (*Inventory, error) {
@@ -354,6 +398,206 @@ func Render(inv *Inventory) string {
 			for _, action := range dataActions {
 				b.WriteString("      - " + action + "\n")
 			}
+		}
+	}
+	return b.String()
+}
+
+// ---------------------------------------------------------------------------
+// The permission-group inventory shape.
+//
+// Cloudflare's inventory does not fit the Service shape: there is no
+// service prefix and no action list -- the provider publishes a FLAT
+// catalog of named permission groups, each with a stable id and the scope
+// levels it applies at, from ONE endpoint. Forcing that into prefix ->
+// actions would mismodel the provider, so group-shaped inventories get
+// their own snapshot type with the same full treatment (strict loader,
+// canonical renderer, structural invariants). Cloudflare is the first
+// and only arm on this shape today.
+// ---------------------------------------------------------------------------
+
+// GroupInventory is one provider's committed permission-group inventory
+// snapshot. Unlike the Service shape's per-service provenance, the whole
+// inventory comes from a single provider endpoint, so provenance lives at
+// the top level.
+type GroupInventory struct {
+	// Provider is the catalog provider directory name (e.g. "cloudflare").
+	Provider string `yaml:"provider"`
+	// SourceURL is the provider inventory endpoint the groups were read
+	// from, in its documented route form (account ids are placeholders --
+	// the catalog is global, and the snapshot must not vary by which
+	// operator account fetched it).
+	SourceURL string `yaml:"source_url"`
+	// RetrievedOn is the date the groups were fetched (UTC). The endpoint
+	// publishes no modification stamp -- provenance never invents one.
+	RetrievedOn string `yaml:"retrieved_on"`
+	// Groups are the provider's permission groups, sorted by name then id.
+	// Names are NOT unique -- the provider defines same-named groups at
+	// different scopes -- so consumers key on (name, scope), never name
+	// alone.
+	Groups []PermissionGroup `yaml:"groups"`
+}
+
+// PermissionGroup is one named permission group as the provider defines
+// it.
+type PermissionGroup struct {
+	// ID is the provider's stable identifier for the group. The provider
+	// documents names as cosmetic and ids as the durable key, so the
+	// snapshot records both: manifests speak names (the human vocabulary),
+	// and a future token-creation renderer joins name -> id here without
+	// a second fetch.
+	ID string `yaml:"id"`
+	// Name is the group's display name verbatim (e.g. "DNS Write").
+	Name string `yaml:"name"`
+	// Scopes are the resource levels the group applies at, in the
+	// provider's own identifier spelling (e.g.
+	// "com.cloudflare.api.account.zone"), sorted.
+	Scopes []string `yaml:"scopes"`
+}
+
+// LoadCloudflare reads and strictly parses the committed Cloudflare
+// permission-group inventory snapshot and enforces its structural
+// invariants (sorted unique groups, sorted unique non-empty scope lists)
+// so gate results can never depend on snapshot ordering accidents.
+func LoadCloudflare(dir string) (*GroupInventory, error) {
+	return loadGroups(dir, CloudflareFileName, "cloudflare")
+}
+
+func loadGroups(dir, fileName, provider string) (*GroupInventory, error) {
+	raw, err := os.ReadFile(path.Join(dir, fileName))
+	if err != nil {
+		return nil, err
+	}
+	decoder := yaml.NewDecoder(strings.NewReader(string(raw)))
+	decoder.KnownFields(true)
+	inv := &GroupInventory{}
+	if err := decoder.Decode(inv); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", fileName, err)
+	}
+	if inv.Provider != provider {
+		return nil, fmt.Errorf("%s: provider is %q, want %q", fileName, inv.Provider, provider)
+	}
+	if inv.SourceURL == "" || inv.RetrievedOn == "" {
+		return nil, fmt.Errorf("%s: source_url and retrieved_on are both required", fileName)
+	}
+	if len(inv.Groups) == 0 {
+		return nil, fmt.Errorf("%s: no groups -- run `make generate-action-inventory`", fileName)
+	}
+	seenIDs := map[string]bool{}
+	for i, group := range inv.Groups {
+		if group.ID == "" || group.Name == "" {
+			return nil, fmt.Errorf("%s: group %d: id and name are both required", fileName, i)
+		}
+		if seenIDs[group.ID] {
+			return nil, fmt.Errorf("%s: duplicate group id %q", fileName, group.ID)
+		}
+		seenIDs[group.ID] = true
+		if i > 0 {
+			prev := inv.Groups[i-1]
+			if prev.Name > group.Name || (prev.Name == group.Name && prev.ID > group.ID) {
+				return nil, fmt.Errorf("%s: groups not sorted at %q (%s)", fileName, group.Name, group.ID)
+			}
+		}
+		if len(group.Scopes) == 0 {
+			return nil, fmt.Errorf("%s: group %q (%s) has no scopes", fileName, group.Name, group.ID)
+		}
+		for j, scope := range group.Scopes {
+			if scope == "" {
+				return nil, fmt.Errorf("%s: group %q (%s) has an empty scope", fileName, group.Name, group.ID)
+			}
+			if j > 0 {
+				if prev := group.Scopes[j-1]; prev == scope {
+					return nil, fmt.Errorf("%s: group %q (%s) duplicates scope %q", fileName, group.Name, group.ID, scope)
+				} else if prev > scope {
+					return nil, fmt.Errorf("%s: group %q (%s) scopes not sorted at %q", fileName, group.Name, group.ID, scope)
+				}
+			}
+		}
+	}
+	return inv, nil
+}
+
+// HasGroup reports whether the inventory defines a group with this exact
+// name at this exact scope. Matching is exact and case-sensitive: group
+// names are not IAM-evaluated patterns, so no wildcard or case semantics
+// apply.
+func (inv *GroupInventory) HasGroup(name, scope string) bool {
+	for _, group := range inv.Groups {
+		if group.Name != name {
+			continue
+		}
+		for _, s := range group.Scopes {
+			if s == scope {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// GroupScopes returns the union of scopes the inventory defines for a
+// group name, or nil when no group carries the name. Callers that must
+// tell "name invented" apart from "name real, scope wrong" (the
+// Cloudflare gate's two distinct diagnostics) use this beside HasGroup.
+func (inv *GroupInventory) GroupScopes(name string) []string {
+	var scopes []string
+	seen := map[string]bool{}
+	for _, group := range inv.Groups {
+		if group.Name != name {
+			continue
+		}
+		for _, s := range group.Scopes {
+			if !seen[s] {
+				seen[s] = true
+				scopes = append(scopes, s)
+			}
+		}
+	}
+	sort.Strings(scopes)
+	return scopes
+}
+
+// groupsHeader is the group-shaped snapshot's leading comment, written by
+// RenderGroups so the fetcher and any future regeneration path can never
+// disagree on it.
+const groupsHeader = `# GENERATED -- DO NOT EDIT. Refresh with ` + "`make generate-action-inventory`" + `.
+# Committed snapshot of the provider's own permission-group inventory,
+# scoped to exactly the group names the committed runner permissions
+# manifests (catalog/*/*/iac/permissions.yaml) reference. The conformance
+# gate in this package proves every manifest (name, scope) pair exists
+# here -- a permission group the provider never defined cannot ship. The
+# endpoint serves latest-only content; provenance is the URL plus the
+# retrieval date.
+`
+
+// RenderGroups writes a group inventory in its canonical byte form:
+// header, top-level provenance, groups sorted by name then id, scopes
+// sorted, dates quoted. Scalar quoting rides pkg/yamlemit (the one home
+// of the generators' quoting decision -- group names carry ": " and would
+// change meaning emitted plain). One renderer home keeps refresh diffs
+// meaningful.
+func RenderGroups(inv *GroupInventory) string {
+	var b strings.Builder
+	b.WriteString(groupsHeader)
+	yamlemit.WriteKV(&b, 0, "provider", inv.Provider, false)
+	yamlemit.WriteKV(&b, 0, "source_url", inv.SourceURL, false)
+	yamlemit.WriteKV(&b, 0, "retrieved_on", inv.RetrievedOn, true)
+	b.WriteString("groups:\n")
+	groups := append([]PermissionGroup(nil), inv.Groups...)
+	sort.Slice(groups, func(i, j int) bool {
+		if groups[i].Name != groups[j].Name {
+			return groups[i].Name < groups[j].Name
+		}
+		return groups[i].ID < groups[j].ID
+	})
+	for _, group := range groups {
+		yamlemit.WriteKV(&b, 2, "- id", group.ID, false)
+		yamlemit.WriteKV(&b, 4, "name", group.Name, false)
+		b.WriteString("    scopes:\n")
+		scopes := append([]string(nil), group.Scopes...)
+		sort.Strings(scopes)
+		for _, scope := range scopes {
+			yamlemit.WriteListItem(&b, 6, scope)
 		}
 	}
 	return b.String()

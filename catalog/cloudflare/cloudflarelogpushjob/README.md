@@ -106,3 +106,7 @@ Real delete. Deleting the job stops log delivery immediately and silently -- alr
 - [Cloudflare DNS Zone](/docs/catalog/cloudflare/cloudflarednszone) -- the scope for zone datasets
 - [Cloudflare R2 Bucket](/docs/catalog/cloudflare/cloudflarer2bucket) -- the usual same-account destination
 - [Cloudflare Notification Policy](/docs/catalog/cloudflare/cloudflarenotificationpolicy) -- alerts when a Logpush job starts failing
+
+---
+
+© Planton. Licensed under [Apache-2.0](https://github.com/plantonhq/planton/blob/main/LICENSE).

@@ -39,14 +39,14 @@ const metrics: MetricItem[] = [
 const applyLines: TerminalLine[] = [
   { text: '$ planton apply -f postgres.yaml', className: 'text-white' },
   { text: '' },
-  { text: '▶ Applying GcpCloudSqlInstance/my-postgres', className: 'text-[#b0b0b0]' },
+  { text: '▶ Applying GcpCloudSql/my-postgres', className: 'text-[#b0b0b0]' },
   { text: '  Organization: acme-corp', className: 'text-[#666]' },
   { text: '  Environment:  production', className: 'text-[#666]' },
   { text: '' },
   { text: '⏳ Creating stack job...', className: 'text-[#f59e0b]' },
   { text: '✓ Stack job sjb-d4f21a created', className: 'text-[#10b981]' },
   { text: '⏳ Provisioning resources...', className: 'text-[#f59e0b]' },
-  { text: '✓ GcpCloudSqlInstance created in 3m 12s', className: 'text-[#10b981]' },
+  { text: '✓ GcpCloudSql created in 3m 12s', className: 'text-[#10b981]' },
   { text: '' },
   { text: 'Connection string written to:', className: 'text-[#666]' },
   { text: '  planton secret get my-postgres-conn-url', className: 'text-[#666]' },
@@ -248,8 +248,8 @@ const EnvConfigDeepDive = () => (
       <Box className="text-center mb-8">
         <SectionTitle>Local dev, production secrets</SectionTitle>
         <SectionSubtitle className="mx-auto">
-          Pull environment variables for local development. Secrets resolved from your vault via the Runner &mdash;
-          the control plane never sees plaintext credentials.
+          Pull environment variables for local development. Secrets resolve straight from your own
+          vault &mdash; never stored in Planton&apos;s database.
         </SectionSubtitle>
       </Box>
     </ScrollReveal>

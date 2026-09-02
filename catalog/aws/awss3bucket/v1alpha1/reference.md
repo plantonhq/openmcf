@@ -1746,7 +1746,7 @@ Fields on other kinds that can point at this resource:
 | AwsCodeBuildProject | `spec.artifacts.location` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.secondaryArtifacts[].location` | `status.outputs.bucket_id` |
 | AwsCodeBuildProject | `spec.cache.location` | `status.outputs.bucket_id` |
-| AwsCodeBuildProject | `spec.logsConfig.s3Logs.location` | `status.outputs.bucket_id` |
+| AwsCodeBuildProject | `spec.logsConfig.s3Logs.bucket` | `status.outputs.bucket_id` |
 | AwsCodePipeline | `spec.artifactStores[].location` | `status.outputs.bucket_id` |
 | AwsCognitoUserPool | `spec.logConfigurations[].s3BucketArn` | `status.outputs.bucket_arn` |
 | AwsConfigConformancePack | `spec.deliveryS3Bucket` | `status.outputs.bucket_id` |

@@ -28,14 +28,14 @@ The listener, target groups, and any Cognito user pools are separate components 
 
 ### Console
 
-Open the deployment store, find **AWS LB Listener Rule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Path Based Routing** preset in the [Presets](#presets) tab.
+Open the deployment store, find **AWS LB Listener Rule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Path-Based Routing** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLbListenerRule
 metadata:
   name: api-route
@@ -70,6 +70,36 @@ planton apply -f rule.yaml
 
 This routes every /api/* request on the shared HTTPS listener to the api-servers group at priority 100. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the rule deploys alongside its listener and target group in one chart, wire the references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-east-1
+  listenerArn:
+    valueFrom:
+      kind: AwsLbListener
+      name: https-listener
+      fieldPath: status.outputs.listener_arn
+  priority: 100
+  conditions:
+    - pathPattern:
+        values:
+          - /api/*
+  actions:
+    - type: forward
+      forward:
+        targetGroups:
+          - arn:
+              valueFrom:
+                kind: AwsLbTargetGroup
+                name: api-servers
+                fieldPath: status.outputs.target_group_arn
+```
+
+The InfraPipeline resolves the dependency graph, deploys the listener and target group first, then attaches the rule.
+
 ## Key Configuration
 
 These are the most important decisions when configuring a rule. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -90,15 +120,16 @@ These are the most important decisions when configuring a rule. Explore the full
 
 ### What This Component Consumes
 
-| Field | References | Via |
-|-------|-----------|-----|
-| `listenerArn` | AwsLbListener | `status.outputs.listener_arn` |
-| `actions[].forward.targetGroups[].arn` | AwsLbTargetGroup | `status.outputs.target_group_arn` |
-| `actions[].authenticateCognito.userPoolArn` | AwsCognitoUserPool | `status.outputs.user_pool_arn` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsLbListener** | `listenerArn` | `status.outputs.listener_arn` |
+| **AwsLbTargetGroup** | `actions[].forward.targetGroups[].arn` | `status.outputs.target_group_arn` |
+| **AwsCognitoUserPool** | `actions[].authenticateCognito.userPoolArn` / `.userPoolDomain` | `status.outputs.user_pool_arn` / `status.outputs.user_pool_domain` |
+| **AwsCognitoUserPoolClient** | `actions[].authenticateCognito.userPoolClientId` | `status.outputs.client_id` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
@@ -109,15 +140,15 @@ After provisioning, `status.outputs` contains:
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Path-based routing** -- /api/* to the api group on a shared listener. Start from the **Path Based Routing** preset.
+**Path-based routing** -- /api/* to the api group on a shared listener. Start from the **Path-Based Routing** preset.
 
-**Host-based routing** -- one rule per service hostname: the microservice front door. Start from the **Host Based Routing** preset.
+**Host-based routing** -- one rule per service hostname: the microservice front door. Start from the **Host-Based Routing** preset.
 
-**Canary rollout** -- a weighted forward (90/10) scoped to one route. Start from the **Canary Weighted** preset.
+**Canary rollout** -- a weighted forward (90/10) scoped to one route. Start from the **Canary Weighted Forward** preset.
 
 ## Works With
 
-- **AwsLbListener** -- the listener this rule attaches to, referenced by `listenerArn`.
-- **AwsLbTargetGroup** -- the forward destinations, referenced per action.
-- **AwsAlb** -- the load balancer at the top of the chain (rules are an ALB concept).
-- **AwsCognitoUserPool** -- the user pool behind authenticate-cognito actions.
+- [**AWS LB Listener**](/cloud-catalog/aws-lb-listener) -- the listener this rule attaches to, referenced by `listenerArn`.
+- [**AWS LB Target Group**](/cloud-catalog/aws-lb-target-group) -- the forward destinations, referenced per action.
+- [**AWS ALB**](/cloud-catalog/aws-alb) -- the load balancer at the top of the chain (rules are an ALB concept).
+- [**AWS Cognito User Pool**](/cloud-catalog/aws-cognito-user-pool) -- the user pool behind authenticate-cognito actions.

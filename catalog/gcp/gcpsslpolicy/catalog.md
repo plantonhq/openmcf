@@ -1,13 +1,13 @@
-# SSL Policy on Google Cloud
+# GCP SSL Policy
 
-Deploys a Compute Engine SSL policy — the control for which TLS protocol versions and cipher suites a load balancer accepts from clients. Without one, GCP's default applies: minimum TLS 1.0 with the permissive COMPATIBLE cipher set. A policy is shared configuration: many proxies reference one policy, and its dials (profile, minimum TLS version, custom suites) update in place — so raising a fleet's TLS floor for PCI DSS is a single-resource change. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
+Deploys a Compute Engine SSL policy — the control for which TLS protocol versions and cipher suites a load balancer accepts from clients. Without one, GCP's default applies: minimum TLS 1.0 with the permissive COMPATIBLE cipher set. A policy is shared configuration: many proxies reference one policy, and its dials (profile, minimum TLS version, custom suites) update in place — so raising a fleet's TLS floor for PCI DSS is a single-resource change.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Compute Engine SSL Policy** -- global (blank `region`) for global external Application Load Balancer proxies, or regional for regional external and internal ALB proxies
-- **Cipher/profile enforcement** -- the COMPATIBLE/MODERN/RESTRICTED profile or an explicit CUSTOM cipher-suite allowlist, applied to every referencing proxy's handshakes
+- **Compute Engine SSL Policy** -- global (blank `region`) for global external Application Load Balancer proxies, or regional for regional external and internal ALB proxies; carries the COMPATIBLE/MODERN/RESTRICTED/FIPS_202205 profile or an explicit CUSTOM cipher-suite allowlist, applied to every referencing proxy's handshakes
+- **Compute Engine API enablement** -- `compute.googleapis.com` is enabled in the target project so a fresh project can host the policy; tearing down the policy never disables the API
 
 ## Before You Deploy
 
@@ -18,14 +18,13 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the policy will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+- **A GCP project** where the policy will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef. The module enables the Compute Engine API itself, so the connection's principal needs permission to enable services (`serviceusage.services.enable`) on a fresh project.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **SSL Policy on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Modern TLS 1.2** preset in the [Presets](#presets) tab to pre-populate the recommended production posture.
+Open the deployment store, find **GCP SSL Policy**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Modern TLS 1.2 Baseline** preset in the [Presets](#presets) tab to pre-populate the recommended production posture.
 
 ### CLI
 
@@ -50,7 +49,7 @@ spec:
 planton apply -f ssl-policy.yaml
 ```
 
-This creates the recommended production posture: modern ciphers with a TLS 1.2 floor — the PCI-DSS baseline.
+This creates the recommended production posture: modern ciphers with a TLS 1.2 floor — the PCI-DSS baseline. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -104,11 +103,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Modern TLS 1.2** -- The recommended production posture: broad client reach, no broken ciphers, compliance-ready. Start from the **Modern TLS 1.2** preset.
+**Modern TLS 1.2 baseline** -- The recommended production posture: broad client reach, no broken ciphers, compliance-ready. Start from the **Modern TLS 1.2 Baseline** preset.
 
-**Restricted strict** -- Only ciphers with modern security guarantees, for regimes stricter than PCI DSS. Start from the **Restricted Strict** preset.
+**Restricted strict** -- Only ciphers with modern security guarantees, for regimes stricter than PCI DSS. Start from the **Restricted High-Security Policy** preset.
 
-**Custom allowlist** -- Exact ECDHE AEAD suites for regimes that name ciphers explicitly — demonstrates the CUSTOM↔customFeatures coupling. Start from the **Custom Cipher List** preset.
+**Custom allowlist** -- Exact ECDHE AEAD suites for regimes that name ciphers explicitly — demonstrates the CUSTOM↔customFeatures coupling. Start from the **Custom Cipher Allowlist** preset.
 
 ## Works With
 

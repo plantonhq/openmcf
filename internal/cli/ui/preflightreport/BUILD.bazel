@@ -1,0 +1,20 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "preflightreport",
+    srcs = ["render.go"],
+    importpath = "github.com/plantonhq/planton/internal/cli/ui/preflightreport",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//pkg/setdeploy",
+        "@com_github_charmbracelet_lipgloss//:lipgloss",
+    ],
+)
+
+go_test(
+    name = "preflightreport_test",
+    srcs = ["render_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":preflightreport"],
+    deps = ["//pkg/setdeploy"],
+)

@@ -3832,12 +3832,12 @@ var File_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto protoreflect.F
 
 const file_catalog_cloudflare_cloudflareruleset_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"8catalog/cloudflare/cloudflareruleset/v1alpha1/spec.proto\x121dev.planton.cloudflare.cloudflareruleset.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe6\f\n" +
+	"8catalog/cloudflare/cloudflareruleset/v1alpha1/spec.proto\x121dev.planton.cloudflare.cloudflareruleset.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe9\f\n" +
 	"\x15CloudflareRulesetSpec\x12l\n" +
 	"\azone_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x1f\x88\xd4a\xd86\x92\xd4a\x16status.outputs.zone_idR\x06zoneId\x12\x1d\n" +
 	"\n" +
-	"account_id\x18\x02 \x01(\tR\taccountId\x12\x8b\x01\n" +
-	"\fruleset_kind\x18\x03 \x01(\x0e2T.dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.RulesetKindB\r\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x011H\x00R\vrulesetKind\x88\x01\x01\x12\xaf\x01\n" +
+	"account_id\x18\x02 \x01(\tR\taccountId\x12\x8e\x01\n" +
+	"\fruleset_kind\x18\x03 \x01(\x0e2T.dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.RulesetKindB\x10\xbaH\x05\x82\x01\x02\x10\x01\x8a\xa6\x1d\x04zoneH\x00R\vrulesetKind\x88\x01\x01\x12\xaf\x01\n" +
 	"\x05phase\x18\x04 \x01(\x0e2N.dev.planton.cloudflare.cloudflareruleset.v1alpha1.CloudflareRulesetSpec.PhaseBI\xbaHF\xba\x01;\n" +
 	"\x15phase.not_unspecified\x12\x17phase must be specified\x1a\tthis != 0\xc8\x01\x01\x82\x01\x02\x10\x01R\x05phase\x12\x1b\n" +
 	"\x04name\x18\x05 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x04name\x12 \n" +

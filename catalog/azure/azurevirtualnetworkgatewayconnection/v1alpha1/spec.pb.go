@@ -251,9 +251,9 @@ type AzureVirtualNetworkGatewayConnectionSpec struct {
 	// needs its own mirror connection back to this gateway carrying the
 	// same shared_key. Fixed at creation.
 	PeerVirtualNetworkGatewayId *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=peer_virtual_network_gateway_id,json=peerVirtualNetworkGatewayId,proto3" json:"peer_virtual_network_gateway_id,omitempty"`
-	// EXPRESS_ROUTE connections: the circuit's ARM id. A bare reference:
-	// supply the id as a literal or an explicit kind/fieldPath reference.
-	// Fixed at creation.
+	// EXPRESS_ROUTE connections: the circuit's ARM id. References an
+	// AzureExpressRouteCircuit's ARM-id output (or a literal ARM ID for a
+	// circuit outside the catalog). Fixed at creation.
 	ExpressRouteCircuitId *v1.StringValueOrRef `protobuf:"bytes,8,opt,name=express_route_circuit_id,json=expressRouteCircuitId,proto3" json:"express_route_circuit_id,omitempty"`
 	// The IPsec pre-shared key both tunnel ends must agree on (IPSEC and
 	// VNET_TO_VNET connections). Reference a secret rather than embedding
@@ -765,7 +765,7 @@ var File_catalog_azure_azurevirtualnetworkgatewayconnection_v1alpha1_spec_proto 
 
 const file_catalog_azure_azurevirtualnetworkgatewayconnection_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Fcatalog/azure/azurevirtualnetworkgatewayconnection/v1alpha1/spec.proto\x12?dev.planton.azure.azurevirtualnetworkgatewayconnection.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xde%\n" +
+	"Fcatalog/azure/azurevirtualnetworkgatewayconnection/v1alpha1/spec.proto\x12?dev.planton.azure.azurevirtualnetworkgatewayconnection.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x91&\n" +
 	"(AzureVirtualNetworkGatewayConnectionSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
@@ -775,8 +775,8 @@ const file_catalog_azure_azurevirtualnetworkgatewayconnection_v1alpha1_spec_prot
 	"\x04type\x18\x04 \x01(\x0e2i.dev.planton.azure.azurevirtualnetworkgatewayconnection.v1alpha1.AzureVirtualNetworkGatewayConnectionTypeB\b\xbaH\x05\x82\x01\x02\x10\x01R\x04type\x12\xa9\x01\n" +
 	"\x1avirtual_network_gateway_id\x18\x05 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB8\xbaH\x03\xc8\x01\x01\x88\xd4a\xdc\x10\x92\xd4a)status.outputs.virtual_network_gateway_idR\x17virtualNetworkGatewayId\x12\x9d\x01\n" +
 	"\x18local_network_gateway_id\x18\x06 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xde\x10\x92\xd4a'status.outputs.local_network_gateway_idR\x15localNetworkGatewayId\x12\xac\x01\n" +
-	"\x1fpeer_virtual_network_gateway_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\x88\xd4a\xdc\x10\x92\xd4a)status.outputs.virtual_network_gateway_idR\x1bpeerVirtualNetworkGatewayId\x12k\n" +
-	"\x18express_route_circuit_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefR\x15expressRouteCircuitId\x12W\n" +
+	"\x1fpeer_virtual_network_gateway_id\x18\a \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB2\x88\xd4a\xdc\x10\x92\xd4a)status.outputs.virtual_network_gateway_idR\x1bpeerVirtualNetworkGatewayId\x12\x9d\x01\n" +
+	"\x18express_route_circuit_id\x18\b \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB0\x88\xd4a\xe0\x10\x92\xd4a'status.outputs.express_route_circuit_idR\x15expressRouteCircuitId\x12W\n" +
 	"\n" +
 	"shared_key\x18\t \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x04\xa0\xa6\x1d\x01R\tsharedKey\x12e\n" +
 	"\x11authorization_key\x18\n" +

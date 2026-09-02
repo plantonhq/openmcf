@@ -46,9 +46,7 @@ message CloudflareZeroTrustTunnelSpec {
   // match the stored reference. Cloudflare validates the decoded secret at
   // apply. Omit to let Cloudflare generate one (recommended); the run token
   // is always available in `status.outputs.tunnel_token` regardless.
-  string tunnel_secret = 4 [
-    (dev.planton.shared.options.sensitive) = true
-  ];
+  string tunnel_secret = 4 [(dev.planton.shared.options.sensitive) = true];
 
   // Public-hostname ingress rules, evaluated top to bottom. Each rule maps a hostname
   // (and optional path) to a local service. The final rule MUST be a catch-all (a

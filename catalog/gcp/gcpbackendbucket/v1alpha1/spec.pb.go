@@ -588,7 +588,10 @@ type GcpBackendBucketSignedUrlKey struct {
 	// base64url, with or without the trailing == padding. Anyone holding this
 	// value can mint valid signed URLs, so it is handled as a secret.
 	// Immutable per key name: rotating means adding a new key and removing
-	// the old.
+	// the old. The base64url shape is taught here rather than enforced by a
+	// validation rule, because sensitive fields hold a managed-secret
+	// reference on consuming platforms and a content-shape rule would
+	// reject every reference.
 	KeyValue      string `protobuf:"bytes,2,opt,name=key_value,json=keyValue,proto3" json:"key_value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -705,10 +708,11 @@ const file_catalog_gcp_gcpbackendbucket_v1alpha1_spec_proto_rawDesc = "" +
 	"\x14include_http_headers\x18\x02 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R\x12includeHttpHeaders\"U\n" +
 	"*GcpBackendBucketBypassCacheOnRequestHeader\x12'\n" +
 	"\vheader_name\x18\x01 \x01(\tB\x06\xbaH\x03\xc8\x01\x01R\n" +
-	"headerName\"\xa4\x01\n" +
+	"headerName\"\x88\x01\n" +
 	"\x1cGcpBackendBucketSignedUrlKey\x12?\n" +
-	"\x04name\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$R\x04name\x12C\n" +
-	"\tkey_value\x18\x02 \x01(\tB&\xbaH\x1f\xc8\x01\x01r\x1a2\x18^[A-Za-z0-9_-]{22}(==)?$\xa0\xa6\x1d\x01R\bkeyValueB\xe0\x02\n" +
+	"\x04name\x18\x01 \x01(\tB+\xbaH(\xc8\x01\x01r#2!^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$R\x04name\x12'\n" +
+	"\tkey_value\x18\x02 \x01(\tB\n" +
+	"\xbaH\x03\xc8\x01\x01\xa0\xa6\x1d\x01R\bkeyValueB\xe0\x02\n" +
 	"-com.dev.planton.gcp.gcpbackendbucket.v1alpha1B\tSpecProtoP\x01Z[github.com/plantonhq/planton/catalog/gcp/gcpbackendbucket/v1alpha1;gcpbackendbucketv1alpha1\xa2\x02\x04DPGG\xaa\x02)Dev.Planton.Gcp.Gcpbackendbucket.V1alpha1\xca\x02)Dev\\Planton\\Gcp\\Gcpbackendbucket\\V1alpha1\xe2\x025Dev\\Planton\\Gcp\\Gcpbackendbucket\\V1alpha1\\GPBMetadata\xea\x02-Dev::Planton::Gcp::Gcpbackendbucket::V1alpha1b\x06proto3"
 
 var (

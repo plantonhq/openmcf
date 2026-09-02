@@ -1,6 +1,6 @@
 # AWS WAF Web ACL
 
-Deploys a WAFv2 Web ACL — the ordered rule set that decides which requests reach your application. Rules evaluate managed rule groups, rate limits, geo and ASN matches, IP-set and regex-pattern-set references, and match statements (byte / SQLi / XSS / size / label), with AND / OR / NOT composition for multi-condition logic. REGIONAL scope protects ALB, API Gateway, AppSync, Cognito, and App Runner; CLOUDFRONT scope protects CloudFront distributions and must live in `us-east-1`. Optional logging, custom block responses, CAPTCHA/challenge immunity, body-inspection ceilings, and field-masking data protection round out a production posture. Integrates with Planton's Provider Connections for AWS credential management, and its `web_acl_arn` output is what CloudFront and load balancers associate via ValueFromRef.
+Deploys a WAFv2 Web ACL — the ordered rule set that decides which requests reach your application. Rules evaluate managed rule groups, rate limits, geo and ASN matches, IP-set and regex-pattern-set references, and match statements (byte / SQLi / XSS / size / label), with AND / OR / NOT composition for multi-condition logic. REGIONAL scope protects ALB, API Gateway, AppSync, Cognito, and App Runner; CLOUDFRONT scope protects CloudFront distributions and must live in `us-east-1`. Optional logging, custom block responses, CAPTCHA/challenge immunity, body-inspection ceilings, and field-masking data protection round out a production posture. Its `web_acl_arn` output is what CloudFront and load balancers associate via ValueFromRef.
 
 ## What Gets Created
 
@@ -37,7 +37,7 @@ Open the deployment store, find **AWS WAF Web ACL**, and click **Deploy**. The c
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsWafWebAcl
 metadata:
   name: api-protection
@@ -66,17 +66,28 @@ This creates a REGIONAL web ACL with the AWS Common Rule Set enforced and all ot
 
 ### InfraChart
 
-IP-set and regex-pattern-set references resolve through ValueFromRef. Associate the web ACL with CloudFront via its `webAclArn` field:
+When the web ACL deploys alongside its IP sets and pattern sets in one chart, wire the rule references via ValueFromRef:
 
 ```yaml
-# On an AwsCloudFront in the same InfraPipeline:
 spec:
-  webAclArn:
-    valueFrom:
-      kind: AwsWafWebAcl
-      name: api-protection
-      fieldPath: status.outputs.web_acl_arn
+  region: us-west-2
+  scope: REGIONAL
+  defaultAction:
+    type: block
+  rules:
+    - name: allow-office
+      priority: 0
+      action: allow
+      statement:
+        ipSetReference:
+          arn:
+            valueFrom:
+              kind: AwsWafIpSet
+              name: office-allowlist
+              fieldPath: status.outputs.ip_set_arn
 ```
+
+The InfraPipeline resolves the dependency graph, deploys the sets first, then provisions the web ACL with the resolved ARNs. Downstream, a CloudFront distribution or load balancer binds this ACL's own `web_acl_arn` output the same way.
 
 ## Key Configuration
 
@@ -96,11 +107,11 @@ These are the most important decisions when configuring a WAF Web ACL. Explore t
 
 ### What This Component Consumes
 
-| Field | References | How |
-|-------|------------|-----|
-| `rules[].statement.ipSetReference.arn` | AwsWafIpSet | ValueFromRef → `status.outputs.ip_set_arn` |
-| `rules[].statement.regexPatternSetReference.arn` | AwsWafRegexPatternSet | ValueFromRef → `status.outputs.regex_pattern_set_arn` |
-| `logging.destinationArn` | CloudWatch Log Group / S3 / Firehose | Literal ARN or reference (no single default kind — three destination types) |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsWafIpSet** | `rules[].statement.ipSetReference.arn` | `status.outputs.ip_set_arn` |
+| **AwsWafRegexPatternSet** | `rules[].statement.regexPatternSetReference.arn` | `status.outputs.regex_pattern_set_arn` |
+| **CloudWatch Log Group / S3 / Firehose** | `logging.destinationArn` | literal ARN or explicit-kind reference (three destination types, so no default kind) |
 
 ### What This Component Provides
 
@@ -122,7 +133,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Rate limiting with managed rules** — Combines managed groups with a rate-based rule. Suitable for APIs and login pages. Start from the **Rate Limiting with Managed Rules** preset.
 
-**Production web app** — Multiple managed groups (common rules, known bad inputs, IP reputation, anonymous IP), rate limiting, and logging. Start from the **Production Web App** preset.
+**Production web app** — Multiple managed groups (common rules, known bad inputs, IP reputation, anonymous IP), rate limiting, and logging. Start from the **Production Web Application** preset.
+
+**Cost-controlled logging** — Full protection with a logging filter that keeps only BLOCK and COUNT records and redacts Authorization and Cookie headers — the standard way to keep WAF log volume affordable on high-traffic ACLs. Start from the **Cost-Controlled Logging** preset.
 
 ## Works With
 

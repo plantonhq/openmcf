@@ -1,0 +1,6 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesNamespace
+metadata:
+  name: apps
+  env: dev
+spec: {}

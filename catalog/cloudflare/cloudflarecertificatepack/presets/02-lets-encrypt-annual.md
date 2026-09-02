@@ -1,4 +1,4 @@
-# Preset: Let's Encrypt, Apex-Only, Annual
+# Let's Encrypt, Apex-Only, Annual
 
 A single-hostname (apex) certificate issued by Let's Encrypt with the longest
 validity (365 days). Useful when you only need to cover the bare domain and prefer a

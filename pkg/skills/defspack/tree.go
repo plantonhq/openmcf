@@ -12,12 +12,14 @@ import (
 )
 
 // Tree is the loaded definitions content: every skill under skills/, every
-// agent under agents/, and the compatibility floor from skills/compat.yaml.
+// agent under agents/, every automation under automations/, and the
+// compatibility floor from skills/compat.yaml.
 type Tree struct {
-	Root   string
-	Skills []Skill
-	Agents []Agent
-	Floor  CompatFloor
+	Root        string
+	Skills      []Skill
+	Agents      []Agent
+	Automations []Automation
+	Floor       CompatFloor
 }
 
 // Skill is one skills/<slug>/ directory: SKILL.md plus its reference files.
@@ -44,6 +46,18 @@ type Skill struct {
 type Agent struct {
 	Slug         string
 	Instructions []byte
+}
+
+// Automation is one automations/<slug>.yaml file: a published definition of
+// something the Planton Assistant can do unattended. The file's content is
+// carried verbatim into the release; the deep schema laws (budget, pinned
+// model, consent class) are enforced by the platform's publish lane, which
+// owns the schema -- this repo's validation is structural (parseable YAML,
+// slug matching the filename), so a contributor's typo fails the PR gate
+// while the schema's law stays defined in exactly one place.
+type Automation struct {
+	Slug    string
+	Content []byte
 }
 
 // CompatFloor is the minimum consumer version set the current content
@@ -104,6 +118,28 @@ func LoadTree(root string) (*Tree, error) {
 			return nil, fmt.Errorf("reading agent instructions for %s: %w", entry.Name(), err)
 		}
 		tree.Agents = append(tree.Agents, Agent{Slug: entry.Name(), Instructions: instructions})
+	}
+
+	// Absent-tolerant by design, unlike skills/ and agents/: automations are
+	// the youngest definitions class, and consumers (the platform's publish
+	// lane) treat a release without them as publishing zero automations.
+	automationsDir := filepath.Join(root, "automations")
+	automationEntries, err := os.ReadDir(automationsDir)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("reading automations tree %s: %w", automationsDir, err)
+	}
+	for _, entry := range automationEntries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
+			continue
+		}
+		content, err := os.ReadFile(filepath.Join(automationsDir, entry.Name()))
+		if err != nil {
+			return nil, fmt.Errorf("reading automation %s: %w", entry.Name(), err)
+		}
+		tree.Automations = append(tree.Automations, Automation{
+			Slug:    strings.TrimSuffix(entry.Name(), ".yaml"),
+			Content: content,
+		})
 	}
 
 	compatRaw, err := os.ReadFile(filepath.Join(skillsDir, "compat.yaml"))
@@ -285,6 +321,26 @@ func Validate(tree *Tree) []error {
 	for _, agent := range tree.Agents {
 		if len(agent.Instructions) == 0 {
 			report("agents/%s: instructions.md is missing or empty", agent.Slug)
+		}
+	}
+
+	for _, automation := range tree.Automations {
+		if len(automation.Content) == 0 {
+			report("automations/%s.yaml: file is empty", automation.Slug)
+			continue
+		}
+		var doc struct {
+			Slug string `yaml:"slug"`
+		}
+		if err := yaml.Unmarshal(automation.Content, &doc); err != nil {
+			report("automations/%s.yaml: not valid YAML: %v", automation.Slug, err)
+			continue
+		}
+		if doc.Slug != automation.Slug {
+			// Slugs are permanent join keys (org switch records adopt by
+			// slug), so the filename and the document must agree before the
+			// content can enter a release.
+			report("automations/%s.yaml: document slug %q must equal the file name", automation.Slug, doc.Slug)
 		}
 	}
 

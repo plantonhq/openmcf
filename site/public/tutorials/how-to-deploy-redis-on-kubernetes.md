@@ -47,7 +47,7 @@ A Kubernetes Cloud Resource deploys open-source software (like Redis, PostgreSQL
 Create a file named `redis.yaml` with the following content:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRedis
 metadata:
   name: app-cache
@@ -222,7 +222,7 @@ This requires [external-dns](https://github.com/kubernetes-sigs/external-dns) to
 Add the `ingress` section to your manifest:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRedis
 metadata:
   name: app-cache
@@ -270,7 +270,7 @@ redis-cli -h redis-prod.example.com -p 6379 -a "<your-password>"
 For development and testing environments where speed and simplicity matter more than durability, use a lighter configuration:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesRedis
 metadata:
   name: app-cache-dev

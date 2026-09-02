@@ -1,0 +1,38 @@
+# Least-privilege permissions the IaC runner's GCP principal needs to
+# provision, update, and destroy this component with the official modules.
+# Every entry is `derived` (static analysis of the module sources, cited in
+# notes) until the live capture lane upgrades it to `proven`. Schema:
+# iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: gcpcloudrun
+spec:
+  gcp:
+    groups:
+      - purpose: EnableRunApi
+        permissions:
+          - serviceusage.services.enable
+          - serviceusage.services.get
+        provenance: derived
+        notes: Covers google_project_service enabling run.googleapis.com on the target project so a fresh project works on the first deploy. disable_on_destroy is false in both modules -- tearing down one service must never disable the API for everything else -- so the disable permission is never needed.
+      - purpose: ManageService
+        permissions:
+          - run.services.create
+          - run.services.get
+          - run.services.update
+          - run.services.delete
+          - run.operations.get
+        provenance: derived
+        notes: Covers google_cloud_run_v2_service -- create, read/refresh, in-place updates (revision template, containers, scaling, traffic splits, ingress, IAP, deletion protection), and destroy. Service mutations on the Cloud Run Admin API v2 return long-running operations the provider polls, which authorize as run.operations.get.
+      - purpose: GrantPublicInvoker
+        permissions:
+          - run.services.setIamPolicy
+          - run.services.getIamPolicy
+        provenance: derived
+        notes: Covers google_cloud_run_v2_service_iam_member -- the roles/run.invoker grant to allUsers, created only when spec.allow_unauthenticated is true (the 01-public-api-service preset). IAM member resources read the current policy before modifying it, so getIamPolicy rides along. Not needed for authenticated-only services.
+      - purpose: ActAsRuntimeServiceAccount
+        permissions:
+          - iam.serviceAccounts.actAs
+        provenance: derived
+        notes: Cloud Run's deployment-permissions contract requires iam.serviceAccounts.actAs on the service identity for every create or update of google_cloud_run_v2_service -- on the referenced spec.service_account when one is named, or on the project's Compute Engine default service account when it is not. There is no shape of this component that escapes the requirement.

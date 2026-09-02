@@ -6,6 +6,7 @@ Creates one Certificate Manager certificate — the modern certificate resource 
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Certificate Manager API enablement** (`certificatemanager.googleapis.com`) on the target project (never disabled on destroy)
 - **Certificate Manager Certificate** -- a `google_certificate_manager_certificate` in the chosen project and location, either MANAGED (with the listed domains and validation channel) or SELF_MANAGED (with the uploaded PEM material)
 
 Domain validation resources are NOT bundled: DNS authorizations are first-class [GcpCertManagerDnsAuthorization](/cloud-catalog/gcp-cert-manager-dns-authorization) resources you compose, which is what makes issuing a certificate BEFORE traffic serves (zero-downtime migration) possible.
@@ -19,7 +20,6 @@ Domain validation resources are NOT bundled: DNS authorizations are first-class 
 
 ### GCP Project
 
-- **Certificate Manager API** (`certificatemanager.googleapis.com`) enabled in the target project.
 - **For DNS-authorization validation** -- one [GcpCertManagerDnsAuthorization](/cloud-catalog/gcp-cert-manager-dns-authorization) per distinct domain, its exported CNAME served by a [GcpDnsRecord](/cloud-catalog/gcp-dns-record) in the domain's zone. Required for wildcard domains and for issuing before the load balancer serves.
 - **For load-balancer validation** -- nothing up front: GCP validates through the serving load balancer once traffic reaches it (the certificate stays PROVISIONING until then; wildcards are not supported).
 
@@ -27,7 +27,7 @@ Domain validation resources are NOT bundled: DNS authorizations are first-class 
 
 ### Console
 
-Open the deployment store, find **GCP Cert Manager Cert**, and click **Create**. The wizard leads with the managed-vs-self-managed fork, then the certificate's envelope (project, name, location, serving scope), then the arm's own step — domains & validation for managed, the PEM pair for uploads. The [Presets](#presets) tab offers **Managed with DNS auth**, **Wildcard certificate**, and **Self-managed PEM** starting points.
+Open the deployment store, find **GCP Cert Manager Cert**, and click **Deploy**. The wizard leads with the managed-vs-self-managed fork, then the certificate's envelope (project, name, location, serving scope), then the arm's own step — domains & validation for managed, the PEM pair for uploads. Start from the **Managed Certificate with DNS Authorization** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -57,7 +57,29 @@ spec:
 planton apply -f cert.yaml
 ```
 
+This creates a Google-managed certificate for `orders.example.com` validated through the referenced DNS authorization — it can reach ACTIVE before any load balancer serves the domain. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+The zero-downtime TLS shape in one chart: a DNS authorization per domain, a GcpDnsRecord serving each validation CNAME, and this certificate referencing the authorizations:
+
+```yaml
+spec:
+  managed:
+    domains:
+      - orders.example.com
+    dnsAuthorizations:
+      - valueFrom:
+          kind: GcpCertManagerDnsAuthorization
+          name: orders-example-auth
+          fieldPath: status.outputs.authorization_id
+```
+
+The InfraPipeline provisions the authorizations and their DNS records first, then requests the certificate — issuance completes without touching live traffic.
+
 ## Key Configuration
+
+These are the most important decisions when configuring a Certificate Manager certificate. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Certificate type** -- Exactly one of `managed` or `selfManaged`. Managed certificates renew forever; self-managed certificates serve exactly what you uploaded until you rotate them.
 
@@ -82,6 +104,8 @@ planton apply -f cert.yaml
 
 ### What This Component Provides
 
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `certificate_id` | Fully-qualified resource ID (`projects/*/locations/*/certificates/*`) | Certificate maps, auditing |
@@ -89,6 +113,18 @@ planton apply -f cert.yaml
 | `san_dnsnames` | The SANs in the issued certificate | Verifying coverage |
 | `location` | The Certificate Manager location | Cross-checking proxy placement |
 | `managed_state` | `PROVISIONING` / `ACTIVE` / `FAILED` (managed only) | Gating DNS cutover on ACTIVE |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Managed with DNS authorization** -- the zero-downtime migration shape: prove domain control through DNS, watch `managed_state` reach ACTIVE, then cut traffic over — the certificate is serving-ready before the load balancer ever sees a request. Start from the **Managed Certificate with DNS Authorization** preset.
+
+**Wildcard certificate** -- one certificate for `*.example.com` plus the apex listed separately (a wildcard never covers the apex or nested levels). DNS authorization is mandatory here — load-balancer validation cannot prove control of a wildcard. Start from the **Wildcard Certificate** preset.
+
+**Self-managed upload** -- a PEM chain and `$secret/`-referenced private key for certificates issued outside GCP (corporate CAs, EV certificates). Renewal is on you: update the pair in place before expiry and the rotation serves with no downtime. Start from the **Self-Managed (Uploaded) Certificate** preset.
+
+**Load-balancer validation** -- no DNS authorization and no issuance config: GCP validates through the serving load balancer once traffic reaches it. The simplest channel for a domain already pointing at the LB — but the certificate sits in PROVISIONING until then, so it cannot front a zero-downtime migration and never validates wildcards.
 
 ## Works With
 

@@ -17,14 +17,19 @@ go_library(
 
 go_test(
     name = "pulumiawsprovider_test",
-    srcs = ["provider_test.go"],
+    srcs = [
+        "provider_block_test.go",
+        "provider_test.go",
+    ],
     embed = [":pulumiawsprovider"],
     deps = [
         "//catalog/aws",
         "//pkg/iac/provider/aws/awswebidentity",
         "@com_github_aws_aws_sdk_go_v2//aws",
+        "@com_github_pulumi_pulumi_aws_sdk_v7//go/aws",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
+        "@org_golang_google_protobuf//proto",
     ],
 )

@@ -4,7 +4,7 @@ output "secret_arn" {
 }
 
 output "secret_name" {
-  description = "The name of the secret. Matches metadata.name."
+  description = "The secret's AWS name (spec.secret_name, else metadata.name)."
   value       = aws_secretsmanager_secret.this.name
 }
 

@@ -22,7 +22,7 @@ SINGLE_AZ_2 SSD file system with 2 TiB (2048 GiB) and 768 MB/s throughput. One H
 
 ## What to Customize
 
-- Replace placeholders: `name`, `id`, `org`, `env`, `<aws-region>`, `<subnet-id>`, `<security-group-id>`, the KMS key ARN, and the admin password
+- Replace placeholders: `name`, `id`, `org`, `env`, `<aws-region>`, `<subnet-id>`, `<security-group-id>`, and the KMS key ARN; `fsx_admin_password` ships as a `$secret/<slug>` managed-secret reference — create the referenced secret, never inline a plaintext password
 - Increase `storage_capacity_gib` for larger datasets
 - Increase `throughput_capacity_per_ha_pair` (1536, 3072, 6144) for higher I/O
 - Add `ha_pairs: 2` or more for scale-out throughput (see preset 04)

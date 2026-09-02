@@ -19,7 +19,7 @@ const heroLines: TerminalLine[] = [
   { text: '' },
   { text: '✓ Spec validated against protobuf schema', className: 'text-[#10b981]' },
   { text: '⏳ Provisioning via Pulumi module...', className: 'text-[#f59e0b]' },
-  { text: '✓ GcpCloudSqlInstance created', className: 'text-[#10b981]' },
+  { text: '✓ GcpCloudSql created', className: 'text-[#10b981]' },
   { text: '' },
   { text: '  No SaaS required. Fully portable.', className: 'text-[#666]' },
 ];

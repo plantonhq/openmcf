@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# Both groups are upgraded to documented provenance by the endpoint pages
+# cited in notes.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareturnstilewidget
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageWidget
+        name: Turnstile Sites Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Create/update/delete the widget via POST/PUT/DELETE /accounts/{account_id}/challenges/widgets[/{sitekey}]. The create endpoint's Accepted Permissions list names this group verbatim (alongside the much broader "Account Settings Write"). The general reference publishes the display names "Turnstile Write"/"Turnstile Read" instead; the endpoint docs do not list those names, so we do not claim they suffice. Covers the Terraform module's single cloudflare_turnstile_widget resource and the Pulumi module's matching TurnstileWidget resource; neither engine performs secondary lookups. Group name verbatim from the "Accepted Permissions" sections of the Turnstile widgets API endpoint docs (https://developers.cloudflare.com/api/resources/turnstile/subresources/widgets/, create/get method pages, retrieved 2026-08-22), cross-checked against the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadWidget
+        name: Turnstile Sites Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the widget via GET /accounts/{account_id}/challenges/widgets/{sitekey} (the get endpoint accepts Read or Write; Write alone covers the whole lifecycle, so Read is only needed for read-only credentials).

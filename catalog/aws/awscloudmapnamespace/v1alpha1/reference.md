@@ -69,6 +69,9 @@ spec:
         records:
           - type: CNAME
             ttl: 30
+        # CNAME requires the explicit WEIGHTED policy - AWS rejects
+        # CNAME under the default MULTIVALUE.
+        routingPolicy: WEIGHTED
       instances:
         - instanceId: primary
           cname: mydb.cluster-abc.us-west-2.rds.amazonaws.com
@@ -120,7 +123,13 @@ The AWS region the namespace lives in. Example: "us-west-2".
 
 `string`
 
-The namespace's discovery model. Fixed for life.
+The namespace's discovery model. Fixed for life. A PUBLIC_DNS
+namespace creates a real Route 53 public hosted zone for
+metadata.name, and Route 53 REFUSES reserved documentation
+domains there - example.com and its subdomains fail
+CANNOT_CREATE_HOSTED_ZONE "reserved by AWS" (live-proven); .test
+names are accepted, and you never need to own or delegate the
+domain just to create the namespace.
 
 - rule: {"string":{"in":["HTTP","PRIVATE_DNS","PUBLIC_DNS"]}}
 
@@ -156,6 +165,7 @@ The services registered in this namespace, keyed by name.
 - rule: instance ids must be unique within the service
 - rule: an instance's alias_dns_name cannot combine with ip, ipv6, port, cname, or ec2_instance_id
 - rule: an instance's ec2_instance_id and ip are mutually exclusive - AWS derives the IP from the instance
+- rule: instances with an ip under a health-checked service must set port - Route 53 probes ip:port
 
 ### spec.services[].name
 
@@ -182,6 +192,8 @@ What this service is.
 
 The DNS records instances of this service publish (DNS
 namespaces only).
+
+- rule: a CNAME record requires routing_policy WEIGHTED - AWS rejects CNAME under the default MULTIVALUE policy
 
 ### spec.services[].dnsConfig.records
 
@@ -217,6 +229,7 @@ The record's TTL in seconds.
 How queries pick among healthy instances. MULTIVALUE answers with
 up to eight healthy records; WEIGHTED answers with one, picked by
 weight. Unset means AWS's default (MULTIVALUE). Fixed for life.
+CNAME records REQUIRE the explicit WEIGHTED (see the message rule).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"in":["MULTIVALUE","WEIGHTED"]}}
 
@@ -299,7 +312,11 @@ updates the instance in place (AWS upserts).
 `string`
 
 The instance's IPv4 address (publishes A records; SRV targets
-resolve to it).
+resolve to it). When the service carries health_check_config,
+Route 53 REJECTS reserved/documentation/private-range addresses
+at registration (RegisterInstance 400 "IPv4 address ... is
+forbidden for healthChecks" - TEST-NET included; health-checked
+endpoints must be publicly routable).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"ipv4":true}}
 

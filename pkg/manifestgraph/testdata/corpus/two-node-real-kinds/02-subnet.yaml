@@ -1,0 +1,14 @@
+apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpSubnetwork
+metadata:
+  name: storefront-subnet
+  env: prod
+spec:
+  projectId:
+    value: acme-prod
+  vpcSelfLink:
+    valueFrom:
+      name: storefront-vpc
+  subnetworkName: storefront-subnet
+  region: us-central1
+  ipCidrRange: 10.0.0.0/24

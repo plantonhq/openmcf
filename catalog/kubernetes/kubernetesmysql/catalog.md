@@ -9,7 +9,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **PerconaXtraDBCluster** (`pxc.percona.com/v1`, named `metadata.name`) -- the Galera cluster; the operator derives database pods (`<name>-pxc-0..N`), the proxy Services (`<name>-haproxy` / `<name>-proxysql`, plus `<name>-haproxy-replicas` for reads), and the system-users Secret (`<name>-secrets`) from it
 - **Credential Secrets** -- every declared user password and backup access key materializes as a Kubernetes Secret the operator and backup jobs read; never plaintext in the rendered resource
 - **PersistentVolumeClaims** -- one per database node (grow-only), plus ProxySQL's own configuration volume when that flavor is chosen
-- **Namespace** (optional) -- created with standard governance labels when `create_namespace` is true
+- **Namespace** (optional) -- created with standard governance labels when `createNamespace` is true
 
 ## Before You Deploy
 
@@ -17,7 +17,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Kubernetes Provider Connection** -- an active connection in the Connect module with credentials for the target cluster. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
 
-### Cluster
+### Kubernetes Cluster
 
 - **The Percona MySQL operator** (KubernetesPerconaMysqlOperator) on the cluster — it must WATCH the database's namespace: the default operator posture watches its OWN namespace only (install the operator there, or widen its watch). A cluster in an unwatched namespace is silently never reconciled.
 - For backups: an S3/S3-compatible store (with access keys — XtraBackup authenticates with keys), Azure Blob, or a PVC. Dedicate one storage to PITR when enabled.
@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **MySQL**, and click **Deploy**. The creation wizard walks you through placement (and the operator-watch decision), the Galera size and MySQL version, grow-only storage, my.cnf, the HAProxy-vs-ProxySQL routing decision, TLS, declarative users, the backup arc (stores, five-field cron schedules, PITR), availability, scheduling, and the explicit unsafe opt-ins. Start from the **Production HA** preset in the [Presets](#presets) tab.
+Open the deployment store, find **MySQL**, and click **Deploy**. The creation wizard walks you through placement (and the operator-watch decision), the Galera size and MySQL version, grow-only storage, my.cnf, the HAProxy-vs-ProxySQL routing decision, TLS, declarative users, the backup arc (stores, five-field cron schedules, PITR), availability, scheduling, and the explicit unsafe opt-ins. Start from the **Production HA preset** in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesMysql
 metadata:
   name: orders-db
@@ -59,21 +59,44 @@ spec:
 planton apply -f mysql.yaml
 ```
 
-The operator brings up three Galera nodes and three HAProxy replicas; applications connect at the exported `kube_endpoint` as `app` (or as root, from the operator-managed `orders-db-secrets` Secret).
+The operator brings up three Galera nodes and three HAProxy replicas; applications connect at the exported `kube_endpoint` as `app` (or as root, from the operator-managed `orders-db-secrets` Secret). A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, use ValueFromRef to wire placement and storage to resources managed by other Cloud Resources:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: orders-namespace
+      fieldPath: spec.name
+  instances: 3
+  storage:
+    size: 100Gi
+    storageClass:
+      valueFrom:
+        kind: KubernetesStorageClass
+        name: fast-ssd
+        fieldPath: status.outputs.storage_class_name
+```
+
+The InfraPipeline deploys the referenced resources first, then provisions the MySQL cluster against them.
 
 ## Key Configuration
 
 These are the most important decisions when configuring MySQL. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Cluster size is quorum math** -- 3 nodes is the production shape (a majority survives any single failure or drain); 5 adds read capacity. Sizes below 3 lose quorum safety and are REJECTED by the operator unless `unsafe.cluster_size` explicitly opts in — the single-node development posture.
+**Cluster size is quorum math** -- 3 nodes is the production shape (a majority survives any single failure or drain); 5 adds read capacity. Sizes below 3 lose quorum safety and are REJECTED by the operator unless `unsafe.clusterSize` explicitly opts in — the single-node development posture.
 
-**The version is the image tag** -- `image_name` (e.g. `percona/percona-xtradb-cluster:8.4.8-8.1` = MySQL 8.4) is how the MySQL version is chosen; changing it on a live cluster performs a SmartUpdate rolling upgrade, replicas first, the write node last.
+**The version is the image tag** -- `imageName` (e.g. `percona/percona-xtradb-cluster:8.4.8-8.1` = MySQL 8.4) is how the MySQL version is chosen; changing it on a live cluster performs a SmartUpdate rolling upgrade, replicas first, the write node last.
 
 **Applications connect through the proxy** -- never a database pod. HAProxy (the default: TCP routing, writes on 3306, reads on 3307) or ProxySQL (SQL-aware statement-level routing with its own required stateful volume). Omitting the block means HAProxy with 3 replicas; fewer than 2 proxy replicas requires the unsafe opt-in.
 
 **Storage is grow-only, times N** -- every Galera node holds the full dataset, so the size provisions one PVC per node. Grows apply to live PVCs; shrinks are rejected.
 
-**Backups are a deliberate choice** -- omitted = no backups. Declare named stores (S3/S3-compatible with REQUIRED access keys, Azure Blob, or a PVC — no PITR and no off-cluster durability on a PVC), five-field cron schedules referencing stores by name, and PITR shipping binlogs to a DEDICATED store (never share it with base backups); `time_between_uploads` is the recovery-point objective.
+**Backups are a deliberate choice** -- omitted = no backups. Declare named stores (S3/S3-compatible with REQUIRED access keys, Azure Blob, or a PVC — no PITR and no off-cluster durability on a PVC), five-field cron schedules referencing stores by name, and PITR shipping binlogs to a DEDICATED store (never share it with base backups); `timeBetweenUploads` is the recovery-point objective.
 
 **TLS is on by default** -- operator-generated certificates encrypt client and replication traffic out of the box; point `tls.issuer` at a cert-manager (Cluster)Issuer for a chain your organization trusts. Disabling TLS entirely requires `unsafe.tls`.
 
@@ -85,11 +108,11 @@ These are the most important decisions when configuring MySQL. Explore the full 
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The namespace the cluster is deployed into |
-| `spec.storage.storage_class` (also ProxySQL's and the PVC backup volume's) | KubernetesStorageClass (`status.outputs.storage_class_name`) | The StorageClass backing the volumes |
-| `spec.tls.issuer` | KubernetesClusterIssuer (`metadata.name`) — or a namespaced KubernetesIssuer via `issuer_kind` | The cert-manager issuer signing the cluster's certificates |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesStorageClass** | `storage.storageClass` (also ProxySQL's and the PVC backup volume's) | `status.outputs.storage_class_name` |
+| **KubernetesClusterIssuer** | `tls.issuer` (or a namespaced KubernetesIssuer via `issuerKind`) | `metadata.name` |
 
 ### What This Component Provides
 
@@ -109,14 +132,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production HA** -- three Galera nodes with sized storage, three HAProxy replicas with the read Service, nightly XtraBackup to S3 with a dedicated PITR store, zone anti-affinity, and cert-manager TLS. Start from the **Production HA** preset.
+**Production HA** -- three Galera nodes with sized storage, three HAProxy replicas with the read Service, nightly XtraBackup to S3 with a dedicated PITR store, zone anti-affinity, and cert-manager TLS. Start from the **Production HA preset**.
 
-**Development single node** -- one node with `unsafe.cluster_size`, one proxy replica with `unsafe.proxy_size`: a working MySQL in a fraction of the footprint, none of the guarantees.
+**Development single node** -- one node with `unsafe.clusterSize`, one proxy replica with `unsafe.proxySize`: a working MySQL in a fraction of the footprint, none of the guarantees.
 
 ## Works With
 
-- **Kubernetes Percona MySQL Operator** -- the prerequisite engine: it must be on the cluster and watching this namespace before the database can reconcile.
-- **Kubernetes Namespace** -- the placement target; databases conventionally live beside their operator.
-- **Kubernetes Storage Class** -- pins the volumes to an SSD-backed or provisioned-IOPS class.
-- **Kubernetes Cluster Issuer / Issuer** -- the cert-manager trust seam for organization-verified TLS.
-- **Kubernetes Deployment / StatefulSet** -- the applications that consume the exported endpoint and the user credential Secrets.
+- [**Percona Operator for MySQL**](/cloud-catalog/kubernetes-percona-mysql-operator) -- the prerequisite engine: it must be on the cluster and watching this namespace before the database can reconcile
+- [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- the placement target; databases conventionally live beside their operator
+- [**Kubernetes StorageClass**](/cloud-catalog/kubernetes-storage-class) -- pins the volumes to an SSD-backed or provisioned-IOPS class
+- [**Cert Manager Cluster Issuer**](/cloud-catalog/kubernetes-cluster-issuer) -- the cert-manager trust seam for organization-verified TLS
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- the applications that consume the exported endpoint and the user credential Secrets

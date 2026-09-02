@@ -1,4 +1,4 @@
-# Preset: Redis Minimal
+# Redis Minimal
 
 **Use case:** Development, prototyping, or low-traffic applications where you want
 zero configuration overhead.

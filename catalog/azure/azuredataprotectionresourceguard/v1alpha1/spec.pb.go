@@ -57,10 +57,19 @@ type AzureDataProtectionResourceGuardSpec struct {
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Critical vault operations EXCLUDED from the guard's approval
 	// requirement, as ARM operation names (e.g.
-	// "Microsoft.RecoveryServices/vaults/backupconfig/write"). An
-	// excluded operation executes without an approval. Leave empty to
-	// guard every critical operation (the strongest posture). Updates
-	// in place.
+	// "Microsoft.RecoveryServices/vaults/backupResourceGuardProxies/write").
+	// An excluded operation executes without an approval. Leave empty to
+	// guard every critical operation (the strongest posture). Updates in
+	// place. Azure keeps a MANDATORY set no guard may ever exclude and
+	// rejects the create outright
+	// (BMSUserErrorInvalidCriticalOperationExclusionList) when the list
+	// names one: the operations that would disarm the guard itself
+	// (backupconfig/write, both vault families'
+	// backupResourceGuardProxies/delete,
+	// backupVaults/write#reduceSoftDeleteSecurity) and the cross-tenant
+	// vault-mapping operations. The provider does not validate this --
+	// the rule below mirrors ARM's own rejection list so the failure
+	// lands at admission, not at deploy.
 	VaultCriticalOperationExclusionList []string `protobuf:"bytes,4,rep,name=vault_critical_operation_exclusion_list,json=vaultCriticalOperationExclusionList,proto3" json:"vault_critical_operation_exclusion_list,omitempty"`
 	// Free-form tags applied to the guard, merged over the
 	// Planton-derived resource tags (organization, environment,
@@ -139,14 +148,15 @@ var File_catalog_azure_azuredataprotectionresourceguard_v1alpha1_spec_proto prot
 
 const file_catalog_azure_azuredataprotectionresourceguard_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Bcatalog/azure/azuredataprotectionresourceguard/v1alpha1/spec.proto\x12;dev.planton.azure.azuredataprotectionresourceguard.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\x9a\x04\n" +
+	"Bcatalog/azure/azuredataprotectionresourceguard/v1alpha1/spec.proto\x12;dev.planton.azure.azuredataprotectionresourceguard.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xa4\v\n" +
 	"$AzureDataProtectionResourceGuardSpec\x12\"\n" +
 	"\x06region\x18\x01 \x01(\tB\n" +
 	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06region\x12\x8c\x01\n" +
 	"\x0eresource_group\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB1\xbaH\x03\xc8\x01\x01\x88\xd4a\xd0\x0f\x92\xd4a\"status.outputs.resource_group_nameR\rresourceGroup\x12!\n" +
 	"\x04name\x18\x03 \x01(\tB\r\xbaH\n" +
-	"\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\x04name\x12b\n" +
-	"'vault_critical_operation_exclusion_list\x18\x04 \x03(\tB\f\xbaH\t\x92\x01\x06\"\x04r\x02\x10\x01R#vaultCriticalOperationExclusionList\x12\x7f\n" +
+	"\xc8\x01\x01r\x05\x10\x01\x18\x84\x02R\x04name\x12\xeb\a\n" +
+	"'vault_critical_operation_exclusion_list\x18\x04 \x03(\tB\x94\a\xbaH\x90\a\xba\x01\x83\a\n" +
+	"\x1ddprg_exclusions_not_mandatory\x12\x85\x02the exclusion list names an operation Azure never allows excluding -- the MUA-mandatory set (backupconfig/write, backupResourceGuardProxies/delete, backupVaults/write#reduceSoftDeleteSecurity, and the backupCrossTenantVaultMappings operations) is always guarded\x1a\xd9\x04this.all(op, !(op in ['Microsoft.RecoveryServices/vaults/backupconfig/write', 'Microsoft.RecoveryServices/vaults/backupResourceGuardProxies/delete', 'Microsoft.DataProtection/backupVaults/backupResourceGuardProxies/delete', 'Microsoft.DataProtection/backupVaults/write#reduceSoftDeleteSecurity', 'Microsoft.RecoveryServices/vaults/backupCrossTenantVaultMappings/write', 'Microsoft.RecoveryServices/vaults/backupCrossTenantVaultMappings/remove/action', 'Microsoft.RecoveryServices/vaults/backupCrossTenantVaultMappings/backupFabrics/protectionContainers/protectedItems/recoveryPoints/restore/action']))\x92\x01\x06\"\x04r\x02\x10\x01R#vaultCriticalOperationExclusionList\x12\x7f\n" +
 	"\x04tags\x18\x05 \x03(\v2k.dev.planton.azure.azuredataprotectionresourceguard.v1alpha1.AzureDataProtectionResourceGuardSpec.TagsEntryR\x04tags\x1a7\n" +
 	"\tTagsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

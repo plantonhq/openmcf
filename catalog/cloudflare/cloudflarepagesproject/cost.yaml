@@ -1,0 +1,44 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarepagesproject
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: deployment_configs
+      sku_meter: Workers requests and CPU time
+      pricing_unit: requests + CPU milliseconds
+      impact: "Pages Functions configured per environment invoke on dynamic routes, and Cloudflare's Pages pricing page states \"Requests to your Functions are billed as Cloudflare Workers requests\" (https://developers.cloudflare.com/pages/functions/pricing/, retrieved 2026-08-22) -- on the Workers Paid Standard model that is \"10 million included per month +$0.30 per additional million\" requests and \"30 million CPU milliseconds included per month +$0.02 per additional million CPU milliseconds\" (https://developers.cloudflare.com/workers/platform/pricing/, retrieved 2026-08-22). A project serving only static assets never starts this meter."
+    - field_path: deployment_configs.production.usage_model
+      sku_meter: Workers requests and CPU time
+      pricing_unit: ""
+      impact: Selects BETWEEN Functions metering models rather than scaling one -- standard is the current model; bundled and unbound are legacy models Cloudflare advises moving off. Empty rides the account default.
+    - field_path: deployment_configs.production.limits.cpu_ms
+      sku_meter: Workers requests and CPU time
+      pricing_unit: CPU milliseconds
+      impact: Caps CPU time per Function invocation -- a hard brake on the CPU-milliseconds meter that turns a runaway Function into an error instead of a bill. Zero rides the plan default.
+    - field_path: deployment_configs.production.kv_namespaces
+      sku_meter: Workers KV operations and storage
+      pricing_unit: operations + GB-months
+      impact: Every KV read, write, delete, or list a Function performs through these bindings meters on the bound CloudflareKvNamespace's account-level KV allotments and overage rates, not on this project.
+    - field_path: deployment_configs.production.d1_databases
+      sku_meter: D1 rows and storage
+      pricing_unit: rows + GB-months
+      impact: Queries a Function runs through these bindings meter rows read and rows written on the bound CloudflareD1Database's account-level D1 allotments and overage rates.
+    - field_path: deployment_configs.production.r2_buckets
+      sku_meter: R2 operations and storage
+      pricing_unit: operations + GB-months
+      impact: Object reads and writes a Function performs through these bindings meter Class A/B operations and storage on the bound CloudflareR2Bucket.
+    - field_path: deployment_configs.production.queue_producers
+      sku_meter: Queues standard operations
+      pricing_unit: operations
+      impact: Messages a Function enqueues through these bindings meter write operations on the bound CloudflareQueue.
+  free_tier: "Static asset requests are permanently free on every plan -- Cloudflare's Pages pricing page states \"On both free and paid plans, requests to static assets are free and unlimited\" (https://developers.cloudflare.com/pages/functions/pricing/, retrieved 2026-08-22). Functions requests on the Workers Free plan share that plan's permanent 100,000 requests/day quota with Workers (the page's own example: \"you could use 50,000 Functions requests and 50,000 Workers requests to use your full 100,000 daily request usage\"); the Workers Paid plan's monthly included allotments (10 million requests, 30 million CPU milliseconds) are conditional on holding that $5/mo subscription."
+  estimate_exclusions:
+    - Functions request volume and per-request CPU time are traffic- and code-driven -- no manifest can know how many dynamic requests arrive or what each invocation does
+    - usage a Function generates through its bindings (KV operations, D1 rows, R2 operations, queued messages) bills on the bound components' own cost profiles, not here
+    - the $5/mo Workers Paid subscription is account-level plan spend chosen at the account -- no field in this spec pins or creates it
+  notes: "A Pages project with no traffic costs $0, and a static-only site costs $0 at any traffic level -- Cloudflare prices exactly one thing for Pages: Functions requests, billed as Workers requests against the account's Workers plan at list rates, never netted against the included allotments. Git-connected builds and custom domains are plan QUOTAS, not dollar meters: the Pages limits page allots 500 builds/month on Free (5,000 on Pro, 20,000 on Business) and 100 custom domains per project on Free (https://developers.cloudflare.com/pages/platform/limits/, retrieved 2026-08-22). Custom-domain certificates are provisioned and managed by Cloudflare as part of the platform."

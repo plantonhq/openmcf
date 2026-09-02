@@ -1,8 +1,11 @@
-// Command defspack validates the skills/ and agents/ definition trees and
-// packages a definitions release: one deterministic zip per skill, each
-// agent's instructions file, and a definitions-manifest.json carrying the
-// release version, per-artifact SHA-256 checksums, and the compatibility
-// floor from skills/compat.yaml.
+// Command defspack validates the skills/, agents/, and automations/
+// definition trees and packages a definitions release: one deterministic zip
+// per skill, each agent's instructions file, each automation's definition
+// file, a definitions-manifest.json carrying the release version,
+// per-artifact SHA-256 checksums, and the compatibility floor from
+// skills/compat.yaml -- plus a definitions-browse.json describing the
+// release as a per-file tree (see browse.go), which the release workflow
+// verifies the browsable exploded layout against before uploading it.
 //
 // Run `go run ./pkg/skills/defspack` to validate only (the lint gate), or
 // add -version and -out to package a release (the release workflow):
@@ -60,7 +63,7 @@ func main() {
 		}
 		os.Exit(1)
 	}
-	fmt.Printf("validated %d skill(s) and %d agent(s)\n", len(tree.Skills), len(tree.Agents))
+	fmt.Printf("validated %d skill(s), %d agent(s), and %d automation(s)\n", len(tree.Skills), len(tree.Agents), len(tree.Automations))
 
 	if *outDir == "" {
 		return
@@ -75,8 +78,8 @@ func main() {
 	if err != nil {
 		fatal(err)
 	}
-	fmt.Printf("packaged definitions release %s into %s (%d skill archive(s), %d agent file(s))\n",
-		manifest.Version, filepath.Clean(*outDir), len(manifest.Skills), len(manifest.Agents))
+	fmt.Printf("packaged definitions release %s into %s (%d skill archive(s), %d agent file(s), %d automation file(s))\n",
+		manifest.Version, filepath.Clean(*outDir), len(manifest.Skills), len(manifest.Agents), len(manifest.Automations))
 }
 
 func fatal(err error) {

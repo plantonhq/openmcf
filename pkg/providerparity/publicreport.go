@@ -191,6 +191,27 @@ that has progressed.
 	b.WriteString("secondary channel (for Google, the `google-beta` provider) enters per kind\n")
 	b.WriteString("through an explicitly enumerated admission list, never wholesale.\n\n")
 
+	// The provider block, when this provider is enrolled for it.
+	if pc := acc.ProviderConfig; pc != nil {
+		b.WriteString("## The provider block\n\n")
+		b.WriteString("Parity covers the provider's own configuration block -- credentials,\n")
+		b.WriteString("role-assumption chains, default tags, endpoint overrides, retry tuning --\n")
+		b.WriteString("under the same total-accounting rule as resources: every configurable,\n")
+		b.WriteString("non-deprecated provider-block argument is matched to a provider-config\n")
+		b.WriteString("field, mapped by recorded judgment, owned by the modules by recorded\n")
+		b.WriteString("judgment, or excluded with a recorded reason -- and arguments set inside\n")
+		b.WriteString("catalog modules' own provider blocks must carry that judgment too.\n\n")
+		gaps := len(pc.UnaccountedArgs) + len(pc.UncoveredConfigFields) + len(pc.UnjudgedModuleArgs) + len(pc.ManifestStale)
+		accountedCell := "❌"
+		if pc.Accounted() {
+			accountedCell = "✅"
+		}
+		b.WriteString("| Provider-block args | Matched | Mapped | Module-owned | Excluded | Open gaps | Accounted |\n")
+		b.WriteString("|---|---|---|---|---|---|---|\n")
+		fmt.Fprintf(&b, "| %d | %d | %d | %d | %d | %d | %s |\n\n",
+			pc.TotalArgs, pc.MatchedArgs, pc.MappedArgs, pc.ModuleOwnedArgs, pc.ExcludedArgs, gaps, accountedCell)
+	}
+
 	// Depth.
 	accounted, proven := 0, 0
 	for _, k := range acc.Kinds {

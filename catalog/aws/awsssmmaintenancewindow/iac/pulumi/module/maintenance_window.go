@@ -22,6 +22,14 @@ import (
 //   - rate controls (max_concurrency/max_errors) are only legal on a
 //     task WITH targets - AWS rejects them on untargeted tasks, so the
 //     module renders them only when targets exist;
+//   - RUN_COMMAND tasks REQUIRE targets server-side (live-caught 400:
+//     "you must specify at least one resource as the target"; only
+//     Automation/Lambda/Step Functions tasks may run untargeted), and a
+//     WindowTargetIds selector needs the CLOUD-GENERATED registration
+//     ID - so the module resolves WindowTargetIds values that name an
+//     in-spec target entry to the created registration's ID (the
+//     catalog's name-based join convention); values naming no in-spec
+//     target pass through unchanged for externally registered IDs;
 //   - the invocation union renders exactly the one arm the spec set
 //     (the spec's CELs guarantee one arm, matching task_type).
 func maintenanceWindow(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) error {
@@ -67,18 +75,20 @@ func maintenanceWindow(ctx *pulumi.Context, locals *Locals, provider *aws.Provid
 	// and resource_type force replacement of the registration at the
 	// provider).
 	targetIds := pulumi.StringMap{}
+	createdTargets := map[string]*ssm.MaintenanceWindowTarget{}
 	for _, t := range spec.Targets {
 		createdTarget, err := windowTarget(ctx, createdWindow, t, provider)
 		if err != nil {
 			return errors.Wrapf(err, "target %s", t.Name)
 		}
 		targetIds[t.Name] = createdTarget.ID().ToStringOutput()
+		createdTargets[t.Name] = createdTarget
 	}
 
 	// Folded tasks, keyed by name.
 	taskIds := pulumi.StringMap{}
 	for _, t := range spec.Tasks {
-		createdTask, err := windowTask(ctx, createdWindow, t, provider)
+		createdTask, err := windowTask(ctx, createdWindow, t, createdTargets, provider)
 		if err != nil {
 			return errors.Wrapf(err, "task %s", t.Name)
 		}
@@ -120,9 +130,12 @@ func windowTarget(ctx *pulumi.Context, createdWindow *ssm.MaintenanceWindow,
 		pulumi.Provider(provider), pulumi.Parent(createdWindow))
 }
 
-// windowTask registers one folded task with the window.
+// windowTask registers one folded task with the window. createdTargets
+// carries the in-spec target registrations by name so WindowTargetIds
+// selector values can join to their cloud-generated IDs.
 func windowTask(ctx *pulumi.Context, createdWindow *ssm.MaintenanceWindow,
-	t *awsssmmaintenancewindowv1alpha1.AwsSsmMaintenanceWindowTaskEntry, provider *aws.Provider) (*ssm.MaintenanceWindowTask, error) {
+	t *awsssmmaintenancewindowv1alpha1.AwsSsmMaintenanceWindowTaskEntry,
+	createdTargets map[string]*ssm.MaintenanceWindowTarget, provider *aws.Provider) (*ssm.MaintenanceWindowTask, error) {
 
 	args := &ssm.MaintenanceWindowTaskArgs{
 		WindowId: createdWindow.ID(),
@@ -143,9 +156,20 @@ func windowTask(ctx *pulumi.Context, createdWindow *ssm.MaintenanceWindow,
 
 	var selectors ssm.MaintenanceWindowTaskTargetArray
 	for _, s := range t.Targets {
+		values := pulumi.StringArray{}
+		for _, v := range s.Values {
+			// WindowTargetIds values naming an in-spec target resolve
+			// to the created registration's cloud-generated ID; unknown
+			// values pass through (externally registered target IDs).
+			if created, ok := createdTargets[v]; ok && s.Key == "WindowTargetIds" {
+				values = append(values, created.ID().ToStringOutput())
+			} else {
+				values = append(values, pulumi.String(v))
+			}
+		}
 		selectors = append(selectors, &ssm.MaintenanceWindowTaskTargetArgs{
 			Key:    pulumi.String(s.Key),
-			Values: pulumi.ToStringArray(s.Values),
+			Values: values,
 		})
 	}
 	if len(selectors) > 0 {

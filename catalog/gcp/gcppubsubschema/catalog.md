@@ -1,11 +1,12 @@
 # GCP Pub/Sub Schema
 
-Deploys a Pub/Sub schema — the message contract publishers and subscribers agree on. A schema is a first-class, shareable resource: one schema can validate messages on many topics (each topic attaches it by reference), so a platform team evolves the event contract in one place. Attaching a schema to a topic makes Pub/Sub reject any published message that does not conform, moving contract violations from the consumer to the publisher. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
+Deploys a Pub/Sub schema — the message contract publishers and subscribers agree on. A schema is a first-class, shareable resource: one schema can validate messages on many topics (each topic attaches it by reference), so a platform team evolves the event contract in one place. Attaching a schema to a topic makes Pub/Sub reject any published message that does not conform, moving contract violations from the consumer to the publisher. Definition edits commit in-place revisions rather than replacing the resource, which is how contracts evolve without a coordinated publisher deploy.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Pub/Sub API enablement** -- the module enables `pubsub.googleapis.com` in the target project before creating the schema (and never disables it on destroy, so tearing down one schema cannot break the project's other Pub/Sub resources)
 - **Pub/Sub Schema** -- a named schema resource in the specified GCP project, holding the contract definition in Avro or Protocol Buffers form
 - **Initial Revision** -- the first committed revision of the definition; later definition edits commit additional in-place revisions (up to 20 kept per schema)
 
@@ -18,14 +19,13 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the schema will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Cloud Pub/Sub API** enabled in the target project.
+- **A GCP project** where the schema will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef. The module enables the Pub/Sub API itself — no manual API setup is needed.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Pub/Sub Schema**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Avro Event Contract** preset in the [Presets](#presets) tab to pre-populate a minimal configuration.
+Open the deployment store, find **GCP Pub/Sub Schema**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **AVRO Event Contract** preset in the [Presets](#presets) tab to pre-populate a minimal configuration.
 
 ### CLI
 
@@ -85,7 +85,7 @@ These are the most important decisions when configuring a Pub/Sub schema. Explor
 
 **Definition and revisions** -- Changing `definition` does NOT replace the resource: it commits a new in-place REVISION. Attached topics accept messages conforming to any available revision, which is how contracts evolve without a coordinated publisher deploy. A schema holds at most 20 revisions — beyond that, old revisions must be deleted before new commits succeed.
 
-**Deletion order** -- Deleting a schema while topics still reference it leaves those topics validating against the `_deleted-schema_` sentinel, and every publish fails. Detach or destroy topics first.
+**Deletion order** -- Deleting a schema while topics still reference it leaves those topics validating against the `_deleted-schema_` sentinel, and every publish fails. Detach or destroy topics first. For a schema many topics depend on, set `deletionPolicy: PREVENT` so destroy fails instead of breaking publishers; `ABANDON` removes the schema from management but leaves it serving in GCP.
 
 ## Outputs and Dependencies
 
@@ -102,13 +102,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `schema_id` | Fully qualified schema ID (`projects/{project}/schemas/{name}`) | GcpPubSubTopic `schemaSettings.schema` — attaches publish-time validation |
-| `schema_name` | Short schema name | Display, logging, governance inventories |
+| `revision_id` | The revision committed by this deploy (a new one per definition change) | GcpPubSubTopic `schemaSettings.firstRevisionId` / `lastRevisionId` — pins topic validation to a known revision |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Avro event contract** -- A JSON-defined record schema validating a domain event stream. The default posture for event-driven architectures. Start from the **Avro Event Contract** preset.
+**Avro event contract** -- A JSON-defined record schema validating a domain event stream. The default posture for event-driven architectures. Start from the **AVRO Event Contract** preset.
 
 **Protobuf binary contract** -- A proto3 message definition for services already speaking protobuf end to end, paired with BINARY encoding on the attaching topic. Start from the **Protobuf Binary Contract** preset.
 

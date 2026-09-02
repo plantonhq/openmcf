@@ -60,7 +60,7 @@ export default function DeploymentStoreProviders() {
           </p>
           <div className="inline-block bg-gradient-to-r from-white to-[#666] text-white px-6 py-3 rounded-full">
             <p className="text-lg font-bold">
-              One platform • 10+ providers • 500+ components
+              One platform • 8 providers • 700+ components
             </p>
           </div>
         </motion.div>

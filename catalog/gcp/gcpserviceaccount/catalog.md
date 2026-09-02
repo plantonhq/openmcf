@@ -1,6 +1,6 @@
-# Service Account on Google Cloud
+# GCP Service Account
 
-Deploys a GCP service account with optional JSON key generation and configurable IAM role bindings at both the project and organization levels. The service account can be used for GKE Workload Identity (keyless), CI/CD pipelines (with exported key), or any workload that needs programmatic access to GCP APIs. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
+Deploys a GCP service account with optional JSON key generation and configurable IAM role bindings at both the project and organization levels. The service account can be used for GKE Workload Identity (keyless), CI/CD pipelines (with exported key), or any workload that needs programmatic access to GCP APIs. Keyless is the default posture: no key material exists unless the `userManagedKey` block explicitly asks for it, and the account's `member` output feeds first-class IAM grant resources directly.
 
 ## What Gets Created
 
@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Service Account on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Workload Identity** preset in the [Presets](#presets) tab to pre-populate a keyless service account for GKE workloads.
+Open the deployment store, find **GCP Service Account**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Workload Identity Service Account** preset in the [Presets](#presets) tab to pre-populate a keyless service account for GKE workloads.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpServiceAccount
 metadata:
   name: app-workload
@@ -111,11 +111,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Workload Identity** -- Keyless service account for GKE pods, with logging, monitoring, and secret access roles. No JSON key is generated -- pods authenticate via KSA-to-GSA binding. The recommended pattern for runtime workloads. Start from the **Workload Identity** preset.
+**Workload Identity** -- Keyless service account for GKE pods, with logging, monitoring, and secret access roles. No JSON key is generated -- pods authenticate via KSA-to-GSA binding. The recommended pattern for runtime workloads. Start from the **Workload Identity Service Account** preset.
 
-**CI/CD pipeline** -- Service account with a generated JSON key for external CI/CD systems (GitHub Actions, GitLab CI). Includes Artifact Registry, GKE, and Cloud Run deployment roles. Start from the **CI/CD Pipeline** preset.
+**CI/CD pipeline** -- Service account with a generated JSON key for external CI/CD systems (GitHub Actions, GitLab CI). Includes Artifact Registry, GKE, and Cloud Run deployment roles. Start from the **CI/CD Pipeline Service Account** preset.
 
-**Identity with first-class grants** -- A pure identity with no inline role lists; access arrives via separate GcpProjectIamMember nodes wired to the `member` output, so each grant is independently owned, reviewed, and removable. Start from the **Identity with First-Class Grants** preset.
+**Identity with first-class grants** -- A pure identity with no inline role lists; access arrives via separate GcpProjectIamMember nodes wired to the `member` output, so each grant is independently owned, reviewed, and removable. Start from the **Pure Identity with First-Class Grants** preset.
 
 ## Works With
 

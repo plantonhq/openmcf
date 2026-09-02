@@ -1,6 +1,6 @@
 # Azure Role Assignment
 
-Deploys an Azure RBAC role assignment: the grant of a role to a principal at a scope. A role assignment is the atomic unit of authorization in Azure — everything a user, group, service principal, or managed identity is allowed to do is the sum of the role assignments that target it. Because grants are the most-repeated pattern in any Azure environment, this component models them as first-class, composable nodes: one assignment per resource, referenceable in InfraCharts, with an independent lifecycle from both the principal and the scope it binds. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure RBAC role assignment: the grant of a role to a principal at a scope. A role assignment is the atomic unit of authorization in Azure — everything a user, group, service principal, or managed identity is allowed to do is the sum of the role assignments that target it. Because grants are the most-repeated pattern in any Azure environment, this component models them as first-class, composable nodes: one assignment per resource, referenceable in InfraCharts, with an independent lifecycle from both the principal and the scope it binds.
 
 ## What Gets Created
 
@@ -31,14 +31,14 @@ Azure role assignments are immutable: changing any field replaces the assignment
 
 ### Console
 
-Open the deployment store, find **Azure Role Assignment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields -- with a curated built-in role catalog and the object-ID-vs-client-ID trap taught at the moment of choice. Start from the **Identity Resource Group Grant** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Role Assignment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields -- with a curated built-in role catalog and the object-ID-vs-client-ID trap taught at the moment of choice. Start from the **Managed Identity Grant on a Resource Group** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRoleAssignment
 metadata:
   name: ci-acr-pull
@@ -64,7 +64,7 @@ spec:
 planton apply -f grant.yaml
 ```
 
-The `skipServicePrincipalAadCheck` flag is the designed posture for the deploy-identity-and-grant-together composition: Entra replicates new principals asynchronously, and an assignment racing that replication would otherwise fail with "PrincipalNotFound".
+This grants the built-in `AcrPull` role to the `ci-deployer` managed identity across everything in the `registry-rg` resource group -- the `skipServicePrincipalAadCheck` flag lets the grant deploy in the same pipeline run that creates the identity, since Entra replicates new principals asynchronously and an assignment racing that replication would otherwise fail with "PrincipalNotFound". A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -113,26 +113,25 @@ These are the most important decisions when configuring a role assignment. Explo
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream tooling can consume:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `role_assignment_id` | Fully-scoped ARM ID of the assignment | Auditing, authorization-API automation |
-| `name` | The assignment's GUID | Cross-referencing with `az role assignment` output |
-| `scope` | The scope as resolved at deploy | Auditing |
-| `role_definition_id` | The definition Azure bound — resolved even when the spec named a built-in role | Auditing exactly which role matched |
-| `principal_id` | The object ID granted | Auditing |
-| `principal_type` | What Azure recorded (useful when inferred) | Auditing |
+| `role_assignment_id` | Fully-scoped ARM ID of the assignment | The handle the authorization API uses to fetch or delete the grant -- audit automation keys on it |
+| `role_definition_id` | The definition Azure actually bound -- resolved to an ID even when the spec named a built-in role | Knowing exactly which definition matched a case-insensitive role name |
+| `principal_type` | The principal type Azure recorded (User, Group, ServicePrincipal) | Confirming what the directory inferred when the spec omitted `principalType` |
+
+The remaining outputs (`name`, `scope`, `principal_id`) echo the grant's coordinates as recorded at deploy time so audit tooling can reason about the assignment without re-reading the spec; they are not typically wired into other Cloud Resources.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**The identity-grant triad** -- An AzureUserAssignedIdentity plus one assignment per resource it touches, each with `skipServicePrincipalAadCheck: true` so identity and grants deploy in one pipeline run. Start from the **Identity Resource Group Grant** preset.
+**The identity-grant triad** -- An AzureUserAssignedIdentity plus one assignment per resource it touches, each with `skipServicePrincipalAadCheck: true` so identity and grants deploy in one pipeline run. Start from the **Managed Identity Grant on a Resource Group** preset.
 
-**Custom-role grants** -- An AzureRoleDefinition captures the permission set; assignments bind it by definition ID. Start from the **Custom Role Subscription Grant** preset.
+**Custom-role grants** -- An AzureRoleDefinition captures the permission set; assignments bind it by definition ID. Start from the **Custom Role at Subscription Scope** preset.
 
-**Tag-conditioned data access** -- A data-plane role narrowed by an ABAC condition on resource tags. Start from the **ABAC Conditioned Grant** preset.
+**Tag-conditioned data access** -- A data-plane role narrowed by an ABAC condition on resource tags. Start from the **ABAC-Conditioned Data Grant** preset.
 
 ## Works With
 

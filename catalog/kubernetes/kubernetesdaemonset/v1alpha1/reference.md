@@ -1314,7 +1314,7 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
 - `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
 - `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
-- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; billed hourly from creation whether or not anyone is tracking). The serverless successor is AwsSagemakerMlflowApp.
 - `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
 - `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
 - `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
@@ -2200,7 +2200,7 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
 - `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
 - `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
-- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; billed hourly from creation whether or not anyone is tracking). The serverless successor is AwsSagemakerMlflowApp.
 - `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
 - `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
 - `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
@@ -4271,7 +4271,7 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
 - `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
 - `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
-- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; billed hourly from creation whether or not anyone is tracking). The serverless successor is AwsSagemakerMlflowApp.
 - `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
 - `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
 - `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
@@ -5157,7 +5157,7 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
 - `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
 - `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
-- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; billed hourly from creation whether or not anyone is tracking). The serverless successor is AwsSagemakerMlflowApp.
 - `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
 - `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
 - `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
@@ -7271,7 +7271,7 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
 - `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
 - `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
-- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; billed hourly from creation whether or not anyone is tracking). The serverless successor is AwsSagemakerMlflowApp.
 - `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
 - `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
 - `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.
@@ -8157,7 +8157,7 @@ Allowed values (use exactly as shown):
 - `AwsSagemakerModelRegistry` -- A model registry package group with its folded resource policy - model package VERSIONS register into it imperatively (training pipelines), never declaratively.
 - `AwsSagemakerPipeline` -- An ML workflow DAG (the SageMaker pipeline-definition JSON) that executions run against - free to create, billed per execution.
 - `AwsSagemakerImage` -- A named registry entry exposing YOUR container images to Studio, with folded AWS-numbered versions (append-only by position).
-- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; Small ~$0.6/hour). The serverless successor is AwsSagemakerMlflowApp.
+- `AwsSagemakerMlflowServer` -- The classic hourly-billed managed MLflow tracking server (~25 min to provision; billed hourly from creation whether or not anyone is tracking). The serverless successor is AwsSagemakerMlflowApp.
 - `AwsSagemakerMlflowApp` -- The serverless MLflow 3.x deployment (billed per use) - standalone, associating with SageMaker domains; NOT a tracking-server satellite.
 - `AwsRestApiGateway` -- A full REST API (API Gateway v1): the resource/method tree with inline integrations (or an imported OpenAPI document), one stage with an explicit hash-triggered deployment, and the API-scoped satellites (authorizers, models, validators, gateway responses, policy, documentation, client certificate). Self-contained: a MOCK-integration API needs no other resource.
 - `AwsRestApiDomain` -- A custom domain for REST APIs with base-path mappings and - for PRIVATE domains - VPC-endpoint access associations. AwsCertManagerCert is a prerequisite because the domain cannot be created without a TLS certificate covering it.

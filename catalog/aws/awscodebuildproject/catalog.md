@@ -1,6 +1,6 @@
 # AWS CodeBuild Project
 
-Deploys a CodeBuild project with configurable source providers, build environments, artifact destinations, and an optional webhook for source-triggered builds. The component supports VPC connectivity for private resource access and integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys a CodeBuild project with configurable source providers, build environments, artifact destinations, and an optional webhook for source-triggered builds. The service role, encryption key, artifact and cache buckets, log destinations, and VPC networking all accept ValueFromRef wiring, so a build project composes with its IAM, storage, and network dependencies in one InfraChart — including VPC connectivity for builds that reach private resources.
 
 ## What Gets Created
 
@@ -35,7 +35,7 @@ Open the deployment store, find **AWS CodeBuild Project**, and click **Deploy**.
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCodeBuildProject
 metadata:
   name: api-ci
@@ -123,7 +123,7 @@ These are the most important decisions when configuring a CodeBuild project. Exp
 | **AwsS3Bucket** (optional) | `artifacts.location` | `status.outputs.bucket_id` |
 | **AwsS3Bucket** (optional) | `cache.location` | `status.outputs.bucket_id` |
 | **AwsCloudwatchLogGroup** (optional) | `logsConfig.cloudwatchLogs.groupName` | `status.outputs.log_group_name` |
-| **AwsS3Bucket** (optional) | `logsConfig.s3Logs.location` | `status.outputs.bucket_id` |
+| **AwsS3Bucket** (optional) | `logsConfig.s3Logs.bucket` | `status.outputs.bucket_id` |
 | **AwsVpc** (optional) | `vpcConfig.vpcId` | `status.outputs.vpc_id` |
 | **AwsSubnet** (optional) | `vpcConfig.subnetIds` | `status.outputs.subnet_id` |
 | **AwsSecurityGroup** (optional) | `vpcConfig.securityGroupIds` | `status.outputs.security_group_id` |
@@ -156,6 +156,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
+- [**AWS CodePipeline**](/cloud-catalog/aws-code-pipeline) -- runs this project as a build stage, consuming the `project_name` output in its CodeBuild action configuration
 - [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides the service role for source access, log writing, and artifact storage
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for build artifact encryption
 - [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides storage for artifacts, build cache, and S3 log delivery

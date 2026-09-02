@@ -1,6 +1,6 @@
 # AWS S3 Object Set
 
-Deploys one or more objects into an existing S3 bucket, supporting inline text content, base64-encoded binary content, and server-side copies of existing S3 objects. The component manages S3 objects declaratively alongside infrastructure, integrating with Planton's Provider Connections for AWS credential management and supporting ValueFromRef wiring to the target bucket.
+Deploys one or more objects into an existing S3 bucket, supporting inline text content, base64-encoded binary content, and server-side copies of existing S3 objects. Objects are managed declaratively alongside the infrastructure that consumes them, each with its own content headers, storage class, encryption override, Object Lock retention, and — for copies — preconditions that guard artifact promotion against a source that changed.
 
 ## What Gets Created
 
@@ -33,7 +33,7 @@ Open the deployment store, find **AWS S3 Object Set**, and click **Deploy**. The
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsS3ObjectSet
 metadata:
   name: app-config
@@ -53,7 +53,7 @@ spec:
 planton apply -f s3-objects.yaml
 ```
 
-This uploads a single JSON configuration file to the `config/app.json` key in the target bucket. A Stack Job tracks the upload in real time.
+This uploads a single JSON configuration file to the `config/app.json` key in the target bucket. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -115,9 +115,13 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Configuration files** -- Upload application configuration files (JSON, YAML) to an S3 bucket for applications that read config from S3 at startup. Proper MIME content types set for downstream consumers. Start from the **Configuration Files** preset.
 
+**Static website assets** -- HTML pages with `no-cache`, fingerprinted assets with a year-long immutable cache, and `websiteRedirect` marker objects for moved pages — the per-asset Cache-Control split that drives correct CDN behavior. Public access comes from the bucket's policy and website configuration, never per-object ACLs. Start from the **Static Website Assets** preset.
+
+**Encrypted compliance drop** -- an audit artifact under WORM retention: per-object KMS encryption, a SHA256 upload checksum retrievable via GetObjectAttributes, and COMPLIANCE-mode Object Lock nobody can shorten. Start from the **Encrypted Compliance Drop** preset.
+
 **Artifact promotion** -- Copy a released build artifact from a golden artifacts bucket into an environment's bucket with ETag preconditions guarding against a source that changed since release. Start from the **Promote Golden Artifacts** preset.
 
 ## Works With
 
-- [**Storage Bucket on AWS S3**](/cloud-catalog/aws-s3-bucket) -- provides the target bucket for object uploads
-- [**KMS Key on AWS**](/cloud-catalog/aws-kms-key) -- customer-managed key for per-object SSE-KMS encryption overrides
+- [**AWS S3 Bucket**](/cloud-catalog/aws-s3-bucket) -- provides the target bucket for object uploads
+- [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- customer-managed key for per-object SSE-KMS encryption overrides

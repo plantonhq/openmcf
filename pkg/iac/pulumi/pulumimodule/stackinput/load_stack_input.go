@@ -7,10 +7,10 @@ import (
 	"buf.build/go/protovalidate"
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/stackinput/fieldsextractor"
+	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -40,12 +40,12 @@ func LoadStackInput(ctx *pulumi.Context, stackInput proto.Message) error {
 			}
 		}
 
-		jsonBytes, err = yaml.YAMLToJSON(stackInputYamlBytes)
+		jsonBytes, err = protobufyaml.YAMLToJSON(stackInputYamlBytes)
 		if err != nil {
 			return errors.Wrap(err, "failed to load yaml to json")
 		}
 	} else {
-		jsonBytes, err = yaml.YAMLToJSON([]byte(stackInputString))
+		jsonBytes, err = protobufyaml.YAMLToJSON([]byte(stackInputString))
 		if err != nil {
 			return errors.Wrap(err, "failed to load yaml to json")
 		}

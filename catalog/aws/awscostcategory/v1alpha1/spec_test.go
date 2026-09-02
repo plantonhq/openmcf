@@ -14,7 +14,8 @@ func TestAwsCostCategorySpec(t *testing.T) {
 }
 
 // minimalCategory is the smallest valid instance: one REGULAR rule
-// assigning a value to one service's spend.
+// assigning a value to one service's spend (SERVICE_CODE - the only
+// by-service dimension cost category rules accept).
 func minimalCategory() *AwsCostCategorySpec {
 	return &AwsCostCategorySpec{
 		Region:       "us-east-1",
@@ -23,8 +24,8 @@ func minimalCategory() *AwsCostCategorySpec {
 			Value: "compute",
 			Rule: &AwsCostCategoryExpression{
 				Dimension: &AwsCostCategoryExpressionDimension{
-					Key:    "SERVICE",
-					Values: []string{"Amazon Elastic Compute Cloud - Compute"},
+					Key:    "SERVICE_CODE",
+					Values: []string{"AmazonEC2"},
 				},
 			},
 		}},
@@ -156,6 +157,12 @@ var _ = ginkgo.Describe("AwsCostCategorySpec validations", func() {
 				Targets: []string{"compute"},
 				Method:  "WEIGHTED",
 			}}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects the SERVICE display-name dimension (rules take SERVICE_CODE - the server names the allowed set)", func() {
+			spec := minimalCategory()
+			spec.Rules[0].Rule.Dimension.Key = "SERVICE"
 			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
 		})
 	})

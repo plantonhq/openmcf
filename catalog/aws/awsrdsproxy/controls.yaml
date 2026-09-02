@@ -47,6 +47,9 @@ spec:
       evidence:
         type: spec_default
         reference: iam_auth REQUIRED shuts the password path at the proxy's front door entirely; client_password_auth_type can additionally pin the stronger password hash (POSTGRES_SCRAM_SHA_256, MYSQL_CACHING_SHA2_PASSWORD) where passwords remain.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Management operations land in account-level AWS CloudTrail; query-level auditing belongs to the fronted database engine. debug_logging is connection troubleshooting output, not an audit trail.

@@ -1,0 +1,32 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarednszone
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Cloudflare zone plan
+      sku_meter: zone plan subscription
+      pricing_unit: zone-months
+      description: "CONDITIONAL -- charged only when the spec sets subscription.rate_plan to a paid plan; a zone left on the default free plan commits nothing. When set, the subscription is a real per-zone plan billed in advance: Pro is \"$20 /mo billed annually, or $25/mo billed monthly\" and Business is \"$200 /mo billed annually, or $250/mo billed monthly\" (https://www.cloudflare.com/plans/, retrieved 2026-08-22); Cloudflare bills plans per domain (https://developers.cloudflare.com/billing/understand/how-billing-works/, retrieved 2026-08-22). Enterprise is contract-priced; the lite, pro_plus, and partner rate-plan identifiers the API accepts are not published on Cloudflare's plans page."
+  cost_drivers:
+    - field_path: subscription.rate_plan
+      sku_meter: zone plan subscription
+      pricing_unit: zone-months
+      impact: "THE switch between free and paid -- setting a paid rate plan creates a real Cloudflare subscription with real billing from apply (the deploying token needs Billing Write scope, per the spec's own contract). \"pro\" bills $25/mo (or $20/mo billed annually), \"business\" $250/mo (or $200/mo billed annually), \"enterprise\" is contract-priced; \"lite\", \"pro_plus\", and the partner variants have no published price."
+    - field_path: subscription.frequency
+      sku_meter: zone plan subscription
+      impact: "Renewal cadence moves the effective monthly rate -- Cloudflare's plans page prices annual billing lower than monthly (Pro $20 vs $25, Business $200 vs $250 per month)."
+    - field_path: vanity_name_servers
+      sku_meter: zone plan subscription
+      impact: Custom (vanity) name servers are available only on Business and Enterprise plans -- populating this field presupposes one of those paid plans on the zone.
+  free_tier: "A zone on the default plan is entirely free -- DNS hosting, records, resolution, unmetered DDoS protection, and the free managed WAF ruleset are included at $0, and DNS queries are included in all plans at no extra charge (https://developers.cloudflare.com/billing/understand/how-charges-accrue/, retrieved 2026-08-22)."
+  estimate_exclusions:
+    - "the enterprise rate plan is contract-priced (\"Custom. Billed annually\" on the plans page) -- no publishable list rate"
+    - "the lite, pro_plus, and partner rate-plan identifiers (partners_free, partners_pro, partners_business, partners_enterprise, partners_ent) are accepted by the API but not priced on Cloudflare's plans page -- legacy and partner identifiers with no publishable rate"
+    - plan-entitled product charges (image optimization, rate limiting, analytics retention, and the rest of the plan matrix) ride the chosen plan, not this object
+    - "DNS queries to load-balanced hostnames are the one metered DNS surface, and it belongs to the Load Balancing add-on, not the zone"
+  notes: "Conditional always_on -- every catalog preset omits the subscription block, so preset-committed cost is zero across the board; the subscription field is the switch that turns this free component into a paid one. The one metered surface a paid plan does NOT create is DNS itself: queries stay free on every plan. Cloudflare prices plans globally (no regional variants). Rates read live 2026-08-22."

@@ -670,7 +670,16 @@ func (x *AwsCostCategoryExpressionLeaf) GetCostCategory() *AwsCostCategoryExpres
 // dimension.
 type AwsCostCategoryExpressionDimension struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The dimension to filter on.
+	// The dimension to filter on. Cost category rules accept exactly
+	// this server-enforced subset of Cost Explorer dimensions - NOT the
+	// full vocabulary other CE surfaces take (CreateCostCategoryDefinition
+	// names the set in its 400: "Allowed dimension(s): USAGE_TYPE,
+	// RECORD_TYPE, LINKED_ACCOUNT_NAME, SERVICE_CODE, LINKED_ACCOUNT,
+	// BILLING_ENTITY, REGION"; server-verified 2026-08-25). The
+	// by-service intent uses SERVICE_CODE with service CODES
+	// ("AmazonS3", "AmazonEC2"), never the SERVICE display-name
+	// dimension ("Amazon Simple Storage Service") that budgets and
+	// anomaly monitors accept.
 	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
 	// How values match. Unset = EQUALS.
 	MatchOptions []string `protobuf:"bytes,2,rep,name=match_options,json=matchOptions,proto3" json:"match_options,omitempty"`
@@ -914,10 +923,10 @@ const file_catalog_aws_awscostcategory_v1alpha1_spec_proto_rawDesc = "" +
 	"\x1dAwsCostCategoryExpressionLeaf\x12j\n" +
 	"\tdimension\x18\x01 \x01(\v2L.dev.planton.aws.awscostcategory.v1alpha1.AwsCostCategoryExpressionDimensionR\tdimension\x12X\n" +
 	"\x03tag\x18\x02 \x01(\v2F.dev.planton.aws.awscostcategory.v1alpha1.AwsCostCategoryExpressionTagR\x03tag\x12t\n" +
-	"\rcost_category\x18\x03 \x01(\v2O.dev.planton.aws.awscostcategory.v1alpha1.AwsCostCategoryExpressionCostCategoryR\fcostCategory\"\xd2\x06\n" +
-	"\"AwsCostCategoryExpressionDimension\x12\xe3\x04\n" +
-	"\x03key\x18\x01 \x01(\tB\xd0\x04\xbaH\xcc\x04r\xc9\x04R\x02AZR\rINSTANCE_TYPER\x0eLINKED_ACCOUNTR\x13LINKED_ACCOUNT_NAMER\tOPERATIONR\rPURCHASE_TYPER\x06REGIONR\aSERVICER\fSERVICE_CODER\n" +
-	"USAGE_TYPER\x10USAGE_TYPE_GROUPR\vRECORD_TYPER\x10OPERATING_SYSTEMR\aTENANCYR\x05SCOPER\bPLATFORMR\x0fSUBSCRIPTION_IDR\x11LEGAL_ENTITY_NAMER\x10INVOICING_ENTITYR\x11DEPLOYMENT_OPTIONR\x0fDATABASE_ENGINER\fCACHE_ENGINER\x14INSTANCE_TYPE_FAMILYR\x0eBILLING_ENTITYR\x0eRESERVATION_IDR\vRESOURCE_IDR\x10RIGHTSIZING_TYPER\x12SAVINGS_PLANS_TYPER\x10SAVINGS_PLAN_ARNR\x0ePAYMENT_OPTIONR\x1dAGREEMENT_END_DATE_TIME_AFTERR\x1eAGREEMENT_END_DATE_TIME_BEFORER\rPAYER_ACCOUNTR\x1dANOMALY_TOTAL_IMPACT_ABSOLUTER\x1fANOMALY_TOTAL_IMPACT_PERCENTAGER\x03key\x12\x9c\x01\n" +
+	"\rcost_category\x18\x03 \x01(\v2O.dev.planton.aws.awscostcategory.v1alpha1.AwsCostCategoryExpressionCostCategoryR\fcostCategory\"\xe9\x02\n" +
+	"\"AwsCostCategoryExpressionDimension\x12{\n" +
+	"\x03key\x18\x01 \x01(\tBi\xbaHfrdR\x0eBILLING_ENTITYR\x0eLINKED_ACCOUNTR\x13LINKED_ACCOUNT_NAMER\vRECORD_TYPER\x06REGIONR\fSERVICE_CODER\n" +
+	"USAGE_TYPER\x03key\x12\x9c\x01\n" +
 	"\rmatch_options\x18\x02 \x03(\tBw\xbaHt\x92\x01q\x18\x01\"mrkR\x06EQUALSR\x06ABSENTR\vSTARTS_WITHR\tENDS_WITHR\bCONTAINSR\x15GREATER_THAN_OR_EQUALR\x0eCASE_SENSITIVER\x10CASE_INSENSITIVER\fmatchOptions\x12'\n" +
 	"\x06values\x18\x03 \x03(\tB\x0f\xbaH\f\x92\x01\t\b\x01\"\x05r\x03\x18\x80\bR\x06values\"\x80\x02\n" +
 	"\x1cAwsCostCategoryExpressionTag\x12\x1a\n" +

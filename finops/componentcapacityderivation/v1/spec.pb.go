@@ -294,7 +294,16 @@ type VolumeBinding struct {
 	// Spec-relative snake_case dotted path to the volume's size field, a
 	// Kubernetes quantity string ("100Gi"). An unresolved path (the
 	// volume is optional and the manifest omits it) contributes nothing.
-	SizePath      string `protobuf:"bytes,2,opt,name=size_path,json=sizePath,proto3" json:"size_path,omitempty"`
+	// A PRESENT size on a manifest whose configuration provisions no
+	// volume at all is a different case -- gate it with applies_when.
+	SizePath string `protobuf:"bytes,2,opt,name=size_path,json=sizePath,proto3" json:"size_path,omitempty"`
+	// The conditions under which this volume EXISTS; ALL must hold; empty
+	// means the volume always binds when its size resolves. For modes
+	// that provision no persistent volume regardless of the size field
+	// (an ephemeral cluster on emptyDir keeps its disk_size value AND its
+	// spec-declared default while binding nothing) -- a size without a
+	// volume must contribute nothing, never a fabricated reservation.
+	AppliesWhen   []*v1.Condition `protobuf:"bytes,3,rep,name=applies_when,json=appliesWhen,proto3" json:"applies_when,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -343,6 +352,13 @@ func (x *VolumeBinding) GetSizePath() string {
 	return ""
 }
 
+func (x *VolumeBinding) GetAppliesWhen() []*v1.Condition {
+	if x != nil {
+		return x.AppliesWhen
+	}
+	return nil
+}
+
 var File_finops_componentcapacityderivation_v1_spec_proto protoreflect.FileDescriptor
 
 const file_finops_componentcapacityderivation_v1_spec_proto_rawDesc = "" +
@@ -363,10 +379,11 @@ const file_finops_componentcapacityderivation_v1_spec_proto_rawDesc = "" +
 	"\bconstant\x18\x01 \x01(\tH\x00R\bconstant\x12\\\n" +
 	"\vfield_value\x18\x02 \x01(\v29.dev.planton.finops.componentcostderivation.v1.FieldValueH\x00R\n" +
 	"fieldValueB\a\n" +
-	"\x05count\"B\n" +
+	"\x05count\"\x9f\x01\n" +
 	"\rVolumeBinding\x12\x14\n" +
 	"\x05label\x18\x01 \x01(\tR\x05label\x12\x1b\n" +
-	"\tsize_path\x18\x02 \x01(\tR\bsizePathB\x8d\x03\n" +
+	"\tsize_path\x18\x02 \x01(\tR\bsizePath\x12[\n" +
+	"\fapplies_when\x18\x03 \x03(\v28.dev.planton.finops.componentcostderivation.v1.ConditionR\vappliesWhenB\x8d\x03\n" +
 	"5com.dev.planton.finops.componentcapacityderivation.v1B\tSpecProtoP\x01Z`github.com/plantonhq/planton/finops/componentcapacityderivation/v1;componentcapacityderivationv1\xa2\x02\x04DPFC\xaa\x021Dev.Planton.Finops.Componentcapacityderivation.V1\xca\x021Dev\\Planton\\Finops\\Componentcapacityderivation\\V1\xe2\x02=Dev\\Planton\\Finops\\Componentcapacityderivation\\V1\\GPBMetadata\xea\x025Dev::Planton::Finops::Componentcapacityderivation::V1b\x06proto3"
 
 var (
@@ -389,6 +406,7 @@ var file_finops_componentcapacityderivation_v1_spec_proto_goTypes = []any{
 	(*VolumeBinding)(nil),                   // 3: dev.planton.finops.componentcapacityderivation.v1.VolumeBinding
 	(*v1.ConditionalText)(nil),              // 4: dev.planton.finops.componentcostderivation.v1.ConditionalText
 	(*v1.FieldValue)(nil),                   // 5: dev.planton.finops.componentcostderivation.v1.FieldValue
+	(*v1.Condition)(nil),                    // 6: dev.planton.finops.componentcostderivation.v1.Condition
 }
 var file_finops_componentcapacityderivation_v1_spec_proto_depIdxs = []int32{
 	1, // 0: dev.planton.finops.componentcapacityderivation.v1.ComponentCapacityDerivationSpec.workloads:type_name -> dev.planton.finops.componentcapacityderivation.v1.WorkloadBinding
@@ -397,11 +415,12 @@ var file_finops_componentcapacityderivation_v1_spec_proto_depIdxs = []int32{
 	2, // 3: dev.planton.finops.componentcapacityderivation.v1.WorkloadBinding.instances:type_name -> dev.planton.finops.componentcapacityderivation.v1.InstanceCount
 	3, // 4: dev.planton.finops.componentcapacityderivation.v1.WorkloadBinding.volumes:type_name -> dev.planton.finops.componentcapacityderivation.v1.VolumeBinding
 	5, // 5: dev.planton.finops.componentcapacityderivation.v1.InstanceCount.field_value:type_name -> dev.planton.finops.componentcostderivation.v1.FieldValue
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	6, // 6: dev.planton.finops.componentcapacityderivation.v1.VolumeBinding.applies_when:type_name -> dev.planton.finops.componentcostderivation.v1.Condition
+	7, // [7:7] is the sub-list for method output_type
+	7, // [7:7] is the sub-list for method input_type
+	7, // [7:7] is the sub-list for extension type_name
+	7, // [7:7] is the sub-list for extension extendee
+	0, // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_finops_componentcapacityderivation_v1_spec_proto_init() }

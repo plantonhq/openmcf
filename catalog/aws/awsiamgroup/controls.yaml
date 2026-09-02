@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: A group carries no credential path at all -- no password, no keys, nothing to authenticate AS. The long-lived credentials belong to its member users, whose hygiene is governed on AwsIamUser and the account's password policy (AwsIamAccountSettings).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. IAM management calls against the group -- membership changes, policy attachments -- are recorded by AWS CloudTrail as account-level posture, not per-group configuration.

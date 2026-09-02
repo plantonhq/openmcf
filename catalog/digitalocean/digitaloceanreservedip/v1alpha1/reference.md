@@ -16,8 +16,8 @@ IPv6, optionally assigned to a droplet. The v4/v6 API asymmetries
 (argument names, inline-assign vs assignment-resource, read-back and
 delete behavior) are absorbed by the IaC modules, never surfaced here.
 
-BILLING: an UNASSIGNED reserved IPv4 accrues charges (~$5/month,
-prorated hourly) precisely because it holds capacity without a droplet;
+BILLING: an UNASSIGNED reserved IPv4 accrues a monthly charge
+(prorated hourly) precisely because it holds capacity without a droplet;
 an assigned one is free. Reserved IPv6 addresses are free either way.
 Destroy the resource when the address is no longer needed -- an orphaned
 reservation bills forever.

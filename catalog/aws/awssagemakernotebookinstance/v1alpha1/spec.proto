@@ -22,7 +22,8 @@ message AwsSagemakerNotebookInstanceSpec {
   string region = 1 [(buf.validate.field).string.min_len = 1];
 
   // Compute instance type (an "ml.*" type, e.g. "ml.t3.medium" - the
-  // cheapest current-generation choice, ~$0.05/hour). AWS's accepted
+  // cheapest current-generation choice; the instance bills hourly
+  // whether or not a notebook is open). AWS's accepted
   // set grows with every release - the value passes through to the API,
   // which rejects unknown types.
   string instance_type = 2 [(buf.validate.field).string.pattern = "^ml\\.[a-z0-9]+([.-][a-z0-9]+)*$"];
@@ -50,13 +51,15 @@ message AwsSagemakerNotebookInstanceSpec {
   ];
 
   // Security groups applied to the notebook's ENI (requires
-  // `subnet_id`).
+  // `subnet_id`). Changing them replaces the instance -- the ML storage
+  // volume is destroyed with it.
   repeated dev.planton.shared.foreignkey.v1.StringValueOrRef security_group_ids = 6 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsSecurityGroup,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.security_group_id"
   ];
 
-  // KMS key encrypting the ML storage volume at rest.
+  // KMS key encrypting the ML storage volume at rest. Changing it
+  // replaces the instance -- the ML storage volume is destroyed with it.
   dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 7 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"

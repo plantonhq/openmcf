@@ -31,7 +31,8 @@ type GcpFirewallProtocolPort struct {
 	// IP protocol to match. Accepted values: "tcp", "udp", "icmp", "esp", "ah", "sctp", "ipip", "all",
 	// or an IANA protocol number (e.g., "6" for TCP).
 	Protocol string `protobuf:"bytes,1,opt,name=protocol,proto3" json:"protocol,omitempty"`
-	// Ports or port ranges to match. Only applicable when protocol is "tcp" or "udp".
+	// Ports or port ranges to match. Only applicable when protocol is "tcp",
+	// "udp", or "sctp" — including their IANA numbers ("6", "17", "132").
 	// Each entry is a single port (e.g., "80") or a range (e.g., "8000-9000").
 	// Omit for protocols that do not use ports (icmp, esp, ah, etc.).
 	Ports         []string `protobuf:"bytes,2,rep,name=ports,proto3" json:"ports,omitempty"`

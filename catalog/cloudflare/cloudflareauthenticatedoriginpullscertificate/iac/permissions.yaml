@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareauthenticatedoriginpullscertificate
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageCertificate
+        name: SSL and Certificates Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Covers the Terraform module's cloudflare_authenticated_origin_pulls_certificate and cloudflare_authenticated_origin_pulls_hostname_certificate resources (exactly one active per stack, chosen by spec.scope) and the Pulumi module's matching AuthenticatedOriginPullsCertificate and AuthenticatedOriginPullsHostnameCertificate resources -- upload/delete the zone-wide client certificate via POST/DELETE /zones/{zone_id}/origin_tls_client_auth[/{id}] or the hostname-scoped certificate via POST/DELETE /zones/{zone_id}/origin_tls_client_auth/hostnames/certificates[/{id}] -- the spec's scope selects exactly one of the two surfaces per stack (derived from the module's API surface; rotation is replacement, so update is delete+create; neither engine performs secondary lookups). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadCertificate
+        name: SSL and Certificates Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Read-side of the same resources -- refresh/import the uploaded certificate via GET on the same paths (derived from the module's API surface).

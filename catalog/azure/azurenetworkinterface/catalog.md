@@ -31,14 +31,14 @@ The VM-side attachment is NOT created here — which VM holds this NIC lives on 
 
 ### Console
 
-Open the deployment store, find **Azure Network Interface**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab for the everyday workload NIC.
+Open the deployment store, find **Azure Network Interface**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Private NIC** preset in the [Presets](#presets) tab for the everyday workload NIC.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureNetworkInterface
 metadata:
   name: orders-api-nic
@@ -64,7 +64,7 @@ spec:
 planton apply -f nic.yaml
 ```
 
-This creates a private-only NIC with a dynamic IPv4 address in the referenced subnet and SR-IOV on — ready for the VM that references it.
+This creates a private-only NIC with a dynamic IPv4 address in the referenced subnet and SR-IOV on — ready for the VM that references it. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -123,21 +123,22 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `network_interface_id` | Azure Resource Manager ID of the NIC | AzureVirtualMachine `networkInterfaceIds` — the attachment seam |
-| `network_interface_name` | Name of the NIC | Automation, inventory |
 | `private_ip_address` | The primary configuration's private IP | Backends, firewall rules, DNS records |
 | `private_ip_addresses` | ALL configurations' private IPs, in order | Multi-IP and dual-stack wiring |
 | `mac_address` | The NIC's MAC — populated once attached to a RUNNING VM | License servers, appliance registrations |
 | `internal_domain_name_suffix` | The VNet's internal DNS suffix | Completes `internal_dns_name_label` into a resolvable FQDN |
 
+`status.outputs` also echoes `network_interface_name` back; attachments and associations all travel by ARM ID.
+
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard workload NIC** -- one dynamic IPv4 configuration in a referenced subnet, accelerated networking on, private-only. Start from the **Standard** preset.
+**Standard workload NIC** -- one dynamic IPv4 configuration in a referenced subnet, accelerated networking on, private-only. Start from the **Standard Private NIC** preset.
 
-**Public-facing edge NIC** -- a configuration fronted by a referenced AzurePublicIp, with a NIC-level NSG. Start from the **Public Facing** preset.
+**Public-facing edge NIC** -- a configuration fronted by a referenced AzurePublicIp, with a NIC-level NSG. Start from the **Public-Facing NIC with NIC-Level NSG** preset.
 
-**Appliance forwarding NIC** -- a STATIC pinned address with IP forwarding on — the NVA shape route tables point at. Start from the **Appliance Forwarding** preset.
+**Appliance forwarding NIC** -- a STATIC pinned address with IP forwarding on — the NVA shape route tables point at. Start from the **Network Virtual Appliance NIC (Forwarding + Static IP)** preset.
 
 ## Works With
 
@@ -146,3 +147,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**Azure Public IP**](/cloud-catalog/azure-public-ip) -- fronts a configuration for inbound internet traffic
 - [**Azure Load Balancer**](/cloud-catalog/azure-load-balancer) -- this NIC joins its pools and completes its NAT rules from the member side, through the name-keyed map outputs
 - [**Azure Network Security Group**](/cloud-catalog/azure-network-security-group) -- NIC-level filtering, in series with the subnet's NSG
+- [**Azure Application Security Group**](/cloud-catalog/azure-application-security-group) -- workload groups this NIC joins so NSG rules target roles instead of IP ranges
+- [**Azure Application Gateway**](/cloud-catalog/azure-application-gateway) -- this NIC joins its backend pools from the member side

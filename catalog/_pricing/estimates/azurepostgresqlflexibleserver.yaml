@@ -31,8 +31,8 @@ spec:
           pricing_quantity: "32"
           quantity_basis: storage_mb is unset, so the 32768 MB (32 GiB) ladder minimum is provisioned
           list_unit_price: "0.115"
-          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Az DB for PostgreSQL Flexible Server Storage' and priceType eq 'Consumption'"
-          retrieved_on: "2026-08-14"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Azure Database for PostgreSQL Flex Server Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-22"
           list_cost: "3.6800"
       total_list_cost: "16.0900"
       exclusions:
@@ -59,8 +59,8 @@ spec:
           pricing_quantity: "512"
           quantity_basis: 262144 MB (256 GiB) provisioned x 2 -- the zone-redundant standby provisions its own equal storage, billed like the primary's per Microsoft's pricing FAQ
           list_unit_price: "0.115"
-          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Az DB for PostgreSQL Flexible Server Storage' and priceType eq 'Consumption'"
-          retrieved_on: "2026-08-14"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Azure Database for PostgreSQL Flex Server Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-22"
           list_cost: "58.8800"
       total_list_cost: "578.6400"
       exclusions:
@@ -88,8 +88,8 @@ spec:
           pricing_quantity: "128"
           quantity_basis: 131072 MB (128 GiB) provisioned on the storage ladder
           list_unit_price: "0.115"
-          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Az DB for PostgreSQL Flexible Server Storage' and priceType eq 'Consumption'"
-          retrieved_on: "2026-08-14"
+          price_source: "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&currencyCode='USD'&$filter=serviceName eq 'Azure Database for PostgreSQL' and armRegionName eq 'eastus' and meterName eq 'Storage Data Stored' and productName eq 'Azure Database for PostgreSQL Flex Server Storage' and priceType eq 'Consumption'"
+          retrieved_on: "2026-08-22"
           list_cost: "14.7200"
       total_list_cost: "274.6000"
       exclusions:

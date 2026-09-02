@@ -3,16 +3,22 @@ kind: ComponentE2EProfile
 metadata:
   name: azuremongoclusteruser
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. ONE scenario runs: `minimal` (the fixture
-  # identity's service principal granted root on the cluster kind's
-  # smoke instance -- the three-kind reference chain live: registry
-  # chains the cluster, the scenario annotation chains the identity).
-  # The grant is free; the timeout budgets the cluster chain, not the
-  # grant. Watch-list: the deploy-time Entra-auth contract (the
-  # cluster smoke shape enables MicrosoftEntraID for this lane).
+  # PROVEN live on both engines (dual-engine six-phase runner + blind
+  # import round-trip). ONE scenario runs: `minimal` (the fixture
+  # identity's service principal granted root on an Entra-enabled M10
+  # fixture cluster -- the three-kind reference chain proven live:
+  # registry chains the cluster through this kind's consumer-scoped
+  # override, the scenario annotation chains the identity, and the
+  # grant bound the principal first-try). The override exists because
+  # ARM refuses MicrosoftEntraID auth on the Free tier the cluster
+  # kind's own smoke uses. Measured: grant deploy ~1m10-30s, destroy
+  # ~20-30s; the ~8-9 min M10 cluster chain dominates the ~15-minute
+  # lane. The blind import by the cluster-scoped id
+  # ({cluster_id}/users/{object_id} -- the ARM name IS the principal's
+  # object id) round-tripped zero-change with zero tolerances. The
+  # grant is free; the timeout budgets the M10 cluster chain
+  # (~cents), not the grant.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 90

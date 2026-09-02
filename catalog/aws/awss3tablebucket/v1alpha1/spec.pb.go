@@ -396,10 +396,13 @@ type AwsS3TablesTable struct {
 	// digits, underscores; must start with a letter or digit. Fixed
 	// for life.
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	// The table's Iceberg schema at creation. CREATE-ONLY at AWS: the
-	// provider never reads it back, schema evolution happens through
-	// query engines (ALTER TABLE), and changing it here replaces the
-	// table. Leave it unset to create schema-less and define columns
+	// The table's Iceberg schema at creation - a birth certificate,
+	// not a contract. CREATE-ONLY at AWS: the provider never reads it
+	// back, and schema evolution happens through query engines (ALTER
+	// TABLE). Both modules deliberately IGNORE post-create changes to
+	// this field (editing it after the table exists is inert, never a
+	// destructive replace - and imported tables plan zero-diff against
+	// it). Leave it unset to create schema-less and define columns
 	// through an engine.
 	IcebergSchema *AwsS3TablesIcebergSchema `protobuf:"bytes,2,opt,name=iceberg_schema,json=icebergSchema,proto3" json:"iceberg_schema,omitempty"`
 	// Iceberg table properties at creation ("format-version",

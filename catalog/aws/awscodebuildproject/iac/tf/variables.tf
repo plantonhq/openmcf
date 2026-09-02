@@ -129,9 +129,10 @@ variable "spec" {
       }))
       s3_logs = optional(object({
         status = optional(string)
-        location = optional(string, "")
+        bucket = optional(string, "")
         encryption_disabled = optional(bool, false)
         bucket_owner_access = optional(string, "")
+        prefix = optional(string, "")
       }))
     }))
     vpc_config = optional(object({

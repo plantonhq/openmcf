@@ -23,10 +23,7 @@ spec:
   #   - GuardDuty scan settings/actions -- scan billing on real
   #     recovery points. Unblock: same composed scenario plus the
   #     GuardDuty scanner role contract.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q41
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

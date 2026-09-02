@@ -23,26 +23,45 @@ import (
 
 func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi.PulumiOperationType,
 	isUpdatePreview bool, isAutoApprove bool, valueOverrides map[string]string, showDiff bool, moduleVersion string, noCleanup bool,
-	kubeContext string, stackInputFilePath string, providerConfig *stackinputproviderconfig.ProviderConfig) error {
+	kubeContext string, stackInputFilePath string, providerConfig *stackinputproviderconfig.ProviderConfig,
+	opts ...RunOption) error {
+	var cfg runConfig
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
 		return errors.Wrapf(err, "failed to override values in target manifest file")
 	}
 
-	// Try to extract backend configuration from manifest annotations
-	// If found, use it instead of the provided stackFqdn
+	// Stack selection follows the tofu backend's precedence direction: the
+	// --stack flag wins, the manifest annotation fills in when the flag is
+	// absent. (The annotation silently overriding an explicit flag was the
+	// one inverted precedence in the IaC surface — normalized deliberately.)
 	finalStackFqdn := stackFqdn
-	if manifestBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject); err == nil && manifestBackendConfig != nil {
-		if manifestBackendConfig.StackFqdn != "" {
-			cyan := color.New(color.FgCyan).SprintFunc()
-			fmt.Printf("\nDetected Stack from Annotations: %s\n\n", cyan(manifestBackendConfig.StackFqdn))
-			finalStackFqdn = manifestBackendConfig.StackFqdn
+	if finalStackFqdn == "" {
+		if manifestBackendConfig, err := backendconfig.ExtractFromManifest(manifestObject); err == nil && manifestBackendConfig != nil {
+			if manifestBackendConfig.StackFqdn != "" {
+				cyan := color.New(color.FgCyan).SprintFunc()
+				fmt.Printf("\nDetected Stack from Annotations: %s\n\n", cyan(manifestBackendConfig.StackFqdn))
+				finalStackFqdn = manifestBackendConfig.StackFqdn
+			}
 		}
 	}
 
 	// Validate that we have a stack FQDN
 	if finalStackFqdn == "" {
 		return errors.New("Pulumi stack FQDN is required. Provide it via --stack flag or set pulumi.planton.dev/stack.fqdn annotation in manifest")
+	}
+
+	// Resolve the state backend URL (flag > annotation > env). When resolved,
+	// PULUMI_BACKEND_URL pins the backend for this run and its output reads;
+	// when not, pulumi keeps today's behavior — the machine's ambient login.
+	backendUrl, backendUrlSource := backendconfig.ResolveBackendURL(manifestObject, cfg.backendUrl)
+	if backendUrl != "" {
+		cyan := color.New(color.FgCyan).SprintFunc()
+		fmt.Printf("Backend URL (%s): %s\n", backendUrlSource, cyan(backendUrl))
 	}
 
 	kindName, err := crkreflect.ExtractKindFromProto(manifestObject)
@@ -133,8 +152,15 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 
 	pulumiCmd := exec.Command("pulumi", args...)
 
+	// extraEnv is shared between the operation itself and the post-update
+	// output reads, so capture sees exactly the backend the update used.
+	extraEnv := []string{pulumimodulestackinput.FilePathEnvVar + "=" + finalStackInputFilePath}
+	if backendUrl != "" {
+		extraEnv = append(extraEnv, "PULUMI_BACKEND_URL="+backendUrl)
+	}
+
 	// Set environment variables
-	pulumiCmd.Env = append(os.Environ(), pulumimodulestackinput.FilePathEnvVar+"="+finalStackInputFilePath)
+	pulumiCmd.Env = append(os.Environ(), extraEnv...)
 	if kubeContext != "" {
 		pulumiCmd.Env = append(pulumiCmd.Env, "KUBE_CTX="+kubeContext)
 	}
@@ -174,6 +200,19 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 
 	if err := pulumiCmd.Run(); err != nil {
 		return errors.Wrapf(err, "failed to execute pulumi command %s", op)
+	}
+
+	// Capture must run here, before the deferred workspace cleanup fires:
+	// the output reads run in the module workspace with the same backend the
+	// update used. Only a real update captures — previews change nothing, and
+	// refresh/destroy have no fresh outputs to read.
+	if cfg.captureSink != nil && pulumiOperation == pulumi.PulumiOperationType_update && !isUpdatePreview {
+		if captureErr := captureOutputs(finalStackFqdn, pulumiModuleRepoPath, kindName,
+			extraEnv, cfg.captureSink); captureErr != nil {
+			// The update already succeeded; a capture failure must not turn a
+			// deployed stack into a failed command. Report and move on.
+			log.Warnf("stack outputs could not be captured after update: %v", captureErr)
+		}
 	}
 
 	return nil

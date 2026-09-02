@@ -10,6 +10,8 @@ GENERAL_PURPOSE (USD 400/month prorated) exists for certificates that live long 
 
 Billing stops the moment the CA deletes, but the CA parks restorable for `permanent_deletion_time_in_days` (default 30). Ephemeral environments should set 7 and use run-scoped names — a recreate under the same subject works fine, but restore-window records clutter the console and hold ARNs.
 
+The window is fixed at create (live-proven 2026-08-26): AWS stores nothing — only the delete call consumes it — and the provider cannot apply a window-only edit (it composes an empty update AWS rejects), so both engines ignore post-create changes and the delete uses the create-time value. Decide the window when you create the CA. An imported CA always deletes with the provider-default 30-day window regardless of the manifest value; to delete it faster, use `aws acm-pca delete-certificate-authority --permanent-deletion-time-in-days 7` directly.
+
 ## ACM renewal needs the permission, and failures are silent
 
 AwsCertManagerCert certificates issued from this CA renew automatically ONLY while acm.amazonaws.com holds all three grant actions. The `acm_renewal_permission` flag manages the full grant; without it, renewals fail with no deploy-time symptom — the certificate just expires months later. Set it on any CA that issues ACM certificates, always.
@@ -25,3 +27,7 @@ The composed subordinate activation signs with THIS spec's signing_algorithm at 
 ## Templates decide what a certificate can DO
 
 The `template_arn` on issued certificates picks the X.509 profile: EndEntityCertificate (plain TLS), EndEntityClientAuthCertificate (mTLS clients), CodeSigningCertificate, or the CA-path-length templates that mint sub-CAs. The CSR asks; the template decides — a CSR with CA:TRUE extensions issued under an end-entity template comes out a plain leaf.
+
+## Certificates are born, not edited (live-proven 2026-08-26)
+
+Every issue request's parameters — CSR, signing algorithm, validity, template, API passthrough — are the certificate's birth certificate: AWS reads them once and never reports them back, so both engines deliberately ignore later edits to them. Editing an issued certificate's entry does nothing; to get different parameters, add a NEW entry (its name keys a new certificate) and retire the old one when consumers have moved. The same contract protects adopters at import: bringing an existing CA under management plans zero changes — without it, the first plan after import would re-issue the CA's own trust anchor, a certificate your trust stores pin by fingerprint. Reissuing or renewing the CA's certificate itself is an operational act through ACM PCA, never a manifest edit.

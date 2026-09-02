@@ -59,6 +59,9 @@ spec:
         type: spec_default
         reference: The legacy path is static SSH keys managed through instance metadata (the ssh_keys field feeds it); setting the enable-oslogin metadata key to TRUE retires metadata-managed keys in favor of IAM-governed OS Login.
       notes: The 02-hardened-web-server preset enables OS Login; the other presets leave GCP's default (metadata keys honored).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

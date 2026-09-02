@@ -1,0 +1,21 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "catalogpage",
+    srcs = [
+        "baseline.go",
+        "catalogpage.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/catalogpage",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/manifest",
+        "@in_gopkg_yaml_v3//:yaml_v3",
+    ],
+)
+
+go_test(
+    name = "catalogpage_test",
+    srcs = ["catalogpage_test.go"],
+    embed = [":catalogpage"],
+)

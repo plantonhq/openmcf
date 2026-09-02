@@ -46,6 +46,9 @@ spec:
         type: module_default
         reference: The web-UI login mechanism requires Locust >= 2.21.0 -- older tags fall onto a chart code path that renders the credential as a literal pod argument, and the modules REFUSE that combination outright (the deploy fails loudly rather than shipping a credential in process arguments).
       notes: The chart's values-rendered-Secret path (environment_secret) is nulled by the modules after every merge, so credentials can never ride rendered values either.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The web-UI login (web_ui_auth, on by default) is a single module-generated credential in the <name>-auth Secret rather than per-user account management -- Locust offers no password-strength policy, lockout, or MFA for the spec to model.
     - control_id: audit-logging
       status: not_applicable
       notes: No audit trail is modeled -- Locust logs stream to stdout at the declared log levels for the cluster's log collector, and changes to the release are Kubernetes API operations captured by the target cluster's audit policy.

@@ -194,6 +194,30 @@ func (h *Harness) VerifyDeployed(ctx context.Context, component string, outputs 
 	return v.VerifyExists(ctx, h.cred, h.subscriptionID, id)
 }
 
+// VerifyRuntimeFailureCause implements the framework's optional
+// RuntimeCauseVerifier capability (expected-runtime-failure lanes): it
+// dispatches to the kind's verifier, which must itself opt in via the local
+// verify.RuntimeCauseVerifier interface, reusing the resource id VERIFY-RES
+// stored (the phase is guaranteed to have run first).
+func (h *Harness) VerifyRuntimeFailureCause(ctx context.Context, tc *provider.ComponentTestContext, cause string) error {
+	v, err := verify.GetVerifier(tc.Component)
+	if err != nil {
+		return err
+	}
+	rcv, ok := v.(verify.RuntimeCauseVerifier)
+	if !ok {
+		return errors.Errorf("component %q's verifier does not implement verify.RuntimeCauseVerifier -- the scenario expects a runtime failure cause (%s) it cannot pin", tc.Component, cause)
+	}
+
+	h.mu.Lock()
+	res := h.deployed[componentKey(ctx, tc.Component)]
+	h.mu.Unlock()
+	if res.id == "" {
+		return errors.Errorf("no stored resource id for %s -- VERIFY-RES may not have run", tc.Component)
+	}
+	return rcv.VerifyRuntimeFailureCause(ctx, h.cred, h.subscriptionID, res.id, cause)
+}
+
 // VerifyDestroyed confirms the previously deployed resource no longer exists.
 func (h *Harness) VerifyDestroyed(ctx context.Context, component string) error {
 	v, err := verify.GetVerifier(component)

@@ -1,0 +1,76 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflareloadbalancerpool
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The pool stores origin and steering configuration in Cloudflare's control plane -- no customer data store exists here to encrypt.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: The pool terminates no connections itself. TLS from visitors to the edge is the zone's certificate posture, TLS from the edge to origins is the zone's SSL mode, and probe TLS is the referenced monitor's posture (its allow_insecure field) -- none of it is a field on this spec.
+    - control_id: no-public-access
+      status: configurable
+      field_path: origins.virtual_network_id
+      evidence:
+        type: spec_default
+        reference: Each origin's address must normally be publicly addressable, but setting the origin's virtual_network_id lets the address be an internal/reserved one reached over a Cloudflare Tunnel virtual network -- private origins that never face the internet. Empty (the default) means the origin must be publicly reachable.
+      notes: Neither preset uses a virtual network. The pool object itself has no inbound endpoint; this control is about whether the backends it groups must be exposed.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The pool accepts no traffic directly -- the zone-scoped load balancer steers to it. Limiting an origin's inbound sources to Cloudflare is the origin's network posture.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: WAF and request filtering run on the zone in front of the load balancer; this spec carries no filter surface.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management is Cloudflare account-membership and API-token posture; the pool exposes no data plane of its own to govern.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The pool holds no credentials -- origins are addresses, and the host_header override is plain configuration.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No authentication path of its own. Prefer a scoped API token over the legacy Global API Key when provisioning.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records pool changes in the account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: monitor
+      evidence:
+        type: spec_default
+        reference: The monitor reference attaches health checking to every origin in the pool -- and the spec is explicit that when it is omitted, origins are always considered healthy, which it calls "not recommended for production". notification_filter additionally tunes which pool/origin health transitions raise notifications, and check_regions chooses where probes run from.
+      notes: Both presets wire a CloudflareLoadBalancerMonitor reference. Where notifications are delivered is the account's notification-policy posture, outside this spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest -- there is no data to back up.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: configurable
+      field_path: origins
+      evidence:
+        type: spec_default
+        reference: Redundancy is the pool's whole design -- origins accepts any number of independent backends (minimum one) and traffic balances across the currently-healthy ones, with minimum_origins setting how many must stay healthy before the pool fails over and load_shedding draining it gracefully. A single-origin pool has no redundancy; adding origins in different failure domains creates it.
+      notes: Preset 01-web-pool carries two origins; the geo preset is one origin by design (per-region pools composed by a geo-steered load balancer). Cross-POOL failover order is the load balancer's configuration, not this object's.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither Cloudflare nor the modules expose a deletion-protection flag. Destroy is a real delete -- load balancers still referencing the pool lose it from their steering. The enabled flag (default true) drains the pool without deleting it.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The load-balancing data plane and health-check infrastructure are fully Cloudflare-operated -- the component only configures them; no customer-visible patch surface exists. The origin servers behind the pool patch as their own components.

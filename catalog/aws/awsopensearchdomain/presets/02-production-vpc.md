@@ -27,7 +27,7 @@ This preset creates a production-grade OpenSearch domain with 3 data nodes acros
 | `prod-search` | Domain name (3-28 chars, lowercase, hyphens) | Your naming convention |
 | `<vpc-name>` | Name of the AwsVpc resource providing subnets | Your Planton VPC manifest |
 | `<security-group-name>` | Name of the AwsSecurityGroup allowing HTTPS (443) | Your Planton security group manifest |
-| `<master-password>` | Master user password (min 8 chars, mixed case, digit, special) | Generate a strong password; consider using Secrets Manager |
+| `$secret/opensearch-master-password` | A managed-secret reference to the master user password (min 8 chars, mixed case, digit, special) — the field is sensitive, so a `$secret/<slug>` reference belongs here, never plaintext | Your org's managed secrets |
 
 ## Related Presets
 

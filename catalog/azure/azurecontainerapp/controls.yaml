@@ -56,6 +56,9 @@ spec:
         type: spec_default
         reference: "Each registry entry authenticates with exactly one mode (spec-enforced) -- a managed identity, or the weaker username plus password_secret_name pair that parks a static registry password in the app's secrets. Choosing identity leaves no static credential in play."
       notes: "Preset 03-enterprise-api uses identity-based registry auth. The static-password path stays representable for registries outside Entra's reach (Docker Hub, GHCR). The same trade appears in scale-rule auth: secret-fed KEDA parameters versus identity_id."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: "Control-plane operations land in the Azure Activity Log as subscription-level posture; the app offers no audit knob of its own. Request-level visibility rides the environment's logging destination (see monitoring-integration)."

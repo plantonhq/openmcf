@@ -700,6 +700,12 @@ spec:
       # relevance_score) can widen on the import path the same way the
       # bedrockagent prompt variant floats do -- prune them from the
       # blind round-trip until upstream applies Float32 semantics.
+      # memory/memory_actual: AWS auto-provisions a managed memory for a
+      # memory-less harness; import reads BOTH the configured view and
+      # the computed actual (memory_actual, new in provider 6.59.0), so
+      # the post-import plan re-asserts the config's omission -- a
+      # server-side no-op (the auto-memory stays; memory_actual echoes
+      # it).
       config_only_attributes: [timeouts]
       write_normalized_attributes:
         - model.bedrock_model_config.temperature
@@ -708,6 +714,8 @@ spec:
         - model.gemini_model_config.top_p
         - model.openai_model_config.temperature
         - model.openai_model_config.top_p
+        - memory
+        - memory_actual
         - truncation.config.summarization.summary_ratio
         - memory.agentcore_memory_configuration.retrieval_config.relevance_score
     - terraform_type: aws_bedrockagentcore_online_evaluation_config
@@ -770,9 +778,16 @@ spec:
         Same composite as the method response.
     - terraform_type: aws_api_gateway_deployment
       pulumi_type: aws:apigateway/deployment:Deployment
-      id_format: "{rest_api_id}/{deployment_id}"
-      notes: >-
-        REST API id and deployment id separated by a slash.
+      not_importable_upstream_reason: >-
+        The upstream importer exists but cannot recover the `triggers`
+        argument (upstream-documented), and the module's
+        redeploy-on-change contract lives in that trigger hash -- a
+        blind import always replans a replace (triggers forces
+        replacement). The adopter's contract is skip-and-recreate: the
+        first apply mints a fresh deployment from the adopted
+        definition and repoints the stage, a behavioral no-op when the
+        definition matches (the prior deployment remains as API
+        deployment history until the API is deleted).
     - terraform_type: aws_api_gateway_stage
       pulumi_type: aws:apigateway/stage:Stage
       id_format: "{rest_api_id}/{stage_name}"
@@ -1038,6 +1053,14 @@ spec:
       pulumi_type: aws:cfg/rule:Rule
       id_format: "{rule_name}"
       cloud_control_type_name: AWS::Config::ConfigRule
+      # The provider's import populates the rule from DescribeConfigRules
+      # only and never calls GetCustomRulePolicy, so a custom-policy
+      # rule's Guard text imports EMPTY and the first post-import plan
+      # re-sends the same text (a server-side no-op; live-caught by the
+      # blind round-trip). Scoped to the policy-text leaf so real drift
+      # in the rule's source (owner, identifier) still fails the gate.
+      write_normalized_attributes:
+        - source.custom_policy_details.policy_text
     - terraform_type: aws_config_organization_managed_rule
       pulumi_type: aws:cfg/organizationManagedRule:OrganizationManagedRule
       id_format: "{rule_name}"
@@ -1267,6 +1290,14 @@ spec:
       # parameter always shows it false.
       config_only_attributes:
         - overwrite
+      # The provider's import populates the sensitive `value` attribute
+      # only, never its plaintext twin `insecure_value` -- a config
+      # authored on the insecure_value render path re-sends the same
+      # content on the first post-import plan (a server-side no-op;
+      # live-caught by the blind round-trip). `value` itself stays
+      # undeclared so real content drift still fails the gate.
+      write_normalized_attributes:
+        - insecure_value
       notes: >-
         The parameter's name including any hierarchical path (`aws ssm
         describe-parameters` shows Name); a full parameter ARN imports
@@ -1546,8 +1577,13 @@ spec:
       id_format: "{canary_name}"
       # delete_lambda is delete-time engine behavior (whether teardown
       # also removes the Synthetics-managed Lambda), never a canary
-      # property AWS returns.
-      config_only_attributes: [delete_lambda]
+      # property AWS returns. The code-source family (s3_bucket/s3_key/
+      # s3_version/zip_file) and start_canary are create/update-time
+      # inputs the provider's Read never populates - GetCanary echoes
+      # only the staged copy's source_location_arn, and the run toggle
+      # echoes as status, not as the attribute (live-caught by the
+      # blind round-trip re-planning all of them after import).
+      config_only_attributes: [delete_lambda, s3_bucket, s3_key, s3_version, zip_file, start_canary]
       notes: >-
         The canary's name (`aws synthetics describe-canaries` shows
         Name).
@@ -1673,6 +1709,19 @@ spec:
     - terraform_type: aws_prometheus_resource_policy
       pulumi_type: aws:amp/resourcePolicy:ResourcePolicy
       id_format: "{workspace_id}"
+      # AMP re-marshals the stored document in its own member order
+      # (Version first; Effect/Principal/Action/Resource inside each
+      # statement) while the modules compose theirs with jsonencode's
+      # alphabetical order - the two are structurally identical but can
+      # never byte-match, and the provider's IAMPolicy semantic equality
+      # does not suppress the order-only re-plan after import
+      # (live-caught: the round-trip's plan showed "# whitespace
+      # changes" with zero structural diff). The declaration tolerates
+      # exactly this attribute post-import; the first post-import apply
+      # re-sends the module's form (a server-side no-op - AMP stores
+      # the same structural policy) and the lifecycle is clean from
+      # then on.
+      write_normalized_attributes: [policy_document]
       notes: >-
         The owning workspace's ID (one resource policy per workspace).
     - terraform_type: aws_prometheus_anomaly_detector
@@ -1740,12 +1789,18 @@ spec:
       pulumi_type: aws:ec2/vpcPeeringConnection:VpcPeeringConnection
       id_format: "{peering_connection_id}"
       cloud_control_type_name: AWS::EC2::VPCPeeringConnection
+      # auto_accept is the provider's accept-after-create INSTRUCTION,
+      # not a peering property - AWS stores nothing for it, so a blind
+      # import re-plans it (live-caught 2026-08-25).
+      config_only_attributes: [auto_accept]
     - terraform_type: aws_vpc_peering_connection_accepter
       pulumi_type: aws:ec2/vpcPeeringConnectionAccepter:VpcPeeringConnectionAccepter
       id_format: "{peering_connection_id}"
+      config_only_attributes: [auto_accept]
       notes: >-
         The same pcx- id as the connection (the accepter adopts it from
-        the accepter side).
+        the accepter side). auto_accept is config-only, as on the
+        connection itself.
 
     # --- Network ACLs --------------------------------------------------------------
     - terraform_type: aws_network_acl
@@ -1871,11 +1926,13 @@ spec:
       pulumi_type: aws:s3tables/table:Table
       id_format: "{table_bucket_arn};{namespace};{table_name}"
       # The Iceberg schema and properties (metadata) are CREATE-ONLY
-      # input the provider never reads back - a fresh import lacks them
-      # and the first plan re-asserts; post-apply idempotency holds
-      # (schema evolution happens through query engines).
-      write_normalized_attributes:
-        - metadata
+      # replace-forcing input the provider never reads back, so a blind
+      # import would plan a DESTRUCTIVE delete+create against the empty
+      # imported state (live-caught 2026-08-26; upstream's own import
+      # tests ImportStateVerifyIgnore the block). Both modules suppress
+      # the diff at the source - TF lifecycle ignore_changes / Pulumi
+      # IgnoreChanges on metadata - so the round-trip is genuinely
+      # zero-diff and no tolerance is declared here.
       notes: >-
         Semicolon-separated bucket-ARN;namespace;table composite (the
         provider's hand-written import path).
@@ -2114,20 +2171,27 @@ spec:
     - terraform_type: aws_acmpca_certificate_authority
       pulumi_type: aws:acmpca/certificateAuthority:CertificateAuthority
       id_format: "{certificate_authority_arn}"
-      # The restore window is never returned by the API - the provider
-      # stuffs its default back on import.
-      config_only_attributes: [permanent_deletion_time_in_days]
+      # The restore window is an engine-side delete-time instruction AWS
+      # never stores; import stuffs the provider default back AND a
+      # window-only update composes an empty UpdateCertificateAuthority
+      # the API rejects 400 (provider gap at ~> 6.58) - so a tolerance
+      # cannot cover it (the tolerated diff is UNAPPLIABLE). Both
+      # modules ignore post-create changes instead; imports are
+      # zero-diff on this attribute.
       notes: >-
         The CA's ARN (`aws acm-pca list-certificate-authorities` shows
         Arn).
     - terraform_type: aws_acmpca_certificate
       pulumi_type: aws:acmpca/certificate:Certificate
       id_format: "{issued_certificate_arn}"
-      # The issue-request arguments are never returned by the API - an
-      # import carries only the issued PEM, so the request fields are
-      # config-only by upstream design (the provider's own import test
-      # ignores all four).
-      config_only_attributes: [certificate_signing_request, signing_algorithm, template_arn, validity]
+      # The five issue-request arguments (csr, signing_algorithm,
+      # template_arn, validity, api_passthrough) are create-only,
+      # REPLACE-FORCING, and never returned by any read API - a
+      # config-only tolerance cannot absorb the replace they'd force
+      # after import, so both modules IGNORE post-create changes to
+      # them (live-proven: the blind round-trip planned a destructive
+      # re-issue of the CA's own trust anchor before the ignore).
+      # Imports are genuinely zero-diff; no tolerance needed.
       notes: >-
         The certificate's full ARN
         (arn:...:certificate-authority/{ca_id}/certificate/{cert_id}).

@@ -39,6 +39,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: A profile has no authentication path of its own to weaken -- the only credentials involved are the temporary STS sessions the metadata service vends for the carried role, and those expire automatically.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. IAM management calls on the profile and every API request made with the vended role credentials are recorded by AWS CloudTrail as account-level posture, not per-profile configuration.

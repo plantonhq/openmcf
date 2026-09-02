@@ -1,6 +1,6 @@
 # Azure Container App
 
-Deploys a serverless container workload inside an Azure Container Apps Managed Environment with configurable containers, KEDA-based auto-scaling, revision-based traffic splitting, Dapr sidecar integration, and managed identity support. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and environments.
+Deploys a serverless container workload inside an Azure Container Apps Managed Environment with configurable containers, KEDA-based auto-scaling, revision-based traffic splitting, Dapr sidecar integration, and managed identity support. Scale-to-zero is the default posture: with no minimum replica count the app costs nothing while idle and cold-starts on the first request.
 
 ## What Gets Created
 
@@ -39,7 +39,7 @@ Open the deployment store, find **Azure Container App**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerApp
 metadata:
   name: my-web-app
@@ -50,7 +50,8 @@ spec:
     value: "acme-prod-rg"
   containerAppName: my-web-app
   containerAppEnvironmentId:
-    value: "/subscriptions/.../managedEnvironments/prod-env"
+    valueFrom:
+      name: prod-env
   containers:
     - name: app
       image: mcr.microsoft.com/k8se/quickstart:latest
@@ -62,7 +63,7 @@ spec:
 planton apply -f container-app.yaml
 ```
 
-This creates a Container App in Single revision mode with one container, scale-to-zero enabled (0-10 replicas), and no ingress. Add an `ingress` block to expose the app externally.
+This creates a Container App in Single revision mode with one container, scale-to-zero enabled, and no ingress -- add an `ingress` block to expose the app externally. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 

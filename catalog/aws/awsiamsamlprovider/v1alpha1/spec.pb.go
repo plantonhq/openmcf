@@ -48,6 +48,13 @@ type AwsIamSamlProviderSpec struct {
 	// not a secret - IdPs serve it unauthenticated. AWS requires
 	// 1000-10000000 characters; update it in place when the IdP rotates
 	// its signing certificates (see valid_until in the outputs).
+	//
+	// IAM PARSES the document at create - including base64-decoding
+	// every X509Certificate into a valid DER certificate - and rejects
+	// anything less with "InvalidInput: Could not parse metadata"
+	// (server-verified 2026-08-25). It does NOT validate trust (no
+	// chain, no CA, no endpoint reachability), so a self-signed
+	// certificate is fine; a placeholder blob is not.
 	SamlMetadataDocument string `protobuf:"bytes,2,opt,name=saml_metadata_document,json=samlMetadataDocument,proto3" json:"saml_metadata_document,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache

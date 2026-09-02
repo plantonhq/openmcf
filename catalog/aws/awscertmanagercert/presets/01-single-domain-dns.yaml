@@ -4,7 +4,9 @@ metadata:
   name: my-domain-certificate
 spec:
   region: <aws-region>
-  primaryDomainName: <your-domain.com>
+  # Domain names must be real DNS shapes (the field's own pattern rejects
+  # angle brackets) -- replace with your domain.
+  primaryDomainName: replaceme.example.com
   route53HostedZoneId:
     value: "<route53-hosted-zone-id>"
   validationMethod: DNS  # default from spec; automated validation via Route53

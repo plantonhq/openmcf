@@ -1,10 +1,12 @@
 # GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
-# This file joins the component's estimate model (../models/, the authored
-# quantities with their derivations) with the provider's price book
-# (../pricebook/, pinned unit prices with source URL and retrieval date):
-# every line cost and preset total is computed exactly, lines are ordered
-# largest cost first, and the catalog-data conformance gate re-verifies all
-# arithmetic. Schema: finops/componentcostestimate/v1.
+# This file replays the component's presets through its capacity derivation
+# (../capacity/, the machine-executable value-to-capacity rules): each
+# preset states the CPU/memory requests and limits and the persistent
+# volume storage it reserves from its target cluster, with a basis sentence
+# tracing every total back to the manifest's values. Cluster-capacity
+# components carry no priced lines -- the dollar value of the reservation
+# is the target cluster's node and storage-class economics, which this
+# catalog cannot know. Schema: finops/componentcostestimate/v1.
 apiVersion: finops.planton.dev/v1
 kind: ComponentCostEstimate
 metadata:
@@ -15,11 +17,11 @@ spec:
       capacity_footprint:
         cpu_requests: 100m
         memory_requests: 256Mi
-        cpu_limits: 1000m
+        cpu_limits: "1"
         memory_limits: 512Mi
-        basis: 1 dev-mode server x spec-declared default resources (100m CPU / 256Mi memory requests, 1000m CPU / 512Mi limits -- the platform applies them when the manifest omits resources); dev mode is in-memory, so no volumes are provisioned
+        basis: 1 server replica x (100m CPU / 256Mi memory requests, 1000m CPU / 512Mi limits) from the spec-declared defaults (the modules apply them when the manifest omits resources)
       exclusions:
-        - the dollar value of this capacity is the target cluster's node economics
+        - the dollar value of this capacity is the target cluster's node and storage-class economics
         - dev mode persists NOTHING -- all data is lost on pod restart; never run it beyond a laboratory
     - preset: 02-production-ha
       capacity_footprint:
@@ -28,7 +30,7 @@ spec:
         cpu_limits: "3"
         memory_limits: 3Gi
         persistent_storage: 60Gi
-        basis: 3 Raft replicas x (250m CPU / 512Mi memory requests, 1000m CPU / 1Gi limits) + 3 x 10Gi data volumes + 3 x 10Gi audit volumes
+        basis: 3 server replicas x (250m CPU / 512Mi memory requests, 1 CPU / 1Gi limits) + 3 x (10Gi data + 10Gi audit) volumes
       exclusions:
         - the dollar value of this capacity is the target cluster's node and storage-class economics
         - the chart's default required anti-affinity places each replica on a distinct node -- the cluster needs at least 3 schedulable nodes
@@ -39,8 +41,8 @@ spec:
         cpu_limits: "3"
         memory_limits: 3Gi
         persistent_storage: 60Gi
-        basis: 3 Raft replicas x (250m CPU / 512Mi memory requests, 1000m CPU / 1Gi limits) + 3 x 10Gi data volumes + 3 x 10Gi audit volumes -- identical capacity to 02; auto-unseal changes key custody, not the footprint
+        basis: 3 server replicas x (250m CPU / 512Mi memory requests, 1 CPU / 1Gi limits) + 3 x (10Gi data + 10Gi audit) volumes
       exclusions:
         - the dollar value of this capacity is the target cluster's node and storage-class economics
-        - the GCP Cloud KMS unseal key bills on the GCP account, outside the cluster
         - the chart's default required anti-affinity places each replica on a distinct node -- the cluster needs at least 3 schedulable nodes
+        - the GCP Cloud KMS unseal key bills on the GCP account, outside the cluster

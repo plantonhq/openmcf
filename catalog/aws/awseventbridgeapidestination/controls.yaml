@@ -51,6 +51,9 @@ spec:
       evidence:
         type: spec_default
         reference: The connection speaks exactly the declared auth mode and nothing else -- the spec's CEL requires exactly one of api_key, basic, and oauth, and AWS derives the connection's authorization_type from it, so no fallback or downgrade path exists. Unauthenticated destinations are not representable at all.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. Management calls and the rule/pipe invocations that fire the destination are recorded by AWS CloudTrail as account-level posture, not per-destination configuration.

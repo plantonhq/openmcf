@@ -16,4 +16,4 @@ Every field is create-only: role changes, principal changes, anything -- the pro
 
 ## Entra auth is a cluster-level switch someone must have thrown
 
-A grant against a cluster whose `authenticationMethods` lacks "MicrosoftEntraID" fails at deploy time. When adopting Entra auth on an existing NativeAuth-only cluster, update the cluster first (an in-place update), then land the grants. Keep "NativeAuth" in the list during migration -- removing it cuts over every consumer at once.
+A grant against a cluster whose `authenticationMethods` lacks "MicrosoftEntraID" fails at deploy time. When adopting Entra auth on an existing NativeAuth-only cluster, update the cluster first (an in-place update), then land the grants. Keep "NativeAuth" in the list during migration -- removing it cuts over every consumer at once. Note the tier floor: Azure refuses Entra auth on the Free tier entirely, so the cheapest cluster a grant can target is M10.

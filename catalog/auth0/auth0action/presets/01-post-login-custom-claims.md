@@ -1,4 +1,4 @@
-# Preset: Post-Login Custom Claims
+# Post-Login Custom Claims
 
 ## Pattern
 

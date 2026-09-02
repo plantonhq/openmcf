@@ -1,0 +1,3 @@
+order:
+    - GcpVpcNetwork/storefront-vpc@prod
+    - GcpSubnetwork/storefront-subnet@prod

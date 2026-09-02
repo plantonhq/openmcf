@@ -49,7 +49,7 @@ spec:
 |---|---|---|---|---|
 | `spec.zoneId` | `string \| valueFrom` |  |  | CloudflareDnsZone (`status.outputs.zone_id`) |
 | `spec.accountId` | `string` |  |  |  |
-| `spec.rulesetKind` | `enum` |  | `1` |  |
+| `spec.rulesetKind` | `enum` |  | `zone` |  |
 | `spec.phase` | `enum` | yes |  |  |
 | `spec.name` | `string` | yes |  |  |
 | `spec.description` | `string` |  |  |  |
@@ -307,7 +307,7 @@ Exactly one of zone_id or account_id must be set.
 The kind of the ruleset.
 Default: zone
 
-- default: `1`
+- default: `zone`
 - rule: {"enum":{"definedOnly":true}}
 
 Allowed values (use exactly as shown):

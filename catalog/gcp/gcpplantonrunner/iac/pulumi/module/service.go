@@ -82,11 +82,11 @@ func runnerService(
 			Value: pulumi.String(spec.GetControlPlaneEndpoint()),
 		})
 	}
+	// NO explicit PORT env: Cloud Run reserves the name and rejects the whole
+	// create with a 400 when a template sets it (proven live). The platform
+	// injects PORT itself from the ports block's ContainerPort, which is how
+	// the runner's server learns its port here.
 	envs = append(envs,
-		&cloudrunv2.ServiceTemplateContainerEnvArgs{
-			Name:  pulumi.String("PORT"),
-			Value: pulumi.Sprintf("%d", grpcPort),
-		},
 		&cloudrunv2.ServiceTemplateContainerEnvArgs{
 			Name:  pulumi.String("LOG_LEVEL"),
 			Value: pulumi.String("info"),
@@ -94,8 +94,14 @@ func runnerService(
 	)
 
 	container := &cloudrunv2.ServiceTemplateContainerArgs{
-		Image:    pulumi.Sprintf("%s:%s", spec.GetImageRepository(), spec.GetRunnerVersion()),
-		Commands: pulumi.ToStringArray([]string{"start"}),
+		Image: pulumi.Sprintf("%s:%s", spec.GetImageRepository(), spec.GetRunnerVersion()),
+		// Args, NEVER Commands: Cloud Run's command field REPLACES the image
+		// entrypoint (the runner binary), so Commands=["start"] makes the
+		// platform exec a binary literally named "start" -- the instance dies
+		// with "Application exec likely failed" before one log line (proven
+		// live). The image's entrypoint is the bare runner binary; the
+		// subcommand rides Args.
+		Args: pulumi.ToStringArray([]string{"start"}),
 		// h2c: the runner's server speaks plaintext HTTP/2 (gRPC) behind
 		// Cloud Run's TLS edge.
 		Ports: &cloudrunv2.ServiceTemplateContainerPortsArgs{

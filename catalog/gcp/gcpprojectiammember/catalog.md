@@ -1,6 +1,6 @@
-# Project IAM Member on Google Cloud
+# GCP Project IAM Member
 
-Grants one role, to one identity, on one project — the safe, ADDITIVE unit of GCP access control. The grant merges into the project's IAM policy without touching any other member's bindings on the same role, and removal subtracts only this exact (role, member) pair — grants from different charts, teams, and tools never fight over the policy. Authoritative binding/policy management (which clobbers everything not listed) is deliberately not modeled. Integrates with Planton's Provider Connections and composes through ValueFromRef with GcpServiceAccount (`member` output) and GcpIamCustomRole (`name` output).
+Grants one role, to one identity, on one project — the safe, ADDITIVE unit of GCP access control. The grant merges into the project's IAM policy without touching any other member's bindings on the same role, and removal subtracts only this exact (role, member) pair — grants from different charts, teams, and tools never fight over the policy. Authoritative binding/policy management (which clobbers everything not listed) is deliberately not modeled. Both sides of the grant compose through ValueFromRef: a GcpServiceAccount's `member` output and a GcpIamCustomRole's `name` output wire directly into the member and role fields.
 
 ## What Gets Created
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Project IAM Member on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the grant definition. Start from the **Service Account Grant** preset in the [Presets](#presets) tab for the most common shape.
+Open the deployment store, find **GCP Project IAM Member**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the grant definition. Start from the **Service Account Grant (Predefined Role)** preset in the [Presets](#presets) tab for the most common shape.
 
 ### CLI
 
@@ -96,24 +96,17 @@ These are the most important decisions when configuring a grant. Explore the ful
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains the grant's post-resolution facts:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `project_id` | The project after reference resolution | Audit tooling, access reviews |
-| `role` | The role after reference resolution | Audit tooling |
-| `member` | The member after reference resolution | Audit tooling |
-| `etag` | The IAM policy fingerprint when this grant last merged | Drift detection |
+This component has no outputs that downstream Cloud Resources consume. `status.outputs` echoes the fully resolved grant tuple (`project_id`, `role`, `member`) plus the project policy `etag` at the moment the grant merged — audit visibility for values that usually arrive through references, not composition inputs. Downstream resources reference the service account or custom role directly, never the grant.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Service account grant** -- a predefined role to a workload identity; the everyday IaC shape. Start from the **Service Account Grant** preset.
+**Service account grant** -- a predefined role to a workload identity; the everyday IaC shape. Start from the **Service Account Grant (Predefined Role)** preset.
 
-**Custom role grant** -- both sides composed by reference: a GcpIamCustomRole's `name` and a GcpServiceAccount's `member`. Start from the **Custom Role Grant** preset.
+**Custom role grant** -- both sides composed by reference: a GcpIamCustomRole's `name` and a GcpServiceAccount's `member`. Start from the **Custom Role Grant (Fully Composed)** preset.
 
-**Conditional grant** -- a human identity with a time-boxed or resource-scoped condition; the access that removes itself. Start from the **Conditional Grant** preset.
+**Conditional grant** -- a human identity with a time-boxed or resource-scoped condition; the access that removes itself. Start from the **Conditional Grant (Time-Bound Access)** preset.
 
 ## Works With
 

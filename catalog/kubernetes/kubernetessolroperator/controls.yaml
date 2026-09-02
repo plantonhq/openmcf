@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The operator exposes no authentication surface of its own -- no credentials, no user-facing endpoint. Solr security (authentication, authorization plugins) is declared on KubernetesSolr resources.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The operator's actions are Kubernetes API operations -- creating StatefulSets, Services, ConfigMaps, and PVCs for managed clusters -- captured by the target cluster's audit policy; the spec models no separate audit-log seam.

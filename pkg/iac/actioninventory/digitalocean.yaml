@@ -1,0 +1,180 @@
+# GENERATED -- DO NOT EDIT. Refresh with `make generate-action-inventory`.
+# Committed snapshot of the provider's own permission-action inventory,
+# scoped to exactly the services the committed runner permissions manifests
+# (catalog/*/*/iac/permissions.yaml) reference. The conformance gate in
+# this package proves every manifest action exists here -- an action name
+# the provider never defined cannot ship. Source URLs serve latest-only
+# content; provenance is the URL plus the retrieval date and the source's
+# own modification stamp.
+provider: digitalocean
+services:
+  - prefix: app
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - access_console
+      - create
+      - delete
+      - read
+      - update
+  - prefix: block_storage
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: block_storage_action
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - read
+  - prefix: cdn
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: certificate
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+  - prefix: database
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+      - view_credentials
+  - prefix: domain
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: droplet
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - admin
+      - create
+      - delete
+      - read
+      - update
+  - prefix: firewall
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: kubernetes
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - access_cluster
+      - create
+      - delete
+      - read
+      - update
+  - prefix: load_balancer
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: monitoring
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: project
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - assign_resource
+      - create
+      - delete
+      - read
+      - update
+  - prefix: registry
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: reserved_ip
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: spaces_key
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - create_credentials
+      - delete
+      - read
+      - update
+  - prefix: ssh_key
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: tag
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+  - prefix: uptime
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: vpc
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update
+  - prefix: vpc_peering
+    source_url: https://docs.digitalocean.com/reference/api/scopes/index.html.md
+    retrieved_on: "2026-08-22"
+    actions:
+      - create
+      - delete
+      - read
+      - update

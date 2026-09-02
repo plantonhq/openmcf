@@ -87,6 +87,12 @@ func main() {
 	if err := refreshGcp(repoRoot); err != nil {
 		fatal(err)
 	}
+	if err := refreshCloudflare(repoRoot); err != nil {
+		fatal(err)
+	}
+	if err := refreshDigitalOcean(repoRoot); err != nil {
+		fatal(err)
+	}
 }
 
 // referencedAwsPrefixes collects the distinct AWS service prefixes named by

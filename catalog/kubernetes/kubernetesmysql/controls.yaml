@@ -48,6 +48,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The spec models no legacy or weaker authentication path to disable -- every account authenticates with an operator-generated or declared password, and the plaintext (non-TLS) wire is rejected unless unsafe.tls explicitly opts in (see enc-in-transit).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: A provider-style database audit trail (Percona audit log plugin) is not modeled in this spec; mysqld logs stream through the fluent-bit log-collector sidecar for the cluster's log pipeline. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.

@@ -33,7 +33,7 @@ func init() {
 		"Backend configuration key=value pairs")
 
 	Init.PersistentFlags().String(string(flag.BackendType), tfpb.TerraformBackendType_local.String(),
-		"Backend type (local, s3, gcs, azurerm, etc.)")
+		"Backend type (local, s3, gcs, azurerm, remote, etc.)")
 
 	Init.PersistentFlags().String(string(flag.ModuleVersion), "",
 		"Checkout a specific version (tag, branch, or commit SHA) of the IaC modules in the workspace copy.")

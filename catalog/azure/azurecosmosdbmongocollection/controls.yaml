@@ -38,6 +38,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: "The Mongo data plane has exactly one authentication path on RU-based accounts -- the account's keys via connection string -- so there is no weaker alternative to disable at the collection grain. Key rotation and any local-auth posture live on the AzureCosmosdbAccount."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: "Collection create/update/delete land in the Azure Activity Log automatically. Data-plane auditing (MongoRequests) is an Azure Monitor diagnostic setting configured on the ACCOUNT -- account-side posture with no per-collection toggle; per-collection visibility is composed by filtering the logs on collection name."

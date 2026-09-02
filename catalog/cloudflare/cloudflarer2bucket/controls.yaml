@@ -1,0 +1,83 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract, the official modules, and Cloudflare's own documentation
+# (R2 data security page, retrieved 2026-08-22). Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarer2bucket
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Cloudflare's R2 data security page states \"All objects stored in R2, including their metadata, are encrypted at rest. Encryption and decryption are automatic, do not require user configuration to enable\" using AES-256 in GCM mode (https://developers.cloudflare.com/r2/reference/data-security/, retrieved 2026-08-22). No spec choice can disable it."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "The spec exposes no key surface -- the same data security page states \"Encryption keys are managed by Cloudflare and securely stored in the same key management systems we use for managing encrypted data across Cloudflare internally.\" (R2's S3-compatible API accepts per-request customer-provided keys, a data-plane option outside this provisioning spec.)"
+    - control_id: enc-in-transit
+      status: configurable
+      field_path: custom_domains
+      evidence:
+        type: spec_default
+        reference: "The default access paths (S3-compatible API, Workers binding, r2.dev) serve over TLS -- the R2 data security page states transfers are \"secured using the same Transport Layer Security (TLS/SSL) supported on all Cloudflare domains\". Custom domains are the configurable edge: each entry's min_tls sets the TLS floor (defaulting to \"1.0\" when omitted), and the page notes plaintext HTTP on a custom domain is disabled by enabling Always Use HTTPS on its zone (https://developers.cloudflare.com/r2/reference/data-security/, retrieved 2026-08-22)."
+      notes: Preset 02-public-cdn sets min_tls "1.2" on its custom domain. The Always Use HTTPS toggle lives on the fronting zone (a zone-settings component), not in this spec.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_access
+      evidence:
+        type: spec_default
+        reference: The bucket is private by default -- public_access defaults false, and both modules create the managed r2.dev public domain only when it is true and attach custom domains only for entries with enabled true. With neither set, objects are reachable solely through authenticated APIs and Worker bindings.
+      notes: Presets 01-private and 03-lifecycle-managed keep the bucket private; preset 02-public-cdn deliberately opens it (r2.dev plus a custom domain). The spec's own contract flags r2.dev as rate-limited and development-grade, with custom domains as the production path.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: The bucket itself has no source-based filter -- authenticated access is governed by identity (tokens, bindings), and network controls for a public custom domain (WAF, IP access rules) attach to the fronting zone through other components, not through any field here.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Request filtering for publicly served objects attaches at the zone hosting the custom domain (WAF rulesets, rate limiting), outside this spec; the spec carries no filtering field of its own.
+    - control_id: rbac
+      status: not_applicable
+      notes: Access on both planes is governed by Cloudflare's account-level credential model -- account API tokens (the Workers R2 Storage Read/Write permission groups), bucket-scoped R2 API tokens minted at the account, and Worker bindings. The spec carries no per-bucket ACL or policy field because the provider's R2 resource offers none.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The keyless path exists (a Worker's r2 binding holds no credential) but is chosen by the consuming Worker's configuration, and the S3-compatible path uses static access keys minted at the account -- both outside this spec, which has no field selecting or restricting access methods.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: R2's access paths (token-authenticated HTTPS API, SigV4-signed S3-compatible API, Worker bindings) are account-level mechanisms; the spec exposes no field to enable or disable any authentication path.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management operations land in Cloudflare's account-level audit logs as account-wide posture; neither the spec nor the modules expose a per-bucket audit toggle.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: event_notifications
+      evidence:
+        type: spec_default
+        reference: Event notification rules stream object-level runtime events (PutObject, DeleteObject, CompleteMultipartUpload, LifecycleDeletion, and more, filterable by prefix/suffix) to Cloudflare Queues for downstream processing -- both modules create one event-notification resource per entry against the referenced queue.
+      notes: No shipped preset configures event notifications. Storage and operations metrics dashboards are account-level features outside the spec.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Cloudflare offers no automatic backup or object-versioning facility for R2, and neither the spec nor the modules can express one -- durability is Cloudflare's platform replication. Object lock (see deletion-protection) preserves existing objects against deletion but cannot restore anything.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery). The lock rules' retention windows govern object immutability, not backup retention.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: R2 durability and availability are handled inside Cloudflare's infrastructure with no zonal topology for this spec to configure -- location is a best-effort placement hint honored only at creation, and jurisdiction is a residency boundary, not an availability choice.
+    - control_id: deletion-protection
+      status: configurable
+      field_path: lock
+      evidence:
+        type: spec_default
+        reference: Object-lock rules retain matching objects -- preventing deletion and overwrite -- for an age, until a date, or indefinitely; both modules create the bucket-lock resource from these rules. Preset 03-lifecycle-managed locks everything under audit/ for 7 years.
+      notes: The protection is object-scoped -- the bucket resource itself has no deletion-protection flag in the Cloudflare API or either module. Locked objects also resist lifecycle expiration until their retention ends.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: R2 is a fully managed service -- Cloudflare operates and patches the storage and serving infrastructure; no version, maintenance window, or upgrade surface exists on the bucket.

@@ -1,6 +1,6 @@
 # Azure Monitor Activity Log Alert
 
-Deploys an Azure Monitor Activity Log Alert -- the control-plane watchdog. It fires when a matching entry appears in the Azure Activity Log: the subscription-level record of control-plane operations, service-health incidents, resource-health transitions, policy events, and Advisor recommendations. It is the ONLY way to alert on the events that never show up as metrics -- a VM someone deleted, a region-wide Azure incident, a resource going Unavailable, a policy denial. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and action groups.
+Deploys an Azure Monitor Activity Log Alert -- the control-plane watchdog. It fires when a matching entry appears in the Azure Activity Log: the subscription-level record of control-plane operations, service-health incidents, resource-health transitions, policy events, and Advisor recommendations. It is the ONLY way to alert on the events that never show up as metrics -- a VM someone deleted, a region-wide Azure incident, a resource going Unavailable, a policy denial.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Monitor Activity Log Alert**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **service-health** preset in the [Presets](#presets) tab to pre-populate the incident watch every subscription should carry.
+Open the deployment store, find **Azure Monitor Activity Log Alert**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Service-Health Incident Alert** preset in the [Presets](#presets) tab to pre-populate the incident watch every subscription should carry.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMonitorActivityLogAlert
 metadata:
   name: vm-delete-watch
@@ -65,11 +65,28 @@ spec:
 planton apply -f activity-alert.yaml
 ```
 
-This creates a deletion watch: any successful VM delete under the production resource group notifies the governance action group.
+This creates a deletion watch: any successful VM delete under the production resource group notifies the governance action group. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the alert to the resource group it watches and the action group it fires -- the InfraPipeline resolves the dependency graph and deploys them in order.
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the alert to the resource group it watches and the action group it fires:
+
+```yaml
+spec:
+  scopes:
+    - valueFrom:
+        kind: AzureResourceGroup
+        name: production-rg
+        fieldPath: status.outputs.resource_group_id
+  actions:
+    - actionGroupId:
+        valueFrom:
+          kind: AzureMonitorActionGroup
+          name: platform-governance
+          fieldPath: status.outputs.action_group_id
+```
+
+The InfraPipeline resolves the dependency graph and deploys the watched scope and the action group before the alert.
 
 ## Key Configuration
 
@@ -95,20 +112,15 @@ These are the most important decisions when configuring an activity log alert. E
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains (the alert is a leaf -- operator identifiers):
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `activity_log_alert_id` | Azure Resource Manager ID of the alert | Portal navigation, CLI references |
-| `activity_log_alert_name` | Name of the alert | Azure CLI references |
+The alert is a leaf in the dependency graph: `status.outputs` carries only the alert's own identifiers (`activity_log_alert_id`, `activity_log_alert_name`) for audit and CLI reference -- no downstream Cloud Resource consumes them.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Service health** -- Azure incident notifications for your regions and services: the alert every subscription should carry. Start from the **service-health** preset.
+**Service health** -- Azure incident notifications for your regions and services: the alert every subscription should carry. Start from the **Service-Health Incident Alert** preset.
 
-**Resource delete** -- successful deletions under a scope, into the governance channel. Start from the **resource-delete** preset.
+**Resource delete** -- successful deletions under a scope, into the governance channel. Start from the **Administrative Change Alert** preset.
 
 ## Works With
 

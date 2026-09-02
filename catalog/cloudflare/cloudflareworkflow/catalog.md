@@ -1,20 +1,34 @@
 # Cloudflare Workflow
 
-A Workflow registration: the binding of a durable-execution class exported by a deployed Worker script to a named workflow in the account, with retention, step limits, and cron triggers. Instances run on the Workers platform; this resource manages only the registration.
+Deploys a Cloudflare Workflow registration: the binding of a durable-execution class exported by a deployed Worker script to a named workflow in the account, with instance retention, step limits, and cron triggers. Instances of the workflow are created at runtime by the Workers platform, never by this resource. Cloudflare's create is a PUT on the workflow name — registering an existing name silently adopts and overwrites it rather than failing.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Workflow registration** -- one `cloudflare_workflow` binding the name to the script's exported class
+- **Workflow Registration** — one workflow on the account binding `workflowName` to the `className` exported by `scriptName`, carrying the retention, limits, and schedule settings
 
-## Prerequisites
+## Before You Deploy
 
-- **A deployed Worker script** exporting the `WorkflowEntrypoint` subclass (a `CloudflareWorker` resource)
-- **A Cloudflare API token** with Account → Workers Scripts → Edit
-- Production instance runs at scale ride **Workers Paid** limits; registration itself works on the free tier
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** — an active connection in the Connect module with an API token holding Account → Workers Scripts → Edit. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline credential authentication.
+
+### Cloudflare Account
+
+- **A deployed Worker script** — `scriptName` must name a script already deployed (a CloudflareWorker Cloud Resource) that exports the `WorkflowEntrypoint` subclass named in `className`. Deploy order is script first, workflow second.
+- **Workers Paid** (only for scale) — the registration itself works on the free tier; production instance runs at scale ride Workers Paid limits.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Cloudflare Workflow**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the account, the name/class/script binding, and the retention, limits, and schedule settings. Start from the **Scheduled workflow** preset in the [Presets](#presets) tab to pre-populate a nightly batch shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -28,74 +42,73 @@ spec:
   workflowName: order-fulfillment
   className: OrderFulfillment
   scriptName:
-    valueFrom:
-      kind: CloudflareWorker
-      name: order-processor
-      fieldPath: status.outputs.script_name
+    value: order-processor
 ```
 
 ```shell
 planton apply -f workflow.yaml
 ```
 
-## Configuration Reference
+This registers the `order-fulfillment` workflow against the `OrderFulfillment` class exported by the already-deployed `order-processor` script, keeping Cloudflare's default retention and limits. A Stack Job tracks the provisioning in real time.
 
-### Required Fields
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `accountId` | string | The Cloudflare account. | Required, 32-hex. |
-| `workflowName` | string | The workflow's identity. Create is a PUT: a name collision silently adopts the existing workflow. | Required; replaces on change. |
-| `className` | string | The `WorkflowEntrypoint` subclass the script exports. | Required. |
-| `scriptName` | StringValueOrRef | The deployed Worker script exporting the class. | Required; references a `CloudflareWorker`. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `defaultRetention.errorRetention` | string | Cloudflare default | Retention for errored instances -- milliseconds ("5000") or a duration ("5 minutes"). |
-| `defaultRetention.successRetention` | string | Cloudflare default | Retention for successful instances -- same forms. |
-| `limits.steps` | int | Cloudflare default | Maximum steps per instance (>= 1). |
-| `schedules[].cron` | string | none | Cron triggers (five-field, UTC). |
-
-## Examples
-
-### Nightly scheduled workflow with retention
+When the Worker is deployed in the same InfraPipeline, wire `scriptName` with ValueFromRef:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareWorkflow
-metadata:
-  name: nightly-reconcile
-  org: acme-corp
-  env: prod
 spec:
   accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  workflowName: nightly-reconcile
-  className: NightlyReconcile
+  workflowName: order-fulfillment
+  className: OrderFulfillment
   scriptName:
-    value: reconcile-worker
-  defaultRetention:
-    errorRetention: "7 days"
-    successRetention: "86400000"
-  limits:
-    steps: 512
-  schedules:
-    - cron: "0 3 * * *"
+    valueFrom:
+      kind: CloudflareWorker
+      name: order-processor
+      fieldPath: status.outputs.script_name
 ```
 
-## Destroy Semantics
+The InfraPipeline resolves the dependency graph, deploys the Worker first, then registers the workflow against the resolved script name — the script-before-workflow ordering for free.
 
-Destroy is a real delete; the API keeps answering GET for the deleted workflow with an `is_deleted` marker instead of a 404. Running instances belong to the platform and are not awaited.
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a workflow. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `workflow_name` | string | The workflow's identity -- what Worker workflow bindings reference |
-| `version_id` | string | The workflow version the registration produced |
+**The name is an upsert key** — Cloudflare has no separate create endpoint; registration writes `PUT` to the workflow name. Registering a name that already exists silently adopts and overwrites the existing workflow's binding (class, script, retention, schedules), and neither apply ever errors. Two teams sharing a name will fight over one registration. Namespace workflow names deliberately, exactly as you would Worker script names. Changing `workflowName` (or `accountId`) replaces the workflow; `className` and `scriptName` update in place.
 
-## Related Components
+**The registration is not the program** — a typo in `className` may register fine and fail only when the first instance runs, because Cloudflare validates the binding lazily. Verify the class name against your script's exports, not the apply result.
 
-- [Cloudflare Worker](/docs/catalog/cloudflare/cloudflareworker) -- the script exporting the workflow class
-- [Cloudflare Queue](/docs/catalog/cloudflare/cloudflarequeue) -- the sibling asynchronous-work building block
+**Retention takes two forms** — `defaultRetention.errorRetention` and `successRetention` accept integer milliseconds (`"86400000"`) or duration expressions (`"1 day"`). Cloudflare normalizes internally and equivalent values do not diff, but mixed forms across manifests make review harder. Prefer the duration-expression form for anything a human reads. A longer error retention than success retention buys a debugging window without paying for successful-run state.
+
+**Schedules create instances** — each `schedules[].cron` entry (five-field cron, evaluated in UTC) starts a new instance on its cadence. `limits.steps` caps what any one instance may execute (at least 1).
+
+**Instances outlive your apply** — destroying the registration does not await or terminate running instances; they belong to the platform. To drain before decommissioning: remove `schedules`, stop creating instances from your Worker, let instances finish, then destroy. The API keeps answering GET for deleted workflows with an `is_deleted` marker instead of a 404 — the record is a tombstone, not a survivor.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareWorker** | `scriptName` | `status.outputs.script_name` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `workflow_name` | The workflow's identity within the account | Worker `workflows` bindings that create instances of this workflow |
+| `version_id` | The workflow version the registration produced | Version pinning and audit of what a deploy registered |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Scheduled batch workflow** — a nightly multi-step job (reconciliation, report generation, cleanup sweeps) triggered by cron, with a week of error retention for debugging and a day for successes. Start from the **Scheduled workflow** preset.
+
+**Event-driven workflow** — no `schedules`; instances are created by the Worker itself (often fed by a CloudflareQueue) through a `workflows` binding that references this registration by name. The registration carries only retention and limits.
+
+## Works With
+
+- [**Cloudflare Worker**](/cloud-catalog/cloudflare-worker) — the script that exports the workflow class; its `workflows` bindings reference this registration by name
+- [**Cloudflare Queue**](/cloud-catalog/cloudflare-queue) — queues feed Workers that create workflow instances; the sibling asynchronous-work building block

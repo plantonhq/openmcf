@@ -60,6 +60,7 @@ import (
 	"google.golang.org/api/storage/v1"
 	"google.golang.org/api/vpcaccess/v1"
 	workflows "google.golang.org/api/workflows/v1"
+	"sigs.k8s.io/yaml"
 )
 
 // Harness manages the GCP E2E test lifecycle.
@@ -352,6 +353,64 @@ func (h *Harness) VerifyDestroyed(ctx context.Context, component string) error {
 		return errors.Errorf("no stored outputs for %s -- VerifyDeployed may not have run", component)
 	}
 	return v.VerifyAbsent(ctx, h.services, outputs)
+}
+
+// VerifyExpectedDeployFailure implements the framework's optional
+// DeployFailureVerifier capability (expected-deploy-failure lanes, for
+// substrates that gate resource creation on workload health). Stack outputs
+// do not exist on a failed deploy, so identity comes from the scenario
+// manifest: the service name (metadata.name) and region (spec.region). The
+// kind's verifier must itself opt in via the local
+// verify.DeployFailureVerifier interface.
+func (h *Harness) VerifyExpectedDeployFailure(ctx context.Context, tc *provider.ComponentTestContext, expectation string, deployErr error) error {
+	v, err := verify.GetVerifier(tc.Component)
+	if err != nil {
+		return err
+	}
+	dfv, ok := v.(verify.DeployFailureVerifier)
+	if !ok {
+		return errors.Errorf("component %q's verifier does not implement verify.DeployFailureVerifier -- the scenario expects a deploy failure (%s) it cannot attribute", tc.Component, expectation)
+	}
+
+	manifestPath, _ := ctx.Value(provider.ManifestPathKey{}).(string)
+	if manifestPath == "" {
+		manifestPath = tc.ManifestPath
+	}
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return errors.Wrap(err, "reading the scenario manifest for failure attribution")
+	}
+	var manifest struct {
+		Metadata struct {
+			Name string `json:"name"`
+		} `json:"metadata"`
+		Spec struct {
+			Region string `json:"region"`
+		} `json:"spec"`
+	}
+	if err := yaml.Unmarshal(raw, &manifest); err != nil {
+		return errors.Wrap(err, "parsing the scenario manifest for failure attribution")
+	}
+	if manifest.Metadata.Name == "" || manifest.Spec.Region == "" {
+		return errors.Errorf("the scenario manifest must carry metadata.name and spec.region for failure attribution (got name=%q region=%q)",
+			manifest.Metadata.Name, manifest.Spec.Region)
+	}
+	if err := dfv.VerifyExpectedDeployFailure(ctx, h.services, manifest.Metadata.Name, manifest.Spec.Region, expectation, deployErr); err != nil {
+		return err
+	}
+
+	// Store the manifest-derived identity where VerifyDeployed would have:
+	// the expected-failure lifecycle has no VERIFY-RES, but its VERIFY-CLN
+	// still must prove the destroyed-after-failed-create resource is GONE,
+	// through the same absence probe every normal lane uses.
+	h.mu.Lock()
+	h.deployed[componentKey(ctx, tc.Component)] = map[string]string{
+		"service_short_name": manifest.Metadata.Name,
+		"region":             manifest.Spec.Region,
+		"project_id":         h.services.Project,
+	}
+	h.mu.Unlock()
+	return nil
 }
 
 // stringOutputs flattens stack outputs to strings, tolerating non-string scalars.

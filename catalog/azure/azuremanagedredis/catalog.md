@@ -1,6 +1,6 @@
 # Azure Managed Redis
 
-Deploys an Azure Managed Redis instance -- Azure's current-generation Redis service, built on Redis Enterprise. Azure is retiring classic Azure Cache for Redis; Managed Redis is the target for new Redis deployments and the home of the capabilities the classic service never had: Redis modules (search, JSON, probabilistic filters, time series), active multi-primary geo-replication, customer-managed-key encryption, and a keyless-by-default authentication posture. The component models the cluster and its default database in one spec: the SKU family/size ladder, high availability, engine behavior, modules, persistence, geo-group membership, managed identity, CMK, and network access. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Managed Redis instance -- Azure's current-generation Redis service, built on Redis Enterprise. Azure is retiring classic Azure Cache for Redis; Managed Redis is the target for new Redis deployments and the home of the capabilities the classic service never had: Redis modules (search, JSON, probabilistic filters, time series), active multi-primary geo-replication, customer-managed-key encryption, and a keyless-by-default authentication posture. The component models the cluster and its default database in one spec: the SKU family/size ladder, high availability, engine behavior, modules, persistence, geo-group membership, managed identity, CMK, and network access.
 
 ## What Gets Created
 
@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Managed Redis**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Keyless Balanced** preset in the [Presets](#presets) tab to pre-populate the production default posture.
+Open the deployment store, find **Azure Managed Redis**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Keyless Balanced Cache** preset in the [Presets](#presets) tab to pre-populate the production default posture.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureManagedRedis
 metadata:
   name: app-cache
@@ -56,7 +56,7 @@ spec:
 planton apply -f managed-redis.yaml
 ```
 
-This creates a 1 GB Balanced instance with high availability (Azure's default), TLS-only access on port 10000, OSS clustering, volatile-lru eviction, and NO access keys -- the keyless posture where clients authenticate with Entra tokens under access-policy-assignment grants.
+This creates a 1 GB Balanced instance with high availability (Azure's default), TLS-only access on port 10000, OSS clustering, volatile-lru eviction, and NO access keys -- the keyless posture where clients authenticate with Entra tokens under access-policy-assignment grants. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -131,11 +131,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Keyless production cache** -- A Balanced instance with high availability and no access keys; every client rides an Entra grant. Start from the **Keyless Balanced** preset.
+**Keyless production cache** -- A Balanced instance with high availability and no access keys; every client rides an Entra grant. Start from the **Keyless Balanced Cache** preset.
 
-**Search + JSON document store** -- RediSearch + RedisJSON on a Memory Optimized instance with Enterprise clustering and noeviction -- a queryable document store with Redis latency. Start from the **Search + JSON Enterprise** preset.
+**Search + JSON document store** -- RediSearch + RedisJSON on a Memory Optimized instance with Enterprise clustering and noeviction -- a queryable document store with Redis latency. Start from the **Search + JSON Document Store** preset.
 
-**Geo-replicated group member** -- One member of an active multi-primary group: BALANCED_B3+, a shared group name, no persistence. Deploy one per region, then link them with AzureManagedRedisGeoReplication. Start from the **Geo-Replicated** preset.
+**Geo-replicated group member** -- One member of an active multi-primary group: BALANCED_B3+, a shared group name, no persistence. Deploy one per region, then link them with AzureManagedRedisGeoReplication. Start from the **Geo-Replicated Group Member** preset.
 
 ## Works With
 

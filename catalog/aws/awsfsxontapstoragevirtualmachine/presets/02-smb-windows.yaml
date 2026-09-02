@@ -11,7 +11,9 @@ spec:
     value: fs-0123456789abcdef0
   name: svm_smb
   root_volume_security_style: NTFS
-  svm_admin_password: <REPLACE_WITH_8_TO_50_CHAR_PASSWORD>
+  # Passwords are sensitive: reference managed secrets ($secret/<slug>) --
+  # never plaintext values.
+  svm_admin_password: $secret/svm-admin-password
   active_directory_configuration:
     netbios_name: SVMSMB
     domain_name: corp.example.com
@@ -19,5 +21,5 @@ spec:
       - "10.0.0.1"
       - "10.0.0.2"
     username: svc_fsx_join
-    password: <REPLACE_WITH_AD_PASSWORD>
+    password: $secret/fsx-ad-join-password
     organizational_unit_distinguished_name: "OU=FSx,DC=corp,DC=example,DC=com"

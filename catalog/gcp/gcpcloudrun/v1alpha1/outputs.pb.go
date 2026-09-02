@@ -38,7 +38,11 @@ type GcpCloudRunStackOutputs struct {
 	Uid string `protobuf:"bytes,5,opt,name=uid,proto3" json:"uid,omitempty"`
 	// Every URL serving this service: the canonical run.app URL plus any
 	// deterministic URLs.
-	Urls          []string `protobuf:"bytes,6,rep,name=urls,proto3" json:"urls,omitempty"`
+	Urls []string `protobuf:"bytes,6,rep,name=urls,proto3" json:"urls,omitempty"`
+	// GCP project the service is created in — with location and service_name,
+	// the service's full provider-side coordinate
+	// (projects/{project}/locations/{location}/services/{name}).
+	ProjectId     string `protobuf:"bytes,7,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -115,18 +119,27 @@ func (x *GcpCloudRunStackOutputs) GetUrls() []string {
 	return nil
 }
 
+func (x *GcpCloudRunStackOutputs) GetProjectId() string {
+	if x != nil {
+		return x.ProjectId
+	}
+	return ""
+}
+
 var File_catalog_gcp_gcpcloudrun_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_gcp_gcpcloudrun_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	".catalog/gcp/gcpcloudrun/v1alpha1/outputs.proto\x12$dev.planton.gcp.gcpcloudrun.v1alpha1\"\xac\x01\n" +
+	".catalog/gcp/gcpcloudrun/v1alpha1/outputs.proto\x12$dev.planton.gcp.gcpcloudrun.v1alpha1\"\xcb\x01\n" +
 	"\x17GcpCloudRunStackOutputs\x12\x10\n" +
 	"\x03url\x18\x01 \x01(\tR\x03url\x12!\n" +
 	"\fservice_name\x18\x02 \x01(\tR\vserviceName\x12\x1a\n" +
 	"\brevision\x18\x03 \x01(\tR\brevision\x12\x1a\n" +
 	"\blocation\x18\x04 \x01(\tR\blocation\x12\x10\n" +
 	"\x03uid\x18\x05 \x01(\tR\x03uid\x12\x12\n" +
-	"\x04urls\x18\x06 \x03(\tR\x04urlsB\xc0\x02\n" +
+	"\x04urls\x18\x06 \x03(\tR\x04urls\x12\x1d\n" +
+	"\n" +
+	"project_id\x18\a \x01(\tR\tprojectIdB\xc0\x02\n" +
 	"(com.dev.planton.gcp.gcpcloudrun.v1alpha1B\fOutputsProtoP\x01ZQgithub.com/plantonhq/planton/catalog/gcp/gcpcloudrun/v1alpha1;gcpcloudrunv1alpha1\xa2\x02\x04DPGG\xaa\x02$Dev.Planton.Gcp.Gcpcloudrun.V1alpha1\xca\x02$Dev\\Planton\\Gcp\\Gcpcloudrun\\V1alpha1\xe2\x020Dev\\Planton\\Gcp\\Gcpcloudrun\\V1alpha1\\GPBMetadata\xea\x02(Dev::Planton::Gcp::Gcpcloudrun::V1alpha1b\x06proto3"
 
 var (

@@ -128,6 +128,16 @@ message AwsBedrockAgentCoreEvaluator {
     message: "evaluator must set exactly one of llm_as_a_judge or code_based"
     expression: "has(this.llm_as_a_judge) != has(this.code_based)"
   };
+
+  // CreateEvaluator rejects a SESSION-level judge whose instructions
+  // embed none of the level's allowed single-brace placeholders (the
+  // server names the set). Other levels carry their own sets; only the
+  // SESSION contract is server-evidenced, so only it is front-loaded.
+  option (buf.validate.message).cel = {
+    id: "session_judge_instructions_placeholder"
+    message: "SESSION-level llm_as_a_judge instructions must embed at least one placeholder: {available_tools}, {context}, {actual_tool_trajectory}, {expected_tool_trajectory}, {assertions}"
+    expression: "this.level != 'SESSION' || !has(this.llm_as_a_judge) || ['{available_tools}', '{context}', '{actual_tool_trajectory}', '{expected_tool_trajectory}', '{assertions}'].exists(p, this.llm_as_a_judge.instructions.contains(p))"
+  };
 }
 
 // AwsBedrockAgentCoreLlmJudge scores with a Bedrock model: the
@@ -135,8 +145,13 @@ message AwsBedrockAgentCoreEvaluator {
 // the allowed scores.
 message AwsBedrockAgentCoreLlmJudge {
   // The judge prompt - what to assess and how to decide the score.
-  // Treated as sensitive: prompts routinely embed proprietary evaluation
-  // criteria.
+  // AWS substitutes single-brace placeholders (e.g. "{context}") with
+  // run data, and each evaluator level REQUIRES at least one of its
+  // allowed placeholders: for SESSION the set is {available_tools},
+  // {context}, {actual_tool_trajectory}, {expected_tool_trajectory},
+  // {assertions} (CreateEvaluator names the level's set when it
+  // rejects). Treated as sensitive: prompts routinely embed
+  // proprietary evaluation criteria.
   string instructions = 1 [
     (buf.validate.field).required = true,
     (dev.planton.shared.options.sensitive) = true
@@ -151,10 +166,13 @@ message AwsBedrockAgentCoreLlmJudge {
 
 // AwsBedrockAgentCoreJudgeModel selects and tunes the judging model.
 message AwsBedrockAgentCoreJudgeModel {
-  // Bedrock model identifier the judge runs on. Accepts a foundation
-  // model ID ("anthropic.claude-3-5-sonnet-20241022-v2:0"), an inference
-  // profile ID, or a model ARN. The account must have access to the
-  // model in this region.
+  // Bedrock model identifier the judge runs on. Prefer a cross-region
+  // inference profile ID ("us.amazon.nova-2-lite-v1:0") - CreateEvaluator
+  // validates the judge model against the region's INFERENCE set and
+  // rejects models it cannot invoke there with "not available in region",
+  // even when the bare foundation-model ID is regionally listed (the
+  // harness model field has no such create-time gate). A model ARN also
+  // works; the account must have access to the model.
   string model_id = 1 [(buf.validate.field).string.min_len = 1];
 
   // Model-specific request fields passed through verbatim (the shape the
@@ -269,12 +287,14 @@ message AwsBedrockAgentCoreCodeEvaluator {
 // model under test, its tools, prompts, and execution environment.
 // Evaluation runs execute the harness and score the results.
 message AwsBedrockAgentCoreHarness {
-  // Harness name in AWS (1-40 characters). The for_each key on both
-  // engines and the key in the `harness_ids` output map. AWS exposes no
-  // rename - changing it replaces the harness.
+  // Harness name in AWS (a letter, then up to 39 letters/digits/
+  // underscores - hyphens are rejected; CreateHarness names this exact
+  // regex server-side). The for_each key on both engines and the key in
+  // the `harness_ids` output map. AWS exposes no rename - changing it
+  // replaces the harness.
   string name = 1 [(buf.validate.field).string = {
     min_len: 1
-    max_len: 40
+    pattern: "^[a-zA-Z][a-zA-Z0-9_]{0,39}$"
   }];
 
   // IAM role the harness assumes to run the agent under test (invoking
@@ -298,7 +318,9 @@ message AwsBedrockAgentCoreHarness {
   // Skill bundle paths loaded into the harness.
   repeated string skill_paths = 6 [(buf.validate.field).repeated.items.string.min_len = 1];
 
-  // AgentCore memory the harness reads/writes during runs.
+  // AgentCore memory the harness reads/writes during runs. Omitted =
+  // AWS auto-provisions a managed memory for the harness (the common
+  // case) - the harness still HAS a memory, it is just AWS-owned.
   AwsBedrockAgentCoreHarnessMemory memory = 7;
 
   // Environment variables injected into the harness runtime. Treated as

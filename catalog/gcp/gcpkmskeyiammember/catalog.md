@@ -1,6 +1,6 @@
-# KMS Key IAM Member on Google Cloud
+# GCP KMS Key IAM Member
 
-Grants one role, to one identity, on ONE Cloud KMS crypto key — the least-privilege unit of CMEK access control. Creating a key grants nobody anything: every consumer (a GCP service agent encrypting a bucket, a workload signing artifacts) needs an explicit role on the key, and this resource is exactly one such grant. Additive: it merges into the key's IAM policy without touching any other member's bindings, and removal subtracts only this exact (role, member) pair. Key-scoped beats ring- or project-scoped — a ring-level grant hands the member every key in the ring. Integrates with Planton's Provider Connections and composes through ValueFromRef with GcpKmsKey (`key_id` output), GcpServiceAccount (`member` output), and GcpIamCustomRole (`name` output).
+Grants one role, to one identity, on ONE Cloud KMS crypto key — the least-privilege unit of CMEK access control. Creating a key grants nobody anything: every consumer (a GCP service agent encrypting a bucket, a workload signing artifacts) needs an explicit role on the key, and this resource is exactly one such grant. Additive: it merges into the key's IAM policy without touching any other member's bindings, and removal subtracts only this exact (role, member) pair. Key-scoped beats ring- or project-scoped — a ring-level grant hands the member every key in the ring.
 
 ## What Gets Created
 
@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **KMS Key IAM Member on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the grant definition. Start from the **Storage CMEK Grant** preset in the [Presets](#presets) tab for the most common shape.
+Open the deployment store, find **GCP KMS Key IAM Member**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the grant definition. Start from the **Cloud Storage CMEK Grant** preset in the [Presets](#presets) tab for the most common shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpKmsKeyIamMember
 metadata:
   name: gcs-agent-cmek-grant
@@ -98,24 +98,17 @@ These are the most important decisions when configuring a grant. Explore the ful
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains the grant's post-resolution facts:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `crypto_key_id` | The key after reference resolution | Audit tooling, key-access reviews |
-| `role` | The role after reference resolution | Audit tooling |
-| `member` | The member after reference resolution | Audit tooling |
-| `etag` | The key IAM policy fingerprint when this grant last merged | Drift detection |
+This component has no outputs a downstream Cloud Resource would consume: `status.outputs` records the grant's post-resolution facts — the (`crypto_key_id`, `role`, `member`) triple after any references were resolved, plus the key IAM policy `etag` at the moment this grant merged. They exist for audit and drift review, not for ValueFromRef wiring.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Storage CMEK grant** -- the GCS service agent gets encrypter/decrypter on the bucket's key; the grant every CMEK bucket needs. Start from the **Storage CMEK Grant** preset.
+**Storage CMEK grant** -- the GCS service agent gets encrypter/decrypter on the bucket's key; the grant every CMEK bucket needs. Start from the **Cloud Storage CMEK Grant** preset.
 
-**Workload key user** -- an application's service account composed by reference for application-level encryption or signing. Start from the **Workload Key User** preset.
+**Workload key user** -- an application's service account composed by reference for application-level encryption or signing. Start from the **Workload Key User Grant** preset.
 
-**Conditional key access** -- a human identity with a time-boxed condition; break-glass access that removes itself. Start from the **Conditional Key Access** preset.
+**Conditional key access** -- a human identity with a time-boxed condition; break-glass access that removes itself. Start from the **Conditional Key Access (Time-Bound)** preset.
 
 ## Works With
 

@@ -1,65 +1,34 @@
 # Cloudflare Zero Trust List
 
-A reusable named set of values -- domains, IPs, URLs, emails, serial numbers, and kin -- that Gateway policies and device-posture rules reference by ID. The list type is immutable: changing it replaces the list and breaks every policy that referenced the old ID.
+Deploys a reusable Cloudflare Zero Trust list: a named set of values — domains, IPs, URLs, emails, device serial numbers, and kin — that Gateway policies and device-posture rules reference by ID instead of repeating the values inline. Centralizing values in a list lets many policies share one source of truth that evolves in one place. The list type is immutable at Cloudflare: changing it replaces the list with a new ID and breaks every policy that referenced the old one.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Zero Trust list** -- one `cloudflare_zero_trust_list` on the account, with its items as a set (order is not preserved)
+- **Zero Trust List** — a `cloudflare_zero_trust_list` on the account, with its items as a set (order is not significant and is not preserved)
 
-## Prerequisites
+## Before You Deploy
 
-- **A Cloudflare account with Zero Trust enabled**
-- **A Cloudflare API token** with Account → Zero Trust → Edit
-- **A Gateway policy (or posture rule)** that will reference `list_id` -- the list does nothing on its own
+### Planton Setup
 
-## Quick Start
+- **Cloudflare Provider Connection** — an active connection in the Connect module with a Cloudflare API token carrying Account → Zero Trust → Edit. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline API token authentication.
 
-A domain list two Gateway policies can share:
+### Cloudflare Account
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareZeroTrustList
-metadata:
-  name: blocked-domains
-  org: acme-corp
-  env: prod
-spec:
-  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  name: blocked-domains
-  type: DOMAIN
-  items:
-    - value: gambling.example.com
-    - value: casino.example.net
-```
+- **Zero Trust enabled** — the account must have completed Cloudflare Zero Trust onboarding (the team-name step).
+- **A consumer in mind** — the list does nothing on its own; a Gateway policy `traffic`/`identity` expression or a posture rule's `input.id` gives it effect.
 
-```shell
-planton apply -f zt-list.yaml
-```
+## Deploy
 
-Reference `status.outputs.list_id` from a Gateway policy `traffic` expression. Do not use `CloudflareList` here -- that is the older Ruleset-family list.
+### Console
 
-## Configuration Reference
+Open the deployment store, find **Cloudflare Zero Trust List**, and click **Deploy**. The creation wizard walks you through the owning account, the list type, and the item set. Start from the **Domain list** preset in the [Presets](#presets) tab.
 
-### Required Fields
+### CLI
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `accountId` | string | Owning account. | Required. 32-character hex. |
-| `name` | string | Display name. | Required, min length 1. |
-| `type` | string | What kind of values the items carry. Immutable at Cloudflare. | Required. One of `SERIAL`, `URL`, `DOMAIN`, `EMAIL`, `IP`, `CATEGORY`, `LOCATION`, `DEVICE`, `AAGUID`. Use the uppercase form. |
-
-### Optional Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `description` | string | unset | Purpose. |
-| `items` | object[] | empty | Set of `{value, description}`. `value` is required. Order is not significant and is not preserved. URL-type values are normalized by the API (a known plan-drift source). |
-
-## Examples
-
-### Domain blocklist
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -75,53 +44,55 @@ spec:
   description: Domains Gateway policies block for all users
   items:
     - value: gambling.example.com
-      description: policy-blocked domain
     - value: casino.example.net
 ```
 
-### IP allowlist
-
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareZeroTrustList
-metadata:
-  name: corp-cidrs
-  org: acme-corp
-  env: prod
-spec:
-  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  name: corp-cidrs
-  type: IP
-  items:
-    - value: 203.0.113.0/24
-    - value: 198.51.100.10
+```shell
+planton apply -f zt-list.yaml
 ```
 
-### Email allowlist
+This creates a DOMAIN list that any number of Gateway DNS policies can reference by its `list_id`. A Stack Job tracks the provisioning in real time.
 
-```yaml
-apiVersion: cloudflare.planton.dev/v1alpha1
-kind: CloudflareZeroTrustList
-metadata:
-  name: contractor-emails
-  org: acme-corp
-  env: prod
-spec:
-  accountId: "0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d"
-  name: contractor-emails
-  type: EMAIL
-  items:
-    - value: ada@contractor.example.com
-    - value: linus@contractor.example.com
-```
+## Key Configuration
 
-## Stack Outputs
+These are the most important decisions when configuring a Zero Trust list. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `list_id` | string | UUID referenced by Gateway policies and posture rules |
+**Type is a one-way door** — a DOMAIN list cannot become an IP list in place; Cloudflare mints a new list with a new ID, and every policy or posture rule referencing the old `list_id` now points at a deleted object. The discipline: create the new list, retarget the consumers, then destroy the old one. Use the canonical uppercase form (`DOMAIN`, `IP`, `EMAIL`, …) — the API stores type uppercase, and lowercase input round-trips as permanent plan drift.
 
-## Related Components
+**Items are a set** — order is not significant and is not preserved; two applies that only shuffle item order are the same list. Every item requires a `value` here even though the API tolerates value-less entries — an entry with only a description matches nothing and can only be a mistake.
 
-- [Cloudflare Zero Trust Gateway Policy](/docs/catalog/cloudflare/cloudflarezerotrustgatewaypolicy) -- references this list from `traffic` / `identity`
-- [Cloudflare List](/docs/catalog/cloudflare/cloudflarelist) -- the older Ruleset-family list; do not mix the two
+**URL-type lists drift at provider v5.23.0** — the API normalizes URL values (trailing slashes, scheme casing) and the provider does not, so a URL list shows a perpetual plan diff. Prefer DOMAIN or IP lists for managed configuration; if you need URL, write already-normalized values and expect the diff until the provider catches up.
+
+**This is not CloudflareList** — `CloudflareList` is the older account-level list family consumed by Rulesets. This kind is the Zero Trust/Gateway list. They do not share IDs, APIs, or import formats: a Gateway policy cannot reference a Ruleset list, and a Ruleset cannot reference a Zero Trust list.
+
+**Destroy breaks referencers** — destroy is a real delete, and policies referencing `list_id` start failing their list lookup. Update or delete those policies first. Emptying `items` while keeping the list is the reversible alternative when the ID must stay stable.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+This component has no foreign key dependencies. It is a leaf resource other Zero Trust kinds reference by ID.
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `list_id` | The UUID of the created list | Gateway policy `traffic`/`identity` expressions; posture rule `input.id` for serial-number and client-ID checks |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Domain list** — a shared blocklist or allowlist of hostnames that two or more Gateway DNS policies match on; the usual first Zero Trust list on an account. Start from the **Domain list** preset.
+
+**IP list** — corporate egress CIDRs to allowlist, or known-bad addresses to block, shared across HTTP and L4 policies. Start from the **IP list** preset.
+
+**Device inventory list** — a SERIAL or DEVICE list of managed hardware identifiers, referenced from a posture rule's `input.id` so only inventoried devices pass the check.
+
+## Works With
+
+- [**Cloudflare Zero Trust Gateway Policy**](/cloud-catalog/cloudflare-zero-trust-gateway-policy) — matches this list from `traffic` or `identity` expressions.
+- [**Cloudflare Zero Trust Device Posture Rule**](/cloud-catalog/cloudflare-zero-trust-device-posture-rule) — serial-number and unique-client-ID checks read a list of device identifiers via `input.id`.
+- [**Cloudflare List**](/cloud-catalog/cloudflare-list) — the older Ruleset-family list; a different object with different consumers. Do not mix the two.

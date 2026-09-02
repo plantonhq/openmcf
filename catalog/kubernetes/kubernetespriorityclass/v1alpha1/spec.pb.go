@@ -82,7 +82,7 @@ func (KubernetesPriorityClassSpec_KubernetesPriorityClassPreemptionPolicy) EnumD
 }
 
 // *
-// **KubernetesPriorityClassSpec** defines one rung of the cluster's workload
+// **KubernetesPriorityClassSpec** defines one step of the cluster's workload
 // importance ladder. Pods reference the class by name (the shared workload
 // pod spec's `priority_class_name`); the scheduler places higher-priority
 // pods first when capacity is scarce and — unless preemption is disabled —

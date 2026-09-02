@@ -1,6 +1,6 @@
-# IAM Custom Role on Google Cloud
+# GCP IAM Custom Role
 
-Defines a project-scoped IAM custom role — a named, reusable bundle of permissions tailored to exactly what a workload or team needs, instead of granting one of Google's broad predefined roles. The role is the least-privilege building block: define the bundle once, grant it with GcpProjectIamMember or GcpServiceAccountIamMember (both reference this role's `name` output), and every permission edit propagates to every grant immediately. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
+Defines a project-scoped IAM custom role — a named, reusable bundle of permissions tailored to exactly what a workload or team needs, instead of granting one of Google's broad predefined roles. The role is the least-privilege building block: define the bundle once, grant it with GcpProjectIamMember or GcpServiceAccountIamMember (both reference this role's `name` output), and every permission edit propagates to every grant immediately. The `roleId` and project are immutable — changing either destroys and recreates the role, breaking every grant that references the old name.
 
 ## What Gets Created
 
@@ -24,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **IAM Custom Role on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Workload Least Privilege** preset in the [Presets](#presets) tab to pre-populate a minimal permission bundle.
+Open the deployment store, find **GCP IAM Custom Role**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Workload Least-Privilege Role** preset in the [Presets](#presets) tab to pre-populate a minimal permission bundle.
 
 ### CLI
 
@@ -79,7 +79,7 @@ These are the most important decisions when configuring a custom role. Explore t
 
 **Launch stage** -- `stage` is a lifecycle label (leave it unset and GCP applies GA, the right label for production). DISABLED is the reversible IAM kill switch: the role stays defined while every grant of it is rejected.
 
-**Soft-delete semantics** -- GCP retains deleted custom roles (and reserves their IDs) for up to 14 days. Creating a role with a soft-deleted ID undeletes and updates it in place; the `deleted` output reports the state.
+**Soft-delete semantics** -- GCP retains deleted custom roles (and reserves their IDs) for up to 14 days. Creating a role with a soft-deleted ID undeletes and updates it in place; the `deleted` output reports the state. Because deletion is soft, `deletionPolicy: DELETE` and `ABANDON` differ less here than on hard-delete resources — ABANDON keeps every binding working, while DELETE makes bindings stop granting access; `PREVENT` protects a role that live bindings depend on.
 
 ## Outputs and Dependencies
 
@@ -103,11 +103,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Workload least privilege** -- A minimal bundle scoped to exactly what one workload calls (e.g. write-only log sink access). Start from the **Workload Least Privilege** preset.
+**Workload least privilege** -- A minimal bundle scoped to exactly what one workload calls (e.g. write-only log sink access). Start from the **Workload Least-Privilege Role** preset.
 
-**Read-only auditor** -- The `*.get` / `*.list` / `*.getIamPolicy` family for audit dashboards and access reviews, with no mutating verbs. Start from the **Readonly Auditor** preset.
+**Read-only auditor** -- The `*.get` / `*.list` / `*.getIamPolicy` family for audit dashboards and access reviews, with no mutating verbs. Start from the **Read-Only Auditor Role** preset.
 
-**CI/CD deployer** -- Deploys new Cloud Run revisions from CI/CD without broader project access. Start from the **CI/CD Deployer** preset.
+**CI/CD deployer** -- Deploys new Cloud Run revisions from CI/CD without broader project access. Start from the **CI/CD Deployer Role** preset.
 
 ## Works With
 

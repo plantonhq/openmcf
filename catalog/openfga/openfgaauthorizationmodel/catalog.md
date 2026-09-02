@@ -1,13 +1,13 @@
 # OpenFGA Authorization Model
 
-Deploys an authorization model into an existing OpenFGA store. The model defines types, relations, and access rules that govern how permission checks are evaluated. Models can be specified in DSL format (recommended) or JSON format, and are immutable -- each update creates a new model version with a new ID. Integrates with Planton's Provider Connections for OpenFGA credential management and ValueFromRef for store dependency wiring.
+Deploys an authorization model into an existing OpenFGA store -- the schema of types, relations, and conditions that determines what relationship tuples mean and how permission checks are computed. Models are immutable: every change mints a new model version with a new ID, previous versions are retained, and existing tuples remain valid across versions as long as the types and relations they reference are still defined. Write the model in the OpenFGA DSL (recommended) or raw JSON -- exactly one of the two.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Authorization Model Document** -- when `modelDsl` is provided, a data source converts the human-readable DSL to JSON for the OpenFGA API
-- **Authorization Model** -- an `openfga_authorization_model` resource containing the type definitions, relations, and conditions for fine-grained access control
+- **Authorization Model** -- an `openfga_authorization_model` resource in the target store, containing the type definitions, relations, and conditions. Because models are immutable, each apply that changes the definition creates a new model version (new ID) rather than updating in place.
+- **DSL-to-JSON conversion** -- created only when `modelDsl` is set: an `openfga_authorization_model_document` data source converts the human-readable DSL into the JSON the OpenFGA API accepts.
 
 ## Before You Deploy
 
@@ -19,20 +19,20 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### OpenFGA Server
 
 - **A running OpenFGA instance** -- self-hosted or cloud-hosted, reachable from the Planton Runner or provisioner environment.
-- **An existing OpenFGA store** -- provide the store ID directly or reference an OpenFgaStore Cloud Resource via ValueFromRef.
+- **An existing OpenFGA store** -- provide the store ID directly in `storeId` or reference an OpenFgaStore Cloud Resource via ValueFromRef.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **OpenFGA Authorization Model**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **RBAC Model (DSL)** preset in the [Presets](#presets) tab for a common role-based access control pattern.
+Open the deployment store, find **OpenFGA Authorization Model**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the target store, and the model definition. Start from the **RBAC Authorization Model (DSL)** preset in the [Presets](#presets) tab for the proven viewer/editor/owner-with-groups pattern.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: openfga.planton.dev/v1
+apiVersion: openfga.planton.dev/v1alpha1
 kind: OpenFgaAuthorizationModel
 metadata:
   name: rbac-model
@@ -40,7 +40,7 @@ metadata:
   env: prod
 spec:
   storeId:
-    value: "01HXYZ..."
+    value: "01HXYZABCDEF"
   modelDsl: |
     model
       schema 1.1
@@ -58,7 +58,7 @@ spec:
 planton apply -f openfga-authz-model.yaml
 ```
 
-This creates an authorization model with a `user` type and a `document` type that has viewer, editor, and owner relations. A Stack Job tracks the provisioning in real time.
+This creates an authorization model with a `user` type and a `document` type carrying viewer, editor, and owner relations, and surfaces the new model version's ID in `status.outputs`. OpenFGA ships only a Terraform provider, so this component provisions with Terraform/OpenTofu. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -79,13 +79,13 @@ The InfraPipeline resolves the dependency graph, deploys the store first, then c
 
 These are the most important decisions when configuring an OpenFGA authorization model. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Model format** -- Choose between `modelDsl` (recommended) and `modelJson`. The DSL format is more human-readable and is the format used in OpenFGA documentation. The IaC module automatically converts DSL to JSON during deployment. Exactly one of the two must be specified.
+**Model format** -- Exactly one of `modelDsl` and `modelJson` must be set. Prefer the DSL: it is the format OpenFGA's own documentation and tooling use, and the IaC module converts it to JSON automatically at deploy time. Reach for `modelJson` only when migrating existing JSON models.
 
-**Store ID** -- The `storeId` field identifies which OpenFGA store holds this model. Provide a direct value or reference an OpenFgaStore via ValueFromRef. The store ID is immutable -- changing it requires replacing the model.
+**Model immutability** -- Every change to the definition creates a new model version with a new ID; the previous version is retained on the server. Existing relationship tuples remain valid across versions as long as the types and relations they reference are still defined -- so additive changes (new types, new relations) are safe, while removing a type or relation that live tuples reference changes what those tuples mean at check time.
 
-**Model immutability** -- Authorization models are immutable in OpenFGA. Each change creates a new model version with a new ID. Existing relationship tuples remain valid across model versions as long as the types and relations they reference are still defined.
+**Store binding** -- `storeId` is immutable; changing it replaces the model resource. Provide a direct value or a ValueFromRef to an OpenFgaStore -- the reference resolves from the store's `status.outputs.id`.
 
-**Type design** -- Define types that map to your application's entities (e.g., `user`, `group`, `document`, `folder`). Each type can have relations that control access (e.g., `viewer`, `editor`, `owner`). Use usersets like `group#member` to enable group-based inheritance.
+**Type design** -- Define types that map to your application's entities and give each the relations that control access. Usersets like `group#member` grant a relation to every member of a group; `viewer from parent` cascades permissions down a folder hierarchy. Both patterns are implemented by the shipped presets, which are the fastest way to start from a known-good model.
 
 ## Outputs and Dependencies
 
@@ -101,16 +101,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `id` | Unique identifier of the authorization model version | Referenced by OpenFGA Relationship Tuple components via `authorizationModelId` |
+| `id` | Version-specific model identifier (a new one per model change) | `authorizationModelId` on OpenFGA Relationship Tuple resources, pinning tuples to a known model version |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**RBAC model** -- Defines user, group, and document types with viewer/editor/owner roles and group-based access inheritance. Groups use a `member` relation, and documents grant access to `group#member` usersets. This is the most common starting pattern for applications that need role-based access control. Start from the **RBAC Model (DSL)** preset.
+**RBAC with groups** -- User, group, and document types where documents grant viewer/editor to `group#member` usersets: assign permissions to groups, and membership tuples do the rest. The most common starting model for applications that need role-based access control. Start from the **RBAC Authorization Model (DSL)** preset.
 
-**Hierarchical document access** -- Adds folder and document types with parent relationships so that viewer and editor permissions cascade from folders to their contents. Suitable for file-management and content-management systems with nested permission hierarchies. Start from the **Hierarchical Document Access Model (DSL)** preset.
+**Hierarchical document access** -- Folder and document types with `parent` relations, where `viewer from parent` and `editor from parent` cascade access down the tree (Google Drive-style). Ownership deliberately does not inherit -- `owner` is always a direct grant. Start from the **Hierarchical Document Access Model (DSL)** preset.
 
 ## Works With
 
-- [**OpenFGA Store**](/cloud-catalog/openfga-store) -- provides the store where authorization models are created
+- [**OpenFGA Store**](/cloud-catalog/openfga-store) -- the store the model is created in, wired through `storeId`
+- [**OpenFGA Relationship Tuple**](/cloud-catalog/openfga-relationship-tuple) -- the authorization data evaluated against this model; tuples can pin to a specific model version via its `id` output

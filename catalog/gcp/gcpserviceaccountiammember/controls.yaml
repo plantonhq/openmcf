@@ -43,6 +43,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The grant carries no authentication path to disable. The impersonation and token-creator grants it makes are the keyless replacement for exported service-account keys, but retiring those keys happens on the GcpServiceAccount resource, not here.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

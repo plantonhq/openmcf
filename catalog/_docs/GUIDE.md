@@ -59,6 +59,13 @@ indexes are the authoritative list.
   [patterns/](../_patterns/README.md).
 - Per-kind judgment lives in `GUIDE.md` beside each kind's `reference.md`
   (the index tables' Guide column shows which kinds have one).
+- Verified facts about money, posture, and access live beside each kind as
+  machine-checked sidecars — `cost.yaml`, `controls.yaml`,
+  `iac/permissions.yaml` — with the central control catalog and framework
+  crosswalks in `../_compliance/` and the pinned price books, derivation
+  rules, and generated estimates in `../_pricing/`. Read those files for
+  any cost, control-posture, or permissions question; never restate their
+  numbers or claims from memory.
 
 ## This page is contributed wisdom
 

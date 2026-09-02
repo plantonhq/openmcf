@@ -43,6 +43,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The assignment exposes no authentication path of its own to strengthen or disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Creation and deletion of assignments land in the Azure Activity Log automatically as subscription-level posture; the spec's description field aids later access reviews but no logging toggle exists on this resource.

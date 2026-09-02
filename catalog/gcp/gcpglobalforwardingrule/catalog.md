@@ -1,12 +1,13 @@
-# Global Forwarding Rule on Google Cloud
+# GCP Global Forwarding Rule
 
-Deploys a global Compute Engine forwarding rule — the VIP node of a global load balancer. It binds an IP address and port to a target proxy (HTTP or HTTPS), which is where client traffic enters. With the load-balancing scheme set to `NONE`, the same resource becomes a Private Service Connect entry point for Google APIs (`all-apis` / `vpc-sc`) or a producer service attachment. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to projects, addresses, networks, and target proxies.
+Deploys a global Compute Engine forwarding rule — the VIP node of a global load balancer. It binds an IP address and port to a target proxy (HTTP or HTTPS), which is where client traffic enters. With the load-balancing scheme set to `NONE`, the same resource becomes a Private Service Connect entry point for Google APIs (`all-apis` / `vpc-sc`) or a producer service attachment. The target is mutable in place — repointing a live VIP at a new proxy is GCP's zero-downtime frontend swap — while the IP, protocol, port range, and scheme are immutable.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Compute Engine Global Forwarding Rule** -- bound to the configured target, IP address, protocol, port range, and load-balancing scheme
+- **Compute Engine API enablement** -- `compute.googleapis.com` enabled in the target project (never disabled on destroy)
 
 ## Before You Deploy
 
@@ -18,7 +19,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the forwarding rule will be created.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
 - **A target proxy** (GcpTargetHttpsProxy or GcpTargetHttpProxy) for application frontends, or a reserved address for production VIPs.
 - For PSC: a VPC network and an internal address reserved for the frontend.
 
@@ -26,7 +26,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Global Forwarding Rule on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTPS Frontend** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Global Forwarding Rule**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **HTTPS Frontend VIP** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -54,7 +54,7 @@ spec:
 planton apply -f global-forwarding-rule.yaml
 ```
 
-This creates the serving half of a production frontend: a reserved static IP on port 443 pointing at the HTTPS proxy.
+This creates the serving half of a production frontend: a reserved static IP on port 443 pointing at the HTTPS proxy. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -109,8 +109,7 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 |--------|-------------|----------------------|
 | `ip_address` | The VIP literal DNS points at | DNS A/AAAA records, inventory |
 | `self_link` | Self-link URI of the forwarding rule | Audit, reverse references |
-| `forwarding_rule_name` | Name as it exists in GCP | Fleet inventory |
-| `forwarding_rule_id` | Server-assigned numeric ID | Diagnostics |
+| `forwarding_rule_name` | Name as it exists in GCP | gcloud commands, log filters |
 | `psc_connection_id` | PSC connection id (scheme NONE only) | PSC diagnostics |
 | `psc_connection_status` | PENDING / ACCEPTED / REJECTED / CLOSED | PSC readiness |
 
@@ -118,11 +117,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**HTTPS frontend** -- Port 443 → HTTPS proxy on EXTERNAL_MANAGED. Start from the **HTTPS Frontend** preset.
+**HTTPS frontend** -- Port 443 → HTTPS proxy on EXTERNAL_MANAGED. Start from the **HTTPS Frontend VIP** preset.
 
-**HTTP redirect frontend** -- Port 80 → HTTP proxy (redirect URL map) sharing the same reserved IP. Start from the **HTTP Redirect Frontend** preset.
+**HTTP redirect frontend** -- Port 80 → HTTP proxy (redirect URL map) sharing the same reserved IP. Start from the **HTTP Redirect VIP (Shared IP)** preset.
 
-**PSC Google APIs** -- Scheme NONE with target `all-apis` or `vpc-sc`. Start from the **PSC Google APIs** preset.
+**PSC Google APIs** -- Scheme NONE with target `all-apis` or `vpc-sc`. Start from the **Private Service Connect to Google APIs** preset.
 
 ## Works With
 

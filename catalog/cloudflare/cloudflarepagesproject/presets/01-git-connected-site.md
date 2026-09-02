@@ -1,4 +1,4 @@
-# Preset: Git-Connected Site
+# Git-Connected Site
 
 A Pages project connected to a GitHub (or GitLab) repository. Cloudflare runs
 your build and creates a new deployment on every push — Cloudflare is the CI.

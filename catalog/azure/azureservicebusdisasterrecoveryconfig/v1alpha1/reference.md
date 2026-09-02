@@ -69,11 +69,18 @@ spec:
 The alias name -- becomes the failover-stable DNS name
 `{alias_name}.servicebus.windows.net`, so it shares the namespace
 name rules and uniqueness scope (globally unique; it cannot collide
-with any existing namespace name either).
+with any existing namespace name either): 6-50 characters of
+letters, numbers, and hyphens, starting with a letter and ending
+with a letter or number, and never ending in Azure's reserved
+"-sb" / "-mgmt" suffixes. The rules below transcribe the namespace
+kind's own name contract so a bad alias fails at authoring time,
+not at Azure apply time.
 
 **ForceNew**: changing the alias replaces the pairing.
 
-- rule: {"required":true,"string":{"minLen":"1","maxLen":"50"}}
+- rule: alias_name must be 6-50 characters of letters, numbers, and hyphens, starting with a letter and ending with a letter or number (it shares the namespace name rules)
+- rule: alias_name cannot end with '-sb' or '-mgmt' -- Azure reserves these suffixes for its own service endpoints
+- rule: {"required":true,"string":{"minLen":"6","maxLen":"50"}}
 
 ### spec.primaryNamespaceId
 

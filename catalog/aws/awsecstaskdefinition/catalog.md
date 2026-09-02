@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS ECS Task Definition**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web App** preset in the [Presets](#presets) tab for a single-container Fargate service blueprint.
+Open the deployment store, find **AWS ECS Task Definition**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Web Application** preset in the [Presets](#presets) tab for a single-container Fargate service blueprint.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcsTaskDefinition
 metadata:
   name: api
@@ -77,6 +77,32 @@ planton apply -f task-definition.yaml
 
 This registers revision 1 of the `api` family with a health-checked container, a CloudWatch log group, and a secret injected at task start. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the task definition deploys alongside its IAM roles in one chart, wire the references via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  requiresCompatibilities:
+    - FARGATE
+  cpu: 512
+  memory: 1024
+  networkMode: awsvpc
+  executionRole:
+    valueFrom:
+      kind: AwsIamRole
+      name: ecs-execution
+      fieldPath: status.outputs.role_arn
+  taskRole:
+    valueFrom:
+      kind: AwsIamRole
+      name: api-task-role
+      fieldPath: status.outputs.role_arn
+```
+
+The InfraPipeline resolves the dependency graph, deploys the roles first, then registers the task definition with the resolved ARNs.
+
 ## Key Configuration
 
 These are the most important decisions when configuring a task definition. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -101,18 +127,17 @@ These are the most important decisions when configuring a task definition. Explo
 
 ### What This Component Consumes
 
-| Field | References | Via |
-|-------|-----------|-----|
-| `executionRole` | AwsIamRole | `status.outputs.role_arn` |
-| `taskRole` | AwsIamRole | `status.outputs.role_arn` |
-| `logging.logGroup` | AwsCloudwatchLogGroup | `status.outputs.log_group_name` |
-| `volumes[].efs.fileSystemId` | AwsElasticFileSystem | `status.outputs.file_system_id` |
-| `volumes[].efs.accessPointId` | AwsEfsAccessPoint | `status.outputs.access_point_id` |
-| `volumes[].s3files.fileSystemArn` | AwsS3Bucket | `status.outputs.bucket_arn` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsIamRole** | `executionRole`, `taskRole` | `status.outputs.role_arn` |
+| **AwsCloudwatchLogGroup** | `logging.logGroup` | `status.outputs.log_group_name` |
+| **AwsElasticFileSystem** | `volumes[].efs.fileSystemId` | `status.outputs.file_system_id` |
+| **AwsEfsAccessPoint** | `volumes[].efs.accessPointId` | `status.outputs.access_point_id` |
+| **AwsS3Bucket** | `volumes[].s3files.fileSystemArn` | `status.outputs.bucket_arn` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
@@ -127,17 +152,19 @@ After provisioning, `status.outputs` contains:
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Web application** -- one container, one HTTP port, health-checked, default CloudWatch logging. Start from the **Web App** preset.
+**Web application** -- one container, one HTTP port, health-checked, default CloudWatch logging. Start from the **Web Application** preset.
 
-**App with an OpenTelemetry sidecar** -- the application container plus an OTel collector sidecar, ordered with `depends_on` so telemetry is receiving before the app emits. Start from the **App with OTel Sidecar** preset.
+**App with an OpenTelemetry sidecar** -- the application container plus an OTel collector sidecar, ordered with `depends_on` so telemetry is receiving before the app emits. Start from the **Application with OpenTelemetry Sidecar** preset.
 
-**ARM64 worker** -- a queue-consumer on Graviton (~20% cheaper per vCPU on Fargate), no ports at all. Start from the **ARM64 Worker** preset.
+**ARM64 worker** -- a queue-consumer on Graviton, no ports at all. Start from the **ARM64 Background Worker** preset.
+
+**Launch-time EBS volume** -- a `configureAtLaunch` volume declared by name only; the AwsEcsService running the task attaches a fresh managed-EBS volume per task. Start from the **Launch-Time EBS Volume Task** preset.
 
 ## Works With
 
-- **AwsEcsService** -- runs this blueprint as a steady-state service, referencing `task_definition_arn`; the service picks up each new revision on its next deployment.
-- **AwsEcsCluster** -- the compute namespace the service places tasks into.
-- **AwsIamRole** -- the execution and task roles, referenced by `executionRole` / `taskRole`.
-- **AwsCloudwatchLogGroup** -- an existing shared log group, referenced by `logging.logGroup`.
-- **AwsElasticFileSystem** / **AwsEfsAccessPoint** -- durable shared volumes, referenced per volume by `volumes[].efs.fileSystemId` and (recommended) `volumes[].efs.accessPointId`.
-- **AwsLbTargetGroup** -- receives traffic for the container/port a service exposes from this blueprint.
+- [**AWS ECS Service**](/cloud-catalog/aws-ecs-service) -- runs this blueprint as a steady-state service, referencing `task_definition_arn`; the service picks up each new revision on its next deployment.
+- [**AWS ECS Cluster**](/cloud-catalog/aws-ecs-cluster) -- the compute namespace the service places tasks into.
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the execution and task roles, referenced by `executionRole` / `taskRole`.
+- [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- an existing shared log group, referenced by `logging.logGroup`.
+- [**AWS Elastic File System**](/cloud-catalog/aws-elastic-file-system) and [**AWS EFS Access Point**](/cloud-catalog/aws-efs-access-point) -- durable shared volumes, referenced per volume by `volumes[].efs.fileSystemId` and (recommended) `volumes[].efs.accessPointId`.
+- [**AWS LB Target Group**](/cloud-catalog/aws-lb-target-group) -- receives traffic for the container/port a service exposes from this blueprint.

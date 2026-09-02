@@ -1,0 +1,34 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file replays the component's presets through its cost derivation
+# (../derivations/, the machine-executable value-to-quantity rules) against
+# the provider's price book (../pricebook/, pinned unit prices with source
+# URL and retrieval date): every line cost and preset total is computed
+# exactly, lines are ordered largest cost first, and the catalog-data
+# conformance gate re-verifies all arithmetic. A preset the derivation
+# refuses to price (a rate delegated to a referenced resource) carries no
+# entry here -- absence is the honest state, never a guessed number.
+# Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: digitaloceancontainerregistry
+spec:
+  presets:
+    - preset: 01-professional
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Container Registry
+          sku_meter: registry subscription
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: the professional tier bills one flat monthly subscription (unlimited repositories, 100 GiB of storage included) from creation to deletion
+          list_unit_price: "20.00"
+          price_source: https://www.digitalocean.com/pricing/container-registry
+          retrieved_on: "2026-08-22"
+          list_cost: "20.0000"
+      total_list_cost: "20.0000"
+      exclusions:
+        - storage beyond the tier's included allowance (5 GiB basic, 100 GiB professional) bills 0.02 USD/GiB/mo, following image push and garbage-collection behavior
+      notes: The starter tier is free (1 repository, 500 MiB, no overage option) -- a starter manifest correctly produces an empty estimate. Docker credentials are free at any scope and expiry. Priced at DigitalOcean's global Container Registry rates -- the pricing page carries no region dimension; the optional region field moves where image data lives, not the rate.

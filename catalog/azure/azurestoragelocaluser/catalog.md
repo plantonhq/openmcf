@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Storage Local User**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Partner Key Auth** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Storage Local User**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Partner SFTP User with Key Authentication** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureStorageLocalUser
 metadata:
   name: partner-acme-sftp
@@ -47,7 +47,7 @@ spec:
   userName: partneracme
   sshKeyEnabled: true
   sshAuthorizedKeys:
-    - key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILx… partner-laptop
+    - key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5ExampleDocsOnlyPublicKey0000000000000000000 partner-laptop
       description: partner-acme laptop
   homeDirectory: partner-inbound/incoming
   permissionScopes:
@@ -66,11 +66,33 @@ spec:
 planton apply -f local-user.yaml
 ```
 
-This creates a key-authenticated partner scoped to one container -- the partner connects as `{account}.partneracme` on port 22 and lands in its own inbound directory.
+This creates a key-authenticated partner scoped to one container -- the partner connects as `{account}.partneracme` on port 22 and lands in its own inbound directory. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the ValueFromRefs above wire the user to its account and its scoped container: the InfraPipeline resolves the dependency graph and deploys in order.
+When the account, container, and user deploy in the same InfraChart, wire both references with ValueFromRef:
+
+```yaml
+spec:
+  storageAccountId:
+    valueFrom:
+      kind: AzureStorageAccount
+      name: exchange-account
+      fieldPath: status.outputs.storage_account_id
+  userName: partneracme
+  permissionScopes:
+    - service: BLOB
+      resourceName:
+        valueFrom:
+          kind: AzureStorageContainer
+          name: partner-inbound
+          fieldPath: status.outputs.container_name
+      write: true
+      list: true
+      create: true
+```
+
+The InfraPipeline resolves the dependency graph, deploys the account and container first, then provisions the user with the resolved values.
 
 ## Key Configuration
 
@@ -101,19 +123,19 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `sftp_username` | The full login: `{account-name}.{user-name}` | What the partner types as the SFTP username |
-| `local_user_id` | Azure Resource Manager ID of the user | Diagnostics and policy audits |
-| `user_name` | The user's name within the account | Cross-references |
 | `sid` | The user's Security Identifier (SECRET-bearing) | Azure Files NTFS-style ACLs reference principals by SID |
 | `password` | The Azure-minted SSH password (SECRET; returned exactly once; empty when password auth is off) | Handed to the partner over a secure channel |
 | `storage_account_name` | The parent account's name | Composing the SFTP host `{account}.blob.core.windows.net` |
+
+The outputs also carry `local_user_id` (the user's ARM ID) and `user_name` (the login's second half, already embedded in `sftp_username`) -- neither has a ValueFromRef consumer.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Partner with key auth** -- one user per partner, one ed25519 key per person or pipeline, write+create+list on the partner's own inbound container. Start from the **Partner Key Auth** preset.
+**Partner with key auth** -- one user per partner, one ed25519 key per person or pipeline, write+create+list on the partner's own inbound container. Start from the **Partner SFTP User with Key Authentication** preset.
 
-**Password drop-box** -- for tools that cannot do keys: password auth on, the once-only password captured from the outputs and delivered securely. Start from the **Password Dropbox** preset.
+**Password drop-box** -- for tools that cannot do keys: password auth on, the once-only password captured from the outputs and delivered securely. Start from the **Password-Authenticated Drop Box** preset.
 
 ## Works With
 

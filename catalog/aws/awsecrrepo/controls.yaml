@@ -50,6 +50,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: There is no legacy path to disable -- registry authentication has always been the IAM-signed authorization-token exchange over TLS. The token a docker login uses is itself short-lived (12 hours) and derives from IAM credentials.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

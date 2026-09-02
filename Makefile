@@ -415,19 +415,25 @@ generate-price-book:
 	go run ./pkg/finops/pricebook/fetcher
 
 # Refreshes the committed action-inventory snapshots
-# (pkg/iac/actioninventory/{aws,azure,gcp}.yaml) from each provider's own
-# published inventory -- AWS's machine-readable service reference
-# (including each action's resource-scopability, which the scopability
-# gate holds statements to), ARM's provider-operations metadata (the
-# Azure arm needs a signed-in Azure CLI for its bearer token), and GCP
-# IAM's testable-permissions inventory (the GCP arm needs gcloud
-# application-default credentials, an active gcloud project, and the
-# PLANTON_GCP_ORG / PLANTON_GCP_BILLING_ACCOUNT anchors -- any org and
+# (pkg/iac/actioninventory/{aws,azure,gcp,cloudflare,digitalocean}.yaml)
+# from each provider's own published inventory -- AWS's machine-readable
+# service reference (including each action's resource-scopability, which
+# the scopability gate holds statements to), ARM's provider-operations
+# metadata (the Azure arm needs a signed-in Azure CLI for its bearer
+# token), GCP IAM's testable-permissions inventory (the GCP arm needs
+# gcloud application-default credentials, an active gcloud project, and
+# the PLANTON_GCP_ORG / PLANTON_GCP_BILLING_ACCOUNT anchors -- any org and
 # billing account the credential can query; they only type the queries,
-# whose results union) -- scoped to the services the committed runner
-# permissions manifests reference. Requires network access; CI never
-# fetches -- it validates every manifest action against the committed
-# snapshots (an invented or misspelled action name cannot ship).
+# whose results union), Cloudflare's permission-group inventory (the
+# Cloudflare arm needs CLOUDFLARE_API_TOKEN -- an account-owned token
+# that can read the account's token permission groups; the catalog is
+# global, so any account works), and DigitalOcean's published token-scope
+# reference (no credential -- the docs site serves it as machine-readable
+# markdown; DigitalOcean exposes no scope-inventory API) -- scoped to the
+# services, groups, and scopes the committed runner permissions manifests
+# reference. Requires network access; CI never fetches -- it validates
+# every manifest action against the committed snapshots (an invented or
+# misspelled action name cannot ship).
 .PHONY: generate-action-inventory
 generate-action-inventory:
 	go run ./pkg/iac/actioninventory/fetcher

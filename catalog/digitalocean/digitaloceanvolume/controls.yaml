@@ -1,0 +1,65 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceanvolume
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: DigitalOcean encrypts every block storage volume at rest platform-wide -- no configuration level can enable or disable it, which is why the spec carries no encryption toggle.
+      notes: The guarantee is DigitalOcean's, applied to all volumes uniformly.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: DigitalOcean offers no customer-managed-key service for block storage -- encryption keys are platform-held with no CMK surface anywhere in the API.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A volume terminates no network connections -- data moves between the volume and its attached droplet over DigitalOcean's isolated storage network, with no transport-encryption surface exposed to configure.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A volume is never network-reachable -- it attaches to droplets in its region through the droplet's volume_ids list and has no endpoint, public or private.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: With no network endpoint (see no-public-access), there is no ingress to restrict.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: No requests reach a block device -- there is nothing for a WAF to filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management-plane actions on the volume are governed by DigitalOcean team roles and API token scopes on the caller's side; data-plane access is whatever the attached droplet's OS grants. The volume itself has no access-control surface.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: A volume runs no code -- there is no identity to federate.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: A volume authenticates nobody -- there is no auth path, legacy or otherwise.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management-plane actions land in the DigitalOcean team's account activity outside this component; block-level access is not a loggable event surface on any cloud.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: DigitalOcean exposes no volume-scoped metrics surface -- disk usage and I/O of an attached volume appear through the owning droplet's monitoring, which is that component's posture.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: DigitalOcean has no automated backup service for volumes -- snapshots are on-demand actions taken outside this spec (and billed at 0.06 USD/GiB/mo). The snapshot_id field here is the restore path, consumed only at create to build a new volume FROM a snapshot.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: With no automated backup channel (see backup-recovery), no retention knob exists -- snapshots live until someone deletes them.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A volume lives in exactly one region and attaches only to droplets there -- DigitalOcean has no cross-zone or cross-region volume replication. Durability within the facility is the platform's storage-layer redundancy, not a spec choice.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the DigitalOcean API nor the provider offers a deletion-protection flag for volumes -- nothing exists to refuse a delete.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A volume is raw block capacity with no software surface to patch -- the storage fleet beneath it is DigitalOcean's operational concern, invisible to the API.

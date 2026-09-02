@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The group exposes no authentication path beyond SigV4-signed AWS API calls -- there is no weaker protocol to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit dial for the group itself -- management calls land in AWS CloudTrail as account-level posture. The nearest in-spec feature is the data_protection_policy's Audit statement, which reports where sensitive data appears in the stream; that audits the DATA, not access to the group.

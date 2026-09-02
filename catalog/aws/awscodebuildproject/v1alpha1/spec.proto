@@ -871,11 +871,12 @@ message AwsCodeBuildS3Logs {
     }
   ];
 
-  // location is the S3 bucket and prefix for log storage. AWS requires the
-  // prefix — the format is "bucket-name/prefix" (or the bucket ARN); a bare
-  // bucket name is rejected. When composing from an AwsS3Bucket reference,
-  // append the prefix to the referenced bucket_id.
-  dev.planton.shared.foreignkey.v1.StringValueOrRef location = 2 [
+  // bucket is the S3 bucket receiving build logs — a reference to an
+  // AwsS3Bucket's bucket_id output, a literal bucket name, or the bucket
+  // ARN. AWS stores S3 build logs only under a prefix, so the bucket and
+  // `prefix` are separate fields here and both IaC modules compose the
+  // provider's single location argument as "{bucket}/{prefix}".
+  dev.planton.shared.foreignkey.v1.StringValueOrRef bucket = 2 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsS3Bucket,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.bucket_id"
   ];
@@ -895,6 +896,20 @@ message AwsCodeBuildS3Logs {
       ]
     }
   ];
+
+  // prefix is the path under the bucket where log objects land. AWS
+  // REQUIRES it for S3 build logs — a bare bucket with no prefix is
+  // rejected at CreateProject, which is why it is a separate required
+  // companion to `bucket` rather than a "bucket/prefix" literal format.
+  string prefix = 5;
+
+  // An enabled S3 log destination needs both halves of the composed
+  // location — caught here at validation time instead of at AWS.
+  option (buf.validate.message).cel = {
+    id: "s3_logs_enabled_requires_bucket_and_prefix"
+    message: "an ENABLED s3_logs requires bucket and prefix — AWS stores S3 build logs only under \"bucket/prefix\""
+    expression: "(has(this.status) ? this.status : 'DISABLED') != 'ENABLED' || (has(this.bucket) && this.prefix != '')"
+  };
 }
 
 // AwsCodeBuildVpcConfig places the build environment inside a VPC, enabling

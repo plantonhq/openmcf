@@ -62,7 +62,7 @@ Bring your own Tekton pipeline while retaining platform deployment orchestration
 
 ### Secrets and Variables
 
-Runtime configuration management through organization-scoped and environment-scoped secrets and variables. Secrets are encrypted with envelope encryption and decrypted just-in-time in the Runner. Variables support literal values or dynamic references to infrastructure outputs.
+Runtime configuration management through organization-scoped and environment-scoped secrets and variables. Secrets live provider-native in your own secret backend and resolve just-in-time in the Runner. Variables support literal values or dynamic references to infrastructure outputs.
 
 [Learn about Secrets](/docs/secrets)
 

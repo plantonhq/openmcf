@@ -25,3 +25,7 @@ Forwarding rulesets bind the resolver's outbound endpoint by ARM id -- reference
 ## Deletes are slower than they look
 
 Endpoint deletes poll past Azure's first "deleted" answer until the endpoint is verifiably gone (minutes each, sequential with the resolver's own delete). Budget teardown time accordingly in pipelines that create and destroy resolvers routinely.
+
+## Verify full-stack teardowns -- Azure can drop the follow-on deletes
+
+Tearing down the resolver's surrounding network stack (subnets, virtual network, resource group) within minutes of the endpoint deletes can leave those resources standing even though every delete was acknowledged: Azure accepts the requests while the endpoints' subnet associations are still garbage-collecting server-side, and silently runs no delete job (observed live, on both deployment engines). The resource group can even vanish from listings for a minute and then resurface intact. Nothing is actually stuck -- a fresh delete of the resource group clears everything on the first try. In pipelines that destroy resolver stacks routinely, verify the resource group is really gone a couple of minutes after teardown and re-issue the delete if it resurfaced.

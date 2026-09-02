@@ -73,7 +73,9 @@
   <url><loc>https://planton.ai/docs/runner/security-model</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://planton.ai/docs/secrets</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://planton.ai/docs/secrets/backends</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://planton.ai/docs/secrets/encryption</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://planton.ai/docs/secrets/where-secrets-live</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://planton.ai/docs/secrets/versions</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://planton.ai/docs/secrets/integrations</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://planton.ai/docs/secrets/managing-secrets</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://planton.ai/docs/security</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://planton.ai/docs/security/audit-trails</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>

@@ -55,6 +55,9 @@ spec:
         type: module_default
         reference: Upstream ships NO authentication -- anyone reaching the Service could query everything and impersonate any user. That never deploys from this kind -- the module enables PASSWORD (file) authentication with a module-generated admin (Secret <name>-auth), configures the required internal-communication shared secret, and refuses plain-HTTP data-plane requests via http-server.process-forwarded.
       notes: auth.enabled=false is an explicit opt-out with the spec-level warning attached. Credentials never render into ConfigMaps -- catalog passwords ride ${ENV:VAR} references resolved from Secrets.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The module-enabled PASSWORD (file) authenticator carries a module-generated admin credential (see no-legacy-auth) with no strength policy, lockout, or MFA of its own -- LDAP/OAuth2 sign-in is coordinator configuration beyond the typed seams.
     - control_id: audit-logging
       status: configurable
       field_path: event_listener_properties

@@ -55,9 +55,10 @@ var _ = ginkgo.Describe("AwsCloudwatchLogAccountPolicySpec validations", func() 
 			}
 		})
 
-		ginkgo.It("accepts selection criteria", func() {
+		ginkgo.It("accepts selection criteria on a subscription-filter policy", func() {
 			spec := minimalPolicy()
-			spec.SelectionCriteria = "LogGroupNamePrefix IN [\"my-service\"]"
+			spec.PolicyType = "SUBSCRIPTION_FILTER_POLICY"
+			spec.SelectionCriteria = "LogGroupName NOT IN [\"excluded-group\"]"
 			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 	})
@@ -80,6 +81,20 @@ var _ = ginkgo.Describe("AwsCloudwatchLogAccountPolicySpec validations", func() 
 			spec := minimalPolicy()
 			spec.PolicyDocument = nil
 			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects selection criteria on any non-subscription-filter type", func() {
+			for _, policyType := range []string{
+				"DATA_PROTECTION_POLICY",
+				"FIELD_INDEX_POLICY",
+				"TRANSFORMER_POLICY",
+				"METRIC_EXTRACTION_POLICY",
+			} {
+				spec := minimalPolicy()
+				spec.PolicyType = policyType
+				spec.SelectionCriteria = "LogGroupName NOT IN [\"excluded-group\"]"
+				gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			}
 		})
 	})
 })

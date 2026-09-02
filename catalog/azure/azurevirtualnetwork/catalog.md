@@ -1,6 +1,6 @@
 # Azure Virtual Network
 
-Deploys an Azure Virtual Network (VNet) -- the isolated, private IP address space every network-attached Azure workload lives inside. The network is deliberately just the network: address planning and network-wide policy live here, while subnets, NAT gateways, and private DNS links are their own composable Cloud Resources referencing this network's outputs. The VNet integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups.
+Deploys an Azure Virtual Network (VNet) -- the isolated, private IP address space every network-attached Azure workload lives inside. The network is deliberately just the network: address planning and network-wide policy live here, while subnets, NAT gateways, and private DNS links are their own composable Cloud Resources referencing this network's outputs. Keeping those as separate nodes means each has its own lifecycle — a hub-and-spoke topology adds subnets and DNS links without ever touching the network resource itself.
 
 ## What Gets Created
 
@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Virtual Network**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a general-purpose /16 network with Azure's default DNS.
+Open the deployment store, find **Azure Virtual Network**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Virtual Network** preset in the [Presets](#presets) tab to pre-populate a general-purpose /16 network with Azure's default DNS.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetwork
 metadata:
   name: prod-hub
@@ -112,11 +112,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard network** -- A general-purpose /16 with Azure's default resolver: the networking foundation for any new environment or a spoke in a hub-and-spoke topology. Start from the **Standard** preset.
+**Standard network** -- A general-purpose /16 with Azure's default resolver: the networking foundation for any new environment or a spoke in a hub-and-spoke topology. Start from the **Standard Virtual Network** preset.
 
-**Hub with custom DNS** -- Two address blocks (shared services grow fast in hubs), custom DNS servers for on-premises integration, and a raised flow timeout for long-lived gateway traffic. Start from the **Hub with Custom DNS** preset.
+**Hub with custom DNS** -- Two address blocks (shared services grow fast in hubs), custom DNS servers for on-premises integration, and a raised flow timeout for long-lived gateway traffic. Start from the **Hub Network with Custom DNS** preset.
 
-**DDoS-protected edge network** -- An attached DDoS Protection Plan and virtual network encryption for networks hosting internet-facing workloads. Start from the **DDoS-Protected** preset.
+**DDoS-protected edge network** -- An attached DDoS Protection Plan and virtual network encryption for networks hosting internet-facing workloads. Start from the **DDoS-Protected Edge Network** preset.
 
 ## Works With
 

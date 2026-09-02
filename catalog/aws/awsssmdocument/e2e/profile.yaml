@@ -20,10 +20,7 @@ spec:
   #   - content UPDATE (the new-version + default-promotion path) --
   #     single-apply lanes never update. Unblock: rides any future
   #     update-phase harness arm.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q42
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

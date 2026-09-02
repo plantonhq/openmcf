@@ -37,5 +37,11 @@ message AwsCloudwatchDashboardSpec {
   // alarm / text), position (x, y, width, height), and properties.
   // AWS normalizes the JSON server-side; both engines diff it
   // semantically, so key order and whitespace never cause drift.
+  //
+  // YAML authors: manifests parse under YAML 1.2 rules, so the widget
+  // position key y (like yes, no, on, off) is an ordinary string with
+  // or without quotes - only true and false are booleans. Pasting the
+  // console's JSON body verbatim is always safe (JSON keys are quoted
+  // by definition).
   google.protobuf.Struct dashboard_body = 3 [(buf.validate.field).required = true];
 }

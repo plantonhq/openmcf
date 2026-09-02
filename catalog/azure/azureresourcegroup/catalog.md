@@ -23,14 +23,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Resource Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **Azure Resource Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and the two spec fields: name and region. Start from the **Standard Resource Group** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureResourceGroup
 metadata:
   name: platform-rg
@@ -45,7 +45,7 @@ spec:
 planton apply -f resource-group.yaml
 ```
 
-This creates a resource group named `acme-prod-rg` in the `eastus` region. Resources within the group can be deployed to different regions -- the resource group region only determines where its metadata is stored.
+This creates a resource group named `acme-prod-rg` in the `eastus` region, ready to hold downstream deployments. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
@@ -69,16 +69,20 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `resource_group_id` | Azure Resource Manager ID of the resource group | Azure Policy assignments, diagnostic settings |
-| `resource_group_name` | Name of the resource group | Nearly all Azure Cloud Resources reference this via `resourceGroup` field |
-| `region` | Azure region where the resource group was created | Informational -- downstream resources specify their own region |
+| `resource_group_id` | Azure Resource Manager ID of the resource group (`/subscriptions/{id}/resourceGroups/{name}`) | Scope for Azure Role Assignments granting access to everything in the group |
+| `resource_group_name` | Name of the resource group | Nearly every Azure Cloud Resource references this via its `resourceGroup` field with `valueFrom` |
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**Foundation of every Azure InfraChart** -- Virtually every Azure deployment begins by creating one or more resource groups, then wiring downstream components to `status.outputs.resource_group_name` via `valueFrom`. Start from the **Standard Resource Group** preset.
 
-**Standard resource group** -- Creates a named resource group in a specified region as the foundation for all subsequent Azure deployments. Virtually every Azure InfraChart begins with one or more resource groups. Start from the **Standard** preset.
+**One group per lifecycle, not per resource** -- Deleting a resource group deletes everything inside it, so group resources that live and die together: shared networking in one group, each application's workloads in another. Splitting by lifecycle means a teardown of one application can never take the VNet with it; lumping everything into one group turns every cleanup into a risk assessment.
+
+**Environment boundaries** -- One resource group per environment (`acme-dev-rg`, `acme-prod-rg`) gives you clean RBAC scoping and per-environment cost tracking with no extra tooling -- Azure cost analysis and role assignments both operate naturally at the resource group boundary.
 
 ## Works With
 
-This component operates independently and does not reference other components.
+- [**Azure Virtual Network**](/cloud-catalog/azure-virtual-network) -- networking foundations deploy into a resource group and are typically the next resource created after it
+- [**Azure Storage Account**](/cloud-catalog/azure-storage-account) -- references the resource group name for placement of storage resources
+- [**Azure Service Plan**](/cloud-catalog/azure-service-plan) -- compute plans for web apps and functions deploy into a resource group
+- [**Azure Role Assignment**](/cloud-catalog/azure-role-assignment) -- grants roles scoped to the resource group using its ARM ID as the scope

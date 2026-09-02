@@ -49,7 +49,7 @@ A Cloud Resource is a Planton API resource that represents a piece of cloud infr
 Create a file named `cloud-sql.yaml` with the following content. This manifest describes a production-grade PostgreSQL instance with private networking, high availability, and automated backups.
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: app-database
@@ -157,7 +157,7 @@ planton stack-job list <cloud-resource-id>
 For development and testing environments where cost, speed, and direct connectivity matter more than resilience, use a lighter configuration:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSql
 metadata:
   name: app-database-dev

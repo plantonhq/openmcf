@@ -1,6 +1,6 @@
 # AWS OpenSearch Domain
 
-Deploys a managed Amazon OpenSearch Service domain with configurable cluster topology (data nodes, dedicated masters, coordinator node pools, UltraWarm, cold storage), EBS volume configuration, VPC or public deployment modes, fine-grained access control with JWT bearer authentication, Cognito and IAM Identity Center sign-in for Dashboards, KMS encryption, Auto-Tune with maintenance scheduling, AI/ML capabilities (natural-language query generation, the S3 vectors engine, GPU vector acceleration), and CloudWatch log publishing. The domain integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, KMS keys, IAM roles, Cognito user pools, CloudWatch log groups, and ACM certificates.
+Deploys a managed Amazon OpenSearch Service domain with configurable cluster topology (data nodes, dedicated masters, coordinator node pools, UltraWarm, cold storage), EBS volume configuration, VPC or public deployment modes, fine-grained access control with JWT bearer authentication, Cognito and IAM Identity Center sign-in for Dashboards, KMS encryption, Auto-Tune with maintenance scheduling, AI/ML capabilities (natural-language query generation, the S3 vectors engine, GPU vector acceleration), and CloudWatch log publishing. Two decisions are one-way doors worth making deliberately: VPC placement is ForceNew (adding or removing it recreates the domain), and fine-grained access control cannot be disabled once enabled.
 
 ## What Gets Created
 
@@ -31,7 +31,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### AWS Account
 
-- **Subnets** (optional, for VPC mode) in 2 or 3 Availability Zones matching the cluster's `availabilityZoneCount`. Private subnets are recommended. Provide subnet IDs directly or reference an AwsVpc Cloud Resource via ValueFromRef.
+- **Subnets** (optional, for VPC mode) in 2 or 3 Availability Zones matching the cluster's `availabilityZoneCount`. Private subnets are recommended. Provide subnet IDs directly or reference AwsSubnet Cloud Resources via ValueFromRef.
 - **Security groups** (optional, for VPC mode) allowing HTTPS (port 443) inbound from clients that need to access the domain. Provide security group IDs directly or reference an AwsSecurityGroup Cloud Resource.
 - **A KMS key** (optional) for at-rest encryption beyond the default AWS-managed `aws/es` key. The KMS key choice is ForceNew and cannot be changed after domain creation. Provide the ARN directly or reference an AwsKmsKey Cloud Resource.
 - **CloudWatch log groups** (optional) for publishing domain logs. Each log type requires a dedicated log group. Provide log group ARNs directly or reference AwsCloudwatchLogGroup Cloud Resources.
@@ -40,14 +40,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS OpenSearch Domain**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single Node Dev** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS OpenSearch Domain**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single-Node Development Domain** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsOpenSearchDomain
 metadata:
   name: app-search
@@ -71,7 +71,7 @@ spec:
 planton apply -f opensearch-domain.yaml
 ```
 
-This creates a two-node OpenSearch domain with gp3 EBS volumes, encryption at rest and in transit using default AWS-managed keys, and no VPC placement (publicly accessible). A Stack Job tracks the provisioning and streams progress in real time.
+This creates a two-node OpenSearch domain with gp3 EBS volumes, encryption at rest and in transit using default AWS-managed keys, and no VPC placement (publicly accessible). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -153,11 +153,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single-node development** -- A single t3.small.search node with gp3 storage for development and testing. No VPC, no dedicated masters; encryption at rest and node-to-node stay on. Start from the **Single Node Dev** preset.
+**Single-node development** -- A single t3.small.search node with gp3 storage for development and testing. No VPC, no dedicated masters; encryption at rest and node-to-node stay on. Start from the **Single-Node Development Domain** preset.
 
-**Production VPC** -- Multi-node domain deployed into a VPC with dedicated master nodes, zone awareness across 2 AZs, encryption at rest and in transit, and fine-grained access control enabled. Start from the **Production VPC** preset.
+**Production VPC** -- Multi-node domain deployed into a VPC with dedicated master nodes, zone awareness across 2 AZs, encryption at rest and in transit, and fine-grained access control enabled. Start from the **Production VPC Domain** preset.
 
-**Analytics with warm and cold storage** -- Production domain with UltraWarm and cold storage tiers enabled for cost-optimized retention of time-series or log data. Suitable for observability and analytics workloads with mixed hot/warm/cold access patterns. Start from the **Analytics Warm Cold** preset.
+**Analytics with warm and cold storage** -- Production domain with UltraWarm and cold storage tiers enabled for cost-optimized retention of time-series or log data. Suitable for observability and analytics workloads with mixed hot/warm/cold access patterns. Start from the **Analytics Domain with Warm + Cold Storage** preset.
 
 ## Works With
 
@@ -167,4 +167,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- provides the FGAC master user and the Cognito service role
 - [**AWS Cognito User Pool**](/cloud-catalog/aws-cognito-user-pool) -- provides the sign-in directory for Dashboards
 - [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- provides log destinations for domain log publishing
-- [**AWS Cert Manager Cert**](/cloud-catalog/aws-cert-manager-cert) -- provides a TLS certificate for custom domain endpoints
+- [**AWS ACM Certificate**](/cloud-catalog/aws-cert-manager-cert) -- provides a TLS certificate for custom domain endpoints

@@ -98,8 +98,9 @@ spec:
       streamName: builds
     s3Logs:
       status: ENABLED
-      location:
-        value: my-log-bucket/build-logs
+      bucket:
+        value: my-log-bucket
+      prefix: build-logs
       bucketOwnerAccess: FULL
   vpcConfig:
     vpcId:

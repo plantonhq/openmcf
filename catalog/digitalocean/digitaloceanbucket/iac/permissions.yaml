@@ -1,0 +1,27 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+#
+# This kind is the special case in the DigitalOcean catalog: NONE of its
+# resources go through the DigitalOcean REST API at all, so it declares no
+# token scopes -- the token only authenticates the provider itself. All
+# four provider resources speak the S3-COMPATIBLE SPACES API, authenticated
+# by a SPACES KEY PAIR (spaces_access_id / spaces_secret_key), the second
+# credential plane the spaces_grants section declares. The catalog.md
+# prerequisite prose (migrated here losslessly) requires a DigitalOcean
+# Provider Connection carrying BOTH the API token AND a Spaces key pair,
+# minted under API -> Spaces Keys.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceanbucket
+spec:
+  digital_ocean:
+    spaces_grants:
+      - purpose: ManageBucket
+        permission: fullaccess
+        provenance: derived
+        notes: "Covers digitalocean_spaces_bucket and its CORS, policy, and logging satellites (the four spaces resources' create/read/update/delete paths in both the Terraform and Pulumi modules) -- S3 CreateBucket/HeadBucket/ListObjects/DeleteBucket calls against the regional Spaces endpoint; Get/Put ACL, versioning, and lifecycle calls carry the acl, versioning_enabled, and lifecycle_rules fields; Get/Put/Delete BucketCors, BucketPolicy, and BucketLogging calls serve the three satellite resources; when force_destroy is true, destroy first lists and deletes EVERY object and object version. Least-privilege key scoping: DigitalOcean scopes Spaces keys per bucket (read/readwrite/fullaccess grants) -- a key with fullaccess limited to this bucket (plus create rights for new buckets) is least-privilege; an unscoped (all-buckets) key also works and is never least-privilege. Grant vocabulary per the provider's Spaces-keys API reference (https://docs.digitalocean.com/reference/api/reference/spaces-keys/, read 2026-08-22)."

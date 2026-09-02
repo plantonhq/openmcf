@@ -12,10 +12,14 @@ import "shared/options/options.proto";
 // credential material (database passwords, API keys, tokens, key/value JSON
 // documents) with optional automatic rotation and cross-region replication.
 //
-// The secret's name is taken from `metadata.name` (up to 512 characters;
-// AWS allows alphanumeric plus /_+=.@- so hierarchical names like
-// "prod/payments/db" are legal). The name is ForceNew - changing it
-// destroys and recreates the secret.
+// The secret's AWS name defaults to `metadata.name` and can be overridden
+// with `secret_name` when the name needs shapes `metadata.name` cannot
+// carry: AWS allows alphanumeric plus /_+=.@-, so hierarchical names like
+// "prod/payments/db" and service-required prefixes like
+// "ecr-pullthroughcache/dockerhub" (ECR pull-through-cache credentials)
+// are expressed through `secret_name`. Either way the name is ForceNew -
+// changing it (including setting `secret_name` on a secret already
+// deployed under `metadata.name`) destroys and recreates the secret.
 //
 // The secret VALUE is set through exactly one of `string_value` (text or
 // JSON key/value document - the common case) or `binary_value`
@@ -32,9 +36,9 @@ import "shared/options/options.proto";
 // window requires waiting or force deletion (the modules retry create
 // through AWS's "scheduled for deletion" window).
 //
-// Create-time-immutable (ForceNew) fields: the name (metadata.name) and
-// `type`. Everything else - value, KMS key, policy, replicas, rotation -
-// updates in place.
+// Create-time-immutable (ForceNew) fields: the name (secret_name, else
+// metadata.name) and `type`. Everything else - value, KMS key, policy,
+// replicas, rotation - updates in place.
 //
 // Credentials, region, and deployment workflow live outside this spec in
 // stack inputs.
@@ -42,6 +46,24 @@ message AwsSecretsManagerSecretSpec {
   // The AWS region where the secret will be created.
   // Example: "us-west-2", "eu-west-1"
   string region = 1 [(buf.validate.field).string.min_len = 1];
+
+  // The explicit AWS-side secret name. Empty (the common case) means the
+  // secret is named after `metadata.name`. Set it when the AWS name needs
+  // shapes `metadata.name` cannot carry - hierarchical paths
+  // ("prod/payments/db") or service-required prefixes
+  // ("ecr-pullthroughcache/dockerhub"). The catalog's convention:
+  // explicit-name fields are REQUIRED only on kinds whose AWS names can
+  // never come from `metadata.name` (hierarchy-dominant or
+  // charset-incompatible ones); where `metadata.name` is a legal default,
+  // the field is optional so the common case stays terse. ForceNew:
+  // setting or changing it replaces the secret.
+  string secret_name = 14 [
+    (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
+    (buf.validate.field).string = {
+      max_len: 512
+      pattern: "^[A-Za-z0-9/_+=.@-]+$"
+    }
+  ];
 
   // Human-readable description shown in the AWS console and
   // ListSecrets/DescribeSecret responses. Updates in place.

@@ -1,12 +1,13 @@
-# Managed SSL Certificate on Google Cloud
+# GCP Managed SSL Certificate
 
-Deploys a Google-managed classic Compute Engine SSL certificate — Google issues it, renews it, and rotates the key material automatically; you own only the domain list. The hands-off TLS choice for global external Application Load Balancers. FQDN-only (wildcards need Certificate Manager or an imported certificate), global-only, and DNS-gated: the certificate stays PROVISIONING until every listed domain's public DNS points at the load balancer. Every field is immutable — a domain change is a create-before-destroy replacement. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
+Deploys a Google-managed classic Compute Engine SSL certificate — Google issues it, renews it, and rotates the key material automatically; you own only the domain list. The hands-off TLS choice for global external Application Load Balancers. FQDN-only (wildcards need Certificate Manager or an imported certificate), global-only, and DNS-gated: the certificate stays PROVISIONING until every listed domain's public DNS points at the load balancer. Every field is immutable — a domain change is a create-before-destroy replacement.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Google-managed Compute Engine SSL Certificate** -- global scope, covering every FQDN in `domains` (1-100 entries)
+- **Compute Engine API enablement** -- `compute.googleapis.com` enabled in the target project (never disabled on destroy)
 - **Automatic issuance and renewal** -- Google validates each domain by observing DNS point at the load balancer, then issues and renews with no rotation calendar
 
 ## Before You Deploy
@@ -18,15 +19,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### GCP Project
 
-- **A GCP project** where the certificate will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
+- **A GCP project** where the certificate will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef. The module enables the Compute Engine API itself.
 - **Control of each domain's DNS** -- issuance completes only once every listed FQDN resolves to the load balancer's IP.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Managed SSL Certificate on Google Cloud**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single Domain** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **GCP Managed SSL Certificate**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single-Domain Load Balancer Certificate** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -51,7 +51,7 @@ spec:
 planton apply -f managed-ssl-certificate.yaml
 ```
 
-This creates the certificate in PROVISIONING state. Attach it to a target HTTPS proxy, point `app.example.com` at the load balancer's IP, and Google issues within minutes to hours.
+This creates the certificate in PROVISIONING state. Attach it to a target HTTPS proxy, point `app.example.com` at the load balancer's IP, and Google issues within minutes to hours. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -101,11 +101,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single domain** -- One FQDN behind a global external load balancer — the standard serving certificate. Start from the **Single Domain** preset.
+**Single domain** -- One FQDN behind a global external load balancer — the standard serving certificate. Start from the **Single-Domain Load Balancer Certificate** preset.
 
-**Apex + www** -- Both spellings of the site on one certificate. Start from the **Multi Domain** preset.
+**Apex + www** -- Both spellings of the site on one certificate. Start from the **Multi-Domain Certificate (Apex + WWW)** preset.
 
-**Versioned rotation** -- An explicit `certificateName` decoupled from the resource name demonstrates the domain-change replacement workflow. Start from the **Explicit Name** preset.
+**Versioned rotation** -- An explicit `certificateName` decoupled from the resource name demonstrates the domain-change replacement workflow. Start from the **Explicit GCP Certificate Name** preset.
 
 ## Works With
 

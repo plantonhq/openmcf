@@ -1,6 +1,6 @@
 # AWS Kinesis Data Stream
 
-Deploys a Kinesis Data Stream in either On-Demand or Provisioned capacity mode, with configurable data retention, KMS encryption, enhanced shard-level CloudWatch metrics, and consumer deletion behavior. The stream integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to KMS keys for customer-managed encryption.
+Deploys a Kinesis Data Stream in either On-Demand or Provisioned capacity mode, with configurable data retention, KMS encryption, enhanced shard-level CloudWatch metrics, and consumer deletion behavior. The capacity mode is the load-bearing choice — it sets the pricing model and scaling behavior — and the KMS key accepts ValueFromRef wiring for composing with an AwsKmsKey in the same InfraChart. The stream name derives from `metadata.name` and cannot change after creation.
 
 ## What Gets Created
 
@@ -34,7 +34,7 @@ Open the deployment store, find **AWS Kinesis Data Stream**, and click **Deploy*
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsKinesisStream
 metadata:
   name: clickstream-events

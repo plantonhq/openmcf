@@ -1,6 +1,6 @@
-# Kubernetes Cluster on GCP GKE
+# GCP GKE Cluster
 
-Deploys a GKE control plane — Standard (you compose node pools) or Autopilot (GKE manages nodes) — with the full cluster-wide configuration surface: VPC-native IP allocation, private-cluster topology, master authorized networks, Dataplane V2, release channels and maintenance windows, node auto-provisioning, Workload Identity, CMEK secrets encryption, Cloud Logging/Monitoring, and the GKE-managed add-on set. Integrates with Planton's Provider Connections for GCP credential management and ValueFromRef for project, network, subnetwork, KMS, and Pub/Sub dependency wiring.
+Deploys a GKE control plane — Standard (you compose node pools) or Autopilot (GKE manages nodes) — with the full cluster-wide configuration surface: VPC-native IP allocation, private-cluster topology, master authorized networks, Dataplane V2, release channels and maintenance windows, node auto-provisioning, Workload Identity, CMEK secrets encryption, Cloud Logging/Monitoring, and the GKE-managed add-on set. On Standard clusters the compute is composed from separate `GcpGkeNodePool` resources; the cluster mode, location, and dataplane are immutable decisions made here.
 
 ## What Gets Created
 
@@ -13,6 +13,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Node Auto-Provisioning** (Standard, when enabled) — GKE creates and deletes node pools within your resource limits
 - **Workload Identity Pool** — `{projectId}.svc.id.goog` for keyless KSA-to-GSA mapping (on by default)
 - **Cluster Add-ons** — HTTP load balancing, HPA, and the PD CSI driver by default, plus the opt-in set (Filestore/GCS FUSE/Parallelstore/Lustre CSI, Backup for GKE, NodeLocal DNSCache, Config Connector, Stateful HA, Ray with logging/monitoring, Cloud Run, pod snapshots, agent sandbox, slice controller, Slurm)
+- **Container API enablement** — `container.googleapis.com` enabled in the target project (never disabled on destroy)
 
 On Standard clusters the default node pool is removed at create time — every node pool is a separate, first-class `GcpGkeNodePool` resource. Autopilot clusters take no node pools at all.
 
@@ -27,21 +28,20 @@ On Standard clusters the default node pool is removed at create time — every n
 
 - **A VPC network and subnetwork** — an explicit network is required (clusters on the auto-created `default` network do not compose into reviewable infrastructure). For production, plan two secondary ranges on the subnetwork — one for Pods, one for Services. Reference `GcpVpcNetwork` and `GcpSubnetwork` Cloud Resources via ValueFromRef.
 - **Cloud NAT for private nodes** — private nodes cannot pull images from registries outside Google without it. Compose a `GcpRouterNat` on the same network.
-- **Container API** (`container.googleapis.com`) enabled in the target project.
 - **For peering-based private clusters only** — a `/28` CIDR block (`privateCluster.masterIpv4CidrBlock`) that does not overlap any VPC range. PSC-based clusters (the modern default) need none.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Kubernetes Cluster on GCP GKE**, and click **Deploy**. The creation wizard walks the decisions in the order a platform engineer makes them — cluster mode, placement, networking, control-plane access, upgrades, security, observability. Start from the **Private Standard** preset in the [Presets](#presets) tab for the GCP-recommended production shape.
+Open the deployment store, find **GCP GKE Cluster**, and click **Deploy**. The creation wizard walks the decisions in the order a platform engineer makes them — cluster mode, placement, networking, control-plane access, upgrades, security, observability. Start from the **Private Production Cluster — Standard** preset in the [Presets](#presets) tab for the GCP-recommended production shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpGkeCluster
 metadata:
   name: platform-cluster
@@ -176,11 +176,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Private standard cluster** — regional, private nodes, Dataplane V2, named secondary ranges, an API allowlist, a daily maintenance window, and the free Security Posture tiers. The GCP-recommended production shape. Start from the **Private Standard** preset.
+**Private standard cluster** — regional, private nodes, Dataplane V2, named secondary ranges, an API allowlist, a daily maintenance window, and the free Security Posture tiers. The GCP-recommended production shape. Start from the **Private Production Cluster — Standard** preset.
 
-**Autopilot cluster** — GKE manages nodes entirely and bills per pod; no node pools to size or upgrade. Start from the **Autopilot** preset.
+**Autopilot cluster** — GKE manages nodes entirely and bills per pod; no node pools to size or upgrade. Start from the **Autopilot Cluster** preset.
 
-**Dev zonal cluster** — the smallest, cheapest shape: a zonal control plane with GKE-managed IP ranges. Start from the **Dev Zonal** preset.
+**Dev zonal cluster** — the smallest, cheapest shape: a zonal control plane with GKE-managed IP ranges. Start from the **Development Zonal Cluster** preset.
 
 ## Works With
 

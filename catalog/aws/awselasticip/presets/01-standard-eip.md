@@ -1,4 +1,4 @@
-# Preset: Standard Elastic IP
+# Standard Elastic IP
 
 **Use case:** Allocate a static public IPv4 address from Amazon's default pool.
 
@@ -18,5 +18,7 @@ This is the most common pattern — a zero-configuration EIP that provides a sta
 
 ## Cost
 
-- **Free** when associated with a running resource (EC2, NLB, NAT Gateway)
-- **$0.005/hour** (~$3.60/month) when idle (not associated)
+- **Every public IPv4 address is billed hourly — associated or idle.** Since February 2024, AWS charges the same hourly rate for all public IPv4 addresses regardless of attachment; associating the address no longer makes it free.
+- The only exemption is an address from a BYOIP pool you brought yourself (see the byoip-pool preset) — owning the range means AWS doesn't charge for using it.
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awselasticip.yaml` — computed from the pinned price book, never hand-typed here.

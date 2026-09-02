@@ -10,9 +10,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/e2e/profile"
+	"github.com/plantonhq/planton/pkg/manifestgraph"
+	componentv1 "github.com/plantonhq/planton/qa/componente2eprofile/v1"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
-	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // This file is the OFFLINE half of the reference-resolution contract that
@@ -132,46 +133,31 @@ func manifestRefFindings(scenarioPath, reportPath, docPath string, deployed map[
 		}}
 	}
 
-	top := manifestObject.ProtoReflect()
-	specFd := top.Descriptor().Fields().ByName("spec")
-	if specFd == nil || specFd.Kind() != protoreflect.MessageKind {
-		return nil
-	}
-
 	var findings []FixtureIntegrityFinding
-	// The visitor never replaces anything -- this is a read-only replay of the
-	// deploy-time resolution through the same traversal it uses.
-	_, walkErr := forEachRefField(top.Mutable(specFd).Message(), func(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.StringValueOrRef) (*foreignkeyv1.StringValueOrRef, error) {
-		if ref.GetValueFrom() == nil {
-			return nil, nil
-		}
-		if finding := checkRefResolvable(fd, ref, deployed); finding != nil {
+	// A read-only replay of the deploy-time resolution through the SAME
+	// traversal it uses (pkg/manifestgraph's walker -- map-typed reference
+	// fields included, which the old spec-tree walk never saw).
+	for _, use := range manifestgraph.CollectRefUses(manifestObject) {
+		if finding := checkRefResolvable(use, deployed); finding != nil {
 			finding.ScenarioPath = scenarioPath
 			finding.ManifestPath = reportPath
 			findings = append(findings, *finding)
 		}
-		return nil, nil
-	})
-	if walkErr != nil {
-		findings = append(findings, FixtureIntegrityFinding{
-			ScenarioPath: scenarioPath,
-			ManifestPath: reportPath,
-			Reason:       "reference walk failed: " + walkErr.Error(),
-		})
 	}
 	return findings
 }
 
-// checkRefResolvable mirrors lookupRefValue's resolution rules against the
-// statically known instance names instead of live outputs. Returns nil when
-// the reference will resolve.
-func checkRefResolvable(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.StringValueOrRef, deployed map[cloudresourcekind.CloudResourceKind]map[string]bool) *FixtureIntegrityFinding {
-	valueFrom := ref.GetValueFrom()
-	kind := referencedKind(fd, ref)
+// checkRefResolvable mirrors the deploy-time lookup's resolution rules
+// against the statically known instance names instead of live outputs.
+// Returns nil when the reference will resolve. The finding's Field keeps the
+// BARE field name -- it is a segment of the baseline's stable key shape, and
+// renaming it would stale every committed entry at once.
+func checkRefResolvable(use manifestgraph.RefUse, deployed map[cloudresourcekind.CloudResourceKind]map[string]bool) *FixtureIntegrityFinding {
+	kind := manifestgraph.EffectiveKind(use)
 	if kind == cloudresourcekind.CloudResourceKind_unspecified {
 		return &FixtureIntegrityFinding{
-			Field:   string(fd.Name()),
-			RefName: valueFrom.GetName(),
+			Field:   string(use.Field.Name()),
+			RefName: use.Ref.GetName(),
 			Reason: "reference carries no kind and the field declares no default_kind -- the runner leaves it " +
 				"unresolved and the module deploys without the value; add an explicit `kind:` to the valueFrom",
 		}
@@ -180,15 +166,15 @@ func checkRefResolvable(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.Strin
 	instances := deployed[kind]
 	if len(instances) == 0 {
 		return &FixtureIntegrityFinding{
-			Field:   string(fd.Name()),
+			Field:   string(use.Field.Name()),
 			RefKind: kind.String(),
-			RefName: valueFrom.GetName(),
+			RefName: use.Ref.GetName(),
 			Reason: "the prerequisite chain deploys no instance of this kind before this manifest -- the reference " +
 				"can never resolve; add the kind to the component's registry prerequisites or the scenario's " +
 				"planton.dev/e2e-prerequisites annotation",
 		}
 	}
-	if instances[valueFrom.GetName()] || len(instances) == 1 {
+	if instances[use.Ref.GetName()] || len(instances) == 1 {
 		// Exact name match, or the runner's sole-instance fallback.
 		return nil
 	}
@@ -198,9 +184,9 @@ func checkRefResolvable(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.Strin
 	}
 	sort.Strings(names)
 	return &FixtureIntegrityFinding{
-		Field:   string(fd.Name()),
+		Field:   string(use.Field.Name()),
 		RefKind: kind.String(),
-		RefName: valueFrom.GetName(),
+		RefName: use.Ref.GetName(),
 		Reason: fmt.Sprintf("name matches none of the %d deployed instances (%s) -- the runner fails the run on "+
 			"this ambiguity after the fixtures are already deployed", len(instances), strings.Join(names, ", ")),
 	}
@@ -209,6 +195,15 @@ func checkRefResolvable(fd protoreflect.FieldDescriptor, ref *foreignkeyv1.Strin
 // CheckCatalogFixtureIntegrity runs the scenario check across every component
 // scenario in the repository's catalog and returns all findings, keeping one
 // component's defect from hiding another's.
+//
+// Components whose E2E profile records `status: deferred` are skipped: a
+// deferral is the kind's own record that its lanes cannot run (a wall-class
+// prerequisite may be structurally unshippable — e.g. a fixture that would
+// mutate the shared account irreversibly), so demanding a deployable fixture
+// chain from it asserts a contract nobody holds. The gate re-arms the moment
+// the profile leaves `deferred` — which is exactly when the chain must work.
+// A missing or unreadable profile never skips: absence of a record is not a
+// deferral.
 func CheckCatalogFixtureIntegrity(repoRoot string) ([]FixtureIntegrityFinding, error) {
 	catalogDir := filepath.Join(repoRoot, "catalog")
 	providers, err := os.ReadDir(catalogDir)
@@ -230,6 +225,9 @@ func CheckCatalogFixtureIntegrity(repoRoot string) ([]FixtureIntegrityFinding, e
 			if !component.IsDir() {
 				continue
 			}
+			if componentProfileDeferred(repoRoot, provider.Name(), component.Name()) {
+				continue
+			}
 			scenariosDir := filepath.Join(providerDir, component.Name(), "e2e", "scenarios")
 			scenarios, err := os.ReadDir(scenariosDir)
 			if err != nil {
@@ -249,4 +247,16 @@ func CheckCatalogFixtureIntegrity(repoRoot string) ([]FixtureIntegrityFinding, e
 		}
 	}
 	return findings, nil
+}
+
+// componentProfileDeferred reports whether a component's E2E profile records
+// `status: deferred`. Any load failure (no profile, unreadable, unregistered
+// directory name) returns false so the gate still checks the component --
+// only an explicit deferral record earns the skip.
+func componentProfileDeferred(repoRoot, provider, component string) bool {
+	p, err := profile.LoadComponentProfile(repoRoot, provider, component)
+	if err != nil {
+		return false
+	}
+	return p.GetSpec().GetStatus() == componentv1.ComponentE2EProfileSpec_deferred
 }

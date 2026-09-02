@@ -46,6 +46,9 @@ spec:
         type: spec_default
         reference: Unset defaults to COMPATIBLE, GCP's widest and weakest cipher set; MODERN drops broken ciphers, RESTRICTED narrows to suites with forward secrecy and AEAD, CUSTOM pins an explicit allowlist, and FIPS_202205 pins the FIPS-validated set.
       notes: "The legacy-weak paths here are old TLS protocol versions and weak cipher suites: profile retires the ciphers and min_tls_version (see enc-in-transit) retires TLS 1.0/1.1. Presets: 01 pins MODERN, 02 RESTRICTED, 03 CUSTOM with a four-suite AEAD allowlist. TLS 1.3 suites are never listable -- GCP always enables them."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

@@ -1,20 +1,37 @@
 # Cloudflare Zero Trust Organization
 
-The Zero Trust organization: the Access login experience (team domain, login page design, session defaults, MFA policy) plus the Access service-key rotation cadence. A singleton upsert -- applying mutates the organization the account already carries, and destroy abandons the configuration.
+Configures the Zero Trust organization: the account-wide Access login experience — team domain, login page design, session defaults, MFA policy — plus the Access service-key rotation cadence. This is a singleton upsert over the account's real login infrastructure: Cloudflare creates the organization when Zero Trust is first enabled, applying this resource mutates it, and destroy abandons the configuration exactly as last applied. One field, `authDomain`, has account-wide blast radius — changing it logs every user out of everything.
 
 ## What Gets Created
 
-When you deploy this resource, the IaC module provisions:
+When you deploy this Cloud Resource, the IaC module provisions:
 
-- **Organization configuration** -- one `cloudflare_zero_trust_organization` (upsert of the account/zone singleton)
-- **Key-rotation cadence** -- one `cloudflare_zero_trust_access_key_configuration` (only when `keyRotationIntervalDays` is set)
+- **Organization Configuration** — one upsert of the account (or zone) organization singleton, sending only the fields the spec sets
+- **Key-Rotation Cadence** — created only when `keyRotationIntervalDays` is set; the Access service-key rotation configuration (account scope only), itself a singleton upsert with a no-op destroy
 
-## Prerequisites
+Neither surface has a delete at Cloudflare: destroy reverts nothing.
 
-- **Zero Trust enabled on the account** (the team-name onboarding step -- it creates the organization this resource configures)
-- **A Cloudflare API token** with Account → Access: Organizations, Identity Providers, and Groups → Edit
+## Before You Deploy
 
-## Quick Start
+### Planton Setup
+
+- **Cloudflare Provider Connection** — an active connection in the Connect module with an API token holding Account → Access: Organizations, Identity Providers, and Groups → Edit. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline credential authentication.
+
+### Cloudflare Account
+
+- **Zero Trust already onboarded** — the organization is born when Zero Trust is first enabled on the account (the team-name onboarding step), never by this resource. Applying against a fresh account without that onboarding fails at the API.
+- **Custom Access pages** (only for `customPages`) — the block-page UIDs come from Access custom pages managed outside this resource today.
+
+## Deploy
+
+### Console
+
+Open the deployment store, find **Cloudflare Zero Trust Organization**, and click **Deploy**. The creation wizard walks you through environment and connection configuration, the account-or-zone scope, the team domain and login design, and the session, MFA, and rotation settings. Start from the **Branded login** preset in the [Presets](#presets) tab to pre-populate the everyday shape.
+
+### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: cloudflare.planton.dev/v1alpha1
@@ -34,48 +51,73 @@ spec:
 planton apply -f organization.yaml
 ```
 
-## Configuration Reference
+This asserts the team domain (`acme.cloudflareaccess.com`), the login page's display name, and a 24-hour Access session on the organization the account already carries — every unset field keeps its live value. A Stack Job tracks the provisioning in real time.
 
-### Scope (exactly one)
+### InfraChart
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `accountId` | string | The account-wide organization (common case). | 32-hex; exactly one scope. |
-| `zoneId` | string/ref | A zone-scoped organization. | Exactly one scope; not importable. |
+For a zone-scoped organization whose zone is deployed in the same InfraPipeline, wire `zoneId` with ValueFromRef:
 
-### Optional Fields
+```yaml
+spec:
+  zoneId:
+    valueFrom:
+      kind: CloudflareDnsZone
+      name: acme-com
+      fieldPath: status.outputs.zone_id
+  authDomain: acme.cloudflareaccess.com
+  name: Acme Zero Trust
+```
 
-| Field | Type | Description | Validation |
-|-------|------|-------------|------------|
-| `authDomain` | string | FULL team domain including `.cloudflareaccess.com`; required on every write. | Changing it breaks every Access login -- see GUIDE. |
-| `name` | string | Display name on the login page. | |
-| `sessionDuration` | string | Access session lifetime. | Go duration (e.g. `24h`, `2h45m`). |
-| `warpAuthSessionDuration` | string | WARP session lifetime. | Minutes/hours only. |
-| `userSeatExpirationInactiveTime` | string | Seat release after inactivity. | Min `730h`. |
-| `denyUnmatchedRequests` | bool | Deny requests matching no application. | + `denyUnmatchedRequestsExemptedZoneNames`. |
-| `customPages` | object | Custom block/denied page UIDs. | |
-| `loginDesign` | object | Login page colors, logo, header/footer. | |
-| `mfaConfig` | object | Allowed authenticators + MFA sessions. | totp, biometrics, security_key, ssh_piv_key. |
-| `mfaSshPivKeyRequirements` | object | Hardware PIV key constraints. | pin/touch policies, key types/sizes CEL-walled. |
-| `allowAuthenticateViaWarp` | bool | WARP session counts as authentication. | |
-| `autoRedirectToIdentity` | bool | Skip the IdP picker with one provider. | |
-| `mfaRequiredForAllApps` | bool | Global MFA by default. | Needs MFA config + session duration. |
-| `isUiReadOnly` | bool | Lock the dashboard read-only. | + `uiReadOnlyToggleReason`. |
-| `keyRotationIntervalDays` | int | Access service-key rotation cadence. | 21-365; account scope only. |
+The InfraPipeline resolves the dependency graph, deploys the zone first, then applies the organization configuration against the resolved zone. Note that a zone-scoped organization cannot be adopted by import, and it cannot carry `keyRotationIntervalDays`.
 
-## Destroy Semantics
+## Key Configuration
 
-Destroy is a NO-OP for both folded surfaces: the live configuration stays exactly as last applied. Nothing is reverted, nothing is deleted.
+These are the most important decisions when configuring the Zero Trust organization. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-## Stack Outputs
+**`authDomain` is the blast radius** — the team domain is the URL every user signs in through and every WARP client enrolls against, declared as the FULL domain including the `.cloudflareaccess.com` suffix (the form Cloudflare's API returns). It is required on every write — the upsert is a full-body PUT and omitting it is rejected (API error 11004) — so declare your CURRENT team domain unless you deliberately intend a rename. Changing it invalidates active sessions and breaks bookmarks, IdP redirect URIs, and WARP enrollment in one apply. Treat it like a production hostname: set it once, correctly, and never touch it casually.
 
-| Output | Type | Description |
-|--------|------|-------------|
-| `auth_domain` | string | The team domain -- what Access applications and WARP enrollment reference |
-| `account_id` | string | The account applied to (the singleton's identity) |
+**Destroy reverts nothing** — there is no "undo by destroy" on this singleton: the organization keeps the last-applied configuration forever. To revert a setting, apply the previous value. The folded key-rotation cadence behaves identically.
 
-## Related Components
+**Unset means unmanaged** — fields you leave unset are never sent, so dashboard-set values survive and partial adoption is safe (manage only the login design, say). The flip side: removing a field from the manifest does not clear it at Cloudflare — apply the empty or default value explicitly instead.
 
-- [Cloudflare Zero Trust Access Identity Provider](/docs/catalog/cloudflare/cloudflarezerotrustaccessidentityprovider) -- how users sign in
-- [Cloudflare Zero Trust Access Application](/docs/catalog/cloudflare/cloudflarezerotrustaccessapplication) -- what sits behind the login
-- [Cloudflare Zero Trust Access Policy](/docs/catalog/cloudflare/cloudflarezerotrustaccesspolicy) -- who gets in
+**MFA pairing rules are API-side** — `mfaRequiredForAllApps` needs MFA enabled with at least one allowed authenticator and an MFA session duration configured. And Cloudflare rejects `allowedAuthenticators` containing only `ssh_piv_key` while the organization has any non-infrastructure applications — PIV keys pair with infrastructure apps only.
+
+**The dashboard lock** — `isUiReadOnly: true` makes every Zero Trust setting read-only in the dashboard regardless of user permission, leaving the API (and therefore IaC) as the only write path — the natural companion of managing the organization from a manifest. Set `uiReadOnlyToggleReason` so dashboard users see why.
+
+**Unmatched-request posture** — `denyUnmatchedRequests: true` denies requests that match no Access application instead of passing them through, with `denyUnmatchedRequestsExemptedZoneNames` carving out exceptions; the fail-closed stance for accounts where everything should sit behind Access.
+
+**Key rotation cadence** — `keyRotationIntervalDays` (21–365) folds the Access service-key rotation surface into this resource; account scope only. Unset leaves the account's current cadence unmanaged.
+
+## Outputs and Dependencies
+
+### What This Component Consumes
+
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareDnsZone** (zone-scoped organizations) | `zoneId` | `status.outputs.zone_id` |
+
+### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
+| Output | Description | Common Downstream Use |
+|--------|-------------|----------------------|
+| `auth_domain` | The team domain, without the `.cloudflareaccess.com` suffix | Access application and WARP enrollment configuration |
+| `account_id` | The account the organization was applied to (empty for zone scope) | Import recipes and account-scoped siblings |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Branded login** — brand the Access login page (colors, logo, header/footer), set the session default, and leave MFA, custom pages, and key rotation exactly as the dashboard has them. Start from the **Branded login** preset.
+
+**MFA hardening** — MFA required for every application by default (security keys or TOTP), unmatched requests denied, the dashboard locked read-only so IaC is the only write path, and the service key rotating every 30 days. Start from the **MFA hardening** preset.
+
+**Partial adoption** — manage one surface (say, `sessionDuration` and `autoRedirectToIdentity`) while the rest of the organization stays dashboard-owned; safe because unset fields are never sent.
+
+## Works With
+
+- [**Cloudflare Zero Trust Access Identity Provider**](/cloud-catalog/cloudflare-zero-trust-access-identity-provider) — the sign-in methods behind the login page this resource styles
+- [**Cloudflare Zero Trust Access Application**](/cloud-catalog/cloudflare-zero-trust-access-application) — the doors this login guards
+- [**Cloudflare Zero Trust Access Policy**](/cloud-catalog/cloudflare-zero-trust-access-policy) — who gets in
+- [**Cloudflare Zero Trust Gateway Settings**](/cloud-catalog/cloudflare-zero-trust-gateway-settings) — the traffic-filtering half of Zero Trust

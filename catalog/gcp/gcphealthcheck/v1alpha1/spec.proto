@@ -510,8 +510,9 @@ message GcpHealthCheckGrpcTls {
   // OVERALL health.
   string grpc_service_name = 1 [(buf.validate.field).string.max_len = 1024];
 
-  // TCP port for the probe. Required when port_specification is
-  // USE_FIXED_PORT or unset. Must be 1-65535.
+  // TCP port for the probe when port_specification is USE_FIXED_PORT or
+  // unset. Must be 1-65535 when set. Optional — the provider does not
+  // require it; set it explicitly for a deterministic probe target.
   int32 port = 2 [(buf.validate.field).cel = {
     id: "valid_port"
     message: "port must be between 1 and 65535"

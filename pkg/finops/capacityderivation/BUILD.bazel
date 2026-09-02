@@ -21,6 +21,7 @@ go_test(
         "//finops/componentcostderivation/v1:componentcostderivation",
         "//finops/componentcostprofile/v1:componentcostprofile",
         "//pkg/crkreflect",
+        "//pkg/finops/capacityestimator",
         "//pkg/finops/costderivation",
         "//pkg/finops/costprofile",
         "//pkg/finops/estimatemodel",

@@ -28,9 +28,19 @@ spec:
   #     instances; nothing in a lane registers out-of-band, so the arm
   #     would assert nothing. Config-verified offline.
   #
-  # pending_proof: forged this session to the full offline bar -- Q47
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q47): all three scenarios on both engines
+  # through the full six-phase runner + the Terraform blind import
+  # round-trips (the private namespace's {ns}:{vpc} composite and the
+  # {service_id}/{instance_id} slash composites re-imported blind).
+  # FIVE server contracts live-caught and front-loaded: CNAME services
+  # require explicit WEIGHTED routing (CEL); public namespaces reject
+  # example.com domains ("reserved by AWS" - scenario rides
+  # planton.test); health-checked instances reject
+  # reserved/documentation IPs AND require a port (CEL); AWS
+  # materializes failure_threshold=1 on custom-health configs (both
+  # modules always send it); instance_service_ids try()-hardened for
+  # import-time partial echoes.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

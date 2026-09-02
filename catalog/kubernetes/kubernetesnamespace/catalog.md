@@ -1,6 +1,6 @@
 # Kubernetes Namespace
 
-Deploys a production-ready Kubernetes namespace with optional resource quotas, LimitRanges, network policies, pod security standards, and service mesh sidecar injection. Manages namespace-level governance as a single Cloud Resource, turning multi-object namespace setup into a one-step operation through a Kubernetes Provider Connection.
+Deploys a production-ready Kubernetes namespace with optional resource quotas, LimitRanges, network policies, pod security standards, and service mesh sidecar injection. Manages namespace-level governance as a single Cloud Resource, turning multi-object namespace setup into a one-step operation.
 
 ## What Gets Created
 
@@ -30,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Kubernetes Namespace**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset for development or **Production with Quotas** for production workloads in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes Namespace**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Namespace** preset for development or the **Production Namespace with Custom Quotas** preset for production workloads in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesNamespace
 metadata:
   name: backend-services
@@ -54,7 +54,7 @@ spec:
 planton apply -f namespace.yaml
 ```
 
-This creates a namespace with a medium resource quota profile (4 CPU / 8Gi requests, 8 CPU / 16Gi limits, 50 pods max) and baseline pod security enforcement. Network isolation and service mesh injection are not enabled.
+This creates a namespace with a medium resource quota profile (4 CPU / 8Gi requests, 8 CPU / 16Gi limits, 50 pods max) and baseline pod security enforcement. Network isolation and service mesh injection are not enabled. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
@@ -80,26 +80,19 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `namespace` | The name of the created namespace | Deployment manifests for workloads targeting this namespace |
-| `namespace_id` | Fully qualified namespace identifier | Resource references in InfraChart wiring |
-| `resource_quotas_applied` | Whether ResourceQuota objects were created | Operational verification |
-| `limit_ranges_applied` | Whether LimitRange objects were created | Operational verification |
-| `network_policies_applied` | Whether NetworkPolicy objects were created | Operational verification |
-| `service_mesh_enabled` | Whether sidecar injection is enabled | Operational verification |
-| `service_mesh_type` | The configured mesh type (istio, linkerd, consul) | Conditional downstream configuration |
-| `pod_security_standard` | The enforcement level (privileged, baseline, restricted) | Compliance reporting |
-| `labels_json` | JSON representation of applied labels | Operational tooling |
-| `annotations_json` | JSON representation of applied annotations | Operational tooling |
+| `namespace` | The name of the created namespace | The `spec.namespace` reference nearly every namespaced kind wires against |
+
+The remaining outputs (`namespace_id`, the `*_applied` flags, `pod_security_standard`, `service_mesh_type`, `labels_json`, `annotations_json`) echo the applied configuration back for verification and audit — they carry nothing downstream resources compose on.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Development namespace with basic guardrails** -- Small resource profile, baseline pod security, no network isolation. Fast to provision and suitable for most development and staging workloads. Start from the **Standard** preset.
+**Development namespace with basic guardrails** -- Small resource profile, baseline pod security, no network isolation. Fast to provision and suitable for most development and staging workloads. Start from the **Standard Namespace** preset.
 
-**Production namespace with governance** -- Custom resource quotas, default container limits, ingress isolation allowing only kube-system and istio-system, restricted pod security. Designed for multi-tenant production clusters. Start from the **Production with Quotas** preset.
+**Production namespace with governance** -- Custom resource quotas, default container limits, ingress isolation allowing only kube-system and istio-system, restricted pod security. Designed for multi-tenant production clusters. Start from the **Production Namespace with Custom Quotas** preset.
 
-**Service mesh namespace** -- Medium resource profile with Istio sidecar injection enabled. All pods deployed in this namespace automatically receive an Istio proxy for mTLS, traffic management, and observability. Start from the **Istio-Enabled** preset.
+**Service mesh namespace** -- Medium resource profile with Istio sidecar injection enabled. All pods deployed in this namespace automatically receive an Istio proxy for mTLS, traffic management, and observability. Start from the **Istio-Enabled Namespace** preset.
 
 ## Works With
 

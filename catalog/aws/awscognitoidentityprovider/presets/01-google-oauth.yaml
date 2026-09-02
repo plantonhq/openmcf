@@ -19,7 +19,9 @@ spec:
   providerType: Google
   google:
     clientId: <google-oauth-client-id>
-    clientSecret: <google-oauth-client-secret>
+    # The client secret is sensitive: reference a managed secret
+    # ($secret/<slug>) -- never a plaintext value.
+    clientSecret: $secret/google-oauth-client-secret
     authorizeScopes: "email profile openid"
   attributeMapping:
     email: email

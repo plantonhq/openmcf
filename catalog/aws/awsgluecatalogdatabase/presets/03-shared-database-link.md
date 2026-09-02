@@ -1,4 +1,4 @@
-# Preset: Shared Database Link
+# Shared Database Link
 
 A resource link: a local pointer to a Glue database that lives in another AWS
 account (or region) and was shared via AWS RAM / Lake Formation. Queries

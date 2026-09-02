@@ -1,0 +1,69 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: auth0eventstream
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: "An event stream stores no data of its own -- it is a delivery route inside Auth0's SaaS control plane. The configuration it carries (including the webhook secrets the spec marks sensitive and Auth0 never returns via the API) rests in Auth0's tenant configuration under Auth0's provider-managed storage posture, with no encryption seam in this spec; events at rest live in the DESTINATION (the customer's EventBridge bus or webhook receiver), each its own component's posture."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: There is no data at rest at this component's level to key (see enc-at-rest); Auth0 exposes no customer-managed-key surface on event stream objects in the spec or the modules.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: spec_validation
+        reference: "webhook_configuration.webhook_endpoint is validated against the pattern ^https://.+ (spec.proto), so a plain-HTTP delivery target cannot be declared -- webhook deliveries always ride TLS. The eventbridge destination carries no endpoint at all: Auth0 publishes into the customer's AWS account through the EventBridge partner event source channel."
+      notes: The Management API calls that create and manage the stream travel to Auth0's HTTPS-only API endpoint; no plaintext transport exists anywhere in this component's paths.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: An event stream exposes no endpoint to reach -- it makes OUTBOUND deliveries from Auth0 to the configured destination. Whether the receiving webhook endpoint is internet-facing is that receiver's posture (the spec notes Auth0 requires it to be reachable), owned by the component that runs it.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: No inbound network surface exists to filter; the stream is a configuration object addressed only through Auth0's Management API.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The stream receives no HTTP requests -- request filtering would attach to the webhook receiver's edge, a separate component; Auth0's own API edge is Auth0's provider-managed posture.
+    - control_id: rbac
+      status: not_applicable
+      notes: "The spec carries no access-control surface of its own. WHO may create, change, or delete the stream is governed at the Auth0 tenant level -- Management API tokens scoped with the event_streams scopes (documented in iac/permissions.yaml) and dashboard admin roles -- not per stream."
+    - control_id: workload-identity
+      status: configurable
+      field_path: destination_type
+      evidence:
+        type: spec_validation
+        reference: "destination_type is constrained to eventbridge or webhook (spec.proto). The eventbridge path carries NO static credential anywhere -- only aws_account_id and aws_region; Auth0 delivers through the AWS partner event source channel it provisions. The webhook path inherently rides a static shared secret: webhook_authorization is required, offering basic (username/password) or bearer (token), both long-lived values the receiver validates."
+      notes: Choosing the eventbridge destination is the credential-less posture; the webhook destination's shared secret should be generated strong (the spec suggests openssl rand -base64 32) and rotated by updating the stream.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: "The stream carries no sign-in path to weaken or disable. The webhook authorization header is a delivery credential the receiver validates; the Auth0 API offers exactly two methods for it (basic or bearer, both static shared secrets -- see workload-identity), neither a deprecated protocol with a disable switch."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: "An event stream delivers event payloads and signs nobody in -- there is no end-user credential surface here. Credential strength for the tenant's end users (password policy, brute-force protection, MFA) lives on the tenant's connections: the auth0connection kind carries that stance."
+    - control_id: audit-logging
+      status: not_applicable
+      notes: "The spec exposes no audit toggle. Changes to the stream are Management API operations captured in Auth0's tenant logs, whose retention and streaming are tenant-plan posture -- and this component is itself the export vehicle: subscribing to management.* event types streams those administrative events out."
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: Neither the spec nor the modules expose a metrics surface for the stream; delivery health is observed inside Auth0's dashboard as provider-managed SaaS telemetry, and the events themselves land in whatever monitoring pipeline the destination feeds.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "The stream is declaratively re-creatable from the manifest and accumulates no stored data to restore -- events are deliveries in flight. Note the asymmetry the spec documents: a webhook configuration updates in place, while any eventbridge configuration change forces recreation of the stream."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this component's level to retain (see backup-recovery); retention of delivered events is the destination's policy.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The stream has no placement to configure -- delivery availability is Auth0's SaaS platform posture, and the destination's availability (EventBridge's regional service or the webhook receiver's replicas) belongs to those components.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Auth0 Management API's event-streams endpoints nor the auth0 provider exposes a deletion-protection flag: a delete request proceeds when issued, removing the stream and stopping delivery. Protection, where wanted, is an operational concern outside this spec."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A pure configuration object with no software of its own to patch; the platform that evaluates and delivers events is Auth0's SaaS, patched by Auth0.

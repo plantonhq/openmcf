@@ -22,9 +22,18 @@ spec:
   #     guard. Unblock: an AwsKmsKey fixture with the documented
   #     maintenance grant.
   #
-  # pending_proof: forged this session to the full offline bar -- Q46
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q46): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate (~35-55s per engine). TWO catches
+  # fixed at the bar: (1) S3 Tables holds a deleted bucket's name in a
+  # "transitional state" window (CreateTableBucket 409 across
+  # back-to-back engine lanes) - the scenario name is now run-scoped;
+  # (2) the create-only Iceberg schema (metadata) is never read back
+  # and forces replacement, so a blind import planned a DESTRUCTIVE
+  # delete+create - both modules now ignore post-create schema changes
+  # (the birth-certificate contract; upstream's own import tests
+  # ignore the block).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

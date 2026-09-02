@@ -148,6 +148,31 @@ Study these files for the established patterns:
 
 ---
 
+## Copy Casing: Chrome vs Prose
+
+Every user-visible string falls on one side of a boundary, and each side has
+one casing rule:
+
+- **Chrome is Title Case** — anything that names a thing or heads a surface:
+  card and panel labels ("Engine Tier", "Computed At"), table headers, status
+  cells ("Protected", "Open"), section titles ("Content Preview:", "Expected
+  Format:"), and command short descriptions. Minor words (articles,
+  conjunctions, short prepositions) stay lowercase unless first or last
+  ("Loaded from Clipboard Path").
+- **Prose is sentence case** — anything the user reads as a sentence: the
+  explanation lines, causes lists, tips, and error message bodies. A tip like
+  "Use '--clip' without '-i' for raw manifests." is a sentence, not a label.
+- **Server-emitted and user-authored content renders verbatim** — never
+  re-cased, reworded, or paraphrased on its way to the terminal.
+- **Technical literals keep their exact form** ("kubectl", "planton.ai",
+  manifest field names, resource kind names) even at the start of a label.
+
+When touching a UI function, converge the strings it prints to this boundary
+in the same change — a display where the title is Title Case and the section
+labels are sentence case reads as unfinished.
+
+---
+
 ## Anti-Patterns - FORBIDDEN
 
 ```go

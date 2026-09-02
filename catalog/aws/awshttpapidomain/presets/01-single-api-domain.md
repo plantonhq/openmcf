@@ -1,4 +1,4 @@
-# Preset: Single API Domain
+# Single API Domain
 
 ## When to Use
 

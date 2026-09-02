@@ -29,14 +29,14 @@ Attaching a gateway does not expose anything on its own. To build a working publ
 
 ### Console
 
-Open the deployment store, find **AWS Internet Gateway**, and click **Deploy**. The creation wizard asks for the one decision an internet gateway has: the VPC to attach to and its region. Start from a preset in the [Presets](#presets) tab -- **Public Internet Gateway** (greenfield, by reference) or **Attach to Existing VPC** (brownfield, by literal id).
+Open the deployment store, find **AWS Internet Gateway**, and click **Deploy**. The creation wizard asks for the one decision an internet gateway has: the VPC to attach to and its region. Start from a preset in the [Presets](#presets) tab -- **Public Internet Gateway (greenfield)** to attach by reference, or **Attach to an Existing VPC (brownfield)** to attach by literal id.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsInternetGateway
 metadata:
   name: main-igw
@@ -57,6 +57,22 @@ planton apply -f internet-gateway.yaml
 
 This attaches an internet gateway to a Planton-managed VPC by reference. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+When the gateway deploys alongside its VPC in one chart, wire the VPC reference via ValueFromRef:
+
+```yaml
+spec:
+  region: us-west-2
+  vpcId:
+    valueFrom:
+      kind: AwsVpc
+      name: production-vpc
+      fieldPath: status.outputs.vpc_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the VPC first, then attaches the gateway to it.
+
 ## Key Configuration
 
 An internet gateway has a deliberately small surface -- the value is in how it composes, not in tuning knobs. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -71,11 +87,9 @@ An internet gateway has a deliberately small surface -- the value is in how it c
 
 ### What This Component Consumes
 
-Via ValueFromRef, this component references:
-
-| Input | Source Resource | Source Output |
-|-------|-----------------|---------------|
-| `vpcId` | [AWS VPC](/cloud-catalog/aws-vpc) | `status.outputs.vpc_id` |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsVpc** | `vpcId` | `status.outputs.vpc_id` |
 
 ### What This Component Provides
 
@@ -92,11 +106,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Public-facing VPC** -- attach this gateway, then give public subnets (load balancers, bastions, internet-facing services) a `0.0.0.0/0` route to its `internet_gateway_id`. Start from the **Public Internet Gateway** preset.
+**Public-facing VPC** -- attach this gateway, then give public subnets (load balancers, bastions, internet-facing services) a `0.0.0.0/0` route to its `internet_gateway_id`. Start from the **Public Internet Gateway (greenfield)** preset.
 
 **NAT egress topology** -- the internet path that public subnets, and the NAT gateways living in them, route through. Private subnets reach the internet outbound by routing to a NAT gateway that itself sits in a public subnet routed here.
 
-**Brownfield attachment** -- attach a Planton-managed gateway to a VPC created outside Planton by supplying its literal vpc-id. Start from the **Attach to Existing VPC** preset.
+**Brownfield attachment** -- attach a Planton-managed gateway to a VPC created outside Planton by supplying its literal vpc-id. Start from the **Attach to an Existing VPC (brownfield)** preset.
 
 ## Works With
 

@@ -1,6 +1,6 @@
 # AWS FSx ONTAP Storage Virtual Machine
 
-Deploys an ONTAP Storage Virtual Machine (SVM) on an existing FSx for NetApp ONTAP file system, providing multi-protocol data access endpoints for NFS, iSCSI, and optionally SMB via Active Directory. The SVM integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the parent file system.
+Deploys an ONTAP Storage Virtual Machine (SVM) on an existing FSx for NetApp ONTAP file system, providing multi-protocol data access endpoints for NFS, iSCSI, and optionally SMB via Active Directory. The SVM is the data-serving layer of the ONTAP family: the file system provides capacity and throughput, the SVM provides the endpoints clients mount, and volumes (AwsFsxOntapVolume) attach to the SVM by its `svm_id` output.
 
 ## What Gets Created
 
@@ -38,7 +38,7 @@ Open the deployment store, find **AWS FSx ONTAP Storage Virtual Machine**, and c
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapStorageVirtualMachine
 metadata:
   name: app-svm
@@ -120,8 +120,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **SMB Windows SVM with Active Directory** -- NTFS security style with AD domain join for Windows file share access. Includes SVM admin password and OU placement. Start from the **SMB Windows SVM with Active Directory** preset.
 
-**Multiprotocol SVM (NFS + SMB)** -- MIXED security style with Active Directory. Both NFS and SMB endpoints available for mixed Linux/Windows environments sharing the same data. Start from the **Multiprotocol SVM** preset.
+**Multiprotocol SVM (NFS + SMB)** -- MIXED security style with Active Directory. Both NFS and SMB endpoints available for mixed Linux/Windows environments sharing the same data. Start from the **Multiprotocol SVM (NFS + SMB)** preset.
 
 ## Works With
 
 - [**AWS FSx ONTAP File System**](/cloud-catalog/aws-fsx-ontap-file-system) -- provides the parent file system infrastructure for this SVM
+- [**AWS FSx ONTAP Volume**](/cloud-catalog/aws-fsx-ontap-volume) -- the data volumes that attach to this SVM by `svm_id` and mount through its endpoints

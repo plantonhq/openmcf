@@ -19,14 +19,14 @@ const heroLines: TerminalLine[] = [
   { text: '✓ planton installed', className: 'text-[#10b981]' },
   { text: '' },
   { text: '$ planton apply -f postgres.yaml', className: 'text-white' },
-  { text: '▶ Applying GcpCloudSqlInstance/my-postgres', className: 'text-[#b0b0b0]' },
+  { text: '▶ Applying GcpCloudSql/my-postgres', className: 'text-[#b0b0b0]' },
   { text: '  Organization: acme-corp', className: 'text-[#666]' },
   { text: '  Environment:  production', className: 'text-[#666]' },
   { text: '' },
   { text: '⏳ Creating stack job...', className: 'text-[#f59e0b]' },
   { text: '✓ Stack job sjb-d4f21a created', className: 'text-[#10b981]' },
   { text: '⏳ Provisioning resources...', className: 'text-[#f59e0b]' },
-  { text: '✓ GcpCloudSqlInstance created in 3m 12s', className: 'text-[#10b981]' },
+  { text: '✓ GcpCloudSql created in 3m 12s', className: 'text-[#10b981]' },
 ];
 
 const installMethods = [

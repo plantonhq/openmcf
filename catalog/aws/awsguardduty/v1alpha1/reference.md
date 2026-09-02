@@ -211,7 +211,12 @@ you want it); set false to explicitly turn a plan off.
 `[]AwsGuardDutyFeatureAdditionalConfiguration`
 
 Sub-toggles within the plan (agent management for RUNTIME_
-MONITORING and friends).
+MONITORING and friends). Declare only the sub-toggles you enable:
+AWS materializes a feature's FULL sub-toggle family server-side
+(undeclared members read back DISABLED), and the modules mirror
+that contract by always sending the complete family - a declared
+member carries your value, an undeclared member an explicit
+DISABLED (live-verified 2026-08-25).
 
 ### spec.features[].additionalConfiguration[].name
 
@@ -432,7 +437,13 @@ detector.
 
 `string | valueFrom` · required
 
-The destination bucket's ARN.
+The destination bucket's ARN. GuardDuty validates the export
+write at EXACTLY the ARN it is given: a literal value may append
+a key prefix (arn:aws:s3:::bucket/prefix) and scope the bucket
+policy's s3:PutObject grant to that prefix, but the reference
+path composes the BARE bucket ARN, so the grant must then cover
+the whole bucket - a narrower prefix grant fails
+CreatePublishingDestination at create time (live-verified).
 
 - references: AwsS3Bucket (`status.outputs.bucket_arn`)
 - rule: {"required":true}

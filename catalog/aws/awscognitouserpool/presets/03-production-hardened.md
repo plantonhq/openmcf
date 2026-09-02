@@ -1,4 +1,4 @@
-# Preset: Production Hardened
+# Production Hardened
 
 **Rank**: 3
 

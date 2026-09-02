@@ -54,12 +54,16 @@ type AwsCloudwatchLogAccountPolicySpec struct {
 	// object, and so on). AWS validates it server-side; the engines diff
 	// it semantically so formatting never causes drift.
 	PolicyDocument *structpb.Struct `protobuf:"bytes,4,opt,name=policy_document,json=policyDocument,proto3" json:"policy_document,omitempty"`
-	// Narrows which log groups the policy applies to, in AWS's selection
-	// syntax (e.g. "LogGroupNamePrefix IN [\"my-service\"]" - the exact
-	// grammar each policy type documents). Unset applies account-wide.
-	// Changing it replaces the policy. The provider's scope argument is
-	// deliberately not modeled: ALL is its only legal value at the pin,
-	// so the modules pin it (a recorded exclusion).
+	// Excludes log groups from a SUBSCRIPTION_FILTER_POLICY, in AWS's
+	// one supported grammar: "LogGroupName NOT IN [\"name1\", \"name2\"]"
+	// (an exact-name exclusion list - no prefix form, no IN form). AWS
+	// accepts selection criteria ONLY on subscription-filter policies:
+	// PutAccountPolicy rejects any criteria string on the other four
+	// types with "Invalid selection criteria provided", so every other
+	// policy type applies account-wide, period. Changing it replaces the
+	// policy. The provider's scope argument is deliberately not modeled:
+	// ALL is its only legal value at the pin, so the modules pin it (a
+	// recorded exclusion).
 	SelectionCriteria string `protobuf:"bytes,5,opt,name=selection_criteria,json=selectionCriteria,proto3" json:"selection_criteria,omitempty"`
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
@@ -134,7 +138,7 @@ var File_catalog_aws_awscloudwatchlogaccountpolicy_v1alpha1_spec_proto protorefl
 
 const file_catalog_aws_awscloudwatchlogaccountpolicy_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/aws/awscloudwatchlogaccountpolicy/v1alpha1/spec.proto\x126dev.planton.aws.awscloudwatchlogaccountpolicy.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x91\x03\n" +
+	"=catalog/aws/awscloudwatchlogaccountpolicy/v1alpha1/spec.proto\x126dev.planton.aws.awscloudwatchlogaccountpolicy.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xfb\x04\n" +
 	"!AwsCloudwatchLogAccountPolicySpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12+\n" +
 	"\vpolicy_name\x18\x02 \x01(\tB\n" +
@@ -143,7 +147,8 @@ const file_catalog_aws_awscloudwatchlogaccountpolicy_v1alpha1_spec_proto_rawDesc
 	"\vpolicy_type\x18\x03 \x01(\tB{\xbaHxrvR\x16DATA_PROTECTION_POLICYR\x1aSUBSCRIPTION_FILTER_POLICYR\x12FIELD_INDEX_POLICYR\x12TRANSFORMER_POLICYR\x18METRIC_EXTRACTION_POLICYR\n" +
 	"policyType\x12H\n" +
 	"\x0fpolicy_document\x18\x04 \x01(\v2\x17.google.protobuf.StructB\x06\xbaH\x03\xc8\x01\x01R\x0epolicyDocument\x125\n" +
-	"\x12selection_criteria\x18\x05 \x01(\tB\x06\xbaH\x03\xd8\x01\x01R\x11selectionCriteriaB\xbb\x03\n" +
+	"\x12selection_criteria\x18\x05 \x01(\tB\x06\xbaH\x03\xd8\x01\x01R\x11selectionCriteria:\xe7\x01\xbaH\xe3\x01\x1a\xe0\x01\n" +
+	"0spec.selection_criteria_subscription_filter_only\x12Yselection_criteria is accepted by AWS only when policy_type is SUBSCRIPTION_FILTER_POLICY\x1aQthis.selection_criteria == '' || this.policy_type == 'SUBSCRIPTION_FILTER_POLICY'B\xbb\x03\n" +
 	":com.dev.planton.aws.awscloudwatchlogaccountpolicy.v1alpha1B\tSpecProtoP\x01Zugithub.com/plantonhq/planton/catalog/aws/awscloudwatchlogaccountpolicy/v1alpha1;awscloudwatchlogaccountpolicyv1alpha1\xa2\x02\x04DPAA\xaa\x026Dev.Planton.Aws.Awscloudwatchlogaccountpolicy.V1alpha1\xca\x026Dev\\Planton\\Aws\\Awscloudwatchlogaccountpolicy\\V1alpha1\xe2\x02BDev\\Planton\\Aws\\Awscloudwatchlogaccountpolicy\\V1alpha1\\GPBMetadata\xea\x02:Dev::Planton::Aws::Awscloudwatchlogaccountpolicy::V1alpha1b\x06proto3"
 
 var (

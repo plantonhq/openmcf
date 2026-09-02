@@ -1,0 +1,3 @@
+order:
+    - TestCloudResourceGeneric/my-shared-producer@dev
+    - TestCloudResourceGeneric/consumer@dev

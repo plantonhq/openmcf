@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustdevicedefaultprofile
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageProfile
+        name: Zero Trust Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Update the account's default WARP device profile via PATCH /accounts/{account_id}/devices/policy and replace its local-domain fallback list via PUT /accounts/{account_id}/devices/policy/fallback_domains; the reference publishes no narrower group for WARP device settings profiles (derived from the module's API surface). Covers the Terraform module's cloudflare_zero_trust_device_default_profile resource plus its conditional cloudflare_zero_trust_device_default_profile_local_domain_fallback companion, and the Pulumi module's matching ZeroTrustDeviceDefaultProfile and ZeroTrustDeviceDefaultProfileLocalDomainFallback resources; neither engine performs secondary lookups. Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadProfile
+        name: Zero Trust Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the profile and its fallback-domain list via GET on the same paths (derived from the module's API surface).
+      - purpose: ManageZoneCertificates
+        name: SSL and Certificates Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Needed only when the spec sets zone_certificates; toggle WARP client certificate provisioning via PATCH /zones/{zone_id}/devices/policy/certificates. Named as the required permission by Cloudflare's own docs for this endpoint (https://developers.cloudflare.com/cloudflare-one/team-and-resources/devices/cloudflare-one-client/configure/modes/device-information-only/, retrieved 2026-08-22). Covers the Terraform module's conditional cloudflare_zero_trust_device_default_profile_certificates companion and the Pulumi module's matching ZeroTrustDeviceDefaultProfileCertificates resource.
+      - purpose: ReadZoneCertificates
+        name: SSL and Certificates Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Needed only when the spec sets zone_certificates; refresh the provisioning toggle via GET on the same path (derived from the module's API surface).

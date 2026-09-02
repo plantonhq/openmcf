@@ -1,6 +1,6 @@
 # AWS Global Accelerator
 
-Deploys a Global Accelerator with static anycast IP addresses, configurable listeners, regional endpoint groups, and endpoint routing. The accelerator routes traffic through the AWS global network to optimal endpoints based on health, geography, and traffic dial percentages. Integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys a Global Accelerator with static anycast IP addresses, configurable listeners, regional endpoint groups, and endpoint routing. The accelerator routes traffic through the AWS global network to optimal endpoints based on health, geography, and traffic dial percentages -- Layer 4 (TCP/UDP), not HTTP-aware like CloudFront, with two anycast addresses that never change for the accelerator's lifetime. One operational expectation: every accelerator, listener, or endpoint-group change waits for the accelerator to return to the DEPLOYED state, so applies take minutes, not seconds.
 
 ## What Gets Created
 
@@ -35,7 +35,7 @@ Open the deployment store, find **AWS Global Accelerator**, and click **Deploy**
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsGlobalAccelerator
 metadata:
   name: web-accelerator
@@ -60,7 +60,7 @@ spec:
 planton apply -f global-accelerator.yaml
 ```
 
-This creates a Global Accelerator with a single TCP listener on port 443 routing to one ALB endpoint. Flow logs are disabled, health checks use TCP defaults, and traffic dial is set to 100%.
+This creates a Global Accelerator with a single TCP listener on port 443 routing to one ALB endpoint. Flow logs are disabled, health checks use TCP defaults, and traffic dial is set to 100%. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -127,7 +127,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Basic TCP accelerator** -- Single-region accelerator with TCP on port 443 routing to one ALB endpoint. Provides static anycast IPs and BGP-based failover. Start from the **Basic TCP Accelerator** preset.
 
-**Multi-region production** -- Two regional endpoint groups (e.g., us-east-1 and eu-west-1) with HTTP health checks, flow logs, and weighted traffic distribution. Automatic regional failover within seconds. Start from the **Multi-Region Production** preset.
+**Multi-region production** -- Two regional endpoint groups (e.g., us-east-1 and eu-west-1) with HTTP health checks, flow logs, and weighted traffic distribution. Automatic regional failover within seconds. Start from the **Multi-Region Production Accelerator** preset.
 
 **Gaming UDP accelerator** -- UDP protocol with SOURCE_IP affinity and a port range for game servers. Routes players to the nearest healthy game server via Elastic IP endpoints. Start from the **Gaming UDP Accelerator** preset.
 

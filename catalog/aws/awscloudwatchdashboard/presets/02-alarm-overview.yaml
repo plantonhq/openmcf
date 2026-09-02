@@ -9,7 +9,7 @@ spec:
     widgets:
       - type: alarm
         x: 0
-        y: 0
+        "y": 0
         width: 24
         height: 4
         properties:
@@ -19,7 +19,7 @@ spec:
             - arn:aws:cloudwatch:us-east-1:123456789012:alarm:prod-db-cpu
       - type: log
         x: 0
-        y: 4
+        "y": 4
         width: 24
         height: 6
         properties:

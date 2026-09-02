@@ -21,8 +21,26 @@ spec:
           field_path: cluster.replicas
           default_when_unset: "1"
       volumes:
+        # The volume exists exactly when JetStream is on: the enabled
+        # flag defaults to true, so the two disjoint bindings below
+        # cover "block present, flag unset" and "flag explicitly true"
+        # -- an explicitly disabled JetStream binds nothing, whatever
+        # disk_size says.
         - label: JetStream file store
           size_path: jet_stream.disk_size
+          applies_when:
+            - field_path: jet_stream
+              op: is_set
+            - field_path: jet_stream.enabled
+              op: is_unset
+        - label: JetStream file store
+          size_path: jet_stream.disk_size
+          applies_when:
+            - field_path: jet_stream.enabled
+              op: is_set
+            - field_path: jet_stream.enabled
+              op: equals
+              value: "true"
   exclusions:
     - text: the dollar value of this capacity is the target cluster's node and storage-class economics
     - applies_when:
@@ -36,9 +54,15 @@ spec:
   notes:
     - text: the config-reloader sidecar in every server pod and the nats-box utility pod (deployed unless nats_box_enabled is false) carry chart-default reservations this manifest does not declare
     - applies_when:
+        - field_path: jet_stream
+          op: is_unset
+      text: JetStream is on by default for this kind -- with no jet_stream block, every server still provisions the chart-default 10Gi file-store volume, a reservation this footprint cannot count
+    - applies_when:
+        - field_path: jet_stream
+          op: is_set
         - field_path: jet_stream.disk_size
           op: is_unset
-      text: unless JetStream is explicitly disabled, every server still provisions the chart-default 10Gi file-store volume even without a declared disk_size -- a reservation this footprint cannot count
+      text: when JetStream is on and disk_size is omitted, the file store is stated at its 10Gi spec-declared default size; explicitly disabled JetStream binds no volume at all
     - applies_when:
         - field_path: cluster
           op: is_set

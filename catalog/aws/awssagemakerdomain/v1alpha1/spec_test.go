@@ -1201,8 +1201,9 @@ var _ = ginkgo.Describe("AwsSagemakerDomain folded satellites and promotions", f
 
 	// The CreateSpace server contract (live-caught 2026-08-13): a space idle
 	// timeout is rejected wherever idle shutdown resolves DISABLED for the
-	// space. The CELs enforce the in-manifest half — an owner profile that
-	// explicitly disables the plane.
+	// space. The CELs resolve the in-manifest inheritance chain — the owner
+	// profile's explicit setting wins, a silent owner inherits the domain's
+	// default_user_settings plane.
 	ginkgo.It("rejects a space idle timeout owned by a DISABLED-lifecycle profile (JupyterLab)", func() {
 		input := validMinimalSpec()
 		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{{
@@ -1300,13 +1301,92 @@ var _ = ginkgo.Describe("AwsSagemakerDomain folded satellites and promotions", f
 	})
 
 	ginkgo.It("accepts a space idle timeout whose owner profile is outside the manifest", func() {
-		// Enablement inherited from default_user_settings or from profiles
-		// provisioned outside the manifest resolves server-side — the CEL
-		// must not reject what it cannot see.
+		// A profile provisioned outside the manifest resolves server-side —
+		// the CEL must not reject what it cannot see, even when the domain
+		// plane is DISABLED (the external profile may override to ENABLED).
 		input := validMinimalSpec()
 		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
 			SpaceName:            "external-owner",
 			OwnershipSettings:    &AwsSagemakerDomainSpaceOwnership{OwnerUserProfileName: "sso-provisioned"},
+			SpaceSharingSettings: &AwsSagemakerDomainSpaceSharing{SharingType: "Private"},
+			SpaceSettings: &AwsSagemakerDomainSpaceSettings{
+				JupyterLabAppSettings: &AwsSagemakerDomainSpaceJupyterLabAppSettings{
+					DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.t3.medium"},
+					IdleSettings:        &AwsSagemakerDomainSpaceIdleSettings{IdleTimeoutInMinutes: proto.Int32(60)},
+				},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+	})
+
+	ginkgo.It("rejects a space idle timeout when its silent owner inherits a DISABLED domain plane (JupyterLab)", func() {
+		// The inheritance blind spot, closed: the owner profile says nothing
+		// about JupyterLab idle settings, so AWS resolves the domain's
+		// default_user_settings plane — which disables idle shutdown. The
+		// manifest must fail here, not at CreateSpace.
+		input := validMinimalSpec()
+		input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
+			IdleSettings: &AwsSagemakerDomainIdleSettings{
+				LifecycleManagement:     proto.String("DISABLED"),
+				IdleTimeoutInMinutes:    120,
+				MinIdleTimeoutInMinutes: 60,
+				MaxIdleTimeoutInMinutes: 240,
+			},
+		}
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{{
+			UserProfileName: "silent-owner",
+			UserSettings: &AwsSagemakerDomainUserSettings{
+				ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/Owner"},
+				},
+			},
+		}}
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
+			SpaceName:            "inherited-contradiction",
+			OwnershipSettings:    &AwsSagemakerDomainSpaceOwnership{OwnerUserProfileName: "silent-owner"},
+			SpaceSharingSettings: &AwsSagemakerDomainSpaceSharing{SharingType: "Private"},
+			SpaceSettings: &AwsSagemakerDomainSpaceSettings{
+				JupyterLabAppSettings: &AwsSagemakerDomainSpaceJupyterLabAppSettings{
+					DefaultResourceSpec: &AwsSagemakerDomainResourceSpec{InstanceType: "ml.t3.medium"},
+					IdleSettings:        &AwsSagemakerDomainSpaceIdleSettings{IdleTimeoutInMinutes: proto.Int32(60)},
+				},
+			},
+		}}
+		gomega.Expect(protovalidate.Validate(input)).ToNot(gomega.BeNil())
+	})
+
+	ginkgo.It("accepts a space idle timeout when the owner's explicit ENABLED overrides a DISABLED domain plane", func() {
+		// Inheritance resolution order: the owner profile's explicit value
+		// wins over the domain plane — a DISABLED default with an ENABLED
+		// owner override is a legal, common shape.
+		input := validMinimalSpec()
+		input.Spec.DefaultUserSettings.JupyterLabAppSettings = &AwsSagemakerDomainJupyterLabAppSettings{
+			IdleSettings: &AwsSagemakerDomainIdleSettings{
+				LifecycleManagement:     proto.String("DISABLED"),
+				IdleTimeoutInMinutes:    120,
+				MinIdleTimeoutInMinutes: 60,
+				MaxIdleTimeoutInMinutes: 240,
+			},
+		}
+		input.Spec.UserProfiles = []*AwsSagemakerDomainUserProfile{{
+			UserProfileName: "opted-in-owner",
+			UserSettings: &AwsSagemakerDomainUserSettings{
+				ExecutionRoleArn: &foreignkeyv1.StringValueOrRef{
+					LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: "arn:aws:iam::123456789012:role/Owner"},
+				},
+				JupyterLabAppSettings: &AwsSagemakerDomainJupyterLabAppSettings{
+					IdleSettings: &AwsSagemakerDomainIdleSettings{
+						LifecycleManagement:     proto.String("ENABLED"),
+						IdleTimeoutInMinutes:    120,
+						MinIdleTimeoutInMinutes: 60,
+						MaxIdleTimeoutInMinutes: 240,
+					},
+				},
+			},
+		}}
+		input.Spec.Spaces = []*AwsSagemakerDomainSpace{{
+			SpaceName:            "opted-in",
+			OwnershipSettings:    &AwsSagemakerDomainSpaceOwnership{OwnerUserProfileName: "opted-in-owner"},
 			SpaceSharingSettings: &AwsSagemakerDomainSpaceSharing{SharingType: "Private"},
 			SpaceSettings: &AwsSagemakerDomainSpaceSettings{
 				JupyterLabAppSettings: &AwsSagemakerDomainSpaceJupyterLabAppSettings{

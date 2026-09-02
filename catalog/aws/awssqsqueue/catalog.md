@@ -1,6 +1,6 @@
 # AWS SQS Queue
 
-Deploys an SQS queue (Standard or FIFO) with configurable delivery settings, dead letter queue routing, encryption (SQS-managed SSE or customer-managed KMS), and IAM access policies. The queue integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to KMS keys and other SQS queues.
+Deploys an SQS queue (Standard or FIFO) with configurable delivery settings, dead letter queue routing, encryption (SQS-managed SSE or customer-managed KMS), and IAM access policies. The KMS key, the dead letter queue target, and the redrive-allow source list all accept ValueFromRef wiring, so a queue composes directly with AwsKmsKey and other AwsSqsQueue resources in the same InfraChart. The queue type is a one-way door: `fifoQueue` cannot be changed after creation.
 
 ## What Gets Created
 
@@ -37,7 +37,7 @@ Open the deployment store, find **AWS SQS Queue**, and click **Deploy**. The cre
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSqsQueue
 metadata:
   name: order-events
@@ -122,7 +122,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Standard queue with long polling** -- SQS-managed encryption, 20-second long polling, and 30-second visibility timeout. The baseline configuration for most workloads. Start from the **Standard Queue** preset.
 
-**FIFO queue with deduplication** -- Content-based deduplication, per-message-group scope, high-throughput mode, and a dead letter queue for poison messages. Suitable for order processing and financial transaction pipelines. Start from the **FIFO With Deduplication** preset.
+**FIFO queue with deduplication** -- Content-based deduplication, per-message-group scope, high-throughput mode, and a dead letter queue for poison messages. Suitable for order processing and financial transaction pipelines. Start from the **FIFO Queue with Deduplication** preset.
 
 ## Works With
 

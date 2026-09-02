@@ -32,7 +32,7 @@ Open the deployment store, find **Azure Service Plan**, and click **Deploy**. Th
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureServicePlan
 metadata:
   name: app-plan
@@ -51,7 +51,7 @@ spec:
 planton apply -f service-plan.yaml
 ```
 
-This creates a Linux Standard S1 plan with a single worker instance. Zone balancing, per-site scaling, and elastic worker limits are not configured.
+This creates a Linux Standard S1 plan with a single worker instance -- zone balancing, per-site scaling, and elastic worker limits stay at their defaults. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -100,11 +100,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `service_plan_id` | Azure Resource Manager ID of the Service Plan | AzureLinuxWebApp and AzureFunctionApp `servicePlanId` field |
-| `service_plan_name` | Name of the Service Plan | Informational -- debugging and audit trails |
-| `os_type` | Deployed OS type (linux/windows as reported by Azure) | Informational -- downstream visibility |
-| `sku_name` | Deployed SKU name (e.g., P1v3, EP1, Y1) | Informational -- cost tracking and capacity planning |
-| `kind` | The ARM `kind` of the plan (e.g., linux, functionapp) | Informational -- audit trails |
+| `service_plan_id` | Azure Resource Manager ID of the Service Plan | AzureLinuxWebApp and AzureFunctionApp `servicePlanId` field -- the reference that places an app on this plan's compute |
+
+The remaining outputs (`service_plan_name`, `os_type`, `sku_name`, `kind`, `reserved`) are readbacks of the deployed configuration for debugging, cost tracking, and audit trails; they are not wired into other Cloud Resources.
 
 ## Common Patterns
 
@@ -119,3 +117,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 ## Works With
 
 - [**Azure Resource Group**](/cloud-catalog/azure-resource-group) -- provides the resource group where the Service Plan is created
+- [**Azure Linux Web App**](/cloud-catalog/azure-linux-web-app) -- deploys onto this plan by referencing `service_plan_id`
+- [**Azure Function App**](/cloud-catalog/azure-function-app) -- runs on this plan's compute (Consumption, Elastic Premium, or dedicated tiers) via `service_plan_id`

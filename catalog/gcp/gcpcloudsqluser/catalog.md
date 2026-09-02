@@ -24,14 +24,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Cloud SQL User**, and click **Create**. The wizard walks two decisions: which instance the user lives on, then who the user is and how it authenticates. The [Presets](#presets) tab offers **Application User** (BUILT_IN) and **IAM Service Account User** (passwordless) starting points.
+Open the deployment store, find **GCP Cloud SQL User**, and click **Deploy**. The creation wizard walks two decisions: which instance the user lives on, then who the user is and how it authenticates. Start from the **Application User (Built-in)** or **IAM Service Account User (Passwordless)** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpCloudSqlUser
 metadata:
   name: orders-app
@@ -53,7 +53,28 @@ spec:
 planton apply -f user.yaml
 ```
 
+This creates a BUILT_IN user named `orders-app` on the referenced instance, its password resolved from the org secret at deploy — plaintext never enters the manifest. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the hosting instance by reference so the pipeline orders the graph:
+
+```yaml
+spec:
+  instance:
+    valueFrom:
+      kind: GcpCloudSql
+      name: orders-db-prod
+      fieldPath: status.outputs.instance_name
+  userName: orders-app
+  password: $secret/orders-app-db-password
+```
+
+The InfraPipeline deploys the Cloud SQL instance first, then creates the user on it.
+
 ## Key Configuration
+
+These are the most important decisions when configuring a Cloud SQL user. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Authentication type** -- Immutable. `BUILT_IN` (the default) is a classic password user. The IAM types authenticate through Google IAM instead: nothing to store, leak, or rotate, and access is revoked by revoking the IAM role — the strongest posture for workloads that already run as a service account (GKE Workload Identity, Cloud Run).
 
@@ -64,6 +85,8 @@ planton apply -f user.yaml
 **Host scope** -- MySQL only: classic `user@host` scoping (e.g. `10.0.0.%`). Immutable; leave empty for PostgreSQL/SQL Server.
 
 **Per-user password policy** -- BUILT_IN only: failed-attempts lockout, password expiration, and (MySQL) current-password verification — layered on the instance-wide policy.
+
+**Deletion policy** -- `DELETE` (the default) drops the user on destroy; `PREVENT` fails any plan that would drop it. `ABANDON` removes it from IaC management while leaving it on the instance — the documented answer for PostgreSQL users that cannot be dropped while they still own database objects.
 
 ## Outputs and Dependencies
 
@@ -76,10 +99,22 @@ planton apply -f user.yaml
 
 ### What This Component Provides
 
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `user_name` | The stored user name (IAM names may be truncated on MySQL) | Application connection strings |
 | `instance_name` | The hosting instance's name | Cross-checking attachment |
+
+## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**One user per application** -- each service gets its own BUILT_IN principal with its password in an org secret; rotation is updating the secret and redeploying (the `password` field is the one mutable knob), and revocation is destroying one resource — the admin credential is never shared. Start from the **Application User (Built-in)** preset.
+
+**Passwordless workload identity** -- a `CLOUD_IAM_SERVICE_ACCOUNT` user for workloads that already run as a service account (Cloud Run, GKE Workload Identity): nothing to store, leak, or rotate, and access is revoked at the IAM layer. On PostgreSQL, the instance must first set `cloudsql.iam_authentication: "on"`. Start from the **IAM Service Account User (Passwordless)** preset.
+
+**Roles at creation** -- `databaseRoles` (MySQL 8+ / PostgreSQL) grants predefined or pre-created roles as the user is born, so the grant travels with the resource instead of living in an out-of-band SQL script.
 
 ## Works With
 

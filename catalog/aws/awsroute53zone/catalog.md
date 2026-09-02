@@ -1,6 +1,6 @@
-# DNS Zone on AWS Route53
+# AWS Route 53 Zone
 
-Deploys a Route53 hosted zone that can serve as either a public internet-facing DNS zone or a private VPC-scoped zone. Public zones support DNSSEC signing backed by a KMS key, query logging to CloudWatch, reusable delegation sets for vanity name servers, and accelerated recovery. The zone integrates with Planton's Provider Connections for AWS credential management and ValueFromRef for VPC, KMS, and log-group wiring.
+Deploys a Route53 hosted zone that can serve as either a public internet-facing DNS zone or a private VPC-scoped zone. Public zones support DNSSEC signing backed by a KMS key, query logging to CloudWatch, reusable delegation sets for vanity name servers, and accelerated recovery. The zone's domain name comes from `metadata.name` and is create-time immutable.
 
 Individual DNS records are deliberately not part of the zone: each record is its own AwsRoute53DnsRecord resource referencing this zone's `zone_id` output, so records can be created, repointed, and deleted without touching the zone.
 
@@ -32,14 +32,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **DNS Zone on AWS Route53**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public Zone** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS Route 53 Zone**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public DNS Zone** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRoute53Zone
 metadata:
   name: example.com
@@ -55,7 +55,7 @@ spec:
 planton apply -f route53-zone.yaml
 ```
 
-This creates a public hosted zone for `example.com` with fresh Route53 name servers, no DNSSEC, and no query logging. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a public hosted zone for `example.com` with fresh Route53 name servers, no DNSSEC, and no query logging. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -95,7 +95,7 @@ These are the most important decisions when configuring a Route53 zone. Explore 
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
-| **AwsVpc** (private zones) | `vpcAssociations[*].vpcId` | `status.outputs.vpc_id` |
+| **AwsVpc** (private zones) | `vpcAssociations[].vpcId` | `status.outputs.vpc_id` |
 | **AwsKmsKey** (DNSSEC) | `dnssec.kmsKeyArn` | `status.outputs.key_arn` |
 | **AwsCloudwatchLogGroup** (query logging) | `queryLogging.cloudwatchLogGroupArn` | `status.outputs.log_group_arn` |
 
@@ -110,18 +110,23 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `nameservers` | The four authoritative name servers | Domain registrar NS delegation |
 | `primary_name_server` | The delegation set's first name server (SOA MNAME) | Zone-transfer and SOA tooling |
 | `zone_arn` | Hosted zone ARN | IAM policies scoping route53:ChangeResourceRecordSets to specific zones |
+| `ds_record` | The DS record of the key-signing key (DNSSEC only) | Registering with the domain registrar to complete the chain of trust |
+| `dnskey_record` | The DNSKEY record of the key-signing key (DNSSEC only) | Out-of-band verification; parents that take a DNSKEY instead of a DS |
+| `key_signing_key_tag` | The KSK's key tag (DNSSEC only) | Registrar forms that ask for the key tag beside the DS record |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Public zone** -- A globally resolving hosted zone for internet-facing domains. Suitable for websites, APIs, and services that need public DNS resolution. Start from the **Public Zone** preset.
+**Public zone** -- A globally resolving hosted zone for internet-facing domains. Suitable for websites, APIs, and services that need public DNS resolution. Start from the **Public DNS Zone** preset.
 
-**Private VPC zone** -- A VPC-scoped zone for internal service discovery and split-horizon DNS. Only resolves within associated VPCs, keeping internal hostnames private. Start from the **Private VPC Zone** preset.
+**Private VPC zone** -- A VPC-scoped zone for internal service discovery and split-horizon DNS. Only resolves within associated VPCs, keeping internal hostnames private. Start from the **Private VPC DNS Zone** preset.
+
+**DNSSEC-signed zone** -- A public zone signed with a KSK backed by a us-east-1 KMS key, exporting the `ds_record` the registrar needs to complete the chain of trust. Start from the **DNSSEC-Signed Public Zone** preset.
 
 ## Works With
 
 - [**AWS VPC**](/cloud-catalog/aws-vpc) -- provides the VPC ID for private hosted zone associations
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides the asymmetric signing key for DNSSEC
 - [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- receives DNS query logs
-- [**AWS Route53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- the first-class home for this zone's records, referencing `zone_id`
+- [**AWS Route 53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- the first-class home for this zone's records, referencing `zone_id`

@@ -1,0 +1,50 @@
+# Cost derivation: the machine-executable rules turning any
+# DigitalOceanContainerRegistry manifest's spec values into metered
+# quantities and price choices. The registry's committed bill is exactly
+# its subscription tier: starter is free (no line at all -- an empty
+# estimate is the correct answer), basic and professional each bill one
+# flat monthly subscription, selected by sibling lines keyed on the tier
+# enum. Storage overage past the tier's included allowance follows push
+# behavior no manifest can predict and rides the exclusions. Container
+# Registry pricing carries no region dimension, so the entries are pinned
+# "global". The estimate generator replays the catalog presets through
+# these rules to emit ../estimates/digitaloceancontainerregistry.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: digitaloceancontainerregistry
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: nyc3
+  lines:
+    - sku_meter: registry subscription
+      applies_when:
+        - field_path: subscription_tier
+          op: equals
+          value: basic
+      quantity:
+        - constant: "1"
+      price_slug: do-docr-basic-monthly
+      basis: "the basic tier bills one flat monthly subscription (5 repositories, 5 GiB of storage included) from creation to deletion"
+    - sku_meter: registry subscription
+      applies_when:
+        - field_path: subscription_tier
+          op: equals
+          value: professional
+      quantity:
+        - constant: "1"
+      price_slug: do-docr-professional-monthly
+      basis: "the professional tier bills one flat monthly subscription (unlimited repositories, 100 GiB of storage included) from creation to deletion"
+  exclusions:
+    - applies_when:
+        - field_path: subscription_tier
+          op: not_equals
+          value: starter
+      text: "storage beyond the tier's included allowance (5 GiB basic, 100 GiB professional) bills 0.02 USD/GiB/mo, following image push and garbage-collection behavior"
+  notes:
+    - text: "The starter tier is free (1 repository, 500 MiB, no overage option) -- a starter manifest correctly produces an empty estimate. Docker credentials are free at any scope and expiry."
+    - text: "Priced at DigitalOcean's global Container Registry rates -- the pricing page carries no region dimension; the optional region field moves where image data lives, not the rate."

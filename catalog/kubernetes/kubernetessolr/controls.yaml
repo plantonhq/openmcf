@@ -52,6 +52,9 @@ spec:
       evidence:
         type: spec_default
         reference: Empty leaves every endpoint unauthenticated (the operator default); "basic" closes the open posture. security.probes_require_auth additionally locks the probe endpoints, which stay open by default so kubelet probes work without credentials.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: security.authentication_type bootstraps basic-auth users with operator-generated passwords (see no-legacy-auth), and Solr's basic-auth plugin carries no password-strength policy, lockout, or MFA -- stronger sign-in is in-product security.json configuration beyond the typed seam.
     - control_id: audit-logging
       status: not_applicable
       notes: No audit trail is modeled -- Solr logs stream to stdout at the declared log_level for the cluster's log collector. Changes to the SolrCloud resource itself are Kubernetes API operations, captured by the target cluster's audit policy.

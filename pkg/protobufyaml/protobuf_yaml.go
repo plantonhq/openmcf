@@ -7,7 +7,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"os"
 	"regexp"
-	"sigs.k8s.io/yaml"
 	"strings"
 )
 
@@ -26,7 +25,7 @@ func Load(inputFile string, obj proto.Message) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to read input file")
 	}
-	jsonBytes, err := yaml.YAMLToJSON(inputFileBytes)
+	jsonBytes, err := YAMLToJSON(inputFileBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to load yaml to json")
 	}
@@ -37,7 +36,7 @@ func Load(inputFile string, obj proto.Message) error {
 }
 
 func LoadYamlBytes(yamlBytes []byte, obj proto.Message) error {
-	jsonBytes, err := yaml.YAMLToJSON(yamlBytes)
+	jsonBytes, err := YAMLToJSON(yamlBytes)
 	if err != nil {
 		return errors.Wrap(err, "failed to load yaml to json")
 	}

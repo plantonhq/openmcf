@@ -1,4 +1,4 @@
-# Preset: Basic Kafka Cluster
+# Basic Kafka Cluster
 
 A minimal 3-broker MSK cluster suitable for development and testing workloads.
 
@@ -18,7 +18,7 @@ A minimal 3-broker MSK cluster suitable for development and testing workloads.
 
 ## Cost Estimate
 
-Approximately $0.12/hr for 3 x kafka.t3.small brokers (~$90/month) plus EBS storage costs.
+The cost drivers are the three kafka.t3.small brokers (billed hourly, the dominant line) plus their EBS storage. The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awsmskcluster.yaml` — computed from the pinned price book, never hand-typed here.
 
 ## Customization
 

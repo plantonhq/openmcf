@@ -1,6 +1,6 @@
 # Azure MSSQL Server
 
-Deploys an Azure SQL Database logical server — the administrative boundary the whole SQL family hangs off. The server owns authentication (SQL logins, a Microsoft Entra administrator, or Entra-only), network access (the public endpoint, IP firewall rules, VNet rules), encryption (Microsoft-managed or a customer-managed TDE key), auditing, and threat protection. Databases and elastic pools are first-class kinds (AzureMssqlDatabase, AzureMssqlElasticPool) that reference this server's `server_id` output — nothing is embedded in this spec. The server integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure SQL Database logical server — the administrative boundary the whole SQL family hangs off. The server owns authentication (SQL logins, a Microsoft Entra administrator, or Entra-only), network access (the public endpoint, IP firewall rules, VNet rules), encryption (Microsoft-managed or a customer-managed TDE key), auditing, and threat protection. Databases and elastic pools are first-class kinds (AzureMssqlDatabase, AzureMssqlElasticPool) that reference this server's `server_id` output — nothing is embedded in this spec.
 
 ## What Gets Created
 
@@ -9,7 +9,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **SQL Logical Server** -- an administrative endpoint in the specified Azure region and resource group with a globally-unique DNS name (`{serverName}.database.windows.net`), the chosen authentication posture, TLS floor, and connection policy
 - **Microsoft Entra Administrator** -- created when `azureadAdministrator` is set; a directory principal (user, group, or managed identity) granted the server's administrator role, optionally with Entra-only authentication
 - **Managed Identity** -- created when `identity` is set; the server's own Entra identity (system-assigned, user-assigned, or both) — what unwraps a customer-managed TDE key
-- **Firewall and VNet Rules** -- created when `firewallRules` / `virtualNetworkRules` entries are provided; IP ranges and service-endpoint subnets admitted to the public endpoint
+- **Firewall, VNet, and Outbound Rules** -- created when `firewallRules` / `virtualNetworkRules` / `outboundFirewallRules` entries are provided; IP ranges and service-endpoint subnets admitted to the public endpoint, and the FQDNs the server may reach out to under outbound restriction
 - **Auditing and Threat Protection** -- created when `extendedAuditing` / `securityAlertPolicy` are set; the server-wide audit trail and Defender for SQL alerting
 - **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied to the server for tracking and governance
 
@@ -30,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure MSSQL Server**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **standard-sql-auth** preset in the [Presets](#presets) tab for the everyday SQL-auth server.
+Open the deployment store, find **Azure MSSQL Server**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard SQL-Auth Server** preset in the [Presets](#presets) tab for the everyday SQL-auth server.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlServer
 metadata:
   name: app-sql
@@ -111,7 +111,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `server_id` | Azure resource ID of the SQL Server | AzureMssqlDatabase / AzureMssqlElasticPool / AzureMssqlFailoverGroup `server_id`, AzurePrivateEndpoint targets, diagnostic settings |
-| `server_name` | Name of the SQL Server | Application configuration, monitoring |
 | `fqdn` | Fully qualified domain name (`{serverName}.database.windows.net`) | Application connection strings |
 | `administrator_login` | SQL administrator login (empty on Entra-only servers) | Application connection strings |
 | `identity_principal_id` | Principal ID of the system-assigned identity (when enabled) | RBAC role assignments — the grant target |
@@ -120,11 +119,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard SQL auth** -- The simplest useful server: SQL authentication, the public endpoint with the Azure-services firewall sentinel, and Azure's defaults everywhere else. Start from the **standard-sql-auth** preset.
+**Standard SQL auth** -- The simplest useful server: SQL authentication, the public endpoint with the Azure-services firewall sentinel, and Azure's defaults everywhere else. Start from the **Standard SQL-Auth Server** preset.
 
-**Entra-only** -- The passwordless posture: a Microsoft Entra administrator (grant a group so the DBA team manages itself in the directory) with `azureadAuthenticationOnly: true` and no SQL credential pair. Start from the **entra-only** preset.
+**Entra-only** -- The passwordless posture: a Microsoft Entra administrator (grant a group so the DBA team manages itself in the directory) with `azureadAuthenticationOnly: true` and no SQL credential pair. Start from the **Entra-Only Server with Microsoft Defender** preset.
 
-**Private and hardened** -- Public access off (pair an AzurePrivateEndpoint), a user-assigned identity unwrapping a customer-managed TDE key, and the explicit TLS 1.2 pin. Start from the **private-hardened** preset.
+**Private and hardened** -- Public access off (pair an AzurePrivateEndpoint), a user-assigned identity unwrapping a customer-managed TDE key, and the explicit TLS 1.2 pin. Start from the **Private Hardened Server with CMK and Auditing** preset.
 
 ## Works With
 

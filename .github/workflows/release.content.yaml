@@ -48,6 +48,12 @@
 # Chart iconUrl fields and platform-generated seed iconUrls embed these URLs.
 # A changed logo may serve stale for the CDN cache TTL (accepted: logos
 # change rarely; add a purge step only if that ever matters).
+# The sync deliberately has NO --delete: versionless keys must keep serving
+# consoles pinned to OLDER releases, so a component rename orphans its old
+# key by design instead of breaking every pinned consumer of it.
+# After the sync, every staged key is verified SERVING through the public
+# CDN URL (200 + image/svg+xml) -- a release whose logos fail to serve
+# fails loudly here instead of shipping broken icons silently.
 #
 # Called by: .github/workflows/release.yaml (after its github-release job creates the release)
 # =============================================================================
@@ -148,6 +154,28 @@ jobs:
             --content-type image/svg+xml \
             --endpoint-url "${AWS_ENDPOINT_URL}"
           echo "uploaded: https://downloads.planton.dev/catalog/logos/{provider}/{kind}/logo.svg"
+
+      - name: Verify every logo serves through the CDN
+        run: |
+          # HEAD every staged key on the PUBLIC url -- the path users hit,
+          # not the S3 API -- asserting 200 and the svg content type. This
+          # is the release's proof that what it staged is what the world
+          # gets; a sync that silently skipped or a key that serves the
+          # wrong type fails the release here.
+          fails=0
+          checked=0
+          for f in build/logos/*/*/logo.svg; do
+            key="${f#build/logos/}"
+            url="https://downloads.planton.dev/catalog/logos/${key}"
+            read -r code ctype <<<"$(curl -sI -o /dev/null -w '%{http_code} %{content_type}' "$url")"
+            checked=$((checked + 1))
+            if [ "$code" != "200" ] || [ "${ctype%%;*}" != "image/svg+xml" ]; then
+              echo "FAIL: $url -> $code $ctype"
+              fails=$((fails + 1))
+            fi
+          done
+          echo "verified ${checked} logos serving (${fails} failures)"
+          [ "$fails" -eq 0 ]
 
   catalog-bundle:
     runs-on: ubuntu-latest

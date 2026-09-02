@@ -13,10 +13,14 @@ Secrets Manager secret - a named, versioned, KMS-encrypted container for
 credential material (database passwords, API keys, tokens, key/value JSON
 documents) with optional automatic rotation and cross-region replication.
 
-The secret's name is taken from `metadata.name` (up to 512 characters;
-AWS allows alphanumeric plus /_+=.@- so hierarchical names like
-"prod/payments/db" are legal). The name is ForceNew - changing it
-destroys and recreates the secret.
+The secret's AWS name defaults to `metadata.name` and can be overridden
+with `secret_name` when the name needs shapes `metadata.name` cannot
+carry: AWS allows alphanumeric plus /_+=.@-, so hierarchical names like
+"prod/payments/db" and service-required prefixes like
+"ecr-pullthroughcache/dockerhub" (ECR pull-through-cache credentials)
+are expressed through `secret_name`. Either way the name is ForceNew -
+changing it (including setting `secret_name` on a secret already
+deployed under `metadata.name`) destroys and recreates the secret.
 
 The secret VALUE is set through exactly one of `string_value` (text or
 JSON key/value document - the common case) or `binary_value`
@@ -33,9 +37,9 @@ secret still holds its name - recreating a same-named secret during the
 window requires waiting or force deletion (the modules retry create
 through AWS's "scheduled for deletion" window).
 
-Create-time-immutable (ForceNew) fields: the name (metadata.name) and
-`type`. Everything else - value, KMS key, policy, replicas, rotation -
-updates in place.
+Create-time-immutable (ForceNew) fields: the name (secret_name, else
+metadata.name) and `type`. Everything else - value, KMS key, policy,
+replicas, rotation - updates in place.
 
 Credentials, region, and deployment workflow live outside this spec in
 stack inputs.
@@ -87,6 +91,7 @@ spec:
 | Path | Type | Required | Default | References |
 |---|---|---|---|---|
 | `spec.region` | `string` | yes |  |  |
+| `spec.secretName` | `string` |  |  |  |
 | `spec.description` | `string` |  |  |  |
 | `spec.kmsKeyId` | `string \| valueFrom` |  |  | AwsKmsKey (`status.outputs.key_arn`) |
 | `spec.stringValue` | `string` (sensitive) |  |  |  |
@@ -121,6 +126,23 @@ The AWS region where the secret will be created.
 Example: "us-west-2", "eu-west-1"
 
 - rule: {"string":{"minLen":"1"}}
+
+### spec.secretName
+
+`string`
+
+The explicit AWS-side secret name. Empty (the common case) means the
+secret is named after `metadata.name`. Set it when the AWS name needs
+shapes `metadata.name` cannot carry - hierarchical paths
+("prod/payments/db") or service-required prefixes
+("ecr-pullthroughcache/dockerhub"). The catalog's convention:
+explicit-name fields are REQUIRED only on kinds whose AWS names can
+never come from `metadata.name` (hierarchy-dominant or
+charset-incompatible ones); where `metadata.name` is a legal default,
+the field is optional so the common case stays terse. ForceNew:
+setting or changing it replaces the secret.
+
+- rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"maxLen":"512","pattern":"^[A-Za-z0-9/_+=.@-]+$"}}
 
 ### spec.description
 
@@ -405,7 +427,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsSecretsManage
 | Output | Type | Description |
 |---|---|---|
 | `status.outputs.secret_arn` | `string` | The Amazon Resource Name of the secret - the canonical join key for IAM policies, ECS/Lambda secret injection, and cross-service references. Note AWS appends a random 6-character suffix to secret ARNs (arn:...:secret:name-AbCdEf), so the ARN is not derivable from the name. |
-| `status.outputs.secret_name` | `string` | The name of the secret. Matches metadata.name. Consumers that resolve secrets by name (SDK GetSecretValue calls) join on this. |
+| `status.outputs.secret_name` | `string` | The secret's AWS name (spec.secret_name, else metadata.name). Consumers that resolve secrets by name (SDK GetSecretValue calls) join on this. |
 | `status.outputs.version_id` | `string` | The version ID of the secret version this deployment manages (the AWSCURRENT version when a value arm is set; empty for a shell secret with no managed value). |
 
 ## References

@@ -1,0 +1,28 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# The component's catalog.md states the requirement in prose ("a Cloudflare
+# API token that has Email Routing edit access") -- migrated here
+# losslessly; the precise account-scoped group for destination addresses is
+# the pair below. README carries no permission prose.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflareemailroutingaddress
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageAddress
+        name: Email Routing Addresses Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Covers the Terraform module's single cloudflare_email_routing_address resource and the Pulumi module's matching EmailRoutingAddress resource -- create/delete the destination address via POST/DELETE /accounts/{account_id}/email/routing/addresses[/{id}] (dedicated group, direct name match; the path mapping is derived from the module's API surface; neither engine performs secondary lookups). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadAddress
+        name: Email Routing Addresses Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Read-side of the same resource -- refresh/import the address via GET /accounts/{account_id}/email/routing/addresses/{id}.

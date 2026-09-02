@@ -1,6 +1,6 @@
 # Azure MSSQL Elastic Pool
 
-Deploys a shared-capacity elastic pool onto an existing Azure SQL logical server (AzureMssqlServer). The pool buys one capacity budget — eDTUs for DTU pools, vCores for vCore pools — and every member database draws from it: the many-small-databases answer, one bill for the whole fleet. Databases join the pool by referencing its `elastic_pool_id` output (which requires their `sku_name` to be the literal `ElasticPool` — the database wizard holds the pairing).
+Deploys a shared-capacity elastic pool onto an existing Azure SQL logical server (AzureMssqlServer). The pool buys one capacity budget — eDTUs for DTU pools, vCores for vCore pools — and every member database draws from it: the many-small-databases answer, one bill for the whole fleet. Databases join the pool by referencing its `elastic_pool_id` output (which requires their `skuName` to be the literal `ElasticPool` — the database wizard holds the pairing).
 
 ## What Gets Created
 
@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure MSSQL Elastic Pool**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **general-purpose-vcore** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure MSSQL Elastic Pool**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General Purpose vCore Pool with Hybrid Benefit** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlElasticPool
 metadata:
   name: tenants-pool
@@ -63,7 +63,24 @@ This creates an 8-vCore General Purpose pool where every member database can bur
 
 ### InfraChart
 
-The pool's `serverId` reference orders it after its server; pooled databases reference the pool's `elastic_pool_id` output and order after the pool — the InfraPipeline resolves the whole chain.
+When the pool deploys alongside its server in one chart, the `serverId` reference orders it after the server:
+
+```yaml
+spec:
+  serverId:
+    valueFrom:
+      kind: AzureMssqlServer
+      name: app-sql
+      fieldPath: status.outputs.server_id
+  region: eastus
+  poolName: tenants-pool
+  skuName: GP_Gen5
+  capacity: 8
+  perDatabaseSettings:
+    maxCapacity: 2
+```
+
+Pooled databases reference the pool's `elastic_pool_id` output and order after the pool — the InfraPipeline resolves the whole chain.
 
 ## Key Configuration
 
@@ -73,7 +90,7 @@ These are the most important decisions when configuring an elastic pool. Explore
 
 **Per-database fairness** -- `perDatabaseSettings.maxCapacity` stops one noisy member from starving the fleet; `minCapacity` (0 = no reservation, Azure's default) guarantees a floor — non-zero minimums multiply by member count and must fit inside the pool.
 
-**Storage cap** -- ONE value in ONE unit: `maxSizeGb` or `maxSizeBytes`, never both (they are mutually exclusive). Blank keeps the SKU's included storage.
+**Storage cap** -- ONE value in ONE unit: `maxSizeGb` or `maxSizeBytes`, never both (they are mutually exclusive). vCore pools may leave it blank for the SKU default; DTU pools should set it explicitly — ARM's ladder pins the cap to the capacity, and provisioning rejects an unset cap on some engines.
 
 **Fleet-wide posture** -- `zoneRedundant` (Premium/Business Critical only), `enclaveType` (Always Encrypted with secure enclaves for every member), `highAvailabilityReplicaCount` (Hyperscale pools only, 0-4), and `maintenanceConfigurationName` — the window every pooled database inherits.
 
@@ -92,17 +109,18 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `elastic_pool_id` | Azure resource ID of the pool | AzureMssqlDatabase `elastic_pool_id` — how a database joins the pool |
-| `elastic_pool_name` | Name of the pool | Monitoring, dashboards |
+
+`status.outputs` also echoes `elastic_pool_name` back, but nothing downstream consumes a pool by name — membership travels by ARM ID.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard DTU** -- The classic eDTU pool for mixed small workloads. Start from the **standard-dtu** preset.
+**Standard DTU** -- The classic eDTU pool for mixed small workloads. Start from the **Standard DTU Pool** preset.
 
-**General Purpose vCore** -- The everyday production pool with Hybrid Benefit licensing available. Start from the **general-purpose-vcore** preset.
+**General Purpose vCore** -- The everyday production pool with Hybrid Benefit licensing available. Start from the **General Purpose vCore Pool with Hybrid Benefit** preset.
 
-**Business Critical zone-redundant** -- Local SSD, built-in replicas, and zone redundancy for the fleet. Start from the **business-critical-zr** preset.
+**Business Critical zone-redundant** -- Local SSD, built-in replicas, and zone redundancy for the fleet. Start from the **Zone-Redundant Business Critical Pool** preset.
 
 ## Works With
 

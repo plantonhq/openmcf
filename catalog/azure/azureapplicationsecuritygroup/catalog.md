@@ -27,14 +27,14 @@ Memberships and rules are NOT created here — a NIC joins from its own spec (`a
 
 ### Console
 
-Open the deployment store, find **Azure Application Security Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Workload Tier** preset in the [Presets](#presets) tab for the classic role-named group.
+Open the deployment store, find **Azure Application Security Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Workload Tier Group** preset in the [Presets](#presets) tab for the classic role-named group.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationSecurityGroup
 metadata:
   name: web-tier
@@ -53,7 +53,7 @@ spec:
 planton apply -f asg.yaml
 ```
 
-Create one group per tier and the security policy reads as intent — "web reaches app-tier on 8080" — surviving every scale event without a firewall rewrite.
+This creates one empty role-named group ready for NICs to join and NSG rules to target — create one per tier and the security policy reads as intent, surviving every scale event without a firewall rewrite. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -101,9 +101,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Workload tier** -- one group per application tier ("web", "app-tier", "db"); each tier's NICs join their group and the NSG rules read as an architecture diagram. Start from the **Workload Tier** preset.
+**Workload tier** -- one group per application tier ("web", "app-tier", "db"); each tier's NICs join their group and the NSG rules read as an architecture diagram. Start from the **Workload Tier Group** preset.
 
-**Tagged governance** -- the same role-named group with the ownership tags your Azure Policy regime enforces, for organizations that gate deployments on tag compliance. Start from the **Tagged Governance** preset.
+**Tagged governance** -- the same role-named group with the ownership tags your Azure Policy regime enforces, for organizations that gate deployments on tag compliance. Start from the **Governed Data-Tier Group** preset.
 
 ## Works With
 

@@ -1,4 +1,4 @@
-# Preset: Server-Side Confidential
+# Server-Side Confidential
 
 **Rank**: 3
 

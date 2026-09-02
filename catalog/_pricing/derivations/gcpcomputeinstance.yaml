@@ -60,11 +60,11 @@ spec:
     - when:
         - field_path: boot_disk.provisioned_iops
           op: is_set
-      reason: provisioned IOPS on a hyperdisk boot volume bills monthly for the amount above the included baseline, a subtraction these rules cannot compute
+      reason: provisioned IOPS on a hyperdisk boot volume bills monthly for the amount above the included baseline at a rate keyed to the boot disk's own type, which these rules do not price -- an estimate without the surcharge would understate a committed charge
     - when:
         - field_path: boot_disk.provisioned_throughput
           op: is_set
-      reason: provisioned throughput on a hyperdisk boot volume bills monthly for the amount above the included baseline, a subtraction these rules cannot compute
+      reason: provisioned throughput on a hyperdisk boot volume bills monthly for the amount above the included baseline at a rate keyed to the boot disk's own type, which these rules do not price -- an estimate without the surcharge would understate a committed charge
   lines:
     - sku_meter: instance vCPU
       applies_when:

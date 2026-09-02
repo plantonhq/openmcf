@@ -1,4 +1,4 @@
-# Preset: Configuration rules (set_config)
+# Configuration rules (set_config)
 
 Override zone settings per request with the `http_config_settings` phase. A
 `set_config` rule applies settings (SSL mode, security level, Rocket Loader, Polish,

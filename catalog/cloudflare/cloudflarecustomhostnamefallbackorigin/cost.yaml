@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarecustomhostnamefallbackorigin
+spec:
+  billing_model: free
+  free_tier: "The fallback origin is the custom-origin feature of Cloudflare for SaaS, and Cloudflare's SaaS plans table lists it as included on every plan tier from Free upward (Custom origin -- Yes; https://developers.cloudflare.com/cloudflare-for-platforms/cloudflare-for-saas/plans/, retrieved 2026-08-22). Setting, changing, or deleting it never appears on an invoice."
+  notes: "Neither spec field buys anything: zone_id names the SaaS zone and origin is a routing pointer -- the default backend all of the zone's custom hostnames route to. The real spend lives at the custom hostnames this pointer serves: Cloudflare for SaaS includes 100 custom hostnames per zone and bills $0.10 per additional hostname per month (same SaaS plans page, retrieved 2026-08-22), and that meter bills through the CloudflareCustomHostname kind, never through this singleton. Traffic to the hostnames rides the zone's plan and its add-ons, also outside this object."

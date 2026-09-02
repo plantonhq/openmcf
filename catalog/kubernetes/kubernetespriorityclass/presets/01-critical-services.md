@@ -1,6 +1,6 @@
 # Critical Services
 
-This preset creates the top rung of the user-definable importance ladder: value 1,000,000 with preemption enabled. Pods that reference this class (via the workload pod spec's `priority_class_name`) schedule ahead of everything below it — and when the cluster has no room, the scheduler EVICTS lower-priority pods to make room for them. This is the class for workloads that must run even if something else has to move.
+This preset creates the top step of the user-definable importance ladder: value 1,000,000 with preemption enabled. Pods that reference this class (via the workload pod spec's `priority_class_name`) schedule ahead of everything below it — and when the cluster has no room, the scheduler EVICTS lower-priority pods to make room for them. This is the class for workloads that must run even if something else has to move.
 
 ## When to Use
 
@@ -24,4 +24,4 @@ None — this preset is deployable as-is. Adjust `value` only if your ladder use
 ## Related Presets
 
 - **02-standard-default** — the tier unmarked pods should land in; deploy alongside this one
-- **03-preemptable-batch** — the bottom rung this class's pods may evict
+- **03-preemptable-batch** — the bottom step this class's pods may evict

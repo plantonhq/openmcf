@@ -1,0 +1,114 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: digitaloceandatabasecluster
+spec:
+  presets:
+    - preset: 01-postgresql-ha
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Managed Databases
+          sku_meter: database nodes
+          pricing_unit: months
+          pricing_quantity: "3"
+          quantity_basis: nodeCount 3 -- one primary and two standbys, each a full db-s-2vcpu-4gb PostgreSQL node billed the same monthly rate from creation
+          list_unit_price: "60.90"
+          price_source: https://www.digitalocean.com/pricing/managed-databases
+          retrieved_on: "2026-08-22"
+          list_cost: "182.7000"
+      total_list_cost: "182.7000"
+      exclusions:
+        - "storage_autoscale is enabled at an 80 percent threshold: each triggered growth step adds additional storage at 0.215 USD/GiB/mo permanently, following actual disk usage no manifest can predict"
+        - read-only replicas, users, logical databases, connection pools, and firewall rules are separate components with their own lifecycles
+      notes: Daily backups with 7-day point-in-time recovery and the weekly maintenance window are included in the node price. The base storage included with db-s-2vcpu-4gb carries no separate charge until autoscale grows past it.
+    - preset: 02-postgresql-dev
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Managed Databases
+          sku_meter: database nodes
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: nodeCount 1 -- a single db-s-1vcpu-1gb PostgreSQL node, no standby
+          list_unit_price: "15.15"
+          price_source: https://www.digitalocean.com/pricing/managed-databases
+          retrieved_on: "2026-08-22"
+          list_cost: "15.1500"
+      total_list_cost: "15.1500"
+      exclusions:
+        - growing storage later bills 0.215 USD/GiB/mo above the size's included base
+      notes: A single-node cluster has no failover -- the committed spend is one node-month.
+    - preset: 03-redis
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Managed Databases
+          sku_meter: database nodes
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: nodeCount 1 -- a single db-s-1vcpu-1gb caching node; DigitalOcean's pricing page lists the caching engine under Valkey and treats redis and valkey as the same rate table (the spec documents the engines as interchangeable)
+          list_unit_price: "15.00"
+          price_source: https://www.digitalocean.com/pricing/managed-databases
+          retrieved_on: "2026-08-22"
+          list_cost: "15.0000"
+      total_list_cost: "15.0000"
+      exclusions:
+        - caching clusters are ephemeral -- no backup meter exists and none is excluded
+      notes: Priced from the Managed Caching (Valkey) table at 15.00 USD/mo -- 15 cents below the PostgreSQL/MySQL rate for the same shape.
+    - preset: 04-kafka
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Managed Databases
+          sku_meter: database nodes
+          pricing_unit: months
+          pricing_quantity: "3"
+          quantity_basis: nodeCount 3 -- the API's own Kafka minimum; DigitalOcean prices Kafka in brokers, publishing 148.80 USD/mo for the 3-broker 2 vCPU / 2 GiB plan, so the per-broker rate is 148.80 / 3 = 49.60 USD/mo and 3 brokers reproduce the page's plan price exactly
+          list_unit_price: "49.60"
+          price_source: https://www.digitalocean.com/pricing/managed-databases
+          retrieved_on: "2026-08-22"
+          list_cost: "148.8000"
+      total_list_cost: "148.8000"
+      exclusions:
+        - growing storage past the plan's included base bills 0.215 USD/GiB/mo in 30 GiB increments
+        - topics and schema registry subjects are separate free components; the brokers carry the whole bill
+      notes: The pricing page publishes the 3-broker plan total, not a per-broker rate -- the division by three is stated arithmetic on the page's verbatim 148.80 USD figure.
+    - preset: 05-opensearch
+      region_assumption: nyc3
+      currency: USD
+      hours_per_month: 730
+      line_items:
+        - service_name: Managed Databases
+          sku_meter: database nodes
+          pricing_unit: months
+          pricing_quantity: "1"
+          quantity_basis: nodeCount 1 -- a single 2 vCPU / 4 GiB OpenSearch node
+          list_unit_price: "37.05"
+          price_source: https://www.digitalocean.com/pricing/managed-databases
+          retrieved_on: "2026-08-22"
+          list_cost: "37.0500"
+        - service_name: Managed Databases
+          sku_meter: additional storage
+          pricing_unit: GiB-months
+          pricing_quantity: "30"
+          quantity_basis: storageGib 100 minus the 70 GiB base included with the 2 vCPU / 4 GiB OpenSearch size (the pricing page's storage range for os-s-2-4-70 starts at 70 GiB) = 30 GiB of additional storage
+          list_unit_price: "0.215"
+          price_source: https://www.digitalocean.com/pricing/managed-databases
+          retrieved_on: "2026-08-22"
+          list_cost: "6.4500"
+      total_list_cost: "43.5000"
+      exclusions:
+        - growing storage further bills 0.215 USD/GiB/mo in 10 GiB increments
+      notes: Committed total is one node-month (37.05 USD) plus 30 additional GiB-months (6.45 USD). OpenSearch Dashboards is included in the node price.

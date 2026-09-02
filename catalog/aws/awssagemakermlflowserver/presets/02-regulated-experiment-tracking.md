@@ -28,5 +28,5 @@ SageMaker Model Registry for audit.
   out-of-band API call; enable it deliberately
 - Changing `mlflowVersion` replaces the server — treat version bumps
   as scheduled ~25-minute-each create/delete events
-- Shift `weeklyMaintenanceWindowStart` (UTC `DDD:HH:MM`) to your own
+- Shift `weeklyMaintenanceWindowStart` (UTC `Ddd:HH:MM`, mixed-case day token) to your own
   quiet hours

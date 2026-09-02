@@ -52,6 +52,9 @@ spec:
         type: spec_default
         reference: "Omitted means NO authentication -- anyone reaching the Service has full console access, acceptable only for cluster-internal evaluation; auth.type login_form gates the console behind a single account whose password the module materializes into a Secret-backed environment variable. OAuth2/OIDC and LDAP login ride the chart's Spring configuration through helm_values."
       notes: The 01-single-cluster-readonly preset is deliberately open (ClusterIP, nothing composed); 02-full-stack-console and 03-multi-cluster gate with login_form.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Whether console login exists is spec-modeled (auth -- omitted means no authentication, login_form gates the console behind a single account with a Secret-backed password), but credential strength and SSO/MFA are the app's Spring configuration riding helm_values, not typed here.
     - control_id: audit-logging
       status: not_applicable
       notes: Console activity logs stream to stdout for the cluster's log collector; a provider-style audit trail is not modeled. Changes to the console's configuration are Kubernetes API operations, captured by the target cluster's audit policy.

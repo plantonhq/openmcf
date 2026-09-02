@@ -23,7 +23,9 @@ apply here.
 ```yaml
 # Canonical AwsCloudwatchDashboard example (hack/dev manifest and
 # refgen Example source): a two-widget service dashboard (a markdown
-# header and a Lambda-errors metric graph).
+# header and a Lambda-errors metric graph). The widget position key
+# "y" is quoted for readability only - manifests parse under YAML 1.2
+# rules, where a bare y is an ordinary string.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchDashboard
 metadata:
@@ -38,14 +40,14 @@ spec:
     widgets:
       - type: text
         x: 0
-        y: 0
+        "y": 0
         width: 24
         height: 2
         properties:
           markdown: "# Service health"
       - type: metric
         x: 0
-        y: 2
+        "y": 2
         width: 12
         height: 6
         properties:
@@ -99,6 +101,12 @@ source shows it. Each widget carries its type (metric / log /
 alarm / text), position (x, y, width, height), and properties.
 AWS normalizes the JSON server-side; both engines diff it
 semantically, so key order and whitespace never cause drift.
+
+YAML authors: manifests parse under YAML 1.2 rules, so the widget
+position key y (like yes, no, on, off) is an ordinary string with
+or without quotes - only true and false are booleans. Pasting the
+console's JSON body verbatim is always safe (JSON keys are quoted
+by definition).
 
 - rule: {"required":true}
 

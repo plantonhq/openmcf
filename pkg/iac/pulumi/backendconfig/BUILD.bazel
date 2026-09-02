@@ -14,7 +14,10 @@ go_library(
 
 go_test(
     name = "backendconfig_test",
-    srcs = ["backend_config_test.go"],
+    srcs = [
+        "backend_config_test.go",
+        "resolve_backend_url_test.go",
+    ],
     embed = [":backendconfig"],
     deps = [
         "//catalog/aws/awsvpc/v1alpha1",

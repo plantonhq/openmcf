@@ -165,14 +165,16 @@ message AzureMonitorActionGroupWebhookReceiver {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The endpoint to POST the alert payload to (http:// or https://).
+  // The endpoint to POST the alert payload to -- an http:// or https://
+  // URL. SECRET-BEARING: webhook URLs commonly embed the credential
+  // itself (a token query parameter, a signed path), so the whole value
+  // is treated as a secret. The URL shape is taught here rather than
+  // enforced by a validation rule, because sensitive fields hold a
+  // managed-secret reference on consuming platforms and a scheme rule
+  // would reject every reference.
   string service_uri = 2 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "action_group_webhook_uri_scheme"
-      message: "the webhook service_uri must be an http:// or https:// URL"
-      expression: "this.startsWith('http://') || this.startsWith('https://')"
-    }
+    (dev.planton.shared.options.sensitive) = true
   ];
 
   // Whether to send the common alert schema payload (recommended for
@@ -252,14 +254,14 @@ message AzureMonitorActionGroupAutomationRunbookReceiver {
   // (false). Azure requires this to be stated explicitly.
   bool is_global_runbook = 5;
 
-  // The webhook's invocation URI.
+  // The webhook's invocation URI -- an http:// or https:// URL.
+  // SECRET-BEARING: Automation webhook URIs embed their token in the
+  // URL, so the whole value is treated as a secret (the URL shape is
+  // taught, never rule-enforced -- a stored secret reference would fail
+  // any scheme rule).
   string service_uri = 6 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "action_group_runbook_uri_scheme"
-      message: "the runbook service_uri must be an http:// or https:// URL"
-      expression: "this.startsWith('http://') || this.startsWith('https://')"
-    }
+    (dev.planton.shared.options.sensitive) = true
   ];
 
   // Whether to send the common alert schema payload.
@@ -281,14 +283,14 @@ message AzureMonitorActionGroupLogicAppReceiver {
   ];
 
   // The Logic App trigger's callback URL (from the workflow's HTTP
-  // request trigger).
+  // request trigger) -- an http:// or https:// URL. SECRET-BEARING: the
+  // callback URL embeds the workflow's shared access signature, so the
+  // whole value is treated as a secret (the URL shape is taught, never
+  // rule-enforced -- a stored secret reference would fail any scheme
+  // rule).
   string callback_url = 3 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "action_group_logic_app_url_scheme"
-      message: "the Logic App callback_url must be an http:// or https:// URL"
-      expression: "this.startsWith('http://') || this.startsWith('https://')"
-    }
+    (dev.planton.shared.options.sensitive) = true
   ];
 
   // Whether to send the common alert schema payload.
@@ -317,15 +319,15 @@ message AzureMonitorActionGroupAzureFunctionReceiver {
     (buf.validate.field).string.min_len = 1
   ];
 
-  // The function's HTTP trigger URL (including its code parameter when the
-  // function uses key-based auth).
+  // The function's HTTP trigger URL (including its code parameter when
+  // the function uses key-based auth) -- an http:// or https:// URL.
+  // SECRET-BEARING: the code parameter IS the function key, so the whole
+  // value is treated as a secret (the URL shape is taught, never
+  // rule-enforced -- a stored secret reference would fail any scheme
+  // rule).
   string http_trigger_url = 4 [
     (buf.validate.field).required = true,
-    (buf.validate.field).cel = {
-      id: "action_group_function_url_scheme"
-      message: "the function http_trigger_url must be an http:// or https:// URL"
-      expression: "this.startsWith('http://') || this.startsWith('https://')"
-    }
+    (dev.planton.shared.options.sensitive) = true
   ];
 
   // Whether to send the common alert schema payload.

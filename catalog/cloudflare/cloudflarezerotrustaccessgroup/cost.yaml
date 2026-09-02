@@ -1,0 +1,11 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarezerotrustaccessgroup
+spec:
+  billing_model: free
+  free_tier: "An Access group is a reusable bundle of membership rules inside Cloudflare Zero Trust, whose billable unit is the SEAT, never the object: \"Cloudflare One subscriptions consist of seats that active users in your account consume... A user consumes a seat when they perform an authentication event\" (https://developers.cloudflare.com/cloudflare-one/team-and-resources/users/seat-management/, fetched 2026-08-22). Cloudflare's Access product page carries a Free Plan with a 50-user limit (https://www.cloudflare.com/en-au/sase/products/access/, fetched 2026-08-22). No meter counts groups, rules per group, or how many policies reference a group."
+  notes: "No field of this spec pins a plan, seat count, or subscription: include/exclude/require rules (email, domain, IP, geo, IdP-group, device-posture, and the other criteria), is_default, and the account/zone scoping are all evaluation configuration. The real spend lives in the Zero Trust PLAN -- seats consumed by the users who authenticate through the policies that reference this group, free through 50 users and per-user above, chosen at the account. The group itself gates nothing and bills nothing until a policy uses it, and even then the seat is consumed by the user's authentication, not by this object."

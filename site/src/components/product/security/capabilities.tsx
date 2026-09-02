@@ -41,8 +41,8 @@ const metrics: MetricItem[] = [
 const secretRefTabs: CodeTab[] = [
   {
     label: 'GCP Secret Manager',
-    code: `apiVersion: gcp.planton.dev/v1
-kind: GcpCloudSqlInstance
+    code: `apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudSql
 metadata:
   name: production-db
 spec:
@@ -53,7 +53,7 @@ spec:
   },
   {
     label: 'AWS Secrets Manager',
-    code: `apiVersion: aws.planton.dev/v1
+    code: `apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: production-db
@@ -65,8 +65,8 @@ spec:
   },
   {
     label: 'HashiCorp Vault',
-    code: `apiVersion: gcp.planton.dev/v1
-kind: GcpCloudSqlInstance
+    code: `apiVersion: gcp.planton.dev/v1alpha1
+kind: GcpCloudSql
 metadata:
   name: production-db
 spec:

@@ -29,14 +29,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Container Registry**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab for a single-region registry with Standard tier.
+Open the deployment store, find **Azure Container Registry**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Container Registry** preset in the [Presets](#presets) tab for a single-region registry with Standard tier.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerRegistry
 metadata:
   name: acme-registry
@@ -54,7 +54,7 @@ spec:
 planton apply -f container-registry.yaml
 ```
 
-This creates a Standard-tier Container Registry with the admin account disabled and no geo-replication. Authentication is handled via Microsoft Entra (service principals, managed identities, repo-scoped tokens).
+This creates a Standard-tier Container Registry with the admin account disabled and no geo-replication; authentication is handled via Microsoft Entra (service principals, managed identities, repo-scoped tokens). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -116,11 +116,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard single-region registry** -- Standard SKU with the admin account disabled and no geo-replication. Suitable for most teams and production workloads in a single region. Authentication via Microsoft Entra. Start from the **Standard** preset.
+**Standard single-region registry** -- Standard SKU with the admin account disabled and no geo-replication. Suitable for most teams and production workloads in a single region. Authentication via Microsoft Entra. Start from the **Standard Container Registry** preset.
 
-**Premium geo-replicated registry** -- Premium SKU with a zone-redundant home replica, geo-replication, and untagged-manifest retention. Low-latency pulls for multi-region AKS clusters and survival of a regional outage. Start from the **Premium Geo-Replicated** preset.
+**Premium geo-replicated registry** -- Premium SKU with a zone-redundant home replica, geo-replication, and untagged-manifest retention. Low-latency pulls for multi-region AKS clusters and survival of a regional outage. Start from the **Premium Geo-Replicated Registry** preset.
 
-**Premium network-restricted registry** -- Premium SKU, publicly addressable but DENY-by-default with a CIDR allowlist and dedicated data endpoints. The middle ground between open and fully private. Start from the **Premium Network-Restricted** preset.
+**Premium network-restricted registry** -- Premium SKU, publicly addressable but DENY-by-default with a CIDR allowlist and dedicated data endpoints. The middle ground between open and fully private. Start from the **Premium Network-Restricted Registry** preset.
 
 ## Works With
 

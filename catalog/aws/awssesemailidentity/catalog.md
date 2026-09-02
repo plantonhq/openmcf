@@ -38,7 +38,7 @@ Open the deployment store, find **AWS SES Email Identity**, and click **Deploy**
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSesEmailIdentity
 metadata:
   name: example-domain
@@ -64,18 +64,21 @@ This verifies `example.com` with AWS-managed Easy DKIM (the default when no DKIM
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, the configuration set deploys first, then the identity, then the Route 53 records that complete verification — each DKIM token from the identity's outputs becomes a CNAME:
+When the identity deploys alongside its configuration set in one chart, wire the set reference via ValueFromRef:
 
 ```yaml
-# In an AwsRoute53DnsRecord manifest (one per token):
 spec:
-  # <token>._domainkey.example.com CNAME <token>.dkim.amazonses.com
-  name:
+  emailIdentity: example.com
+  mailFrom:
+    mailFromDomain: mail.example.com
+  configurationSet:
     valueFrom:
-      kind: AwsSesEmailIdentity
-      name: example-domain
-      fieldPath: status.outputs.dkim_tokens[0]
+      kind: AwsSesConfigurationSet
+      name: transactional-prod
+      fieldPath: status.outputs.configuration_set_name
 ```
+
+The InfraPipeline resolves the dependency graph, deploys the configuration set first, then the identity — and the AwsRoute53DnsRecord resources that publish the identity's `dkim_tokens` outputs as CNAMEs deploy after it, completing verification.
 
 ## Key Configuration
 
@@ -93,7 +96,11 @@ These are the most important decisions when configuring an email identity. Explo
 
 ### What This Component Consumes
 
-Optionally references an [AwsSesConfigurationSet](/cloud-catalog/aws-ses-configuration-set) as its default rule group. Without it, the identity is a leaf.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSesConfigurationSet** (optional) | `configurationSet` | `status.outputs.configuration_set_name` |
+
+Without a configuration set reference, the identity is a leaf.
 
 ### What This Component Provides
 
@@ -113,10 +120,10 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Production domain** -- Easy DKIM, custom MAIL FROM, a configuration set attached. Start from the **Domain with Easy DKIM** preset.
 
-**Domain with delivery rules** -- the same shape with the configuration set reference wired to a deployed set. Start from the **Domain with Config Set** preset.
+**Domain with delivery rules** -- the same shape with the configuration set reference wired to a deployed set. Start from the **Domain with Configuration Set** preset.
 
 ## Works With
 
 - [**AWS SES Configuration Set**](/cloud-catalog/aws-ses-configuration-set) -- the default sending rules this identity inherits (references `configuration_set_name`)
-- [**AWS Route53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- publishes the DKIM CNAMEs and the MAIL FROM MX/SPF records that complete verification
-- [**AWS Route53 Zone**](/cloud-catalog/aws-route53-zone) -- the hosted zone those records live in
+- [**AWS Route 53 DNS Record**](/cloud-catalog/aws-route53-dns-record) -- publishes the DKIM CNAMEs and the MAIL FROM MX/SPF records that complete verification
+- [**AWS Route 53 Zone**](/cloud-catalog/aws-route53-zone) -- the hosted zone those records live in

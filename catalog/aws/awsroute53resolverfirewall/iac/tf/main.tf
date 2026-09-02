@@ -22,12 +22,16 @@ resource "aws_route53_resolver_firewall_rule_group" "this" {
   tags = local.aws_tags
 }
 
-# Owned domain lists, keyed by list name.
+# Owned domain lists, keyed by list name. AWS stores every firewall
+# domain as a trailing-dot FQDN and echoes that form on read, with no
+# provider-side diff suppression - the modules compose the canonical
+# form so a bare-authored domain never re-plans forever (live-caught
+# 2026-08-26 on block_override_domain; same storage rule here).
 resource "aws_route53_resolver_firewall_domain_list" "this" {
   for_each = { for list in var.spec.domain_lists : list.name => list }
 
   name    = each.value.name
-  domains = length(each.value.domains) > 0 ? each.value.domains : null
+  domains = length(each.value.domains) > 0 ? [for d in each.value.domains : endswith(d, ".") ? d : "${d}."] : null
 
   tags = local.aws_tags
 }
@@ -48,8 +52,13 @@ resource "aws_route53_resolver_firewall_rule" "this" {
   dns_threat_protection = each.value.dns_threat_protection != "" ? each.value.dns_threat_protection : null
   confidence_threshold  = each.value.confidence_threshold != "" ? each.value.confidence_threshold : null
 
-  block_response        = each.value.block_response != "" ? each.value.block_response : null
-  block_override_domain = each.value.block_override_domain != "" ? each.value.block_override_domain : null
+  block_response = each.value.block_response != "" ? each.value.block_response : null
+  # AWS stores the override domain as a trailing-dot FQDN and echoes it
+  # ("sinkhole.example.com" comes back "sinkhole.example.com."), so a
+  # bare-authored value re-plans forever - compose the canonical form
+  # (live-caught 2026-08-26; upstream has no diff suppression).
+  # PARITY: the Pulumi module normalizes identically.
+  block_override_domain = each.value.block_override_domain != "" ? (endswith(each.value.block_override_domain, ".") ? each.value.block_override_domain : "${each.value.block_override_domain}.") : null
   block_override_ttl    = each.value.block_override_ttl
   # The one legal override record type - module-owned constant.
   block_override_dns_type = each.value.block_response == "OVERRIDE" ? "CNAME" : null

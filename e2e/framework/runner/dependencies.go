@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -173,6 +174,17 @@ func ResolveDependencies(repoRoot, componentProvider, component, scenarioManifes
 		slug, err := manifestKindSlug(full)
 		if err != nil {
 			return nil, errors.Wrapf(err, "%s annotation entry %q", scenarioPrerequisitesAnnotation, entry)
+		}
+		// An "extra instance" is only meaningful when it is a DIFFERENT
+		// manifest. When an annotation names the same file the kind-driven
+		// chain already resolved (the typical slip: annotating the
+		// consumer-scoped override of a registry prerequisite), the
+		// duplicate deploys the same stack twice and breaks teardown -- the
+		// second destroy finds no stack (live-caught 2026-08-26 on a DLM
+		// role fixture; the Terraform path masks it because destroying an
+		// empty state succeeds). Skip the duplicate instead.
+		if slices.ContainsFunc(deps, func(d Dependency) bool { return d.ManifestPath == full }) {
+			continue
 		}
 		entryKind := crkreflect.KindFromString(slug)
 		pre, err := expandPrerequisiteGraph(repoRoot, componentProvider, component, crkreflect.Prerequisites(entryKind), visited)
@@ -462,7 +474,10 @@ func deployDependency(ctx context.Context, repoRoot, componentProvider string, d
 	fmt.Printf("  [deps] Deploying dependency %s (%s)...\n", dep.KindSlug, manifestName)
 	start := time.Now()
 
-	stackInputPath, err := BuildStackInput(dep.ManifestPath, moduleDir)
+	// Dependencies deploy with the harness's default posture (ambient
+	// credentials, empty provider block) -- the provider-config fixture is
+	// the component under test's, never its prerequisites'.
+	stackInputPath, err := BuildStackInput(dep.ManifestPath, nil)
 	if err != nil {
 		return DependencyState{}, errors.Wrapf(err, "failed to build stack input for dependency %q", dep.KindSlug)
 	}
@@ -689,20 +704,45 @@ func scenarioDeclaredPrerequisites(manifestPath string) ([]cloudresourcekind.Clo
 	return kinds, paths, nil
 }
 
-// manifestKindSlug reads the kind a manifest declares and returns its lowercase
-// component directory slug, erroring on unregistered kinds so a mistyped
-// manifest-path fixture fails at resolution time rather than mid-deploy.
+// manifestKindSlug reads the kind a manifest file declares and returns its
+// lowercase component directory slug, erroring on unregistered kinds so a
+// mistyped manifest-path fixture fails at resolution time rather than
+// mid-deploy. A path fixture may deliberately hold SEVERAL documents (e.g. a
+// pair of watched namespaces) — the loader accepts exactly one document per
+// call, so the file splits first, and every document must agree on the kind:
+// one path entry declares one kind in the chain model.
 func manifestKindSlug(manifestPath string) (string, error) {
-	obj, err := manifest.LoadManifest(manifestPath)
+	raw, err := os.ReadFile(manifestPath)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "failed to read manifest %s", manifestPath)
 	}
-	name := string(obj.ProtoReflect().Descriptor().Name())
-	kind := crkreflect.KindFromString(name)
-	if kind == cloudresourcekind.CloudResourceKind_unspecified {
-		return "", errors.Errorf("manifest %s declares kind %q, which is not a registered cloud resource kind", manifestPath, name)
+	docs, err := manifest.SplitDocuments(raw)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to split manifest %s into documents", manifestPath)
 	}
-	return strings.ToLower(kind.String()), nil
+	if len(docs) == 0 {
+		return "", errors.Errorf("manifest %s holds no documents", manifestPath)
+	}
+
+	slug := ""
+	for i, doc := range docs {
+		obj, err := manifest.LoadManifestBytes(doc, fmt.Sprintf("%s[doc%d]", manifestPath, i+1))
+		if err != nil {
+			return "", err
+		}
+		name := string(obj.ProtoReflect().Descriptor().Name())
+		kind := crkreflect.KindFromString(name)
+		if kind == cloudresourcekind.CloudResourceKind_unspecified {
+			return "", errors.Errorf("manifest %s declares kind %q, which is not a registered cloud resource kind", manifestPath, name)
+		}
+		docSlug := strings.ToLower(kind.String())
+		if slug == "" {
+			slug = docSlug
+		} else if slug != docSlug {
+			return "", errors.Errorf("manifest %s mixes kinds across its documents (%s vs %s) — one path entry declares one kind", manifestPath, slug, docSlug)
+		}
+	}
+	return slug, nil
 }
 
 // ManifestAnnotation reads a single metadata annotation from a KRM manifest,

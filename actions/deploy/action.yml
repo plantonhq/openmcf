@@ -1,0 +1,295 @@
+name: 'Planton Deploy'
+description: >-
+  Deploy from GitHub Actions through Planton, in one of two modes inferred
+  from the inputs. Connected to a Planton backend (org + audience set):
+  exchange the workflow's own OIDC token for a short-lived Planton
+  credential, optionally register the service from its manifest, deploy a
+  container image into one environment, and fail the job unless the
+  deployment verifiably succeeded. Offline (neither set): render the
+  checked-out repository's own kustomize declaration and deploy it to your
+  cloud through the open-source engine — keylessly, with no Planton backend
+  anywhere — behind a preflight report that verifies everything verifiable
+  before the first IaC handoff.
+author: 'Planton'
+branding:
+  icon: 'upload-cloud'
+  color: 'purple'
+
+inputs:
+  org:
+    description: >-
+      Planton organization slug. Setting org AND audience selects the
+      connected (federated) mode; leaving BOTH out selects the offline mode.
+    required: false
+  service:
+    description: >-
+      Connected mode: service slug or id (svc_...) to deploy. Offline mode
+      deploys the checked-out working tree and takes no service input.
+    required: false
+  environment:
+    description: >-
+      Environment to deploy into — both modes. Connected: must be among the
+      service's declared deploy environments (a protected environment pauses
+      at its approval gate — with follow enabled, the job waits for the
+      approval). Offline: names the overlay of the working tree's kustomize
+      declaration to render.
+    required: true
+  image:
+    description: >-
+      Connected mode: container image reference to deploy (host/path:tag or
+      @digest). Offline, the tree's authored values are the truth — inject
+      the image your job built with the `set` input instead.
+    required: false
+  audience:
+    description: >-
+      Connected mode: the OIDC token audience — must be EXACTLY the audience
+      your organization's workload identity binding declares. There is no
+      default: the binding authors this value, and the audience check is
+      what makes Planton the token's only valid consumer.
+    required: false
+  register:
+    description: >-
+      Connected mode: set "true" to register (apply) the service from its
+      manifest before deploying — the manifest's declared repository is
+      proven against this workflow's own token, never trusted as typed.
+    required: false
+    default: 'false'
+  service-file:
+    description: 'Path to the service manifest, used when register is "true".'
+    required: false
+    default: 'service.yaml'
+  follow:
+    description: >-
+      Connected mode: set "false" to fire-and-forget. With "true" (the
+      default) the job waits for the run and tells the truth: it fails when
+      the run fails AND when rollout verification reports the service
+      demonstrably not online. An honestly-unverifiable rollout passes with
+      a warning. Offline deploys run inside this job and are always
+      followed.
+    required: false
+    default: 'true'
+  set:
+    description: >-
+      Offline mode: node-addressed field overrides, one per line, each
+      `<kind>/<name>:<fieldPath>=<value>`. A tree can hold many documents,
+      so a bare field path would be ambiguous — the override names its
+      document. The classic use is injecting the image this job just built
+      into the workload's image field.
+    required: false
+    default: ''
+  working-directory:
+    description: >-
+      Offline mode: the directory holding the service's kustomize
+      declaration (default: the repository root).
+    required: false
+    default: '.'
+  cli-version:
+    description: 'Planton CLI version to install (default: the latest release).'
+    required: false
+    default: 'latest'
+
+outputs:
+  run-id:
+    description: >-
+      The delivery run a connected deploy started (svcpipe_...). Empty in
+      offline mode — an offline deploy runs inside this job and has no
+      backend run to point at.
+    value: ${{ steps.deploy.outputs.run-id }}
+
+runs:
+  using: 'composite'
+  steps:
+    # The mode is INFERRED from the inputs — org + audience present is the
+    # connected (federated) lane, neither present is the offline lane, and
+    # any half-state refuses here with the exact line to add or remove.
+    # Detection is defined over DETECTABLE states only: a composite action
+    # cannot distinguish an input's default from an explicitly-passed
+    # identical value, so inputs whose defaults are non-empty (service-file,
+    # cli-version, follow's "true") can never be treated as mode evidence —
+    # only empty-default inputs and non-default values can refuse.
+    # GitHub does not enforce `required:` on action inputs at runtime, so
+    # this gate is the real contract for BOTH modes; every problem is
+    # reported before the first network call, and all of them at once.
+    - name: Decide the mode from the inputs
+      id: gate
+      shell: bash
+      env:
+        IN_ORG: ${{ inputs.org }}
+        IN_AUDIENCE: ${{ inputs.audience }}
+        IN_SERVICE: ${{ inputs.service }}
+        IN_IMAGE: ${{ inputs.image }}
+        IN_REGISTER: ${{ inputs.register }}
+        IN_FOLLOW: ${{ inputs.follow }}
+        IN_ENVIRONMENT: ${{ inputs.environment }}
+      run: |
+        set -euo pipefail
+        FAILED=0
+        problem() { echo "::error::$1" ; FAILED=1 ; }
+
+        MODE=""
+        if [ -n "${IN_ORG}" ] && [ -n "${IN_AUDIENCE}" ]; then
+          MODE="federated"
+          if [ -z "${IN_SERVICE}" ]; then
+            problem "a connected deploy needs the service to deploy — add:  service: <your-service-slug>"
+          fi
+          if [ -z "${IN_IMAGE}" ]; then
+            problem "a connected deploy needs the image to deploy — add:  image: <registry/path:tag or @digest>"
+          fi
+        elif [ -z "${IN_ORG}" ] && [ -z "${IN_AUDIENCE}" ]; then
+          MODE="offline"
+          if [ -n "${IN_SERVICE}" ]; then
+            problem "offline mode deploys the checked-out working tree, so 'service' selects nothing — remove:  service: ${IN_SERVICE}  (or add 'org' and 'audience' to deploy through your Planton backend)"
+          fi
+          if [ -n "${IN_IMAGE}" ]; then
+            problem "offline mode takes the image from the tree's own values — remove 'image' and inject it instead with:  set: <kind>/<name>:<fieldPath>=${IN_IMAGE}"
+          fi
+          if [ "${IN_REGISTER}" = "true" ]; then
+            problem "'register' applies the service manifest to a Planton backend, and offline mode has none — remove:  register: true"
+          fi
+          if [ "${IN_FOLLOW}" = "false" ]; then
+            problem "an offline deploy runs inside this job and is always followed — remove:  follow: false"
+          fi
+        else
+          if [ -n "${IN_ORG}" ]; then
+            problem "'org' is set but 'audience' is not — a connected deploy needs both. Add:  audience: <your binding's audience>  — or remove:  org: ${IN_ORG}  to deploy offline"
+          else
+            problem "'audience' is set but 'org' is not — a connected deploy needs both. Add:  org: <your-org-slug>  — or remove the 'audience' line to deploy offline"
+          fi
+        fi
+
+        if [ -z "${IN_ENVIRONMENT}" ]; then
+          problem "both modes need the environment to deploy into — add:  environment: <env-slug>"
+        fi
+
+        if [ "${FAILED}" -eq 1 ]; then
+          echo "the inputs decide the mode — the upgrade table in this action's README shows both shapes"
+          exit 1
+        fi
+        echo "mode=${MODE}" >> "${GITHUB_OUTPUT}"
+        echo "planton deploy mode: ${MODE}"
+
+    - name: Install the Planton CLI
+      shell: bash
+      run: |
+        set -euo pipefail
+        VERSION="${{ inputs.cli-version }}"
+        if [ "${VERSION}" = "latest" ]; then
+          VERSION="$(curl -fsSL https://downloads.planton.app/cli/latest/version.txt | tr -d '[:space:]')"
+        fi
+        case "${RUNNER_OS}" in
+          Linux)  OS=linux ;;
+          macOS)  OS=darwin ;;
+          *) echo "::error::unsupported runner OS '${RUNNER_OS}' — use a Linux or macOS runner" ; exit 1 ;;
+        esac
+        case "${RUNNER_ARCH}" in
+          X64)   ARCH=amd64 ;;
+          ARM64) ARCH=arm64 ;;
+          *) echo "::error::unsupported runner architecture '${RUNNER_ARCH}'" ; exit 1 ;;
+        esac
+        BIN="planton-${VERSION}-${OS}-${ARCH}"
+        DIR="${RUNNER_TEMP}/planton-cli"
+        mkdir -p "${DIR}"
+        curl -fsSL -o "${DIR}/${BIN}" "https://downloads.planton.app/cli/${VERSION}/${BIN}"
+        curl -fsSL -o "${DIR}/checksums.txt" "https://downloads.planton.app/cli/${VERSION}/checksums.txt"
+        # The release's checksums are the integrity contract: a binary that
+        # does not match is never executed.
+        EXPECTED="$(grep -E "  ?${BIN}\$" "${DIR}/checksums.txt" | awk '{print $1}')"
+        if [ -z "${EXPECTED}" ]; then
+          echo "::error::release ${VERSION} publishes no checksum for ${BIN}" ; exit 1
+        fi
+        if command -v sha256sum >/dev/null 2>&1; then
+          ACTUAL="$(sha256sum "${DIR}/${BIN}" | awk '{print $1}')"
+        else
+          ACTUAL="$(shasum -a 256 "${DIR}/${BIN}" | awk '{print $1}')"
+        fi
+        if [ "${EXPECTED}" != "${ACTUAL}" ]; then
+          echo "::error::checksum mismatch for ${BIN} (expected ${EXPECTED}, got ${ACTUAL})" ; exit 1
+        fi
+        mv "${DIR}/${BIN}" "${DIR}/planton"
+        chmod +x "${DIR}/planton"
+        echo "${DIR}" >> "${GITHUB_PATH}"
+        echo "installed planton ${VERSION} (${OS}/${ARCH})"
+
+    - name: Exchange this workflow's OIDC token for a Planton credential
+      if: ${{ steps.gate.outputs.mode == 'federated' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+          echo "::error::this job cannot mint an OIDC token — add 'permissions: id-token: write' to the job" ; exit 1
+        fi
+        OIDC_TOKEN="$(curl -fsSL \
+          -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+          "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${{ inputs.audience }}" | jq -r '.value')"
+        # The CI token is exchange-only: it buys exactly one thing — a
+        # short-lived Planton credential scoped to this repository's service.
+        PLANTON_API_KEY="$(PLANTON_OIDC_TOKEN="${OIDC_TOKEN}" planton iam federate --org "${{ inputs.org }}")"
+        echo "::add-mask::${PLANTON_API_KEY}"
+        echo "PLANTON_API_KEY=${PLANTON_API_KEY}" >> "${GITHUB_ENV}"
+
+    - name: Register the service from its manifest
+      if: ${{ steps.gate.outputs.mode == 'federated' && inputs.register == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        planton service register -f "${{ inputs.service-file }}" --org "${{ inputs.org }}"
+
+    - name: Deploy
+      id: deploy
+      if: ${{ steps.gate.outputs.mode == 'federated' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        FOLLOW_FLAGS=""
+        if [ "${{ inputs.follow }}" = "true" ]; then
+          FOLLOW_FLAGS="--follow --plain"
+        fi
+        # tee keeps the run's progress in the job log while the run id is
+        # extracted for downstream steps; pipefail keeps the CLI's honest
+        # exit code (run failed, or rollout verification failed) as the
+        # job's own.
+        planton service deploy "${{ inputs.service }}" \
+          --org "${{ inputs.org }}" \
+          --env "${{ inputs.environment }}" \
+          --image "${{ inputs.image }}" \
+          --commit "${GITHUB_SHA}" \
+          --branch "${GITHUB_REF_NAME}" \
+          ${FOLLOW_FLAGS} | tee "${RUNNER_TEMP}/planton-deploy.log"
+        RUN_ID="$(grep -oE 'svcpipe_[A-Za-z0-9]+' "${RUNNER_TEMP}/planton-deploy.log" | head -1 || true)"
+        echo "run-id=${RUN_ID}" >> "${GITHUB_OUTPUT}"
+
+    - name: Deploy the working tree offline through the open-source engine
+      if: ${{ steps.gate.outputs.mode == 'offline' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        # The CLI's own single-invocation override: force the offline lane
+        # even if this runner carries a leftover profile from other work.
+        # A deploy that silently went through a backend nobody asked for is
+        # the worst failure mode this step can have.
+        PLANTON_BACKEND: none
+        IN_ENVIRONMENT: ${{ inputs.environment }}
+        IN_SET: ${{ inputs.set }}
+      run: |
+        set -uo pipefail
+        # -e is deliberately off: the exit code is handled explicitly so the
+        # log group always closes and the verdict lands OUTSIDE it — a failed
+        # run's summary shows the one sentence that matters, and the full
+        # preflight report and engine output stay one click away.
+        SET_FLAGS=()
+        while IFS= read -r line; do
+          if [ -z "${line//[[:space:]]/}" ]; then continue ; fi
+          SET_FLAGS+=(--set "${line}")
+        done <<< "${IN_SET}"
+        echo "::group::planton service deploy --env ${IN_ENVIRONMENT} (offline)"
+        rc=0
+        planton service deploy --env "${IN_ENVIRONMENT}" --auto-approve \
+          ${SET_FLAGS[@]+"${SET_FLAGS[@]}"} || rc=$?
+        echo "::endgroup::"
+        case "${rc}" in
+          0) echo "offline deploy succeeded — every resource in the tree is live in '${IN_ENVIRONMENT}'" ;;
+          2) echo "::error::refused at preflight — nothing was handed to an IaC engine. The report in the log group above names every problem and its fix." ;;
+          1) echo "::error::a resource failed to deploy — the engine's own error is in the log group above. Completed resources are safe in state: re-running this job re-applies them as no-ops and continues." ;;
+          *) echo "::error::planton exited with code ${rc} — see the log group above." ;;
+        esac
+        exit "${rc}"

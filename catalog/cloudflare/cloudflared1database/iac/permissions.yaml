@@ -1,0 +1,26 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# The component README and catalog.md say only that the token needs "D1
+# permissions" -- no more specific prose existed to migrate.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflared1database
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageDatabase
+        name: D1 Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Covers the Terraform module's single cloudflare_d1_database resource and the Pulumi module's matching D1Database resource -- create the database via POST /accounts/{account_id}/d1/database, update its read-replication mode via PUT /accounts/{account_id}/d1/database/{database_id}, and delete it via DELETE on the same path (derived from the modules' API surface; neither engine performs secondary lookups or data-source reads). Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22; the page lists each account-scoped group in two naming variants -- "D1 Edit" and "D1 Write" -- both verbatim on the page; the Write form is used here).
+      - purpose: ReadDatabase
+        name: D1 Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Read-side of the same resource -- refresh/import the database via GET /accounts/{account_id}/d1/database/{database_id} (derived from the modules' API surface).

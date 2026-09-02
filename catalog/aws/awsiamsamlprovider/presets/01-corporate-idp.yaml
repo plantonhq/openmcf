@@ -4,8 +4,30 @@ metadata:
   name: corporate-idp
 spec:
   region: us-east-1
+  # Replace the ENTIRE document below with the metadata XML your identity
+  # provider publishes at its SAML metadata URL -- Okta: the app's "Identity
+  # Provider metadata" link; Entra ID: the "Federation Metadata XML"
+  # download; Google Workspace: the "Download metadata" button. The
+  # placeholder below only demonstrates the shape; AWS rejects it.
   samlMetadataDocument: |
-    <paste the metadata XML your identity provider publishes at its
-    SAML metadata URL - Okta: the app's "Identity Provider metadata"
-    link; Entra ID: the "Federation Metadata XML" download; Google
-    Workspace: the "Download metadata" button>
+    <?xml version="1.0" encoding="UTF-8"?>
+    <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata"
+                      entityID="https://idp.replaceme.example.com/metadata">
+      <IDPSSODescriptor WantAuthnRequestsSigned="false"
+                        protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+        <KeyDescriptor use="signing">
+          <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+            <X509Data>
+              <X509Certificate>REPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEME
+              REPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEME
+              REPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEME</X509Certificate>
+            </X509Data>
+          </KeyInfo>
+        </KeyDescriptor>
+        <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+                             Location="https://idp.replaceme.example.com/sso/saml"/>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+                             Location="https://idp.replaceme.example.com/sso/saml"/>
+      </IDPSSODescriptor>
+    </EntityDescriptor>

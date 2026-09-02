@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The only access paths are SigV4-signed HTTPS and IAM-minted presigned URLs -- no weaker or legacy authentication path exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:
@@ -71,5 +74,5 @@ spec:
       field_path: weekly_maintenance_window_start
       evidence:
         type: spec_default
-        reference: AWS applies maintenance to the managed server on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "DDD:HH:MM") schedules when the maintenance disruption lands.
-      notes: The 02-regulated-experiment-tracking preset pins SUN:03:00. mlflow_version pins the major.minor MLflow line (omitted = AWS picks the latest); moving lines replaces the server, so version currency is a deliberate change, not silent drift.
+        reference: AWS applies maintenance to the managed server on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "Ddd:HH:MM", mixed-case day token) schedules when the maintenance disruption lands.
+      notes: The 02-regulated-experiment-tracking preset pins Sun:03:00. mlflow_version pins the major.minor MLflow line (omitted = AWS picks the latest); moving lines replaces the server, so version currency is a deliberate change, not silent drift.

@@ -23,9 +23,10 @@ spec:
   #     log-group kind publishes no shared install profile). Unblock:
   #     the awscwlad consumer-scoped pattern.
   #
-  # pending_proof: forged this session to the full offline bar -- Q45
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q45): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under
+  # the armed apply-idempotency gate.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 40

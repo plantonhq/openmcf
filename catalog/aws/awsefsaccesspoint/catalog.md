@@ -1,6 +1,6 @@
 # AWS EFS Access Point
 
-Deploys an EFS access point — an application-specific entry point into an existing Elastic File System that enforces a POSIX user/group identity and pins the visible root directory. Access points are the recommended way to give Lambda functions, ECS tasks, and Batch jobs file system access: the NFS client's identity is overridden with the enforced POSIX user and the visible tree is restricted to the root directory, so applications cannot wander the file system regardless of what they run as. The access point integrates with Planton's Provider Connections for AWS credential management and references its file system via ValueFromRef.
+Deploys an EFS access point — an application-specific entry point into an existing Elastic File System that enforces a POSIX user/group identity and pins the visible root directory. Access points are the recommended way to give Lambda functions, ECS tasks, and Batch jobs file system access: the NFS client's identity is overridden with the enforced POSIX user and the visible tree is restricted to the root directory, so applications cannot wander the file system regardless of what they run as. The entire access point is create-time immutable — only tags change in place — so the identity and root path are decisions to make up front.
 
 ## What Gets Created
 
@@ -21,21 +21,21 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### AWS Account
 
-- **An EFS file system** -- the access point enters exactly one file system. Reference an [AwsElasticFileSystem](/cloud-catalog/aws-elastic-file-system) Cloud Resource or provide a literal file system ID (`fs-...`).
+- **An EFS file system** -- the access point enters exactly one file system. Reference an [AWS Elastic File System](/cloud-catalog/aws-elastic-file-system) Cloud Resource or provide a literal file system ID (`fs-...`).
 - **A plan for the root path** -- if `rootDirectory.path` does not exist on the file system yet, provide `creationInfo` (owner UID/GID + octal permissions). Without it, mounting an access point whose path does not exist fails — AWS validates existence at mount time, not create time.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **AWS EFS Access Point**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **App Data** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS EFS Access Point**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Application Data Access Point** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEfsAccessPoint
 metadata:
   name: app-data
@@ -108,14 +108,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 |--------|-------------|----------------------|
 | `access_point_id` | Access point identifier (`fsap-...`) | ECS task definition EFS volumes, Batch job definition volumes |
 | `access_point_arn` | Amazon Resource Name of the access point | Lambda file system configuration, IAM policy conditions |
-| `file_system_id` | The file system this access point enters | Cross-checking mount wiring |
+| `file_system_id` | The file system this access point enters | ECS EFS volumes, which need both the file system and access point IDs — wire both from this one node |
 | `file_system_arn` | ARN of the file system | IAM policies for resource-level permissions |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**App data directory** -- an access point enforcing a service account identity (UID/GID 1000) over a dedicated `/app-data` directory with `0755` permissions. The standard shape for one application's slice of a shared file system. Start from the **App Data** preset.
+**App data directory** -- an access point enforcing a service account identity (UID/GID 1000) over a dedicated `/app-data` directory with `0755` permissions. The standard shape for one application's slice of a shared file system. Start from the **Application Data Access Point** preset.
 
 **Lambda shared models** -- an access point over `/models` mounted by one or more Lambda functions at `/mnt/models` — large ML models loaded once and shared across invocations. The function references `access_point_arn`.
 

@@ -101,7 +101,8 @@ Example: "us-west-2", "us-east-1"
 `string`
 
 Compute instance type (an "ml.*" type, e.g. "ml.t3.medium" - the
-cheapest current-generation choice, ~$0.05/hour). AWS's accepted
+cheapest current-generation choice; the instance bills hourly
+whether or not a notebook is open). AWS's accepted
 set grows with every release - the value passes through to the API,
 which rejects unknown types.
 
@@ -142,7 +143,8 @@ replaces the instance.
 `[]string | valueFrom`
 
 Security groups applied to the notebook's ENI (requires
-`subnet_id`).
+`subnet_id`). Changing them replaces the instance -- the ML storage
+volume is destroyed with it.
 
 - references: AwsSecurityGroup (`status.outputs.security_group_id`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsSecurityGroup, name: <that resource's name>, fieldPath: status.outputs.security_group_id}} -- a bare string does not parse
@@ -151,7 +153,8 @@ Security groups applied to the notebook's ENI (requires
 
 `string | valueFrom`
 
-KMS key encrypting the ML storage volume at rest.
+KMS key encrypting the ML storage volume at rest. Changing it
+replaces the instance -- the ML storage volume is destroyed with it.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse

@@ -132,7 +132,111 @@ func buildProviderArgs(goCtx context.Context, awsProviderConfig *awsprovider.Aws
 		// credentials from the SDK's ambient chain (e.g. a self-hosted runner's role).
 	}
 
+	// The provider-block surface (assume-role chain, default tags, endpoint
+	// overrides, retry tuning) is deliberately applied AFTER the credential
+	// dispatch: it composes with every base-credential mode, mirroring how the
+	// OpenTofu path layers the generated override file on top of env-injected
+	// credentials.
+	if err := applyProviderBlockArgs(providerArgs, awsProviderConfig); err != nil {
+		return nil, err
+	}
+
 	return providerArgs, nil
+}
+
+// applyProviderBlockArgs maps the config's provider-block surface onto the
+// provider args. The classic provider carries the full surface: AssumeRoles is
+// natively a list (chained evaluation, each hop assumed with the previous
+// hop's credentials), so the chain maps one-to-one.
+func applyProviderBlockArgs(providerArgs *aws.ProviderArgs, config *awsprovider.AwsProviderConfig) error {
+	if chain := config.GetAssumeRoleChain(); len(chain) > 0 {
+		hops := make(aws.ProviderAssumeRoleArray, 0, len(chain))
+		for _, hop := range chain {
+			hopArgs := aws.ProviderAssumeRoleArgs{
+				RoleArn: pulumi.String(hop.GetRoleArn()),
+			}
+			if hop.GetSessionName() != "" {
+				hopArgs.SessionName = pulumi.String(hop.GetSessionName())
+			}
+			if hop.GetExternalId() != "" {
+				hopArgs.ExternalId = pulumi.String(hop.GetExternalId())
+			}
+			if hop.GetDuration() != "" {
+				hopArgs.Duration = pulumi.String(hop.GetDuration())
+			}
+			if hop.GetPolicy() != "" {
+				hopArgs.Policy = pulumi.String(hop.GetPolicy())
+			}
+			if len(hop.GetPolicyArns()) > 0 {
+				hopArgs.PolicyArns = pulumi.ToStringArray(hop.GetPolicyArns())
+			}
+			if len(hop.GetTags()) > 0 {
+				hopArgs.Tags = pulumi.ToStringMap(hop.GetTags())
+			}
+			if len(hop.GetTransitiveTagKeys()) > 0 {
+				hopArgs.TransitiveTagKeys = pulumi.ToStringArray(hop.GetTransitiveTagKeys())
+			}
+			if hop.GetSourceIdentity() != "" {
+				hopArgs.SourceIdentity = pulumi.String(hop.GetSourceIdentity())
+			}
+			hops = append(hops, hopArgs)
+		}
+		providerArgs.AssumeRoles = hops
+	}
+
+	if tags := config.GetDefaultTags().GetTags(); len(tags) > 0 {
+		providerArgs.DefaultTags = aws.ProviderDefaultTagsArgs{Tags: pulumi.ToStringMap(tags)}
+	}
+
+	if endpoints := config.GetEndpoints(); len(endpoints) > 0 {
+		endpointArgs, err := buildEndpointArgs(endpoints)
+		if err != nil {
+			return err
+		}
+		providerArgs.Endpoints = aws.ProviderEndpointArray{endpointArgs}
+	}
+
+	if config.MaxRetries != nil {
+		providerArgs.MaxRetries = pulumi.Int(int(config.GetMaxRetries()))
+	}
+	if config.GetRetryMode() != "" {
+		providerArgs.RetryMode = pulumi.String(config.GetRetryMode())
+	}
+
+	return nil
+}
+
+// buildEndpointArgs maps the config's service->URL endpoint overrides onto the
+// SDK's ProviderEndpointArgs, which is a flat struct with one field per AWS
+// service (each tagged `pulumi:"<service>"` -- the same names as the Terraform
+// provider's endpoints-block attributes). Reflection over those tags keeps the
+// mapping schema-derived rather than hand-maintained across ~400 services. An
+// unknown service name fails loudly: a silently dropped endpoint override
+// would send that service's traffic to the public endpoint instead.
+func buildEndpointArgs(endpoints map[string]string) (aws.ProviderEndpointArgs, error) {
+	endpointArgs := aws.ProviderEndpointArgs{}
+	structValue := reflect.ValueOf(&endpointArgs).Elem()
+	structType := structValue.Type()
+
+	fieldByService := make(map[string]int, structType.NumField())
+	for i := 0; i < structType.NumField(); i++ {
+		if tag := structType.Field(i).Tag.Get("pulumi"); tag != "" {
+			fieldByService[tag] = i
+		}
+	}
+
+	for service, url := range endpoints {
+		fieldIndex, known := fieldByService[service]
+		if !known {
+			return aws.ProviderEndpointArgs{}, errors.Errorf(
+				"unknown AWS service %q in endpoints: the pulumi-aws provider has no such "+
+					"endpoint attribute (service names follow the Terraform provider's "+
+					"endpoints block, e.g. \"sts\", \"s3\", \"dynamodb\")", service)
+		}
+		structValue.Field(fieldIndex).Set(reflect.ValueOf(pulumi.StringPtrInput(pulumi.String(url))))
+	}
+
+	return endpointArgs, nil
 }
 
 // ProviderResourceName returns the Pulumi resource name for the AWS provider.

@@ -35,6 +35,7 @@ go_test(
         "//catalog/aws/awsecrrepo/v1alpha1",
         "//iac/componentimportmap/v1:componentimportmap",
         "//pkg/crkreflect",
+        "@in_gopkg_yaml_v3//:yaml_v3",
         "@org_golang_google_protobuf//proto",
         "@org_golang_google_protobuf//reflect/protoreflect",
         "@org_golang_google_protobuf//reflect/protoregistry",

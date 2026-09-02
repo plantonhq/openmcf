@@ -1,6 +1,6 @@
 # AWS Neptune Cluster
 
-Deploys an Amazon Neptune graph database cluster — property graphs (Apache TinkerPop Gremlin, openCypher) and RDF (SPARQL) over shared cluster storage — with a per-instance compute fleet or Neptune Serverless, IAM database authentication, encrypted storage, automated backups, CloudWatch log exports, and engine parameter management. The cluster integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to subnets, security groups, KMS keys, and IAM roles.
+Deploys an Amazon Neptune graph database cluster — property graphs (Apache TinkerPop Gremlin, openCypher) and RDF (SPARQL) over shared cluster storage — with a per-instance compute fleet or Neptune Serverless, IAM database authentication, encrypted storage, automated backups, CloudWatch log exports, and engine parameter management. Neptune has no master username or password by design -- access is network reachability plus optional SigV4-signed IAM authentication -- and the compute is the `instances` list, each entry managed as its own provider resource so scaling readers never touches the cluster.
 
 ## What Gets Created
 
@@ -10,9 +10,11 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **Neptune Instances** -- one provider resource per `instances[]` entry, keyed by name: one writer (the lowest promotion tier) plus any readers. Adding or removing a reader is an in-place update, never a cluster replacement
 - **Neptune Subnet Group** -- created from the provided `subnetIds` (at least two subnets in distinct Availability Zones); skipped when an existing `neptuneSubnetGroupName` is referenced instead
 - **Cluster Parameter Group** -- created only when inline `parameters` are configured (mutually exclusive with `neptuneClusterParameterGroupName`); requires a pinned `engineVersion`, since the group's family derives from it
-- **IAM Role Associations** -- created only when `iamRoles` are provided; lets Neptune reach other AWS services (the S3 bulk loader, Neptune ML with SageMaker)
-- **CloudWatch Log Exports** -- enabled only for the `enabledCloudwatchLogsExports` entries (`audit`, `slowquery`)
+- **Instance Parameter Group** -- created only when inline `instanceParameters` are configured; the instance-level twin, applied to every folded instance that does not bring its own group
+- **Custom Cluster Endpoints** -- one per `customEndpoints[]` entry: stable DNS names over a chosen subset of the cluster's instances
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
+
+`iamRoles` entries attach directly on the cluster resource, letting Neptune reach other AWS services (the S3 bulk loader, Neptune ML with SageMaker), and `enabledCloudwatchLogsExports` entries (`audit`, `slowquery`) make Neptune deliver those logs to CloudWatch -- neither creates a separate module resource.
 
 ## Before You Deploy
 
@@ -32,14 +34,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Neptune Cluster**, and click **Deploy**. The creation wizard walks you through the creation source (new cluster, snapshot restore, or read replica), placement, the compute fleet (provisioned or serverless), security, backups, and audit logging.
+Open the deployment store, find **AWS Neptune Cluster**, and click **Deploy**. The creation wizard walks you through the creation source (new cluster, snapshot restore, or read replica), placement, the compute fleet (provisioned or serverless), security, backups, and audit logging. Start from the **Production Neptune (Provisioned)** preset in the [Presets](#presets) tab for the writer-plus-reader production shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsNeptuneCluster
 metadata:
   name: knowledge-graph
@@ -69,7 +71,7 @@ spec:
 planton apply -f neptune-cluster.yaml
 ```
 
-This creates a two-instance cluster (a writer plus one reader for high availability) on AWS's current default engine version, with encrypted storage on the AWS-managed key, IAM database authentication, deletion protection, 7-day backup retention, and a named final snapshot on deletion.
+This creates a two-instance cluster (a writer plus one reader for high availability) on AWS's current default engine version, with encrypted storage on the AWS-managed key, IAM database authentication, deletion protection, 7-day backup retention, and a named final snapshot on deletion. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -146,14 +148,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `arn` | Amazon Resource Name of the cluster | IAM policies, CloudWatch alarms, resource tagging |
 | `cluster_resource_id` | Immutable resource ID (survives identifier renames) | IAM database-authentication policies, CloudWatch dimensions |
 | `hosted_zone_id` | Route 53 hosted zone ID of the cluster endpoints | DNS alias record creation |
-| `engine_version_actual` | The engine version actually running | Auditing unpinned clusters |
-| `neptune_subnet_group_name` | The subnet group the cluster runs in | Audit, related resource lookups |
-| `neptune_cluster_parameter_group_name` | The parameter group in use | Parameter auditing |
+| `custom_endpoint_addresses` | Custom endpoint DNS names keyed by `customEndpoints[].name` | Workload-scoped connection strings |
+
+`engine_version_actual`, `neptune_subnet_group_name`, `neptune_cluster_parameter_group_name`, and `neptune_instance_parameter_group_name` are also exported -- they record the resolved engine version and the groups in use, for auditing rather than downstream wiring.
 
 ## Common Patterns
 
-- **Production graph** -- a writer plus one reader on `db.r6g.large`, a pinned engine version, encrypted storage, IAM authentication, deletion protection, 7-day retention, and the audit log paired with its `neptune_enable_audit_log` parameter.
-- **Serverless** -- a single `db.serverless` writer with NCU bounds (e.g. 1-32) for spiky or unpredictable query loads; the minimum NCU is the idle cost floor (Neptune Serverless does not pause to zero).
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+
+**Production graph** -- A writer plus one reader on `db.r6g.large`, a pinned engine version, encrypted storage, IAM authentication, deletion protection, 7-day retention, and the audit log paired with its `neptune_enable_audit_log` parameter. Start from the **Production Neptune (Provisioned)** preset.
+
+**Serverless** -- A single `db.serverless` writer with NCU bounds (e.g. 1-32) for spiky or unpredictable query loads; the minimum NCU is the idle cost floor (Neptune Serverless does not pause to zero). Start from the **Neptune Serverless** preset.
 
 ## Works With
 

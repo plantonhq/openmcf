@@ -181,9 +181,13 @@ func Check(repoRoot string) ([]Violation, error) {
 			rel := filepath.Join(providerRel, e.Name())
 			if !e.IsDir() {
 				// Provider support files: protos + stubs, cli help, docs,
-				// build files. Anything else does not belong here.
+				// build files, and the provider-block parity manifest
+				// (provider-config-parity.yaml -- its presence enrolls the
+				// provider for provider-block accounting; see
+				// pkg/providerparity). Anything else does not belong here.
 				switch {
 				case e.Name() == "BUILD.bazel",
+					e.Name() == "provider-config-parity.yaml",
 					strings.HasSuffix(e.Name(), ".proto"),
 					strings.HasSuffix(e.Name(), ".go"),
 					strings.HasSuffix(e.Name(), ".md"):

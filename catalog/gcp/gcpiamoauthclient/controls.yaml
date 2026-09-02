@@ -46,6 +46,9 @@ spec:
         type: spec_validation
         reference: The allowed_grant_types validation admits exactly AUTHORIZATION_CODE_GRANT and REFRESH_TOKEN_GRANT -- Google's IAM API defines exactly these two, so legacy OAuth grants (implicit, resource-owner password) are unrepresentable in the spec and unsupported by the service.
       notes: The disabled flag is the reversible kill switch -- flipping it stops new authorizations without deleting the registration.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The client is an OAuth registration for workforce-federated sign-in -- users authenticate at the workforce pool's external IdP, where password strength and MFA are governed; no end-user credential ever touches this resource.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

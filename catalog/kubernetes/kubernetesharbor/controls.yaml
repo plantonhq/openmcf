@@ -58,6 +58,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Harbor's authentication mode (local database vs OIDC/LDAP) is in-product configuration, not modeled in this deployment spec. The classic weak path -- the chart's public default credentials -- structurally never ships (see rbac).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Harbor's authentication mode (local database vs OIDC/LDAP) and any password or MFA policy on it are in-product configuration, not modeled in this deployment spec; the spec's guarantee is bootstrap hygiene -- the chart's public default credentials structurally never ship (see rbac).
     - control_id: audit-logging
       status: not_applicable
       notes: Harbor's audit log (project-level operation history) lives in-product, stored in its database; component logs stream to stdout at log_level (default info) for the cluster's log collector. Changes to the release are Kubernetes API operations, captured by the target cluster's audit policy.

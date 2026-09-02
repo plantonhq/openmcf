@@ -1,4 +1,4 @@
-# Preset: Enterprise OIDC
+# Enterprise OIDC
 
 Configures a generic OIDC provider for enterprise single sign-on. Works with
 Okta, Auth0, Azure AD, Keycloak, and any OIDC-compliant identity provider.
@@ -12,7 +12,7 @@ Okta, Auth0, Azure AD, Keycloak, and any OIDC-compliant identity provider.
 
 - `${USER_POOL_ID}` -- Cognito User Pool ID (e.g., `us-east-1_Ab1Cd2EfG`)
 - `${OIDC_CLIENT_ID}` -- OIDC client ID registered with your identity provider
-- `${OIDC_CLIENT_SECRET}` -- OIDC client secret (omit for public clients using PKCE)
+- `$secret/oidc-client-secret` -- a managed-secret reference to the OIDC client secret (omit for public clients using PKCE); the field is sensitive, so a `$secret/<slug>` reference belongs here, never plaintext
 - `${OIDC_ISSUER_URL}` -- OIDC issuer URL (e.g., `https://dev-123456.okta.com`)
 
 ## After Deployment

@@ -1,4 +1,4 @@
-# Preset: Memcached with Scaling Limits
+# Memcached with Scaling Limits
 
 **Use case:** Web application response caching or session storage where you want
 cost control through explicit scaling bounds.

@@ -19,7 +19,7 @@ SINGLE_AZ_2 scale-out file system with 4 HA pairs delivering 6 GB/s aggregate th
 
 ## What to Customize
 
-- Replace placeholders: `name`, `id`, `org`, `env`, `<aws-region>`, `<subnet-id>`, `<security-group-id>`, the KMS key ARN, and the admin password
+- Replace placeholders: `name`, `id`, `org`, `env`, `<aws-region>`, `<subnet-id>`, `<security-group-id>`, and the KMS key ARN; `fsx_admin_password` ships as a `$secret/<slug>` managed-secret reference — create the referenced secret, never inline a plaintext password
 - Scale `ha_pairs` (1-12) with `storage_capacity_gib` ≥ 1024 × pairs
 - Raise `throughput_capacity_per_ha_pair` to 3072 or 6144 per pair for hotter workloads
 - Drop `disk_iops_configuration` to fall back to AUTOMATIC (3 IOPS per GiB)

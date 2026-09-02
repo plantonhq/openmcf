@@ -2,7 +2,7 @@
 display_name: HTTPS Web
 ---
 
-# Preset: HTTPS web health check
+# HTTPS web health check
 
 An HTTPS monitor that probes `/healthz` on each origin and expects a 2xx response,
 suitable for a web/API pool behind a Cloudflare Load Balancer.

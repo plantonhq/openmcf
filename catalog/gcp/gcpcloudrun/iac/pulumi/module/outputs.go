@@ -6,6 +6,7 @@ const (
 	OpServiceName = "service_name" // Name of the Cloud Run service in GCP
 	OpRevision    = "revision"     // Latest ready revision name
 	OpLocation    = "location"     // Region the service is deployed in
+	OpProjectId   = "project_id"   // GCP project the service is created in
 	OpUid         = "uid"          // Server-assigned unique identifier
 	OpUrls        = "urls"         // Every URL serving this service
 )

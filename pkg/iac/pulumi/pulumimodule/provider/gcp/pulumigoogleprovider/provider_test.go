@@ -149,6 +149,47 @@ func TestBuildProviderInputs_WebIdentity_IdentityTokenIsSecretWrapped(t *testing
 	assert.False(t, isPlainString, "identityToken must be a ToSecret-wrapped Output, not a plain string")
 }
 
+func TestBuildProviderInputs_AccessToken_TypedArg(t *testing.T) {
+	inputs, err := buildProviderInputs(&gcpprovider.GcpProviderConfig{
+		AccessToken: "ya29.test-token",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, inputs.args)
+
+	// The token rides the typed AccessToken field (the one field the SDK's NewProvider
+	// auto-secret-wraps itself, so the builder passes it plain), never the raw keyless map.
+	assert.Equal(t, pulumi.String("ya29.test-token"), inputs.args.AccessToken)
+	assert.Nil(t, inputs.args.Credentials)
+	assert.Nil(t, inputs.args.ExternalCredentials)
+	assert.Nil(t, inputs.webIdentityProps)
+}
+
+func TestBuildProviderInputs_AccessToken_WinsOverStaleKey(t *testing.T) {
+	// An explicitly supplied short-lived token is the deliberate credential for this run;
+	// a lingering service_account_key must not win.
+	inputs, err := buildProviderInputs(&gcpprovider.GcpProviderConfig{
+		AccessToken:       "ya29.test-token",
+		ServiceAccountKey: validServiceAccountKey,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, inputs.args)
+
+	assert.Equal(t, pulumi.String("ya29.test-token"), inputs.args.AccessToken)
+	assert.Nil(t, inputs.args.Credentials)
+}
+
+func TestBuildProviderInputs_WebIdentity_WinsOverAccessToken(t *testing.T) {
+	// Dispatch precedence is explicit: web_identity > access_token > service_account_key.
+	// A config carrying both keyless federation and a token dispatches to federation.
+	cfg := webIdentityConfig()
+	cfg.AccessToken = "ya29.test-token"
+
+	inputs, err := buildProviderInputs(cfg)
+	require.NoError(t, err)
+
+	requireWebIdentityCredentialsEntry(t, inputs)
+}
+
 func TestBuildProviderInputs_WebIdentity_TakesPrecedenceOverStaleKey(t *testing.T) {
 	// A config carrying both dispatches to keyless: web identity is the deliberate mode
 	// switch, a lingering service_account_key must not win.

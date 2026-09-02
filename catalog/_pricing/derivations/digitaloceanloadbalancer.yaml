@@ -1,0 +1,86 @@
+# Cost derivation: the machine-executable rules turning any
+# DigitalOceanLoadBalancer manifest's spec values into metered quantities
+# and price choices. A regional balancer's whole bill is its node count
+# times the flat per-node monthly rate -- the node count comes from
+# size_unit when set, from the size slug's fixed node count (lb-small 1,
+# lb-medium 3, lb-large 6) when the slug is set, and defaults to lb-small's
+# single node when both are unset (the provider's own default). GLOBAL and
+# REGIONAL_NETWORK balancers bill from rate tables this catalog has not
+# pinned -- no preset uses them -- so those types refuse honestly instead
+# of guessing. DigitalOcean prices load balancers identically in every
+# region, so the entry is pinned "global". The estimate generator replays
+# the catalog presets through these rules to emit
+# ../estimates/digitaloceanloadbalancer.yaml.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: digitaloceanloadbalancer
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: nyc3
+  refusals:
+    - when:
+        - field_path: type
+          op: equals
+          value: GLOBAL
+      reason: "the GLOBAL anycast balancer bills from its own rate table (with request and transfer meters) that this catalog has not pinned -- no preset is global, and a regional per-node rate would be the wrong number wearing the right unit"
+    - when:
+        - field_path: type
+          op: equals
+          value: REGIONAL_NETWORK
+      reason: "the regional network balancer bills from its own rate table that this catalog has not pinned -- no preset uses it"
+  lines:
+    - sku_meter: load balancer nodes
+      applies_when:
+        - field_path: size_unit
+          op: is_set
+      quantity:
+        - field_value:
+            field_path: size_unit
+      price_slug: do-lb-regional-node-monthly
+      basis: "size_unit is the node count directly -- each scaling unit is one always-on node at the flat per-node monthly rate"
+    - sku_meter: load balancer nodes
+      applies_when:
+        - field_path: size_unit
+          op: is_unset
+        - field_path: size
+          op: equals
+          value: lb-medium
+      quantity:
+        - constant: "3"
+      price_slug: do-lb-regional-node-monthly
+      basis: "the lb-medium slug is DigitalOcean's fixed 3-node shape"
+    - sku_meter: load balancer nodes
+      applies_when:
+        - field_path: size_unit
+          op: is_unset
+        - field_path: size
+          op: equals
+          value: lb-large
+      quantity:
+        - constant: "6"
+      price_slug: do-lb-regional-node-monthly
+      basis: "the lb-large slug is DigitalOcean's fixed 6-node shape"
+    - sku_meter: load balancer nodes
+      applies_when:
+        - field_path: size_unit
+          op: is_unset
+        - field_path: size
+          op: not_equals
+          value: lb-medium
+        - field_path: size
+          op: not_equals
+          value: lb-large
+      quantity:
+        - constant: "1"
+      price_slug: do-lb-regional-node-monthly
+      basis: "one node -- the lb-small shape, whether pinned explicitly or taken as DigitalOcean's default when both size and size_unit are unset"
+  exclusions:
+    - text: "backend droplets bill on their own DigitalOceanDroplet components; attachment adds no charge"
+    - text: "traffic through the balancer carries no separate bandwidth meter -- outbound transfer draws from the backend droplets' pooled monthly allowance"
+  notes:
+    - text: "Priced at DigitalOcean's global regional-balancer rate of 12.00 USD per node per month -- the pricing page carries no region dimension. Forwarding rules, health checks, sticky sessions, the firewall, and TLS termination are free configuration on the same nodes."

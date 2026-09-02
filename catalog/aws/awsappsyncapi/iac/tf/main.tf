@@ -346,6 +346,17 @@ resource "aws_appsync_type" "this" {
   api_id     = local.api_id
   definition = each.value.definition
   format     = each.value.format
+
+  # AWS rewrites the SDL definition text server-side (indentation
+  # stripped, braces re-placed, blank lines injected -- live-caught),
+  # and the provider reads the rewritten form back with no diff
+  # suppression: without this ignore, every plan proposes a textual
+  # update that never converges. Body edits therefore join this kind's
+  # replace-to-change class: apply with the entry removed, then re-add
+  # it with the new definition (taught on the spec field).
+  lifecycle {
+    ignore_changes = [definition]
+  }
 }
 
 resource "aws_appsync_function" "this" {

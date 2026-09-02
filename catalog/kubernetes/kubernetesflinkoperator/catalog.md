@@ -34,14 +34,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Flink Operator**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Default** preset for the standard cluster-wide install with the webhook on, or **Fenced HA** for the multi-tenant posture with a warm standby in the [Presets](#presets) tab.
+Open the deployment store, find **Flink Operator**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Default preset** for the standard cluster-wide install with the webhook on, or the **Fenced HA preset** for the multi-tenant posture with a warm standby, in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesFlinkOperator
 metadata:
   name: flink-operator
@@ -50,8 +50,8 @@ metadata:
 spec:
   namespace:
     value: "flink-system"
-  create_namespace: true
-  watch_namespaces:
+  createNamespace: true
+  watchNamespaces:
     - stream-team-a
     - stream-team-b
   replicas: 2
@@ -74,7 +74,7 @@ spec:
       kind: KubernetesNamespace
       name: flink-system-namespace
       fieldPath: spec.name
-  create_namespace: false
+  createNamespace: false
 ```
 
 The InfraPipeline deploys the namespace first, then provisions the operator into it.
@@ -131,14 +131,14 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard operator** -- One operator in its own `flink-system` namespace watching cluster-wide, the webhook on, chart defaults for sizing. Requires cert-manager. Start from the **Default** preset.
+**Standard operator** -- One operator in its own `flink-system` namespace watching cluster-wide, the webhook on, chart defaults for sizing. Requires cert-manager. Start from the **Default preset**.
 
-**Fenced multi-tenant platform** -- The operator watches an explicit namespace list; the modules create the namespaces and the chart plants job RBAC in each; a warm standby behind leader election; reconcile cadence tuned via `operatorConfig`. Start from the **Fenced HA** preset.
+**Fenced multi-tenant platform** -- The operator watches an explicit namespace list; the modules create the namespaces and the chart plants job RBAC in each; a warm standby behind leader election; reconcile cadence tuned via `operatorConfig`. Start from the **Fenced HA preset**.
 
 **Webhook-less install** -- `webhookEnabled: false` on clusters without cert-manager: no webhook, no certificates, no dependency -- validation moves from admission time to the reconcile loop.
 
 ## Works With
 
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the operator install
-- [**Kubernetes Cert Manager**](/cloud-catalog/kubernetes-cert-manager) -- a hard prerequisite whenever the webhook is enabled: it issues and rotates the webhook's serving certificate
-- [**Kubernetes Flink Deployment**](/cloud-catalog/kubernetes-flink-deployment) -- declares the Flink clusters and jobs this operator reconciles
+- [**Cert Manager**](/cloud-catalog/kubernetes-cert-manager) -- a hard prerequisite whenever the webhook is enabled: it issues and rotates the webhook's serving certificate
+- [**Flink Deployment**](/cloud-catalog/kubernetes-flink-deployment) -- declares the Flink clusters and jobs this operator reconciles

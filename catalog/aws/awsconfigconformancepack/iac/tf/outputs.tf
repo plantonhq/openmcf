@@ -10,3 +10,11 @@ output "pack_arn" {
     one(aws_config_organization_conformance_pack.this[*].arn),
   )
 }
+
+output "region" {
+  description = "The AWS region the pack lives in (packs are addressed by region + name)"
+  value = coalesce(
+    one(aws_config_conformance_pack.this[*].region),
+    one(aws_config_organization_conformance_pack.this[*].region),
+  )
+}

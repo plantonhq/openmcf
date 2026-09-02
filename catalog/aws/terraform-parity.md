@@ -30,13 +30,27 @@ that has progressed.
 | Provider schema (parity baseline) | `aws@6.58.0` |
 | Kinds in the catalog | 205 |
 | Distinct provider resources consumed | 524 |
-| Spec fields authored across all kinds | 7459 |
+| Spec fields authored across all kinds | 7461 |
 | Module pins on `aws` | `~> 6.58` × 205 |
 | Module pins on `time` | `~> 0.13` × 1 |
 
 The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
 through an explicitly enumerated admission list, never wholesale.
+
+## The provider block
+
+Parity covers the provider's own configuration block -- credentials,
+role-assumption chains, default tags, endpoint overrides, retry tuning --
+under the same total-accounting rule as resources: every configurable,
+non-deprecated provider-block argument is matched to a provider-config
+field, mapped by recorded judgment, owned by the modules by recorded
+judgment, or excluded with a recorded reason -- and arguments set inside
+catalog modules' own provider blocks must carry that judgment too.
+
+| Provider-block args | Matched | Mapped | Module-owned | Excluded | Open gaps | Accounted |
+|---|---|---|---|---|---|---|
+| 365 | 4 | 332 | 0 | 29 | 0 | ✅ |
 
 ## Depth: per-kind accounting
 
@@ -46,82 +60,82 @@ excluded with a recorded reason -- and every spec field must reach provider
 surface. **Accounted** means both directions hold with zero unexplained
 gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 
-**205 of 205 kinds are at total accounting; 112 proven live.**
+**205 of 205 kinds are at total accounting; 185 proven live.**
 
 | Kind | Provider args | Matched | Mapped | Excluded | Open gaps | Accounted | Proven |
 |---|---|---|---|---|---|---|---|
 | AwsAlb | 71 | 17 | 12 | 42 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsApiGatewayAccountSettings | 2 | 1 | 1 | 0 | 0 | ✅ | — |
+| AwsApiGatewayAccountSettings | 2 | 1 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerAutoScalingConfiguration | 9 | 5 | 1 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerObservabilityConfiguration | 5 | 2 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerService | 55 | 6 | 38 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAppRunnerVpcConnector | 6 | 1 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsAppSyncApi | 168 | 13 | 131 | 24 | 0 | ✅ | — |
+| AwsAppSyncApi | 168 | 13 | 131 | 24 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAthenaWorkgroup | 37 | 4 | 26 | 7 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsAuroraDsql | 11 | 5 | 3 | 3 | 0 | ✅ | — |
+| AwsAuroraDsql | 11 | 5 | 3 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsAutoScalingGroup | 217 | 54 | 146 | 17 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsBackupFramework | 11 | 1 | 8 | 2 | 0 | ✅ | — |
-| AwsBackupPlan | 44 | 3 | 37 | 4 | 0 | ✅ | — |
-| AwsBackupReportPlan | 14 | 7 | 5 | 2 | 0 | ✅ | — |
-| AwsBackupRestoreTestingPlan | 23 | 8 | 13 | 2 | 0 | ✅ | — |
-| AwsBackupSettings | 4 | 0 | 4 | 0 | 0 | ✅ | — |
-| AwsBackupVault | 24 | 0 | 16 | 8 | 0 | ✅ | — |
+| AwsBackupFramework | 11 | 1 | 8 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsBackupPlan | 44 | 3 | 37 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsBackupReportPlan | 14 | 7 | 5 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsBackupRestoreTestingPlan | 23 | 8 | 13 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsBackupSettings | 4 | 0 | 4 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsBackupVault | 24 | 0 | 16 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchComputeEnvironment | 33 | 20 | 6 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchJobDefinition | 67 | 12 | 49 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchJobQueue | 12 | 5 | 5 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBatchSchedulingPolicy | 8 | 1 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockAgent | 55 | 15 | 25 | 15 | 0 | ✅ | — |
-| AwsBedrockAgentCoreEvaluation | 115 | 10 | 102 | 3 | 0 | ✅ | — |
+| AwsBedrockAgentCoreEvaluation | 115 | 10 | 102 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockAgentCoreGateway | 167 | 7 | 156 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockAgentCoreIdentity | 59 | 10 | 26 | 23 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockAgentCoreMemory | 27 | 7 | 18 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockAgentCoreRuntime | 58 | 7 | 48 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsBedrockAgentCoreTokenVault | 4 | 1 | 3 | 0 | 0 | ✅ | — |
+| AwsBedrockAgentCoreTokenVault | 4 | 1 | 3 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockAgentCoreTools | 30 | 11 | 16 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockCustomModel | 14 | 7 | 5 | 2 | 0 | ✅ | — |
 | AwsBedrockFlow | 64 | 4 | 55 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockGuardrail | 53 | 6 | 42 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockInferenceProfile | 5 | 2 | 1 | 2 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsBedrockInvocationLogging | 11 | 0 | 11 | 0 | 0 | ✅ | — |
+| AwsBedrockInvocationLogging | 11 | 0 | 11 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockKnowledgeBase | 154 | 6 | 130 | 18 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockModelAccess | 4 | 2 | 1 | 1 | 0 | ✅ | — |
 | AwsBedrockPrompt | 31 | 4 | 24 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsBedrockProvisionedThroughput | 6 | 4 | 0 | 2 | 0 | ✅ | — |
-| AwsBudget | 175 | 23 | 146 | 6 | 0 | ✅ | — |
+| AwsBudget | 175 | 23 | 146 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCertManagerCert | 18 | 7 | 7 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsClientVpn | 47 | 29 | 7 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudFront | 126 | 32 | 88 | 6 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCloudMapNamespace | 35 | 3 | 17 | 15 | 0 | ✅ | — |
-| AwsCloudTrail | 30 | 9 | 18 | 3 | 0 | ✅ | — |
+| AwsCloudMapNamespace | 35 | 3 | 17 | 15 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudTrail | 30 | 9 | 18 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudTrailEventDataStore | 19 | 6 | 10 | 3 | 0 | ✅ | — |
 | AwsCloudwatchAlarm | 39 | 24 | 12 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchCompositeAlarm | 13 | 10 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCloudwatchDashboard | 3 | 3 | 0 | 0 | 0 | ✅ | — |
-| AwsCloudwatchLogAccountPolicy | 6 | 5 | 0 | 1 | 0 | ✅ | — |
-| AwsCloudwatchLogAnomalyDetector | 9 | 7 | 1 | 1 | 0 | ✅ | — |
-| AwsCloudwatchLogDelivery | 31 | 13 | 10 | 8 | 0 | ✅ | — |
+| AwsCloudwatchDashboard | 3 | 3 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchLogAccountPolicy | 6 | 5 | 0 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchLogAnomalyDetector | 9 | 7 | 1 | 1 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchLogDelivery | 31 | 13 | 10 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCloudwatchLogGroup | 100 | 19 | 70 | 11 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsCloudwatchLogResourcePolicy | 4 | 4 | 0 | 0 | 0 | ✅ | — |
-| AwsCloudwatchSynthetics | 36 | 18 | 11 | 7 | 0 | ✅ | — |
-| AwsCodeBuildProject | 115 | 97 | 11 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchLogResourcePolicy | 4 | 4 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCloudwatchSynthetics | 36 | 18 | 11 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCodeBuildProject | 115 | 96 | 12 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCodePipeline | 84 | 4 | 75 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoIdentityProvider | 7 | 6 | 1 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoResourceServer | 6 | 4 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoUserPool | 122 | 59 | 52 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsCognitoUserPoolClient | 56 | 30 | 23 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsConfigAggregator | 14 | 0 | 9 | 5 | 0 | ✅ | — |
-| AwsConfigConformancePack | 17 | 9 | 6 | 2 | 0 | ✅ | — |
-| AwsConfigRecorder | 24 | 9 | 11 | 4 | 0 | ✅ | — |
-| AwsConfigRule | 72 | 18 | 44 | 10 | 0 | ✅ | — |
-| AwsCostAnomalyMonitor | 50 | 29 | 15 | 6 | 0 | ✅ | — |
-| AwsCostCategory | 132 | 2 | 127 | 3 | 0 | ✅ | — |
-| AwsDlmLifecyclePolicy | 72 | 2 | 63 | 7 | 0 | ✅ | — |
+| AwsConfigAggregator | 14 | 0 | 9 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsConfigConformancePack | 17 | 9 | 6 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsConfigRecorder | 24 | 9 | 11 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsConfigRule | 72 | 18 | 44 | 10 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCostAnomalyMonitor | 50 | 29 | 15 | 6 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsCostCategory | 132 | 2 | 127 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsDlmLifecyclePolicy | 72 | 2 | 63 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDocumentDb | 74 | 40 | 8 | 26 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsDynamodb | 71 | 27 | 38 | 6 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEbsSnapshot | 46 | 13 | 20 | 13 | 0 | ✅ | — |
-| AwsEbsVolume | 29 | 10 | 14 | 5 | 0 | ✅ | — |
+| AwsEbsSnapshot | 46 | 13 | 20 | 13 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsEbsVolume | 29 | 10 | 14 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEc2Instance | 92 | 42 | 43 | 7 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEcrRegistrySettings | 36 | 7 | 25 | 4 | 0 | ✅ | — |
+| AwsEcrRegistrySettings | 36 | 7 | 25 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcrRepo | 17 | 5 | 7 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsCluster | 80 | 7 | 64 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEcsService | 98 | 53 | 34 | 11 | 0 | ✅ | ✅ pulumi, terraform |
@@ -137,11 +151,11 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsElasticIp | 15 | 9 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsElasticacheUser | 13 | 6 | 0 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsElasticacheUserGroup | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEventBridgeApiDestination | 40 | 8 | 31 | 1 | 0 | ✅ | — |
+| AwsEventBridgeApiDestination | 40 | 8 | 31 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEventBridgeBus | 20 | 12 | 3 | 5 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEventBridgePipe | 148 | 13 | 131 | 4 | 0 | ✅ | — |
+| AwsEventBridgePipe | 148 | 13 | 131 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsEventBridgeRule | 65 | 53 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsEventBridgeScheduler | 51 | 41 | 4 | 6 | 0 | ✅ | — |
+| AwsEventBridgeScheduler | 51 | 41 | 4 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsFsxDataRepositoryAssociation | 11 | 7 | 2 | 2 | 0 | ✅ | — |
 | AwsFsxLustreFileSystem | 34 | 29 | 3 | 2 | 0 | ✅ | — |
 | AwsFsxOntapFileSystem | 21 | 18 | 1 | 2 | 0 | ✅ | — |
@@ -151,18 +165,18 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsFsxWindowsFileSystem | 34 | 28 | 2 | 4 | 0 | ✅ | — |
 | AwsGlobalAccelerator | 28 | 12 | 11 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsGlueCatalogDatabase | 15 | 10 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsGuardDuty | 79 | 27 | 31 | 21 | 0 | ✅ | — |
-| AwsGuardDutyMalwareProtectionPlan | 6 | 0 | 5 | 1 | 0 | ✅ | — |
+| AwsGuardDuty | 79 | 27 | 31 | 21 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsGuardDutyMalwareProtectionPlan | 6 | 0 | 5 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiDomain | 26 | 7 | 11 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiGateway | 91 | 42 | 11 | 38 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsHttpApiVpcLink | 6 | 3 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsIamAccountSettings | 11 | 11 | 0 | 0 | 0 | ✅ | — |
-| AwsIamGroup | 11 | 2 | 3 | 6 | 0 | ✅ | — |
+| AwsIamAccountSettings | 11 | 11 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsIamGroup | 11 | 2 | 3 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamInstanceProfile | 6 | 2 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamOidcProvider | 5 | 3 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamPolicy | 8 | 2 | 1 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamRole | 16 | 5 | 3 | 8 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsIamSamlProvider | 4 | 1 | 0 | 3 | 0 | ✅ | — |
+| AwsIamSamlProvider | 4 | 1 | 0 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsIamUser | 15 | 3 | 4 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsInternetGateway | 4 | 2 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsKinesisFirehose | 337 | 1 | 268 | 68 | 0 | ✅ | ✅ pulumi, terraform |
@@ -171,14 +185,14 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsKmsKey | 29 | 15 | 6 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLambda | 108 | 51 | 30 | 27 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLambdaEventSourceMapping | 45 | 11 | 31 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsLambdaLayer | 20 | 8 | 7 | 5 | 0 | ✅ | — |
+| AwsLambdaLayer | 20 | 8 | 7 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLaunchTemplate | 139 | 99 | 26 | 14 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListener | 76 | 13 | 59 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbListenerRule | 61 | 3 | 55 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsLbTargetGroup | 48 | 34 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsManagedPrefixList | 8 | 3 | 2 | 3 | 0 | ✅ | — |
-| AwsManagedPrometheus | 45 | 12 | 21 | 12 | 0 | ✅ | — |
-| AwsManagedPrometheusScraper | 17 | 5 | 10 | 2 | 0 | ✅ | — |
+| AwsManagedPrefixList | 8 | 3 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsManagedPrometheus | 45 | 12 | 21 | 12 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsManagedPrometheusScraper | 17 | 5 | 10 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemcachedElasticache | 48 | 21 | 3 | 24 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemorydbAcl | 6 | 2 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsMemorydbCluster | 46 | 29 | 3 | 14 | 0 | ✅ | — |
@@ -188,7 +202,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsMwaaEnvironment | 38 | 32 | 3 | 3 | 0 | ✅ | partial: pulumi, terraform |
 | AwsNatGateway | 15 | 10 | 3 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsNeptuneCluster | 88 | 35 | 13 | 40 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsNetworkAcl | 7 | 3 | 2 | 2 | 0 | ✅ | — |
+| AwsNetworkAcl | 7 | 3 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsNlb | 68 | 10 | 10 | 48 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsOpenSearchDomain | 90 | 51 | 30 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsOpenSearchServerlessCollection | 24 | 8 | 4 | 12 | 0 | ✅ | ✅ pulumi, terraform |
@@ -196,54 +210,54 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsOrganizationAccount | 31 | 20 | 5 | 6 | 0 | ✅ | — |
 | AwsOrganizationPolicy | 10 | 3 | 2 | 5 | 0 | ✅ | — |
 | AwsOrganizationalUnit | 4 | 1 | 1 | 2 | 0 | ✅ | — |
-| AwsPlantonRunner | 0 | 0 | 0 | 0 | 0 | ✅ | — |
-| AwsPrivateCa | 51 | 10 | 23 | 18 | 0 | ✅ | — |
+| AwsPlantonRunner | 0 | 0 | 0 | 0 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsPrivateCa | 51 | 10 | 23 | 18 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsCluster | 143 | 84 | 19 | 40 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRdsInstance | 119 | 65 | 20 | 34 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsRdsProxy | 40 | 19 | 11 | 10 | 0 | ✅ | — |
+| AwsRdsProxy | 40 | 19 | 11 | 10 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedisElasticache | 66 | 40 | 12 | 14 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedshiftCluster | 105 | 61 | 12 | 32 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessNamespace | 15 | 10 | 0 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRedshiftServerlessWorkgroup | 33 | 19 | 4 | 10 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsRestApiDomain | 31 | 10 | 14 | 7 | 0 | ✅ | — |
-| AwsRestApiGateway | 151 | 61 | 51 | 39 | 0 | ✅ | — |
-| AwsRestApiUsagePlan | 24 | 7 | 12 | 5 | 0 | ✅ | — |
-| AwsRestApiVpcLink | 6 | 1 | 2 | 3 | 0 | ✅ | — |
+| AwsRestApiDomain | 31 | 10 | 14 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRestApiGateway | 151 | 61 | 51 | 39 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRestApiUsagePlan | 24 | 7 | 12 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRestApiVpcLink | 6 | 1 | 2 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRoute53DnsRecord | 25 | 7 | 17 | 1 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRoute53HealthCheck | 23 | 17 | 2 | 4 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsRoute53ResolverEndpoint | 28 | 5 | 15 | 8 | 0 | ✅ | — |
-| AwsRoute53ResolverFirewall | 31 | 0 | 21 | 10 | 0 | ✅ | — |
-| AwsRoute53ResolverQueryLog | 8 | 1 | 3 | 4 | 0 | ✅ | — |
+| AwsRoute53ResolverEndpoint | 28 | 5 | 15 | 8 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRoute53ResolverFirewall | 31 | 0 | 21 | 10 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsRoute53ResolverQueryLog | 8 | 1 | 3 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsRoute53Zone | 17 | 5 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3Bucket | 204 | 24 | 102 | 78 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsS3DirectoryBucket | 8 | 2 | 3 | 3 | 0 | ✅ | — |
+| AwsS3DirectoryBucket | 8 | 2 | 3 | 3 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsS3ObjectSet | 74 | 36 | 16 | 22 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsS3TableBucket | 37 | 2 | 22 | 13 | 0 | ✅ | — |
-| AwsS3VectorBucket | 17 | 2 | 9 | 6 | 0 | ✅ | — |
+| AwsS3TableBucket | 37 | 2 | 22 | 13 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsS3VectorBucket | 17 | 2 | 9 | 6 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSagemakerDomain | 299 | 184 | 104 | 11 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsSagemakerEndpoint | 85 | 14 | 61 | 10 | 0 | ✅ | — |
-| AwsSagemakerFeatureGroup | 28 | 5 | 19 | 4 | 0 | ✅ | — |
-| AwsSagemakerImage | 18 | 13 | 1 | 4 | 0 | ✅ | — |
-| AwsSagemakerMlflowApp | 9 | 6 | 1 | 2 | 0 | ✅ | — |
-| AwsSagemakerMlflowServer | 10 | 6 | 1 | 3 | 0 | ✅ | — |
-| AwsSagemakerModel | 47 | 11 | 33 | 3 | 0 | ✅ | — |
-| AwsSagemakerModelRegistry | 8 | 1 | 3 | 4 | 0 | ✅ | — |
-| AwsSagemakerNotebookInstance | 23 | 9 | 7 | 7 | 0 | ✅ | — |
-| AwsSagemakerPipeline | 12 | 2 | 7 | 3 | 0 | ✅ | — |
-| AwsSecretsManagerSecret | 34 | 14 | 11 | 9 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSagemakerEndpoint | 85 | 14 | 61 | 10 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSagemakerFeatureGroup | 28 | 5 | 19 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSagemakerImage | 18 | 13 | 1 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSagemakerMlflowApp | 9 | 6 | 1 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSagemakerMlflowServer | 10 | 6 | 1 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSagemakerModel | 47 | 11 | 33 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSagemakerModelRegistry | 8 | 1 | 3 | 4 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSagemakerNotebookInstance | 23 | 9 | 7 | 7 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSagemakerPipeline | 12 | 2 | 7 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSecretsManagerSecret | 34 | 14 | 12 | 8 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSecurityGroup | 13 | 5 | 3 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsServerlessElasticache | 19 | 12 | 4 | 3 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsSesAccountSettings | 6 | 0 | 6 | 0 | 0 | ✅ | — |
+| AwsSesAccountSettings | 6 | 0 | 6 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSesConfigurationSet | 27 | 6 | 16 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSesEmailIdentity | 19 | 7 | 5 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSnsSubscription | 13 | 11 | 2 | 0 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSnsTopic | 33 | 10 | 18 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSqsQueue | 20 | 12 | 4 | 4 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsSsmAssociation | 21 | 17 | 2 | 2 | 0 | ✅ | — |
-| AwsSsmDocument | 13 | 5 | 5 | 3 | 0 | ✅ | — |
-| AwsSsmMaintenanceWindow | 58 | 10 | 43 | 5 | 0 | ✅ | — |
-| AwsSsmParameter | 16 | 7 | 4 | 5 | 0 | ✅ | — |
-| AwsSsmPatchBaseline | 29 | 8 | 17 | 4 | 0 | ✅ | — |
+| AwsSsmAssociation | 21 | 17 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSsmDocument | 13 | 5 | 5 | 3 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSsmMaintenanceWindow | 58 | 10 | 43 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSsmParameter | 16 | 7 | 4 | 5 | 0 | ✅ | ✅ pulumi, terraform |
+| AwsSsmPatchBaseline | 29 | 8 | 17 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsStepFunction | 21 | 6 | 8 | 7 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsSubnet | 33 | 22 | 0 | 11 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsTransitGateway | 14 | 12 | 0 | 2 | 0 | ✅ | ✅ pulumi, terraform |
@@ -251,7 +265,7 @@ gaps. **Proven** means live end-to-end runs passed on both IaC engines.
 | AwsTransitGatewayVpcAttachment | 12 | 8 | 2 | 2 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsVpc | 39 | 16 | 14 | 9 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsVpcEndpoint | 23 | 17 | 4 | 2 | 0 | ✅ | ✅ pulumi, terraform |
-| AwsVpcPeering | 17 | 7 | 5 | 5 | 0 | ✅ | — |
+| AwsVpcPeering | 17 | 7 | 5 | 5 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsWafIpSet | 9 | 5 | 0 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsWafRegexPatternSet | 8 | 3 | 1 | 4 | 0 | ✅ | ✅ pulumi, terraform |
 | AwsWafWebAcl | 9727 | 7 | 9685 | 35 | 0 | ✅ | ✅ pulumi, terraform |

@@ -9,6 +9,7 @@ go_library(
     importpath = "github.com/plantonhq/planton/pkg/finops/estimategen",
     visibility = ["//visibility:private"],
     deps = [
+        "//finops/componentcostderivation/v1:componentcostderivation",
         "//finops/componentcostestimatemodel/v1:componentcostestimatemodel",
         "//finops/pricebook/v1:pricebook",
         "//pkg/crkreflect",
@@ -39,7 +40,10 @@ go_test(
     ],
     embed = [":estimategen_lib"],
     deps = [
+        "//catalog/aws/awswafwebacl/v1alpha1",
         "//catalog/azure/azureeventhubnamespace/v1alpha1",
+        "//catalog/gcp/gcpcloudcomposerenvironment/v1alpha1",
+        "//finops/componentcostderivation/v1:componentcostderivation",
         "//finops/componentcostestimate/v1:componentcostestimate",
         "//pkg/finops/costderivation",
         "//pkg/finops/costestimate",

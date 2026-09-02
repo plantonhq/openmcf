@@ -13,6 +13,8 @@ go_library(
         "//e2e/framework/provider",
         "@com_github_aws_aws_sdk_go_v2//aws",
         "@com_github_aws_aws_sdk_go_v2_config//:config",
+        "@com_github_aws_aws_sdk_go_v2_service_kms//:kms",
+        "@com_github_aws_aws_sdk_go_v2_service_kms//types",
         "@com_github_aws_aws_sdk_go_v2_service_s3//:s3",
         "@com_github_aws_aws_sdk_go_v2_service_s3//types",
         "@com_github_aws_aws_sdk_go_v2_service_s3vectors//:s3vectors",

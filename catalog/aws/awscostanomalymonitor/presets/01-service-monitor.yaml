@@ -1,3 +1,9 @@
+# NOTE: AWS permits exactly ONE services (DIMENSIONAL) monitor per
+# account and auto-creates it ("Default-Services-Monitor") on every
+# account that enabled Cost Explorer on or after 2023-03-27. If your
+# account already has it, creating this preset fails with "Limit
+# exceeded on dimensional spend monitor creation" - import the
+# existing monitor instead, or start from the custom-slice preset.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCostAnomalyMonitor
 metadata:
@@ -11,8 +17,10 @@ spec:
     - name: finops-daily-summary
       frequency: DAILY
       subscribers:
+        # AWS validates the address at apply time -- replace with a real
+        # email (angle brackets would be rejected as part of the address).
         - address:
-            value: <finops-team@your-company.com>
+            value: finops-team@replaceme.example.com
           type: EMAIL
       thresholdExpression:
         dimension:

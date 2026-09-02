@@ -51,17 +51,28 @@ spec:
     enabled: true
     internalUserDatabaseEnabled: true
     masterUserName: admin
+    # The master password is sensitive: reference a managed secret
+    # ($secret/<slug>) -- never a plaintext value.
     masterUserPassword:
-      value: "<master-password>"
+      value: $secret/opensearch-master-password
   logPublishingOptions:
     - logType: INDEX_SLOW_LOGS
       cloudwatchLogGroupArn:
-        value: "<index-slow-logs-log-group-arn>"
+        valueFrom:
+          kind: AwsCloudwatchLogGroup
+          name: <index-slow-logs-log-group>
+          fieldPath: status.outputs.log_group_arn
     - logType: SEARCH_SLOW_LOGS
       cloudwatchLogGroupArn:
-        value: "<search-slow-logs-log-group-arn>"
+        valueFrom:
+          kind: AwsCloudwatchLogGroup
+          name: <search-slow-logs-log-group>
+          fieldPath: status.outputs.log_group_arn
     - logType: ES_APPLICATION_LOGS
       cloudwatchLogGroupArn:
-        value: "<application-logs-log-group-arn>"
+        valueFrom:
+          kind: AwsCloudwatchLogGroup
+          name: <application-logs-log-group>
+          fieldPath: status.outputs.log_group_arn
   autoTuneOptions:
     desiredState: ENABLED

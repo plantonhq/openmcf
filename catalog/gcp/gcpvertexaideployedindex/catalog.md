@@ -1,6 +1,6 @@
 # GCP Vertex AI Deployed Index
 
-Deploys a Vertex AI Deployed Index: the resource that places a GcpVertexAiIndex onto a GcpVertexAiIndexEndpoint and gives the placement its serving compute — the final resource of the vector-search trio, after which nearest-neighbor queries can actually be served. Many deployed indexes can share one endpoint, and one index can be deployed to many endpoints. The component integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to the index, the endpoint, reserved address ranges, and service accounts.
+Deploys a Vertex AI Deployed Index: the resource that places a GcpVertexAiIndex onto a GcpVertexAiIndexEndpoint and gives the placement its serving compute — the final resource of the vector-search trio, after which nearest-neighbor queries can actually be served. Many deployed indexes can share one endpoint, and one index can be deployed to many endpoints. Deploying takes tens of minutes, and only the replica bounds update in place afterwards — everything else replaces the deployment.
 
 ## What Gets Created
 
@@ -17,7 +17,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **GCP Provider Connection** -- an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
 - **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-### GCP Prerequisites
+### GCP Project
 
 - **A GcpVertexAiIndex and a GcpVertexAiIndexEndpoint** in the SAME region — the deployment joins them and cannot cross regions.
 - **Vertex AI API** enabled in the endpoint's project (the deployment inherits it — this kind carries no project field).
@@ -27,7 +27,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Vertex AI Deployed Index**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Automatic** preset in the [Presets](#presets) tab for Vertex-managed sizing.
+Open the deployment store, find **GCP Vertex AI Deployed Index**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Automatic Serving Compute** preset in the [Presets](#presets) tab for Vertex-managed sizing.
 
 ### CLI
 
@@ -44,15 +44,9 @@ spec:
   location: us-central1
   deployedIndexId: catalog_embeddings_v1
   index:
-    valueFrom:
-      kind: GcpVertexAiIndex
-      name: catalog-embeddings
-      fieldPath: status.outputs.index_id
+    value: "projects/acme-prod-12345/locations/us-central1/indexes/8123456789012345678"
   indexEndpoint:
-    valueFrom:
-      kind: GcpVertexAiIndexEndpoint
-      name: catalog-search
-      fieldPath: status.outputs.index_endpoint_id
+    value: "projects/acme-prod-12345/locations/us-central1/indexEndpoints/6098765432109876543"
   automaticResources:
     minReplicaCount: 2
     maxReplicaCount: 10
@@ -62,11 +56,27 @@ spec:
 planton apply -f deployed-index.yaml
 ```
 
-A Stack Job tracks the provisioning in real time.
+This places the referenced index onto the referenced endpoint with Vertex-managed compute scaling between 2 and 10 replicas — after which nearest-neighbor queries can be served. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-The deployment is the natural LAST node of the vector-search chart: the InfraPipeline resolves both ValueFromRef joins, provisions the index and endpoint first, then this deployment — one chart deploys the whole serving composition.
+The deployment is the natural LAST node of the vector-search chart — wire both joins to the index and endpoint deployed in the same InfraPipeline:
+
+```yaml
+spec:
+  index:
+    valueFrom:
+      kind: GcpVertexAiIndex
+      name: catalog-embeddings
+      fieldPath: status.outputs.index_id
+  indexEndpoint:
+    valueFrom:
+      kind: GcpVertexAiIndexEndpoint
+      name: catalog-search
+      fieldPath: status.outputs.index_endpoint_id
+```
+
+The InfraPipeline resolves the dependency graph, provisions the index and endpoint first, then this deployment — one chart deploys the whole serving composition.
 
 ## Key Configuration
 
@@ -100,7 +110,6 @@ After provisioning, `status.outputs` contains values that downstream consumers a
 | `name` | The DeployedIndex resource name as the provider reports it | Display, tooling |
 | `deployed_index_id` | Pass-through of the user-chosen deployment handle | Query SDKs address the deployment by it |
 | `index_endpoint` | The fully qualified endpoint path this deployment lives on | Cross-checks, tooling |
-| `create_time` | RFC3339 creation timestamp | Audit |
 | `index_sync_time` | RFC3339 timestamp up to which this deployment reflects index updates | Data-freshness checks before critical queries |
 | `match_grpc_address` | Private gRPC query address (VPC-peered endpoints only) | Private query clients inside the peered VPC |
 | `service_attachment` | PSC service attachment (PSC endpoints only) | Consumer projects' forwarding rules |
@@ -109,11 +118,11 @@ After provisioning, `status.outputs` contains values that downstream consumers a
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Automatic sizing** -- Vertex-managed machine types with tuned replica bounds; the managed middle ground for most workloads. Start from the **Automatic** preset.
+**Automatic sizing** -- Vertex-managed machine types with tuned replica bounds; the managed middle ground for most workloads. Start from the **Automatic Serving Compute** preset.
 
-**Dedicated compute** -- A pinned machine type for predictable performance and cost on sustained query volume. Start from the **Dedicated** preset.
+**Dedicated compute** -- A pinned machine type for predictable performance and cost on sustained query volume. Start from the **Dedicated Serving Compute** preset.
 
-**Peered with reserved ranges** -- Private serving with pinned IP space, access logging, and JWT auth for sensitive corpora. Start from the **Peered Reserved Ranges** preset.
+**Peered with reserved ranges** -- Private serving with pinned IP space, access logging, and JWT auth for sensitive corpora. Start from the **Peered Endpoint with Reserved Ranges and JWT Auth** preset.
 
 ## Works With
 

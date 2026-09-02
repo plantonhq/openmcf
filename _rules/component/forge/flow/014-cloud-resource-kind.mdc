@@ -14,6 +14,7 @@ SCOPE
 - Add new enum entry to `shared/cloudresourcekind/cloud_resource_kind.proto`
 - Determine correct enum value based on provider range
 - Generate appropriate id_prefix following naming conventions
+- Assign the kind's service_group from the provider's group list
 - Do not modify other forge-generated files
 
 PROVIDER RANGES
@@ -41,7 +42,7 @@ registry snapshot: after adding entries, regenerate
 same change.
 
 ID PREFIX PATTERNS
-- AWS: typically "aws" prefix + 2-6 char abbreviation (e.g., "awsvpc", "ecr", "s3bkt")
+- AWS: the "aws" head + a 2-5 char abbreviation (e.g., "awsvpc", "awsecr", "awss3")
 - Azure: typically "az" prefix + 2-6 char abbreviation (e.g., "aks", "azdns", "azkv")
 - GCP: typically "gcp" prefix + 3-7 char abbreviation (e.g., "gcpdns", "gcpsql", "gcpcert")
 - Kubernetes: descriptive + "k8s" suffix (e.g., "k8sms", "pgk8s", "cmk8s")
@@ -79,7 +80,28 @@ SEQUENTIAL STEPS
      * AwsSecurityGroup → "awssg"
      * AzureKeyVault → "azkv"
 
-4) Insert Enum Entry:
+4) Choose the Service Group:
+   - Every kind of a grouped provider (aws, azure, gcp, kubernetes,
+     cloudflare, digital_ocean) MUST carry exactly one `service_group` —
+     the provider-console category the component is browsed under. The
+     registry coherence test fails the build on a missing group, a group
+     belonging to a different provider, or a group on an ungrouped
+     provider (auth0, openfga).
+   - Pick from the provider's values in
+     `shared/cloudresourcekind/cloud_provider_service_group.proto` —
+     choose the group the provider's own console files the underlying
+     service under (e.g. EKS → aws_containers, Key Vault →
+     azure_security). Sub-resources stay with their parent service's
+     group. For Kubernetes: native API objects →
+     kubernetes_core_workloads_apis; cluster machinery/operators →
+     kubernetes_operators_controllers; applications deployed on the
+     cluster → kubernetes_open_source_software.
+   - Adding a NEW group value to that enum is rare and deliberate — it is
+     a proto-lock choke-point edit and needs its `service_group_meta`
+     (provider + Title Case display_name) plus console-side label
+     convergence; prefer an existing group.
+
+5) Insert Enum Entry:
    - Add the new enum value in numerical order within the provider's section
    - Use the format:
      ```proto
@@ -87,12 +109,14 @@ SEQUENTIAL STEPS
        provider: <provider_name>
        version: "v1alpha1"
        id_prefix: "<generated_prefix>"
+       service_group: <provider_group>
      }];
      ```
-   - For Kubernetes resources, add kubernetes_meta if applicable
+   - For kinds that project a single Kubernetes custom resource, add
+     kubernetes_manifest_projection if applicable
    - Maintain consistent indentation (2 spaces)
 
-5) Regenerate the Kind Reflection Map (MANDATORY):
+6) Regenerate the Kind Reflection Map (MANDATORY):
    - Run from the repo root: `make generate-cloud-resource-kind-map`
    - This regenerates `pkg/crkreflect/kind_map_gen.go`, the enum -> proto-message
      map (`ToMessageMap`) that manifest loading, chart validation, and the E2E
@@ -102,10 +126,12 @@ SEQUENTIAL STEPS
    - `make build` runs this target, but rule 015's `make protos` does NOT --
      so run it here, immediately after the enum edit.
 
-6) Validation:
+7) Validation:
    - Verify no duplicate enum values
    - Verify no duplicate id_prefix values
    - Verify enum value is in correct provider range
+   - Verify the service_group belongs to the kind's provider
+     (`go test ./pkg/crkreflect/` runs the coherence and coverage gates)
    - Verify formatting matches existing entries
    - Verify the new kind appears in `pkg/crkreflect/kind_map_gen.go`
 
@@ -113,14 +139,15 @@ SUCCESS
 - New enum entry added to cloud_resource_kind.proto
 - Enum value is unique and in correct provider range
 - ID prefix is unique and follows naming convention
+- service_group assigned from the kind's own provider (grouped providers)
 - Entry is inserted in numerical order
 - Formatting matches existing entries
 - File is syntactically correct
 
 OUTPUT
-- Confirm the added enum entry with its number and id_prefix
+- Confirm the added enum entry with its number, id_prefix, and service_group
 - Show the provider range and position within that range
-- Example: "Added GcpCertManagerCert = 619 with id_prefix 'gcpcert' (GCP range: 600-799)"
+- Example: "Added GcpCertManagerCert = 3019 with id_prefix 'gcpcert' and service_group gcp_security (GCP range: 3000-3999)"
 
 NOTES
 - This rule should be run after api.proto is created (rule 005)

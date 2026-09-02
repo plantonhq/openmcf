@@ -1,4 +1,4 @@
-# Preset: Overlapping CIDR isolated in a virtual network
+# Overlapping CIDR isolated in a virtual network
 
 Advertise a CIDR that overlaps another already-connected network by scoping the route to
 its own virtual network, so the two never collide.

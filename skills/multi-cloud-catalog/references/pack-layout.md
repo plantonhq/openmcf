@@ -32,8 +32,11 @@ resolves the pack from where you are working.
 │   ├── controls-catalog.yaml     # the central control catalog: every
 │   │                             # control's id, name, and statement
 │   └── frameworks/
-│       └── <framework>.yaml      # crosswalks (hipaa-security-rule, cis-aws)
-│                                 # mapping framework requirements to controls
+│       └── <framework>.yaml      # crosswalks (hipaa-security-rule, soc2,
+│                                 # fedramp, cis-aws)
+│                                 # mapping framework requirements to controls;
+│                                 # spec.providers declares provider scope
+│                                 # (empty = provider-neutral)
 └── <provider>/                   # aws/, gcp/, azure/, kubernetes/, ...
     ├── reference-index.md        # every kind in the provider, one line each
     └── <kind>/

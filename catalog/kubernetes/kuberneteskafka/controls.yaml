@@ -56,6 +56,9 @@ spec:
         type: spec_default
         reference: Listener authentication is omitted-equals-unauthenticated, acceptable only for fenced internal listeners; the modeled mechanisms are mutual TLS and SCRAM-SHA-512 -- no PLAIN or other weak mechanism has a typed surface (anything else must route through the custom authentication escape deliberately).
       notes: The 04-scram-app-cluster preset runs a single SCRAM-SHA-512-over-TLS listener so no anonymous path exists; 01-dev-single-node's unauthenticated plaintext listener is the documented dev exception.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Broker activity logs stream to stdout for the cluster's log collector; Kafka's authorizer logging is not modeled in this spec. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.

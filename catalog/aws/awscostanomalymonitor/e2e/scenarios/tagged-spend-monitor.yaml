@@ -1,0 +1,65 @@
+# The portable monitor surface live: a CUSTOM monitor watching one
+# cost-allocation-tag slice (the upstream provider's own tested
+# expression shape), with one daily email summary subscription above
+# a $50 absolute impact threshold. The DIMENSIONAL (services) arm is
+# deliberately NOT exercised: AWS permits exactly ONE services
+# monitor per account and AUTO-CREATES it (Default-Services-Monitor)
+# for every account that enabled Cost Explorer on or after
+# 2023-03-27, so a second create fails with "ValidationException:
+# Limit exceeded on dimensional spend monitor creation" (live-caught
+# 2026-08-25; the unexercised-arm record lives in the profile).
+# Anomaly detection is free; a fresh monitor trains silently (no
+# alerts fire within a lane's lifetime), so the example.com address
+# never receives mail. ~$0.
+apiVersion: aws.planton.dev/v1alpha1
+kind: AwsCostAnomalyMonitor
+metadata:
+  name: planton-oss-e2e-awscam
+  id: planton-oss-e2e-awscam
+  org: planton-oss
+  env: e2e
+  labels:
+    managed-by: planton-e2e
+    e2e-component: awscostanomalymonitor
+  annotations:
+    planton.dev/e2e: "true"
+  tags:
+    - planton-e2e
+spec:
+  region: us-east-1
+  monitorName: Planton E2E Tagged Spend Monitor
+  monitorType: CUSTOM
+  # The document is the provider's CANONICAL stored form, byte-shaped
+  # like the upstream provider's own tests: every root member present
+  # (unused ones explicitly null) and the tag key "user:"-prefixed.
+  # Both are live-caught idempotency contracts (2026-08-25): the
+  # provider re-marshals the SDK Expression struct on read (emitting
+  # ALL members, null when unused), and CE echoes user tag keys back
+  # prefixed -- a sparser or unprefixed document makes every re-plan
+  # propose a replacement.
+  monitorSpecification:
+    And: null
+    CostCategories: null
+    Dimensions: null
+    Not: null
+    Or: null
+    Tags:
+      Key: user:planton.ai/environment
+      MatchOptions:
+        - EQUALS
+      Values:
+        - e2e
+  subscriptions:
+    - name: planton-e2e-daily-summary
+      frequency: DAILY
+      subscribers:
+        - address:
+            value: finops-e2e@example.com
+          type: EMAIL
+      thresholdExpression:
+        dimension:
+          key: ANOMALY_TOTAL_IMPACT_ABSOLUTE
+          matchOptions:
+            - GREATER_THAN_OR_EQUAL
+          values:
+            - "50"

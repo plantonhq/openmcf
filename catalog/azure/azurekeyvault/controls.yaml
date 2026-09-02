@@ -56,6 +56,9 @@ spec:
         type: spec_default
         reference: "The legacy vault access-policy model is the weaker authorization path -- vault-wide ACLs outside PIM and access reviews. The spec default (true) keeps it inert (ARM stores but ignores access policies on an RBAC-mode vault); setting false re-enables it as the authorization mechanism."
       notes: "The 03-legacy-access-policy preset runs the legacy mode on purpose, for existing workloads or org standards that require it. All data-plane paths, legacy or not, still authenticate through Azure AD -- there are no shared-key or anonymous paths to disable."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

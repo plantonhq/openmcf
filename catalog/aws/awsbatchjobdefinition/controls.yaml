@@ -47,6 +47,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The definition exposes no authentication path of its own -- there is no protocol, credential, or client negotiation to harden. Registry credentials, when needed, are Secrets Manager references rather than embedded passwords.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The spec exposes no audit surface. Every management call (RegisterJobDefinition, DeregisterJobDefinition, SubmitJob) is recorded by AWS CloudTrail as account-level posture, not per-definition settings.

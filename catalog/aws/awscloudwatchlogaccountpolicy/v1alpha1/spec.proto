@@ -18,6 +18,16 @@ import "google/protobuf/struct.proto";
 // metrics from log fields. The document's schema is the policy type's
 // own - AWS validates it server-side at Put time.
 message AwsCloudwatchLogAccountPolicySpec {
+  // AWS accepts selection criteria ONLY on subscription-filter
+  // policies; PutAccountPolicy rejects any criteria string on the
+  // other four types with "Invalid selection criteria provided"
+  // (server contract, probed live against every documented grammar).
+  option (buf.validate.message).cel = {
+    id: "spec.selection_criteria_subscription_filter_only"
+    message: "selection_criteria is accepted by AWS only when policy_type is SUBSCRIPTION_FILTER_POLICY"
+    expression: "this.selection_criteria == '' || this.policy_type == 'SUBSCRIPTION_FILTER_POLICY'"
+  };
+
   // The AWS region the policy applies in (account policies are
   // per-region objects). Example: "us-east-1".
   string region = 1 [(buf.validate.field).string.min_len = 1];
@@ -50,11 +60,15 @@ message AwsCloudwatchLogAccountPolicySpec {
   // it semantically so formatting never causes drift.
   google.protobuf.Struct policy_document = 4 [(buf.validate.field).required = true];
 
-  // Narrows which log groups the policy applies to, in AWS's selection
-  // syntax (e.g. "LogGroupNamePrefix IN [\"my-service\"]" - the exact
-  // grammar each policy type documents). Unset applies account-wide.
-  // Changing it replaces the policy. The provider's scope argument is
-  // deliberately not modeled: ALL is its only legal value at the pin,
-  // so the modules pin it (a recorded exclusion).
+  // Excludes log groups from a SUBSCRIPTION_FILTER_POLICY, in AWS's
+  // one supported grammar: "LogGroupName NOT IN [\"name1\", \"name2\"]"
+  // (an exact-name exclusion list - no prefix form, no IN form). AWS
+  // accepts selection criteria ONLY on subscription-filter policies:
+  // PutAccountPolicy rejects any criteria string on the other four
+  // types with "Invalid selection criteria provided", so every other
+  // policy type applies account-wide, period. Changing it replaces the
+  // policy. The provider's scope argument is deliberately not modeled:
+  // ALL is its only legal value at the pin, so the modules pin it (a
+  // recorded exclusion).
   string selection_criteria = 5 [(buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE];
 }

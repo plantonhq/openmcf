@@ -40,7 +40,7 @@ HTTP endpoint destination for third-party log and metrics integrations. This pre
 
 | Placeholder | Description |
 |-------------|-------------|
-| `<your-datadog-api-key>` | Datadog API key from Integrations → APIs |
+| `$secret/datadog-api-key` | A managed-secret reference to the Datadog API key (Integrations → APIs) — the field is sensitive, so a `$secret/<slug>` reference belongs here, never a plaintext key |
 | `my-firehose-backup-bucket` | S3 bucket for failed delivery backup |
 | `123456789012` | Your AWS account ID |
 | `firehose-http-delivery-role` | IAM role for HTTP and S3 access |

@@ -49,7 +49,7 @@ This tutorial walks you through deploying a managed Kubernetes cluster on Azure 
 Create a file named `aks-cluster.yaml` with the following content. This manifest describes a production-grade AKS cluster with multi-zone high availability, autoscaling system and application node pools, and Azure CNI Overlay networking.
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   name: app-aks-cluster
@@ -204,7 +204,7 @@ The `az aks get-credentials` approach is recommended because it integrates with 
 For development and testing environments where cost and speed matter more than resilience, use a lighter configuration:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   name: app-aks-dev
@@ -341,7 +341,7 @@ If you prefer to manage your Azure Resource Group and Virtual Network as Planton
 Create a file named `resource-group.yaml`:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureResourceGroup
 metadata:
   name: aks-infrastructure
@@ -363,7 +363,7 @@ planton apply -f resource-group.yaml -t
 Create a file named `vnet.yaml`. The `resourceGroup` field references the Resource Group you created in Step A:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVpc
 metadata:
   name: aks-network
@@ -394,7 +394,7 @@ The `resourceGroup.valueFrom` tells Planton to resolve the resource group name f
 Now create the AKS manifest with `valueFrom` references instead of literal values:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureAksCluster
 metadata:
   name: app-aks-cluster

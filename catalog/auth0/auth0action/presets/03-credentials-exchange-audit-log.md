@@ -1,4 +1,4 @@
-# Preset: Credentials Exchange Audit Log
+# Credentials Exchange Audit Log
 
 ## Pattern
 

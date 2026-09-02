@@ -60,6 +60,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: MySQL Flexible Server always keeps password authentication enabled -- unlike PostgreSQL Flexible Server it cannot be disabled -- so static credentials cannot be retired from this spec; the mitigation is keeping the password in a secret manager and layering the Entra administrator on top for token-based access.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: server_parameters

@@ -23,7 +23,7 @@ func AddTofuPlanFlags(cmd *cobra.Command) {
 func AddTofuInitFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().String(string(flag.BackendType),
 		terraform.TerraformBackendType_local.String(),
-		"Specifies the backend type (Tofu/Terraform) - 'local', 's3', 'gcs', 'azurerm', etc.")
+		"Specifies the backend type (Tofu/Terraform) - 'local', 's3', 'gcs', 'azurerm', 'remote' (TFE-protocol state storage), etc.")
 
 	cmd.PersistentFlags().String(string(flag.BackendBucket), "",
 		"State bucket name (S3/GCS) or container name (Azure)")

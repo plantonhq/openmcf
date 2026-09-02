@@ -1,6 +1,6 @@
 # Azure Application Insights
 
-Deploys an Azure Application Insights resource backed by a Log Analytics Workspace, with configurable application type, telemetry sampling, data retention, and daily ingestion caps. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups and Log Analytics Workspaces.
+Deploys an Azure Application Insights resource backed by a Log Analytics Workspace, with configurable application type, telemetry sampling, data retention, and daily ingestion caps. Classic non-workspace mode is not supported, and the privacy and access dials -- IP masking, Entra-only ingestion, private-link-only ingestion and query -- are all part of the spec.
 
 ## What Gets Created
 
@@ -26,14 +26,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Application Insights**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab to pre-populate a full-fidelity monitoring configuration.
+Open the deployment store, find **Azure Application Insights**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Web Application Insights** preset in the [Presets](#presets) tab to pre-populate a full-fidelity monitoring configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureApplicationInsights
 metadata:
   name: platform-apm
@@ -45,14 +45,15 @@ spec:
     value: "acme-prod-rg"
   applicationInsightsName: acme-app-insights
   workspaceId:
-    value: "/subscriptions/.../workspaces/acme-logs"
+    valueFrom:
+      name: acme-logs
 ```
 
 ```shell
 planton apply -f app-insights.yaml
 ```
 
-This creates an Application Insights resource on Azure's defaults: the WEB application type, 100% sampling, 90-day retention, and a 100 GB daily cap. Sampling and daily caps are not tuned for cost optimization.
+This creates an Application Insights resource on Azure's defaults -- the WEB application type, 100% sampling, 90-day retention, and a 100 GB daily cap -- storing telemetry in the referenced workspace. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -113,9 +114,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard full-fidelity monitoring** -- 100% sampling, 90-day retention, and 100 GB daily cap. Suitable for development, staging, and moderate-traffic production workloads where complete telemetry visibility is needed. Start from the **Standard** preset.
+**Standard full-fidelity monitoring** -- 100% sampling, 90-day retention, and 100 GB daily cap. Suitable for development, staging, and moderate-traffic production workloads where complete telemetry visibility is needed. Start from the **Standard Web Application Insights** preset.
 
-**Production with cost-controlled sampling** -- 25% sampling with a 10 GB daily ingestion cap. Reduces telemetry volume by 75% while maintaining statistically representative performance data. Designed for high-traffic production APIs where monitoring budget is constrained. Start from the **Production Sampled** preset.
+**Production with cost-controlled sampling** -- 25% sampling with a 10 GB daily ingestion cap. Reduces telemetry volume by 75% while maintaining statistically representative performance data. Designed for high-traffic production APIs where monitoring budget is constrained. Start from the **Production Application Insights (Sampled, Cost-Controlled)** preset.
 
 ## Works With
 

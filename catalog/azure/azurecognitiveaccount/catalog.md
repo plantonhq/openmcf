@@ -1,6 +1,6 @@
 # Azure Cognitive Account
 
-Deploys an Azure AI services account -- the container Azure AI capabilities are provisioned and billed through: Azure OpenAI model deployments, the multi-service AI Services account behind AI Foundry, and the single-service accounts (Speech, Vision, Language, Content Safety, ...). The account owns the endpoint, the access keys, the network perimeter, and the responsible-AI policy; model deployments and AI Foundry projects are separate Cloud Resources created onto it. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure AI services account -- the container Azure AI capabilities are provisioned and billed through: Azure OpenAI model deployments, the multi-service AI Services account behind AI Foundry, and the single-service accounts (Speech, Vision, Language, Content Safety, ...). The account owns the endpoint, the access keys, the network perimeter, and the responsible-AI policy; model deployments and AI Foundry projects are separate Cloud Resources created onto it. Deletion is a soft delete: the ghost keeps holding the account name until purged.
 
 ## What Gets Created
 
@@ -56,11 +56,22 @@ spec:
 planton apply -f azure-cognitive-account.yaml
 ```
 
-The account provisions in one to three minutes; the S0 account object itself carries no idle cost for OpenAI (billing follows deployment usage).
+This creates an S0 Azure OpenAI account with a custom subdomain, ready for model deployments -- the account object itself carries no idle cost for OpenAI (billing follows deployment usage). A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an AI-platform chart the order is: resource group → **account** → model deployments and projects, each wiring to the account by reference.
+In an AI-platform chart the order is: resource group → **account** → model deployments and projects. Wire the resource group with ValueFromRef so the InfraPipeline deploys it first:
+
+```yaml
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: ai-rg
+      fieldPath: status.outputs.resource_group_name
+```
+
+The InfraPipeline resolves the dependency graph, provisions the resource group first, then the account -- and the deployments and projects that reference this account's `cognitive_account_id` deploy after it.
 
 ## Key Configuration
 

@@ -39,6 +39,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication paths of its own; private zones offer no DNSSEC surface, and none is needed -- answers never traverse the public internet.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Per-query logging is not offered for private zones; administrative changes to the zone and its record sets land in the Azure Activity Log as subscription-level posture.

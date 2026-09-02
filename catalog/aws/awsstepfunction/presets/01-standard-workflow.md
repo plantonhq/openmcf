@@ -1,4 +1,4 @@
-# Preset: Standard Workflow
+# Standard Workflow
 
 ## When to Use
 
@@ -18,7 +18,7 @@ Use this preset for long-running, durable workflows that require exactly-once ex
 ## What to Customize
 
 1. **`<workflow-name>`** — A descriptive name for the state machine (e.g., `order-processor`)
-2. **`<iam-execution-role-arn>`** — IAM role ARN with `states.amazonaws.com` trust policy
+2. **`arn:aws:iam::123456789012:role/replace-me-stepfunctions-execution`** — replace with your IAM role ARN (`states.amazonaws.com` trust policy); literal values must start with `arn:`, or use the valueFrom reference form the production-workflow preset shows
 3. **`<lambda-function-arn>`** — ARN of the Lambda function to invoke
 4. **`definition`** — Replace the single-task definition with your actual ASL workflow
 

@@ -43,6 +43,9 @@ spec:
         type: spec_default
         reference: The spec deliberately omits the upstream secrets list -- its only remaining behavior is deprecated since Kubernetes v1.32, and long-lived token secrets are superseded by the short-lived TokenRequest API -- so the modeled surface cannot attach a legacy token Secret to the identity.
       notes: automount_service_account_token set to false (the 04-image-pull-secrets preset sets it) removes even the projected token from pods that never talk to the API server. A long-lived token can still be minted against this identity by a KubernetesSecret of the service-account-token type -- a deliberate, separate opt-in tracked on that component.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the object are Kubernetes API operations captured by the target cluster's audit policy; the identity itself emits nothing.

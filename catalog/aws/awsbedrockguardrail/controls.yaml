@@ -48,6 +48,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The service has a single authentication generation -- SigV4-signed IAM requests on both control and data planes; no legacy or weaker protocol exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

@@ -7,4 +7,6 @@ spec:
   organizationScope: true
   templateS3Uri: s3://<awsconfigconforms-templates-bucket>/security-baseline.yaml
   excludedAccounts:
-    - "<sandbox-account-id>"
+    # Account ids must be 12 digits (the field's own pattern rejects
+    # placeholders) -- replace with the accounts to exclude.
+    - "123456789012"

@@ -2,7 +2,7 @@
 
 ## Overview
 
-**KubernetesPriorityClass** is a Planton component that creates and manages Kubernetes PriorityClasses — the rungs of the cluster's workload importance ladder — as first-class, declaratively managed resources. Pods reference a class by name (the shared workload pod spec's `priority_class_name`); the scheduler places higher-priority pods first when capacity is scarce and — unless preemption is disabled — EVICTS lower-priority pods to make room for a higher-priority pod that cannot otherwise schedule.
+**KubernetesPriorityClass** is a Planton component that creates and manages Kubernetes PriorityClasses — the steps of the cluster's workload importance ladder — as first-class, declaratively managed resources. Pods reference a class by name (the shared workload pod spec's `priority_class_name`); the scheduler places higher-priority pods first when capacity is scarce and — unless preemption is disabled — EVICTS lower-priority pods to make room for a higher-priority pod that cannot otherwise schedule.
 
 The component covers the complete `scheduling.k8s.io/v1` PriorityClass surface: the priority value, the global-default flag, the human description, and the preemption policy.
 
@@ -110,7 +110,7 @@ Use **KubernetesPriorityClass** when you need:
 
 - You want to influence WHERE pods run — priority orders scheduling and preemption, not placement; use node selectors, affinity, and taints
 - You want runtime CPU/memory precedence — priority does not change resource allocation on a node; QoS classes and requests/limits do
-- The cluster is single-tenant with ample headroom — a ladder with one rung is bookkeeping without benefit
+- The cluster is single-tenant with ample headroom — a ladder with one step is bookkeeping without benefit
 
 ## Prerequisites
 
@@ -120,7 +120,7 @@ Use **KubernetesPriorityClass** when you need:
 
 ## Best Practices
 
-1. **Keep the ladder small and documented**: three to five classes with clear descriptions; every extra rung multiplies the preemption interactions to reason about
+1. **Keep the ladder small and documented**: three to five classes with clear descriptions; every extra step multiplies the preemption interactions to reason about
 2. **Exactly one global default per cluster**: audit with `kubectl get priorityclass` before setting `global_default: true` — several defaults resolve to the smallest value
 3. **Give batch tiers `never` preemption and negative values**: they jump the queue when idle capacity exists, yield to everything under pressure, and never evict services
 4. **Leave gaps between values**: 1000-unit spacing (or more) lets future tiers slot in without renumbering — and renumbering is a replace, not an update

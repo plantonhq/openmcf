@@ -2,8 +2,6 @@
 
 Deploys an Azure Firewall Policy Rule Collection Group — an ordered document of rule collections (application, network, and DNAT) nested inside a firewall policy, enforced by every firewall that attaches the policy. A policy carries many groups — typically one per team or per application — each deployed and updated independently, which is exactly why the group is its own resource rather than a fold inside the policy: the security team's baseline and each application's rules move on their own schedules.
 
-**Processing order**: groups evaluate by group priority, collections by collection priority WITHIN a type — and across types Azure always processes DNAT rules first, then network rules, then application rules, regardless of priorities. Lower numbers run first.
-
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
@@ -36,7 +34,7 @@ Open the deployment store, find **Azure Firewall Policy Rule Collection Group**,
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureFirewallPolicyRuleCollectionGroup
 metadata:
   name: payments-app
@@ -44,8 +42,7 @@ metadata:
   env: prod
 spec:
   firewallPolicyId:
-    valueFrom:
-      name: egress-baseline
+    value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/acme-prod-rg/providers/Microsoft.Network/firewallPolicies/egress-baseline"
   name: payments-app
   priority: 1000
   applicationRuleCollections:
@@ -67,7 +64,7 @@ spec:
 planton apply -f rule-collection-group.yaml
 ```
 
-Every firewall attached to `egress-baseline` now enforces the document — and the payments team redeploys it without touching the policy or anyone else's rules.
+This creates the group under the `egress-baseline` policy with one application collection allowing HTTPS to `*.github.com` -- every firewall attached to the policy enforces it, and the payments team redeploys it without touching the policy or anyone else's rules. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -136,7 +133,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Egress baseline rules** -- the security team's allow-list document: network rules for core protocols, application rules for sanctioned SaaS. Start from the **Egress Baseline Rules** preset.
 
-**Published service (DNAT)** -- one public-to-internal translation with a tightly-scoped source. Start from the **DNAT Publish Service** preset.
+**Published service (DNAT)** -- one public-to-internal translation with a tightly-scoped source. Start from the **DNAT: Publish an Internal Service** preset.
 
 ## Works With
 

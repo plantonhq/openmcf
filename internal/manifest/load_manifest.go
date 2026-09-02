@@ -15,12 +15,12 @@ import (
 	"github.com/plantonhq/planton/internal/cli/workspace"
 	"github.com/plantonhq/planton/internal/manifest/protodefaults"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/protobufyaml"
 	"github.com/plantonhq/planton/pkg/ulidgen"
 	"github.com/plantonhq/planton/pkg/yamldiag"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	goyaml "gopkg.in/yaml.v3"
-	"sigs.k8s.io/yaml"
 )
 
 // ManifestLoadError represents an error when loading a manifest fails due to proto issues.
@@ -95,8 +95,20 @@ func LoadManifest(manifestPath string) (proto.Message, error) {
 // and applies proto-declared defaults. The manifest never needs to exist on disk, which is
 // what rendered-template validation (e.g. infra-chart templates) relies on. sourceName is
 // used only in error messages (a file path, or a "chart/template.yaml[docN]" style label).
+//
+// The input must be exactly ONE YAML document. This is the loader's contract,
+// enforced here at the one funnel every load passes through: the YAML-to-JSON
+// conversion below reads only the first document of a stream, so accepting
+// multi-document input would silently drop every document after the first —
+// a multi-resource kustomize overlay would deploy one resource and report
+// success. Callers that legitimately handle multi-document YAML (chart
+// validation, catalog tooling) split the stream BEFORE loading each document.
 func LoadManifestBytes(manifestYamlBytes []byte, sourceName string) (proto.Message, error) {
-	jsonBytes, err := yaml.YAMLToJSON(manifestYamlBytes)
+	if err := refuseMultiDocument(manifestYamlBytes, sourceName); err != nil {
+		return nil, err
+	}
+
+	jsonBytes, err := protobufyaml.YAMLToJSON(manifestYamlBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load yaml to json")
 	}

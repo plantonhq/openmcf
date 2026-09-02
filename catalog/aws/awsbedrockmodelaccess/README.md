@@ -14,8 +14,8 @@ form of the console's "Model access" page.
 
 - **A foundation-model agreement** accepting the model's PUBLIC offer.
   The offer token is looked up at deploy time — the manifest names only
-  the model. Most offers have a $0 subscription; invocations bill
-  per-token regardless.
+  the model. Most offers carry no subscription charge; invocations
+  bill per-token regardless.
 - **The account use-case form** (optional, `use_case_form`) — required
   once per account before Anthropic model agreements activate.
 

@@ -49,6 +49,9 @@ spec:
       evidence:
         type: spec_default
         reference: With auth declared, unauthenticated connections are rejected outright unless no_auth_user deliberately maps them to a declared user's permissions -- the anonymous path exists only as an explicit, scoped opt-in. With auth unset, the server accepts unauthenticated connections (the spec's documented development posture).
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: No audit trail is modeled -- server logs stream to stdout for the cluster's log collector. Changes to the release itself are Kubernetes API operations, captured by the target cluster's audit policy.

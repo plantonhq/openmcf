@@ -1,4 +1,4 @@
-# Preset: Access-protected admin hostname
+# Access-protected admin hostname
 
 Publish an internal admin UI through the tunnel and require Cloudflare Access on every
 request, wired to an Access application you manage.

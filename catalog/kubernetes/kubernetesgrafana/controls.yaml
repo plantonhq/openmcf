@@ -48,6 +48,9 @@ spec:
       evidence:
         type: spec_default
         reference: Anonymous (no-login) access is off by default; enabling it opens the weakest path, capped by anonymous_org_role (default Viewer). disable_login_form supports pure-SSO deployments -- make sure another auth path exists first, or the UI locks everyone out.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Grafana is its own login surface, but password strength, brute-force lockout, and MFA are grafana.ini authentication configuration inside the product -- this spec models the anonymous-access and login-form dials (see no-legacy-auth), not credential strength.
     - control_id: audit-logging
       status: not_applicable
       notes: Grafana logs to stdout for the cluster's log collector; deeper audit surfaces are grafana.ini configuration reachable through helm_values. Changes to the release are Kubernetes API operations, captured by the target cluster's audit policy.

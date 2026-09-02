@@ -14,11 +14,11 @@ type Locals struct {
 	Target *awssecretsmanagersecretv1alpha1.AwsSecretsManagerSecret
 	Spec   *awssecretsmanagersecretv1alpha1.AwsSecretsManagerSecretSpec
 
-	// SecretName is metadata.name -- the AWS secret name is create-time
-	// immutable, and metadata.name is the naming basis both engines share
-	// so a manifest deploys identically on either. AWS allows up to 512
-	// characters of alphanumeric plus /_+=.@- (hierarchical names like
-	// "prod/payments/db" are legal).
+	// SecretName is spec.secret_name when set (hierarchical paths and
+	// service-required prefixes like "ecr-pullthroughcache/..." that
+	// metadata.name cannot carry), else metadata.name. The AWS secret name
+	// is create-time immutable, and both engines share this resolution so
+	// a manifest deploys identically on either.
 	SecretName string
 
 	AwsTags map[string]string
@@ -31,6 +31,9 @@ func initializeLocals(_ *pulumi.Context, in *awssecretsmanagersecretv1alpha1.Aws
 
 	metadata := in.Target.Metadata
 	locals.SecretName = metadata.Name
+	if in.Target.Spec.GetSecretName() != "" {
+		locals.SecretName = in.Target.Spec.GetSecretName()
+	}
 
 	// Resource-identity tags match the Terraform module key-for-key.
 	locals.AwsTags = map[string]string{

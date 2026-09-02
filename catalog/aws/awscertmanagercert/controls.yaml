@@ -42,6 +42,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No authentication path exists here to disable. The adjacent lever is cryptographic strength -- key_algorithm chooses the key pair (RSA_2048 default through the EC curves) that consumers' TLS handshakes are anchored on.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: ACM control-plane actions land in CloudTrail as account-level posture. The spec's options.certificate_transparency_logging_preference governs publication of the certificate's issuance to public Certificate Transparency logs (enabled by default and required for browser trust) -- public disclosure, not provider audit capture.

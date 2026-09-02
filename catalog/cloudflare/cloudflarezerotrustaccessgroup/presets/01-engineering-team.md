@@ -1,4 +1,4 @@
-# Preset: Engineering team group
+# Engineering team group
 
 A reusable account-scoped group that matches your engineering staff by email domain,
 requires an allowed country, and excludes a known contractor account.

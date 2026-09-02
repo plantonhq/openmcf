@@ -6,48 +6,52 @@ Deploys a standalone AlloyDB instance (`google_alloydb_instance`) attached to an
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **AlloyDB Instance** — compute node within an existing cluster (READ_POOL, PRIMARY, or SECONDARY)
-- **Read Pool Config** — when `instanceType` is READ_POOL (or blank, which defaults to READ_POOL), configures `nodeCount` for read capacity
-- **Machine Configuration** — `cpuCount` XOR `machineType` (mutually exclusive)
-- **Network Surface** — optional public IP with authorized CIDR ranges, outbound public IP, and per-instance PSC config
-- **Observability** — optional query insights and per-instance database flags
+- **AlloyDB API enablement** (`alloydb.googleapis.com`) on the target project (never disabled on destroy)
+- **AlloyDB Instance** — a compute node within an existing cluster (READ_POOL, PRIMARY, or SECONDARY), sized by `cpuCount` XOR `machineType`, with read-pool node count, optional public IP with authorized CIDR ranges, per-instance PSC configuration, database flags, and query insights as declared in the spec
 
 ## Before You Deploy
 
 ### Planton Setup
 
-- **GCP Provider Connection** — credentials for the target project
-- **Planton Runner** — when using Runner-based credential delivery
+- **GCP Provider Connection** — an active connection in the Connect module with credentials for the target GCP project. Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **Planton Runner** — required when using Runner-based credential delivery. Not needed for inline credentials or browser OAuth authentication modes.
 
-### GCP Prerequisites
+### GCP Project
 
-- **GcpAlloydbCluster** — the cluster this instance joins. Reference `status.outputs.cluster_id`.
-- **AlloyDB API** (`alloydb.googleapis.com`) enabled in the target project (usually already enabled by the parent cluster).
+- **A GcpAlloydbCluster** — the cluster this instance joins. Reference its `status.outputs.cluster_id`, or pass the full cluster resource path directly.
+- **A GCP project** — only needed as an override when the cluster's project differs from the provider default.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP AlloyDB Instance**, and click **Deploy**. Start from the **Read Pool Basic** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP AlloyDB Instance**, and click **Deploy**. Start from the **Basic Read Pool** preset in the [Presets](#presets) tab.
 
 ### CLI
+
+Create a manifest and apply it:
 
 ```yaml
 apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpAlloydbInstance
 metadata:
   name: orders-read-pool
+  org: acme-corp
+  env: prod
 spec:
   cluster:
-    valueFrom:
-      kind: GcpAlloydbCluster
-      name: orders-db
-      fieldPath: status.outputs.cluster_id
+    value: "projects/acme-prod-12345/locations/us-central1/clusters/orders-db"
   instanceId: orders-read-pool
   readPoolConfig:
     nodeCount: 2
   cpuCount: 4
 ```
+
+```shell
+planton apply -f alloydb-instance.yaml
+```
+
+This attaches a two-node, 4-CPU read pool to the existing cluster — two nodes spread across zones, so the pool survives a zone outage. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -63,6 +67,8 @@ spec:
 ```
 
 ## Key Configuration
+
+These are the most important decisions when configuring an AlloyDB instance. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Instance type** — Blank or `READ_POOL` is the common read-scaling shape. `PRIMARY` and `SECONDARY` exist for advanced topologies where the cluster does not bundle the compute node.
 
@@ -83,14 +89,17 @@ spec:
 
 ### What This Component Provides
 
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
+
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `instance_id` | Fully qualified instance resource name | Monitoring, connection routing |
-| `instance_name` | Short instance name | Display, logging |
-| `ip_address` | Private IP of the instance | Application read connection strings |
-| `state` | Instance state (`READY`, `CREATING`) | Health checks |
+| `instance_name` | Fully qualified instance resource name (`projects/{p}/locations/{l}/clusters/{c}/instances/{i}`) | AlloyDB Auth Proxy connections, monitoring dashboards |
+| `ip_address` | Private IP of the instance | Application read connection strings (port 5432) |
+| `state` | Instance state (`READY`, `CREATING`) | Deployment validation, health checks |
 
 ## Common Patterns
+
+Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Basic read pool** — single-node ZONAL pool for dev/staging read offload. Start from **Read Pool Basic**.
 

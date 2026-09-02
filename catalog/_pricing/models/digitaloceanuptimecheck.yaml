@@ -1,0 +1,44 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. A hand model because the committed quantity is the check
+# object itself: each manifest creates exactly ONE Uptime check billed a
+# flat monthly rate from creation, a count no derivation needs to compute
+# and no spec field varies. DigitalOcean prices Uptime identically
+# everywhere (the pricing page carries no region dimension), so the
+# referenced entry is pinned "global"; probe regions selected in the spec
+# change nothing about the price. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: digitaloceanuptimecheck
+spec:
+  presets:
+    - preset: 01-website-availability
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: uptime checks
+          price: do-uptime-check-monthly
+          pricing_quantity: "1"
+          quantity_basis: "one Uptime check object (checkName homepage) -- the flat $1.00 monthly rate attaches to the check itself regardless of its four probe regions or alert count"
+      exclusions:
+        - "the account's single free monthly check credit (672 hours, split across checks) is not netted out -- list-price semantics; on an account whose only check is this one, the invoice credit covers it entirely"
+        - "alert rules and their email/Slack delivery add nothing -- DigitalOcean states there is no additional cost for alerts"
+      notes: "The committed spend is the check existing: $1.00 per month billed in hourly increments from creation until deletion."
+    - preset: 02-latency-and-certificate
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: uptime checks
+          price: do-uptime-check-monthly
+          pricing_quantity: "1"
+          quantity_basis: "one Uptime check object -- latency and certificate alerts ride the same single check, and the flat $1.00 monthly rate is independent of alert types"
+      exclusions:
+        - "the account's single free monthly check credit (672 hours, split across checks) is not netted out -- list-price semantics; on an account whose only check is this one, the invoice credit covers it entirely"
+        - "alert rules and their email/Slack delivery add nothing -- DigitalOcean states there is no additional cost for alerts"
+      notes: "The committed spend is the check existing: $1.00 per month billed in hourly increments from creation until deletion."

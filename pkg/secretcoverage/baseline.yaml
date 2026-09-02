@@ -6,10 +6,18 @@
 # public key, an access-key id, a resource name) must use the proto
 # `sensitive_exempt_reason` option instead, which documents WHY in the proto itself.
 #
+# The `violations` list is the accepted backlog of annotation violations -- today
+# that means sensitive fields still carrying a value-content validation rule (a
+# pattern/CEL written for the raw value, which a stored managed-secret reference can
+# never satisfy, making the field impossible to fill through annotation-driven
+# surfaces). The fix is always the same: delete the rule, teach the shape in the
+# field's comment, and remove the entry here. Each entry names its owning program.
+#
 # The CI guardrail (go test ./pkg/secretcoverage/...) fails when:
-#   - a gap appears that is NOT listed here (a new unannotated secret field shipped), or
-#   - a listed entry is no longer a gap (it was annotated/exempted -- remove it here).
-# As the sweep proceeds, annotate fields and delete their lines; this list trends to 0.
+#   - a gap appears that is NOT listed here (a new unannotated secret field shipped),
+#   - a violation appears that is NOT listed here (a new contradictory annotation),
+#   - a listed entry is no longer a gap/violation (fixed -- remove it here).
+# Both lists only burn down; never add an entry for new work.
 #
 # Regenerate with:  planton secret-coverage --write-baseline
 #
@@ -39,3 +47,10 @@ gaps:
   - KubernetesSecret:spec.basic_auth.password
   - KubernetesSecret:spec.docker_config_json.password
   - KubernetesSecret:spec.ssh_auth.ssh_private_key
+violations:
+  # Sensitive fields still carrying a value-content rule, found when the check was
+  # introduced (the Azure catalog's two instances were fixed in the same change;
+  # the GCP catalog's four were fixed subsequently). Owner: cloudflare -> the
+  # Cloudflare catalog maintainers. Fix = drop the rule, teach the shape in the
+  # field comment.
+  - CloudflareZeroTrustTunnel:spec.tunnel_secret

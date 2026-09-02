@@ -4,6 +4,9 @@ metadata:
   name: my-production-endpoint
 spec:
   region: us-west-2
+  # ml.m5.large endpoint quotas default to ZERO on fresh accounts -- request
+  # the "ml.m5.large for endpoint usage" Service Quota (size 4: blue/green
+  # transiently doubles the fleet) before the first apply.
   productionVariants:
     - variantName: stable
       model:

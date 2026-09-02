@@ -28,9 +28,10 @@ You never start from a blank Terraform file. Planton runs **proven, pre-built
 infrastructure-as-code modules** — built for secure, well-architected,
 cost-efficient defaults — against your own cloud account, with real state and
 history. Create like a console: pick a stack, fill a short form. Manage like
-Kubernetes: `planton apply -f` deploys a single component, and
-`planton chart install` stands up a whole environment — the `kubectl apply` and
-`helm install` gestures, freed from Kubernetes and extended to every cloud.
+Kubernetes: `planton apply -f` deploys one component or a whole directory of
+them in dependency order, and `planton chart install` stands up a templated
+environment — the `kubectl apply` and `helm install` gestures, freed from
+Kubernetes and extended to every cloud.
 
 Whichever way you deploy, it's real infrastructure-as-code the whole way down —
 stored, versioned, every change a diff. On your own cloud. Nothing to lock you
@@ -47,12 +48,17 @@ yourself.
      (count non-test `(kind_meta)` annotations and distinct providers). The chart
      count MUST be verified against `charts/*/*/Chart.yaml`. Never re-type a stale number. -->
 
-- **[`catalog/`](catalog)** — **600+ components**
+- **[`catalog/`](catalog)** — **700+ components**
   across **8 cloud providers** (AWS, GCP, Azure, Kubernetes, DigitalOcean,
   Cloudflare, Auth0, and OpenFGA). Each component is a
   Protocol Buffer definition in the Kubernetes Resource Model shape
   (`apiVersion`/`kind`/`metadata`/`spec`) with field-level validations and
-  auto-generated SDKs in Go, Python, TypeScript, and Java.
+  auto-generated SDKs in Go, Python, TypeScript, and Java — plus verified,
+  machine-checked fact-sheets: cost data with generated per-preset estimates
+  (priced from the pinned price books in `catalog/_pricing/`), technical
+  control posture with framework crosswalks (`catalog/_compliance/`), and
+  least-privilege provisioning-permission manifests validated against the
+  providers' own published inventories.
 - **[`charts/`](charts)** — **49 ready-made infra charts**: whole environments
   (network + compute + data + DNS) composed from the components above and
   installed in one command — the Helm-chart idea, for cloud infrastructure.

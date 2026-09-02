@@ -173,7 +173,7 @@ placeholder. Therefore:
   the chart's centerpiece kind, or of the tool the chart serves (e.g. the
   Terraform logo for a Terraform state backend).
 - Cloud Resource kind logos live at
-  `https://assets.planton.ai/apis/infrahub/cloudresource/v1/assets/provider/<provider>/<kind-dir>/v1/logo.svg`
+  `https://downloads.planton.dev/catalog/logos/<provider>/<kind-dir>/logo.svg`
   (the `<kind-dir>` is the kind lowercased with no separators, matching its
   directory under `catalog/`).
 - **Verify before committing**: `curl -s -o /dev/null -w "%{http_code}" <iconUrl>`

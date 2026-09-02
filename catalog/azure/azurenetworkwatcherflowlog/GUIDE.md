@@ -26,6 +26,10 @@ Azure stopped accepting new NSG-targeted flow logs in June 2025 and retires the 
 
 The 60-minute interval (the default) suits audit and forensics; the 10-minute interval buys near-real-time visibility at roughly six times the processing cadence and correspondingly higher workspace ingestion. Pick 10 only when someone is actually watching.
 
+## A create that fails `ServiceUnavailable` is Azure's fault, not your manifest's
+
+A flow log create normally completes in under a minute, but Azure's flow-log service can fail the create's polling with a bare `ServiceUnavailable` ("The service is unavailable now. Please retry the request later.") after several minutes -- observed live with the identical configuration succeeding in seconds on the retry. Azure rolls the half-created flow log back cleanly. Retry the same deploy before changing anything; only a repeated identical failure is worth investigating.
+
 ## Pausing is cheaper than deleting
 
 `enabled: false` stops collection while keeping the configuration and the already-written files. Deleting the flow log ends retention management -- the files linger until the (overwritten) lifecycle rule or your cleanup removes them. For temporary quiet, pause; delete only when the target's recording story is genuinely over.

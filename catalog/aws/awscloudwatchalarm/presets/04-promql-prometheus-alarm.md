@@ -1,4 +1,4 @@
-# Preset: PromQL Alarm on a Prometheus Workspace
+# PromQL Alarm on a Prometheus Workspace
 
 **Use case:** Alarm on metrics that live in Amazon Managed Service for
 Prometheus, with Prometheus-native semantics.

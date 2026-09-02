@@ -1,6 +1,6 @@
 # JupyterHub
 
-Declares one multi-user JupyterHub install -- the official Zero to JupyterHub Helm chart (`4.4.0` = JupyterHub 5.5.0) rendered SECURED-BY-DEFAULT: the chart's own sign-in default accepts ANY username with NO password, and it never ships -- an empty `authentication` block means a module-generated shared password (the `<name>-auth` Secret), or declare your identity provider (GitHub, Google, or any OIDC issuer -- a composed KubernetesKeycloak realm's endpoints slot straight in). Every teammate who signs in gets their own JupyterLab server pod with a persistent per-user home volume, spawned on demand and culled when idle. Two truths shape the design: chart resource names are FIXED bare strings (`hub`, `proxy`, `proxy-public`) so exactly ONE JupyterHub fits per namespace, and user homes are DATA -- `claim-<username>` PVCs created at runtime that deliberately survive uninstall. Uses a Kubernetes Provider Connection for cluster access.
+Deploys a multi-user JupyterHub from the official Zero to JupyterHub Helm chart (`4.4.0` ships JupyterHub 5.5.0), secured by default where the chart itself is not. The chart's own sign-in default accepts ANY username with NO password, and it never ships here -- an empty `authentication` block means a module-generated shared password (the `<name>-auth` Secret), or declare your identity provider (GitHub, Google, or any OIDC issuer -- a composed Keycloak realm's endpoints slot straight in). Every teammate who signs in gets their own JupyterLab server pod with a persistent per-user home volume, spawned on demand and culled when idle. Two truths shape the design: chart resource names are FIXED bare strings (`hub`, `proxy`, `proxy-public`) so exactly ONE JupyterHub fits per namespace, and user homes are DATA -- `claim-<username>` PVCs created at runtime that deliberately survive uninstall.
 
 ## What Gets Created
 
@@ -13,7 +13,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
   - Per-user JupyterLab server pods (`jupyter-<username>`) and their home PVCs (`claim-<username>`) -- created AT RUNTIME as users sign in, not by the deploy
   - The packing user-scheduler, warm placeholder pods, the image pre-puller hooks and the idle-culler service, per your scheduling/culling declarations
 - **The authentication Secret** -- with shared-password sign-in and no BYO Secret, the module generates the password into `<name>-auth` (readable by cluster admins; sign-in tokens ride environment indirection, never rendered values)
-- **NetworkPolicies** -- the chart's hub/proxy/single-user policies render by default (`network_policy_enabled` unset = on)
+- **NetworkPolicies** -- the chart's hub/proxy/single-user policies render by default (`networkPolicyEnabled` unset = on)
 - **Kubernetes Labels** -- resource metadata labels (resource name, kind, organization, environment) applied automatically for tracking
 
 ## Before You Deploy
@@ -35,14 +35,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **JupyterHub**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Team Notebooks** preset for the fastest real multi-user platform (generated shared password, per-user 10Gi homes, hour-idle culling), or **Production OIDC** for identity-provider sign-in on a composed PostgreSQL in the [Presets](#presets) tab.
+Open the deployment store, find **JupyterHub**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Team notebooks — shared-password sign-in** preset for the fastest real multi-user platform (generated shared password, per-user 10Gi homes, hour-idle culling), or **Production — OIDC sign-in on PostgreSQL** for identity-provider sign-in on a composed PostgreSQL, both in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesJupyterHub
 metadata:
   name: team-notebooks
@@ -51,16 +51,16 @@ metadata:
 spec:
   namespace:
     value: "notebooks"
-  create_namespace: true
+  createNamespace: true
   authentication:
-    shared_password: {}
-    admin_users:
+    sharedPassword: {}
+    adminUsers:
       - ada
-  single_user:
+  singleUser:
     image:
       repository: quay.io/jupyter/scipy-notebook
       tag: "2026-07-28"
-    memory_limit: 2G
+    memoryLimit: 2G
 ```
 
 ```shell
@@ -77,7 +77,7 @@ When deploying as part of a multi-resource environment, use ValueFromRef to wire
 spec:
   namespace:
     value: "jupyterhub"
-  create_namespace: true
+  createNamespace: true
   hub:
     database:
       postgres:
@@ -86,8 +86,8 @@ spec:
             kind: KubernetesPostgres
             name: hub-db
             fieldPath: status.outputs.rw_service
-        password_secret:
-          secret_name:
+        passwordSecret:
+          secretName:
             valueFrom:
               kind: KubernetesPostgres
               name: hub-db
@@ -100,21 +100,21 @@ The InfraPipeline deploys the PostgreSQL cluster first, then declares JupyterHub
 
 These are the most important decisions when configuring JupyterHub. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Sign-in, read this first** -- the chart's own default accepts ANY username with NO password; it NEVER ships. An empty `authentication` block is the secured default: shared-password sign-in with the password module-generated into `<name>-auth`. Five explicit arms: `shared_password` (optionally BYO via `password_secret`) | `native` (per-user accounts inside the hub; `open_signup` means anyone reaching the login page can create a WORKING account) | `github` (client ID + client-secret Secret + callback URL; set `allowed_organizations` in production or ANY GitHub identity signs in) | `google` (set `hosted_domains` or any Google account signs in) | `oidc` (six endpoints/fields; Keycloak, Okta, Auth0, Dex all compose). `admin_users` and `allowed_users` sit OUTSIDE the arm choice and apply to every method -- an empty allowed-users roster admits any authenticated identity.
+**Sign-in, read this first** -- the chart's own default accepts ANY username with NO password; it NEVER ships. An empty `authentication` block is the secured default: shared-password sign-in with the password module-generated into `<name>-auth`. Five explicit arms: `sharedPassword` (optionally BYO via `passwordSecret`) | `native` (per-user accounts inside the hub; `openSignup` means anyone reaching the login page can create a WORKING account) | `github` (client ID + client-secret Secret + callback URL; set `allowedOrganizations` in production or ANY GitHub identity signs in) | `google` (set `hostedDomains` or any Google account signs in) | `oidc` (six endpoints/fields; Keycloak, Okta, Auth0, Dex all compose). `adminUsers` and `allowedUsers` sit OUTSIDE the arm choice and apply to every method -- an empty allowed-users roster admits any authenticated identity.
 
-**Hub state, sqlite is right for most installs** -- the hub is SINGLE-REPLICA BY DESIGN, so no `database` block (sqlite on a 1Gi PVC) carries hundreds of users. Declare `postgres` or `mysql` when hub state must survive volume loss or snapshot with your database fleet -- the database itself must PRE-EXIST (declare it at the Postgres kind's `initdb`). Named servers pair with their limit: `named_server_limit_per_user` requires `allow_named_servers` -- the spec holds the pair.
+**Hub state, sqlite is right for most installs** -- the hub is SINGLE-REPLICA BY DESIGN, so no `database` block (sqlite on a 1Gi PVC) carries hundreds of users. Declare `postgres` or `mysql` when hub state must survive volume loss or snapshot with your database fleet -- the database itself must PRE-EXIST (declare it at the Postgres kind's `initdb`). Named servers pair with their limit: `namedServerLimitPerUser` requires `allowNamedServers` -- the spec holds the pair.
 
-**Per-user sizing has two dials that differ** -- `memory_guarantee` (default 1G) is what the scheduler RESERVES; `memory_limit` (empty = UNLIMITED) is where the kernel kills the kernel. Set a limit in production -- one runaway `pd.read_csv` on an unlimited pod evicts its node neighbors. The chart's sample image is evaluation-grade: point `single_user.image` at a real notebook image (`quay.io/jupyter/scipy-notebook` or your own) for real work.
+**Per-user sizing has two dials that differ** -- `memoryGuarantee` (default 1G) is what the scheduler RESERVES; `memoryLimit` (empty = UNLIMITED) is where the kernel kills the kernel. Set a limit in production -- one runaway `pd.read_csv` on an unlimited pod evicts its node neighbors. The chart's sample image is evaluation-grade: point `singleUser.image` at a real notebook image (`quay.io/jupyter/scipy-notebook` or your own) for real work.
 
 **Home storage has THREE postures** -- no `storage` block = a dynamic per-user PVC (10Gi default) -- the right default; `static` mounts ONE shared PVC with per-user sub-paths (RWX on multi-node clusters, quota is shared); `none` is the VANISHING WORKSPACE -- everything a user creates disappears when their server stops, and the idle culler stops servers by default. Ephemeral is legal and taught, never accidental.
 
-**The spawn menu** -- `profiles` puts a machine-size menu at login ("Standard 2G", "Big-memory ETL", "GPU workstation"), each row overriding image or sizing with blank overrides falling back to the `single_user` baseline. At most one row is `default: true`. No profiles = no menu -- every user gets the baseline directly.
+**The spawn menu** -- `profiles` puts a machine-size menu at login ("Standard 2G", "Big-memory ETL", "GPU workstation"), each row overriding image or sizing with blank overrides falling back to the `singleUser` baseline. At most one row is `default: true`. No profiles = no menu -- every user gets the baseline directly.
 
-**Capacity that scales DOWN** -- `user_scheduler_enabled` (default on) packs user pods onto the fewest nodes so autoscalers can reclaim the rest; `user_placeholder_replicas` keeps N warm decoys a real user evicts INSTANTLY instead of waiting for a node boot. Culling is the cost model: idle servers stop after `timeout_seconds` (default 3600) -- homes survive culls; never enable `cull_users` with real user rosters (it deletes hub-database user records).
+**Capacity that scales DOWN** -- `userSchedulerEnabled` (default on) packs user pods onto the fewest nodes so autoscalers can reclaim the rest; `userPlaceholderReplicas` keeps N warm decoys a real user evicts INSTANTLY instead of waiting for a node boot. Culling is the cost model: idle servers stop after `timeoutSeconds` (default 3600) -- homes survive culls; never enable `cullUsers` with real user rosters (it deletes hub-database user records).
 
 **The proxy fronts everything, privately by default** -- the chart's own `proxy-public` default is `LoadBalancer` (a public IP on install); this kind DELIBERATELY inverts it to ClusterIP. Reach the hub by port-forward, or compose exposure over the exported Service handle. HTTPS is deliberately unmodeled here -- TLS terminates at your composed ingress/gateway kind.
 
-**The escape hatch, merged LAST** -- `helm_values` is raw chart values with Helm `-f` semantics for what the typed fields don't model (per-pod tolerations, custom hub config snippets, registry credentials). NEVER secret material -- the chart-owned hub Secret embeds the ENTIRE rendered values document, readable by anyone who can read Secrets; NEVER `proxy.https` or ingress keys -- exposure composes from first-class kinds.
+**The escape hatch, merged LAST** -- `helmValues` is raw chart values with Helm `-f` semantics for what the typed fields don't model (per-pod tolerations, custom hub config snippets, registry credentials). NEVER secret material -- the chart-owned hub Secret embeds the ENTIRE rendered values document, readable by anyone who can read Secrets; NEVER `proxy.https` or ingress keys -- exposure composes from first-class kinds.
 
 ## Outputs and Dependencies
 
@@ -122,10 +122,11 @@ These are the most important decisions when configuring JupyterHub. Explore the 
 
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
+| **KubernetesNamespace** (optional) | `namespace` | `spec.name` |
 | **KubernetesPostgres** | `hub.database.postgres.host` | `status.outputs.rw_service` |
-| **KubernetesPostgres** | `hub.database.postgres.password_secret.secret_name` | `status.outputs.password_secret.name` |
-| **KubernetesMysql** | `hub.database.mysql.host` | its primary Service output (the FK default) |
-| **KubernetesKeycloak** (composes naturally) | `authentication.oidc.*` endpoints | the realm's OIDC endpoints |
+| **KubernetesPostgres** | `hub.database.postgres.passwordSecret.secretName` | `status.outputs.password_secret.name` |
+| **KubernetesMysql** | `hub.database.mysql.host` | `status.outputs.primary_service` |
+| **KubernetesMysql** | `hub.database.mysql.passwordSecret.secretName` | `status.outputs.root_password_secret.name` |
 
 ### What This Component Provides
 
@@ -144,16 +145,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Team notebooks in minutes** -- The secured default: shared-password sign-in (generated into `<name>-auth`), a real scientific-Python image, per-user 10Gi homes that survive restarts, idle servers culled after an hour. Start from the **Team Notebooks** preset.
+**Team notebooks in minutes** -- The secured default: shared-password sign-in (generated into `<name>-auth`), a real scientific-Python image, per-user 10Gi homes that survive restarts, idle servers culled after an hour. Start from the **Team notebooks — shared-password sign-in** preset.
 
-**Production on your identity provider** -- OIDC sign-in against a composed KubernetesKeycloak realm (Okta/Auth0/Dex identical), hub state in a composed KubernetesPostgres, a spawn menu of machine sizes, warm placeholder pods keeping "start my server" instant. Start from the **Production OIDC** preset.
+**Production on your identity provider** -- OIDC sign-in against a composed Keycloak realm (Okta/Auth0/Dex identical), hub state in a composed KubernetesPostgres, a spawn menu of machine sizes, warm placeholder pods keeping "start my server" instant. Start from the **Production — OIDC sign-in on PostgreSQL** preset.
 
-**Classroom / ephemeral workshops** -- `storage.none` (no home PVCs to clean up), `native` accounts with `open_signup` inside a private network, aggressive culling (`timeout_seconds: 1800`, `max_age_seconds: 28800`) -- the vanishing workspace as a feature, chosen deliberately.
+**Classroom / ephemeral workshops** -- `storage.none` (no home PVCs to clean up), `native` accounts with `openSignup` inside a private network, aggressive culling (`timeoutSeconds: 1800`, `maxAgeSeconds: 28800`) -- the vanishing workspace as a feature, chosen deliberately.
 
 ## Works With
 
-- [**Kubernetes Postgres**](/cloud-catalog/kubernetes-postgres) -- the durable hub-state database; the `hub.database.postgres` foreign-key defaults point at it
-- [**Kubernetes Mysql**](/cloud-catalog/kubernetes-mysql) -- the MySQL alternative for hub state
-- [**Kubernetes Keycloak**](/cloud-catalog/kubernetes-keycloak) -- the natural OIDC issuer; a realm's endpoints slot into `authentication.oidc`
+- [**PostgreSQL**](/cloud-catalog/kubernetes-postgres) -- the durable hub-state database; the `hub.database.postgres` foreign-key defaults point at it
+- [**MySQL**](/cloud-catalog/kubernetes-mysql) -- the MySQL alternative for hub state
+- [**Keycloak**](/cloud-catalog/kubernetes-keycloak) -- the natural OIDC issuer; a realm's endpoints slot into `authentication.oidc`
 - [**Kubernetes Namespace**](/cloud-catalog/kubernetes-namespace) -- provides the namespace for the deployment
-- [**Kubernetes Http Endpoint**](/cloud-catalog/kubernetes-http-endpoint) -- exposure over the exported `proxy_public_service` handle, where TLS terminates
+- [**Kubernetes HTTPRoute**](/cloud-catalog/kubernetes-http-route) -- Gateway API exposure over the exported `proxy_public_service` handle, where TLS terminates
+- [**Kubernetes Ingress**](/cloud-catalog/kubernetes-ingress) -- the Ingress alternative for exposing the front door

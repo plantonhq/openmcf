@@ -1,6 +1,6 @@
 # AWS FSx ONTAP Volume
 
-Deploys a data volume within an FSx for NetApp ONTAP Storage Virtual Machine, with configurable tiering policies, SnapLock WORM compliance, FlexGroup distribution, and storage efficiency features. The volume integrates with Planton's Provider Connections for AWS credential management and supports ValueFromRef wiring to the parent SVM.
+Deploys a data volume within an FSx for NetApp ONTAP Storage Virtual Machine, with configurable tiering policies, SnapLock WORM compliance, FlexGroup distribution, and storage efficiency features. The volume is what clients actually mount: it joins the SVM namespace at its junction path, and its tiering policy is the ONTAP family's cost lever, moving cold data to the elastic capacity pool per volume rather than per file system.
 
 ## What Gets Created
 
@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS FSx ONTAP Volume**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General Purpose** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS FSx ONTAP Volume**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **General Purpose ONTAP Volume** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsFsxOntapVolume
 metadata:
   name: app-data
@@ -114,11 +114,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**General purpose volume** -- 100 GB FlexVol with UNIX security style, storage efficiency enabled, and AUTO tiering with a 31-day cooling period. The standard configuration for NFS application data volumes. Start from the **General Purpose** preset.
+**General purpose volume** -- 100 GB FlexVol with UNIX security style, storage efficiency enabled, and AUTO tiering with a 31-day cooling period. The standard configuration for NFS application data volumes. Start from the **General Purpose ONTAP Volume** preset.
 
-**Compliance SnapLock volume** -- 500 GB volume with SnapLock COMPLIANCE for immutable record retention (SEC 17a-4, HIPAA, FINRA). 5-year default retention, 1-day autocommit, SNAPSHOT_ONLY tiering. Start from the **Compliance SnapLock** preset.
+**Compliance SnapLock volume** -- 500 GB volume with SnapLock COMPLIANCE for immutable record retention (SEC 17a-4, HIPAA, FINRA). 5-year default retention, 1-day autocommit, SNAPSHOT_ONLY tiering. Start from the **Compliance SnapLock Volume** preset.
 
-**High-performance FlexGroup volume** -- 1 TB FlexGroup distributed across 2 aggregates with 8 constituents each for parallel I/O. No tiering -- all data on SSD for consistent latency. Designed for data lakes, genomics, and media workflows. Start from the **High-Performance FlexGroup** preset.
+**High-performance FlexGroup volume** -- 1 TB FlexGroup distributed across 2 aggregates with 8 constituents each for parallel I/O. No tiering -- all data on SSD for consistent latency. Designed for data lakes, genomics, and media workflows. Start from the **High-Performance FlexGroup Volume** preset.
 
 ## Works With
 

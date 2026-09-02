@@ -1,0 +1,23 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezerotrustaccessservicetoken
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageServiceToken
+        name: "Access: Service Tokens Write"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Create the token via POST /accounts/{account_id}/access/service_tokens (or the /zones/{zone_id}/... variant when the spec targets a zone), update name/duration and rotate via PUT on .../service_tokens/{service_token_id}, and delete it via DELETE on the same path (each endpoint's docs name this group as the accepted permission). Covers the Terraform module's single cloudflare_zero_trust_access_service_token resource and the Pulumi module's matching ZeroTrustAccessServiceToken resource; neither engine performs secondary lookups or data-source reads. Group names verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22), cross-checked against the "Accepted Permissions" sections of the Access service token API endpoint docs (https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/service_tokens/, create/get/update/delete method pages, retrieved 2026-08-22).
+      - purpose: ReadServiceToken
+        name: "Access: Service Tokens Read"
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the token's metadata (the client secret is returned only at creation/rotation, never on reads) via GET .../service_tokens/{service_token_id} (the get endpoint accepts Read or Write; Write alone covers the whole lifecycle, so Read is only needed for read-only credentials).

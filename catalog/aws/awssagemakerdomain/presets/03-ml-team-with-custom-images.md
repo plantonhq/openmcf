@@ -1,4 +1,4 @@
-# Preset: ML Team with Custom Images
+# ML Team with Custom Images
 
 A fully-featured SageMaker Domain for advanced ML teams that need custom Docker images,
 GPU compute, Docker build capabilities, notebook sharing, and auto-cloned code repositories.
@@ -24,12 +24,14 @@ GPU compute, Docker build capabilities, notebook sharing, and auto-cloned code r
 
 ## Cost Estimate
 
-Per-user compute (with 3-hour idle timeout, 8-hour workday):
-- JupyterLab `ml.m5.large`: ~$0.77/day per user (~$23/month)
-- KernelGateway `ml.g4dn.xlarge` (GPU): ~$4.20/day per user when active
-- EBS storage: $0.10/GB-month (50-500 GB per space)
-- EFS: $0.30/GB-month for home directories
-- S3: $0.023/GB-month for shared notebook outputs
+Per-user compute is the main driver, tempered by the 3-hour idle timeout:
+- JupyterLab `ml.m5.large`: billed hourly while running
+- KernelGateway `ml.g4dn.xlarge` (GPU): billed hourly when active — the GPU instance is the cost cliff, many times the CPU rate
+- EBS storage: billed per GB-month (50-500 GB per space)
+- EFS home directories: billed per GB-month
+- S3 shared notebook outputs: billed per GB-month, the cheapest storage tier here
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awssagemakerdomain.yaml` — computed from the pinned price book, never hand-typed here.
 
 ## Customization
 

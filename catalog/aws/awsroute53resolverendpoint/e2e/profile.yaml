@@ -19,9 +19,14 @@ spec:
   #     shared test account is deliberately standalone. Unblock: a
   #     second account.
   #
-  # pending_proof: forged this session to the full offline bar -- Q47
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q47): both scenarios on both engines
+  # through the full six-phase runner + the Terraform blind import
+  # round-trips under the armed apply-idempotency gate. Clean
+  # first-pass; ENI provisioning ran ~3 min per endpoint create and
+  # ~4 min per destroy (inside the documented 2-5 min class -
+  # inbound-min ~8.5 min/engine, outbound-forward-full ~11-15
+  # min/engine end-to-end with rules and associations).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 40

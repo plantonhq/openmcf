@@ -51,7 +51,13 @@ type AwsCloudMapNamespaceSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The AWS region the namespace lives in. Example: "us-west-2".
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
-	// The namespace's discovery model. Fixed for life.
+	// The namespace's discovery model. Fixed for life. A PUBLIC_DNS
+	// namespace creates a real Route 53 public hosted zone for
+	// metadata.name, and Route 53 REFUSES reserved documentation
+	// domains there - example.com and its subdomains fail
+	// CANNOT_CREATE_HOSTED_ZONE "reserved by AWS" (live-proven); .test
+	// names are accepted, and you never need to own or delegate the
+	// domain just to create the namespace.
 	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
 	// The VPC a PRIVATE_DNS namespace's hosted zone is visible in.
 	// Reference an AwsVpc vpc_id output or pass a literal vpc-... id.
@@ -255,6 +261,7 @@ type AwsCloudMapServiceDnsConfig struct {
 	// How queries pick among healthy instances. MULTIVALUE answers with
 	// up to eight healthy records; WEIGHTED answers with one, picked by
 	// weight. Unset means AWS's default (MULTIVALUE). Fixed for life.
+	// CNAME records REQUIRE the explicit WEIGHTED (see the message rule).
 	RoutingPolicy string `protobuf:"bytes,2,opt,name=routing_policy,json=routingPolicy,proto3" json:"routing_policy,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -481,7 +488,11 @@ type AwsCloudMapInstance struct {
 	// updates the instance in place (AWS upserts).
 	InstanceId string `protobuf:"bytes,1,opt,name=instance_id,json=instanceId,proto3" json:"instance_id,omitempty"`
 	// The instance's IPv4 address (publishes A records; SRV targets
-	// resolve to it).
+	// resolve to it). When the service carries health_check_config,
+	// Route 53 REJECTS reserved/documentation/private-range addresses
+	// at registration (RegisterInstance 400 "IPv4 address ... is
+	// forbidden for healthChecks" - TEST-NET included; health-checked
+	// endpoints must be publicly routable).
 	Ip string `protobuf:"bytes,2,opt,name=ip,proto3" json:"ip,omitempty"`
 	// The instance's IPv6 address (publishes AAAA records).
 	Ipv6 string `protobuf:"bytes,3,opt,name=ipv6,proto3" json:"ipv6,omitempty"`
@@ -610,8 +621,7 @@ const file_catalog_aws_awscloudmapnamespace_v1alpha1_spec_proto_rawDesc = "" +
 	"\x19spec.vpc_only_private_dns\x12,vpc_id applies only when type is PRIVATE_DNS\x1a/!has(this.vpc_id) || this.type == 'PRIVATE_DNS'\x1a\xb6\x01\n" +
 	"&spec.http_services_carry_no_dns_config\x12Kservices in an HTTP namespace cannot set dns_config - discovery is API-only\x1a?this.type != 'HTTP' || this.services.all(s, !has(s.dns_config))\x1a\xf6\x01\n" +
 	"$spec.health_check_config_public_only\x12~health_check_config (Route 53 health checks) applies only in a PUBLIC_DNS namespace - use health_check_custom_config elsewhere\x1aNthis.type == 'PUBLIC_DNS' || this.services.all(s, !has(s.health_check_config))\x1au\n" +
-	"\x19spec.service_names_unique\x121service names must be unique within the namespace\x1a%this.services.map(s, s.name).unique()\"\xfc\n" +
-	"\n" +
+	"\x19spec.service_names_unique\x121service names must be unique within the namespace\x1a%this.services.map(s, s.name).unique()\"\xdb\f\n" +
 	"\x12AwsCloudMapService\x12\x1d\n" +
 	"\x04name\x18\x01 \x01(\tB\t\xbaH\x06r\x04\x10\x01\x18\x7fR\x04name\x12-\n" +
 	"\vdescription\x18\x02 \x01(\tB\v\xbaH\b\xd8\x01\x01r\x03\x18\x80\bR\vdescription\x12i\n" +
@@ -620,15 +630,17 @@ const file_catalog_aws_awscloudmapnamespace_v1alpha1_spec_proto_rawDesc = "" +
 	"\x13health_check_config\x18\x04 \x01(\v2R.dev.planton.aws.awscloudmapnamespace.v1alpha1.AwsCloudMapServiceHealthCheckConfigR\x11healthCheckConfig\x12\x95\x01\n" +
 	"\x1ahealth_check_custom_config\x18\x05 \x01(\v2X.dev.planton.aws.awscloudmapnamespace.v1alpha1.AwsCloudMapServiceHealthCheckCustomConfigR\x17healthCheckCustomConfig\x12#\n" +
 	"\rforce_destroy\x18\x06 \x01(\bR\fforceDestroy\x12`\n" +
-	"\tinstances\x18\a \x03(\v2B.dev.planton.aws.awscloudmapnamespace.v1alpha1.AwsCloudMapInstanceR\tinstances:\x88\x06\xbaH\x84\x06\x1a\xb7\x01\n" +
+	"\tinstances\x18\a \x03(\v2B.dev.planton.aws.awscloudmapnamespace.v1alpha1.AwsCloudMapInstanceR\tinstances:\xe7\a\xbaH\xe3\a\x1a\xb7\x01\n" +
 	" service.at_most_one_health_check\x12Ihealth_check_config and health_check_custom_config are mutually exclusive\x1aH!(has(this.health_check_config) && has(this.health_check_custom_config))\x1a|\n" +
 	"\x1bservice.instance_ids_unique\x12.instance ids must be unique within the service\x1a-this.instances.map(i, i.instance_id).unique()\x1a\x83\x02\n" +
 	"\x1aservice.alias_stands_alone\x12Zan instance's alias_dns_name cannot combine with ip, ipv6, port, cname, or ec2_instance_id\x1a\x88\x01this.instances.all(i, !has(i.alias_dns_name) || (i.ip == '' && i.ipv6 == '' && i.port == 0 && i.cname == '' && !has(i.ec2_instance_id)))\x1a\xc3\x01\n" +
-	"\x1fservice.ec2_instance_derives_ip\x12ban instance's ec2_instance_id and ip are mutually exclusive - AWS derives the IP from the instance\x1a<this.instances.all(i, !has(i.ec2_instance_id) || i.ip == '')\"\xd4\x01\n" +
+	"\x1fservice.ec2_instance_derives_ip\x12ban instance's ec2_instance_id and ip are mutually exclusive - AWS derives the IP from the instance\x1a<this.instances.all(i, !has(i.ec2_instance_id) || i.ip == '')\x1a\xdc\x01\n" +
+	"*service.health_checked_instances_need_port\x12[instances with an ip under a health-checked service must set port - Route 53 probes ip:port\x1aQ!has(this.health_check_config) || this.instances.all(i, i.ip == '' || i.port > 0)\"\xbc\x03\n" +
 	"\x1bAwsCloudMapServiceDnsConfig\x12n\n" +
 	"\arecords\x18\x01 \x03(\v2J.dev.planton.aws.awscloudmapnamespace.v1alpha1.AwsCloudMapServiceDnsRecordB\b\xbaH\x05\x92\x01\x02\b\x01R\arecords\x12E\n" +
 	"\x0erouting_policy\x18\x02 \x01(\tB\x1e\xbaH\x1b\xd8\x01\x01r\x16R\n" +
-	"MULTIVALUER\bWEIGHTEDR\rroutingPolicy\"\xc8\x01\n" +
+	"MULTIVALUER\bWEIGHTEDR\rroutingPolicy:\xe5\x01\xbaH\xe1\x01\x1a\xde\x01\n" +
+	"\"dns_config.cname_requires_weighted\x12ga CNAME record requires routing_policy WEIGHTED - AWS rejects CNAME under the default MULTIVALUE policy\x1aO!this.records.exists(r, r.type == 'CNAME') || this.routing_policy == 'WEIGHTED'\"\xc8\x01\n" +
 	"\x1bAwsCloudMapServiceDnsRecord\x12.\n" +
 	"\x04type\x18\x01 \x01(\tB\x1a\xbaH\x17r\x15R\x01AR\x04AAAAR\x03SRVR\x05CNAMER\x04type\x12y\n" +
 	"\x03ttl\x18\x02 \x01(\x03Bg\xbaHd\xba\x01a\n" +

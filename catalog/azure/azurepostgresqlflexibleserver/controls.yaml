@@ -62,6 +62,9 @@ spec:
       evidence:
         type: spec_default
         reference: Defaults to true (password logins accepted); setting it false with Entra auth on retires static database passwords entirely -- the 03-hardened-cmk-entra preset does exactly that.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

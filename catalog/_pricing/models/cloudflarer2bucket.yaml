@@ -1,0 +1,45 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. All three presets are genuinely zero-committed: an empty
+# bucket bills nothing per the component's own cost profile, every meter
+# (storage GB-months, Class A/B operations, IA retrieval) starts with the
+# first uploaded object or request, and egress is free at any volume --
+# stated in exclusions, never padded into fabricated dollars. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: cloudflarer2bucket
+spec:
+  presets:
+    - preset: 01-private
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the R2 storage meter (Standard $0.015/GB-month past the free tier's 10 GB-month/month) grows with pushed objects -- an empty private bucket bills nothing
+        - Class A operations ($4.50/million past 1 million/month free) follow writes, lists, and multipart uploads; Class B operations ($0.36/million past 10 million/month free) follow reads
+        - egress is free at any volume for every storage class -- no transfer meter exists to exclude
+      notes: "Zero committed cost -- the preset is a private container with an auto location hint; every meter waits for the first object."
+    - preset: 02-public-cdn
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the R2 storage meter (Standard $0.015/GB-month past the free tier's 10 GB-month/month) grows with the content published into the bucket
+        - Class B operations ($0.36/million past 10 million/month free) follow public read traffic on the r2.dev managed domain and the custom domain; Class A operations ($4.50/million past 1 million/month free) follow content uploads
+        - egress is free at any volume -- public serving generates no transfer charge, R2's differentiator
+        - the custom domain rides the referenced zone; that zone's plan and features are the zone's own spend, and Cloudflare's R2 pricing enumerates storage, operations, and IA retrieval as R2's entire charge model -- no per-domain fee is part of it
+      notes: "Zero committed cost -- public access, the custom domain (TLS 1.2 floor), and the read-only CORS rule shape exposure and browser behavior, not the rate card; billing starts with content and traffic."
+    - preset: 03-lifecycle-managed
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the R2 storage meter starts at Standard ($0.015/GB-month past the free tier) and the 30-day age transition moves objects to Infrequent Access ($0.01/GB-month, no free tier, 30-day minimum storage duration) until the 365-day expiration deletes them
+        - each lifecycle tier transition is itself a Class A operation ($4.50/million past 1 million/month free), and reads of IA objects add the $0.01/GB retrieval fee -- both driven by object volume and access patterns
+        - objects under the audit/ prefix are locked for 7 years (220752000 seconds) -- once objects exist there, their GB-months cannot be lifecycle-trimmed until retention ends; the lock itself carries no fee and locks nothing while the bucket is empty
+        - incomplete multipart uploads are aborted free after 7 days (AbortMultipartUpload is a free operation), trimming hidden storage
+      notes: "Zero committed cost -- the tiering, expiration, and lock rules change what stored gigabytes cost and how long they must persist, not whether anything is committed; every meter waits for the first push."

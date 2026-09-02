@@ -126,7 +126,9 @@ domain_list_name. Also becomes the list's AWS name.
 
 The domains on the list, e.g. "malware.example." - AWS treats each
 entry as the domain and all its subdomains. A "*." prefix matches
-subdomains only.
+subdomains only. AWS stores every entry as a trailing-dot FQDN;
+both modules append the dot when absent, so either form is fine
+here and never causes drift.
 
 - rule: domains must be unique within a list
 
@@ -228,7 +230,9 @@ default (NODATA).
 
 The record value an OVERRIDE response returns (AWS returns it as
 a CNAME - the record type has exactly one legal value, so the
-modules pin it).
+modules pin it). AWS stores it as a trailing-dot FQDN
+("sinkhole.example.com."); both modules append the dot when
+absent, so either form is fine here and never causes drift.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE","string":{"minLen":"1","maxLen":"255"}}
 

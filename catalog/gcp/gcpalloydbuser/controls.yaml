@@ -48,6 +48,9 @@ spec:
         type: spec_default
         reference: The stored-password path is the weaker one, and it is what ALLOYDB_IAM_USER retires -- an IAM user has no password at all (CEL-enforced), so no password-guessing surface exists for that identity.
       notes: AlloyDB has no anonymous or shared-secret user mode; BUILT_IN password auth is current-generation, just weaker than keyless IAM.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the identity (who created it, rotated its password, or changed its roles) land in Cloud Audit Logs as project-level posture; connection and statement logging (pgAudit) belong to the parent cluster's flags.

@@ -1,4 +1,4 @@
-# Preset: Basic PostgreSQL Hyperdrive
+# Basic PostgreSQL Hyperdrive
 
 A Hyperdrive config that pools and caches connections to a regional PostgreSQL
 database, ready to bind to a Worker.

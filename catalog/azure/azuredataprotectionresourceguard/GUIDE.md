@@ -10,6 +10,10 @@ Multi-User Authorization works because the approver is SOMEONE ELSE. Deploy the 
 
 With no exclusions, EVERY critical vault operation (disabling soft delete, deleting protected items, reducing retention) requires an approval through the guard. Add entries to `vaultCriticalOperationExclusionList` only for operations the org has deliberately decided to leave ungated -- and treat each entry as a standing security decision worth a comment in the manifest.
 
+## Some operations can never be excluded
+
+Azure keeps a mandatory always-guarded set and rejects any exclusion list naming one of them at create time (`BMSUserErrorInvalidCriticalOperationExclusionList`): the operations that would disarm the guard itself -- `backupconfig/write`, both vault families' `backupResourceGuardProxies/delete`, `backupVaults/write#reduceSoftDeleteSecurity` -- and the cross-tenant vault-mapping operations. The Terraform provider does not check this; Planton's validation mirrors ARM's list so a bad manifest fails at admission instead of mid-deploy. Note the asymmetry while composing a list: `backupconfig/write` is mandatory but `backupconfig/delete` is excludable, and `backupResourceGuardProxies/write` is excludable while its `/delete` sibling is not.
+
 ## One guard serves the estate
 
 Vaults reference the guard by ARM ID; there is no per-vault guard object. One well-placed guard per environment (or per compliance boundary) keeps the approval path singular and auditable. Creating the guard changes nothing by itself -- protection starts when the first vault references it.

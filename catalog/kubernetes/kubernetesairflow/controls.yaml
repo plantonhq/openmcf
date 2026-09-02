@@ -55,6 +55,9 @@ spec:
       evidence:
         type: module_default
         reference: The chart's publicly documented defaults (admin/admin for the UI, postgres/postgres for the database) never ship -- both modules generate the admin password, Fernet key, API secret key, webserver session key, and JWT secret into module-owned Secrets, and every database/broker credential travels through composed connection Secrets, never rendered Helm values.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: Airflow signs its users in itself, but credential strength -- password rules, lockout, MFA -- is Flask-AppBuilder configuration inside the product, not modeled in this deployment spec. The modules' contribution is bootstrap hygiene, not strength policy (the chart's admin/admin default never ships -- see no-legacy-auth).
     - control_id: audit-logging
       status: not_applicable
       notes: A provider-style audit trail is not modeled in this spec -- component activity streams to stdout for the cluster's log collector, and changes to the release itself are Kubernetes API operations captured by the target cluster's audit policy.

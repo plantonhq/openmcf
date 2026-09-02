@@ -1,6 +1,6 @@
 # Azure DNS Zone
 
-Deploys a public Azure DNS Zone: an internet-facing, authoritative DNS zone hosted on Azure's global anycast name-server fleet. The zone is deliberately just the zone — an empty record container plus its Start of Authority settings. Records are declared through separate **AzureDnsRecord** resources referencing this zone's `zone_name` output: one resource per record set, added and removed without touching the zone. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups.
+Deploys a public Azure DNS Zone: an internet-facing, authoritative DNS zone hosted on Azure's global anycast name-server fleet. The zone is deliberately just the zone — an empty record container plus its Start of Authority settings. Records are declared through separate **AzureDnsRecord** resources referencing this zone's `zone_name` output: one resource per record set, added and removed without touching the zone. Creating the zone does not make it authoritative — the domain resolves through it only after the Azure-assigned name servers are configured at the registrar.
 
 ## What Gets Created
 
@@ -35,7 +35,7 @@ Open the deployment store, find **Azure DNS Zone**, and click **Deploy**. The cr
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureDnsZone
 metadata:
   name: example-zone
@@ -95,8 +95,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `name_servers` | The four Azure-assigned name servers | Registrar NS delegation -- the handoff that makes the zone authoritative |
 | `zone_name` | The DNS zone name (e.g., `example.com`) | AzureDnsRecord `zoneName` field via ValueFromRef -- the record join seam |
 | `resource_group_name` | The resource group the zone lives in | AzureDnsRecord `resourceGroup` field -- the other half of the record join seam |
-| `zone_id` | Azure Resource Manager ID of the DNS zone | Azure Policy assignments, diagnostic settings, alias records targeting the zone |
-| `max_number_of_record_sets` | The zone's record-set capacity | Capacity planning for large zones |
+| `zone_id` | Azure Resource Manager ID of the DNS zone | Kinds that manage the zone as a whole — alias records targeting the zone, diagnostic settings, Azure Policy assignments |
+
+`max_number_of_record_sets` is also exported — a per-zone capacity fact (10000 by default), not a live count; it has no ValueFromRef consumers.
 
 ## Common Patterns
 

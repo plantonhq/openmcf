@@ -17,6 +17,16 @@ import (
 // e.g., "subnets[0]" captures "subnets" and "0".
 var indexPattern = regexp.MustCompile(`^(.+)\[(\d+)]$`)
 
+// pulumiSecretMask is the literal placeholder Pulumi substitutes for a
+// secret-marked output when stack outputs are fetched WITHOUT secrets shown
+// (`pulumi stack output` without --show-secrets). A masked value carries no
+// data to populate from — for a repeated field it arrives on the bare key
+// (no indexes to flatten), so the whole list is unrecoverable at this layer.
+// Every sanctioned reader unmasks (the E2E runner passes --show-secrets; the
+// Automation API's StackOutputs fetches secrets shown), so seeing this value
+// here means a reader regressed — the error names that contract.
+const pulumiSecretMask = "[secret]"
+
 // populateMessage sets fields on a proto message from a flat map of string
 // key-value pairs. Keys are dot-separated field paths that may include array
 // indices (field[0] or field.0 notation).
@@ -139,6 +149,11 @@ func handleRepeatedField(
 			// repeated field (Terraform/Pulumi emit "field_name: \"\"" for empty arrays).
 			if value == "" {
 				return nil
+			}
+			if value == pulumiSecretMask {
+				return fmt.Errorf(
+					"repeated field %q arrived as Pulumi's masked %q -- the reader fetched stack outputs without secrets shown, so the list's real values never reached this layer; fix the reader to fetch with secrets (the pulumi CLI's --show-secrets flag, or the Automation API's StackOutputs which unmasks by design)",
+					fieldName, pulumiSecretMask)
 			}
 			return fmt.Errorf("repeated field %q: no array index provided", fieldName)
 		}

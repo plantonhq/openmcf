@@ -197,6 +197,7 @@ Reference an output from another manifest as `valueFrom: {kind: AwsConfigConform
 |---|---|---|
 | `status.outputs.pack_name` | `string` | The pack's name (also the provider's import ID, at either scope). |
 | `status.outputs.pack_arn` | `string` | The pack's ARN (the account-scope or organization-scope ARN, whichever this instance deployed). |
+| `status.outputs.region` | `string` | The AWS region the pack lives in. Conformance packs are region-scoped and addressed by region + name, so any consumer (or verifier) reaching the pack off the ambient region needs this alongside pack_name. |
 
 ## References
 

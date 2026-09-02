@@ -1,12 +1,15 @@
 # Minimal AzureMongoClusterUser scenario: the fixture identity's
-# service principal granted root on the admin database of the cluster
-# kind's own smoke instance. The registry prerequisite chains the
-# cluster (which enables MicrosoftEntraID auth in its smoke shape for
-# exactly this lane); the fixture identity is declared here, not on
-# the registry -- a grant does not universally need a managed
-# identity, only THIS scenario's principal does. Proves the three-kind
-# reference chain live: cluster id + principal id resolving into the
-# grant. The grant itself is free; the lane pays the cluster chain.
+# service principal granted root on the admin database of an
+# Entra-enabled fixture cluster. The registry prerequisite chains the
+# cluster through THIS kind's consumer-scoped override
+# (e2e/prerequisites/azuremongocluster.yaml -- M10 with
+# MicrosoftEntraID, because ARM refuses Entra auth on the Free tier
+# the cluster kind's own smoke uses); the fixture identity is
+# declared here, not on the registry -- a grant does not universally
+# need a managed identity, only THIS scenario's principal does.
+# Proves the three-kind reference chain live: cluster id + principal
+# id resolving into the grant. The grant itself is free; the lane
+# pays the M10 cluster chain (~cents).
 apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMongoClusterUser
 metadata:

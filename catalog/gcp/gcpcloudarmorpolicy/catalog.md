@@ -1,11 +1,12 @@
 # GCP Cloud Armor Policy
 
-Deploys a Cloud Armor security policy with configurable rules for IP allowlisting/denylisting, rate limiting, ban escalation, OWASP WAF protection, and Layer 7 DDoS defense. The policy attaches to HTTP(S) load balancers, Cloud CDN backends, or internal Traffic Director services. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to GCP projects.
+Deploys a Cloud Armor security policy with configurable rules for IP allowlisting/denylisting, rate limiting, ban escalation, OWASP WAF protection, and Layer 7 DDoS defense. The policy attaches to HTTP(S) load balancers, Cloud CDN backends, or internal Traffic Director services — the attachment itself lives on the consuming backend service or backend bucket, which references this policy's self-link.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Compute Engine API enablement** (`compute.googleapis.com`) on the target project (never disabled on destroy)
 - **Security Policy** -- a `compute.SecurityPolicy` in the specified GCP project, configured with the chosen policy type, rules, and advanced options
 - **Security Rules** -- one rule per entry in `rules`, each with a priority, action (allow, deny, throttle, rate_based_ban, redirect), match condition (IP ranges or CEL expression), and optional rate limiting, redirect, header injection, or WAF exclusion configuration
 - **Adaptive Protection** -- created only when `adaptiveProtectionConfig` is present; enables automatic Layer 7 DDoS detection and alerting
@@ -23,7 +24,6 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A GCP project** where the security policy will be created. Provide the project ID directly or reference a GcpProject Cloud Resource via ValueFromRef.
-- **Compute Engine API** (`compute.googleapis.com`) enabled in the target project.
 - **An HTTP(S) load balancer** or backend service to attach the policy to (configured outside this Cloud Resource via the backend service's `securityPolicy` field).
 
 ## Deploy
@@ -121,10 +121,12 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Basic IP allowlist** -- Deny-by-default policy that allows traffic only from specified CIDR ranges (corporate networks, VPNs). All other traffic receives 403 Forbidden. Suitable for internal dashboards and admin APIs. Start from the **Basic IP Allowlist** preset.
 
-**Rate limiting for APIs** -- Per-IP rate limiting with ban escalation. Throttles traffic beyond 100 requests per minute, then bans persistent abusers exceeding 500 requests over 5 minutes for 1 hour. Start from the **Rate Limiting API** preset.
+**Rate limiting for APIs** -- Per-IP rate limiting with ban escalation. Throttles traffic beyond 100 requests per minute, then bans persistent abusers exceeding 500 requests over 5 minutes for 1 hour. Start from the **Rate Limiting for API Endpoints** preset.
 
 **WAF OWASP protection** -- OWASP WAF rules blocking SQL injection and XSS attacks, with adaptive Layer 7 DDoS protection, JSON body parsing, and verbose logging. Suitable for internet-facing web applications. Start from the **WAF OWASP Protection** preset.
 
 ## Works With
 
 - [**GCP Project**](/cloud-catalog/gcp-project) -- provides the GCP project where the security policy is created
+- [**GCP Backend Service**](/cloud-catalog/gcp-backend-service) -- consumes `policy_self_link` as its `securityPolicy` (backend WAF) or `edgeSecurityPolicy` (edge filtering)
+- [**GCP Backend Bucket**](/cloud-catalog/gcp-backend-bucket) -- consumes a CLOUD_ARMOR_EDGE policy's `policy_self_link` as its `edgeSecurityPolicy`

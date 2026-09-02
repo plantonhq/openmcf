@@ -38,7 +38,7 @@ application never implements a login flow.
 | `<oidc-token-endpoint>` | Token endpoint URL | Same discovery document |
 | `<oidc-user-info-endpoint>` | UserInfo endpoint URL | Same discovery document |
 | `<oidc-client-id>` | OAuth client ID registered with the IdP | Your IdP's application registration |
-| `replace-with-client-secret` | OAuth client secret | Your IdP's application registration |
+| `$secret/oidc-client-secret` | A managed-secret reference to the OAuth client secret — the field is sensitive, so a `$secret/<slug>` reference belongs here, never plaintext | Your IdP's application registration |
 | `<target-group-resource-name>` | Name of the AwsLbTargetGroup receiving traffic | Your AwsLbTargetGroup manifest's `metadata.name` |
 
 ## Common Additions

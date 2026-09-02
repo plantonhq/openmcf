@@ -31,14 +31,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Transit Gateway Route Table**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields.
+Open the deployment store, find **AWS Transit Gateway Route Table**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Isolated Domain** preset in the [Presets](#presets) tab for the segmented-topology starting point.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsTransitGatewayRouteTable
 metadata:
   name: prod-domain
@@ -62,7 +62,7 @@ spec:
 planton apply -f route-table.yaml
 ```
 
-This creates a domain where one attachment routes by this table, one shared-services attachment advertises its routes in, and one CIDR is blackholed so this domain can never reach it.
+This creates a domain where one attachment routes by this table, one shared-services attachment advertises its routes in, and one CIDR is blackholed so this domain can never reach it. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -128,9 +128,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Isolated domain** -- Associate the spokes of one environment and propagate only shared services: spokes reach shared services but never each other.
+**Isolated domain** -- Associate the spokes of one environment and propagate only shared services: spokes reach shared services but never each other. Start from the **Isolated Domain** preset.
 
-**Inspection domain** -- A static 0.0.0.0/0 (or a broad summary route) toward the inspection VPC's attachment overrides propagated spoke-to-spoke routes, hair-pinning all inter-spoke traffic through the firewall.
+**Inspection domain** -- A static 0.0.0.0/0 (or a broad summary route) toward the inspection VPC's attachment overrides propagated spoke-to-spoke routes, hair-pinning all inter-spoke traffic through the firewall. Start from the **Inspection Domain** preset.
+
+**Managed default domain** -- A custom table designated as the gateway's default association and propagation table (`setAsDefaultAssociationTable` / `setAsDefaultPropagationTable`), so attachments that keep their default dials on land in a table you own and can add statics to. Start from the **Managed Default Domain** preset.
 
 **Kill switch** -- Blackhole a CIDR this domain must never reach; the blackhole holds regardless of propagations.
 

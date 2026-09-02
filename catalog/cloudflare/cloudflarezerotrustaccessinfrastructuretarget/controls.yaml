@@ -44,6 +44,9 @@ spec:
       evidence:
         type: provider_default
         reference: Access infrastructure applications issue short-lived SSH certificates through the brokered flow -- no static SSH keys are involved in the Cloudflare path.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

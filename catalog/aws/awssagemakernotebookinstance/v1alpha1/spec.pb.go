@@ -40,7 +40,8 @@ type AwsSagemakerNotebookInstanceSpec struct {
 	// Example: "us-west-2", "us-east-1"
 	Region string `protobuf:"bytes,1,opt,name=region,proto3" json:"region,omitempty"`
 	// Compute instance type (an "ml.*" type, e.g. "ml.t3.medium" - the
-	// cheapest current-generation choice, ~$0.05/hour). AWS's accepted
+	// cheapest current-generation choice; the instance bills hourly
+	// whether or not a notebook is open). AWS's accepted
 	// set grows with every release - the value passes through to the API,
 	// which rejects unknown types.
 	InstanceType string `protobuf:"bytes,2,opt,name=instance_type,json=instanceType,proto3" json:"instance_type,omitempty"`
@@ -54,9 +55,11 @@ type AwsSagemakerNotebookInstanceSpec struct {
 	// replaces the instance.
 	SubnetId *v1.StringValueOrRef `protobuf:"bytes,5,opt,name=subnet_id,json=subnetId,proto3" json:"subnet_id,omitempty"`
 	// Security groups applied to the notebook's ENI (requires
-	// `subnet_id`).
+	// `subnet_id`). Changing them replaces the instance -- the ML storage
+	// volume is destroyed with it.
 	SecurityGroupIds []*v1.StringValueOrRef `protobuf:"bytes,6,rep,name=security_group_ids,json=securityGroupIds,proto3" json:"security_group_ids,omitempty"`
-	// KMS key encrypting the ML storage volume at rest.
+	// KMS key encrypting the ML storage volume at rest. Changing it
+	// replaces the instance -- the ML storage volume is destroyed with it.
 	KmsKeyArn *v1.StringValueOrRef `protobuf:"bytes,7,opt,name=kms_key_arn,json=kmsKeyArn,proto3" json:"kms_key_arn,omitempty"`
 	// "Enabled" (AWS default - the notebook gets a direct internet route)
 	// or "Disabled" (traffic flows only through your VPC - requires

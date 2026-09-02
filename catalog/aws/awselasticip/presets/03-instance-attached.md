@@ -1,4 +1,4 @@
-# Preset: Instance-Attached Elastic IP
+# Instance-Attached Elastic IP
 
 **Use case:** Give an EC2 instance a public IP that survives stop/start cycles.
 
@@ -33,5 +33,9 @@ offers), referencing the instance component, so the chart graph reads
 
 ## Cost
 
-- **Free** while the instance runs; **$0.005/hour** (~$3.60/month) if the
-  instance stops and the address sits idle
+- **Billed hourly whether the instance runs or not.** Since February 2024,
+  AWS charges the same hourly rate for every public IPv4 address —
+  attaching it to a running instance no longer makes it free; only
+  BYOIP-pool addresses are exempt
+
+The verified figure for this preset lives in the component's generated estimate at `catalog/_pricing/estimates/awselasticip.yaml` — computed from the pinned price book, never hand-typed here.

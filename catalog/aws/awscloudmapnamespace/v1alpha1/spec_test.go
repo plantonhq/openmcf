@@ -86,6 +86,9 @@ var _ = ginkgo.Describe("AwsCloudMapNamespaceSpec validations", func() {
 		ginkgo.It("accepts a CNAME instance pointing at an endpoint", func() {
 			spec := privateNamespace()
 			spec.Services[0].DnsConfig.Records = []*AwsCloudMapServiceDnsRecord{{Type: "CNAME", Ttl: 30}}
+			// CNAME requires the explicit WEIGHTED policy (the AWS server
+			// contract the cname_requires_weighted rule front-loads).
+			spec.Services[0].DnsConfig.RoutingPolicy = "WEIGHTED"
 			spec.Services[0].Instances = []*AwsCloudMapInstance{
 				{InstanceId: "db", Cname: "mydb.cluster-abc.us-west-2.rds.amazonaws.com"},
 			}
@@ -200,6 +203,46 @@ var _ = ginkgo.Describe("AwsCloudMapNamespaceSpec validations", func() {
 			spec := privateNamespace()
 			spec.Services[0].DnsConfig.Records[0].Ttl = 0
 			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a CNAME record without an explicit routing policy", func() {
+			// AWS's default is MULTIVALUE, which CreateService rejects for
+			// CNAME server-side ("WEIGHTED routing policy must be used with
+			// DNS Record Type CNAME") - the rule fails the manifest offline.
+			spec := privateNamespace()
+			spec.Services[0].DnsConfig.Records = []*AwsCloudMapServiceDnsRecord{{Type: "CNAME", Ttl: 30}}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a CNAME record under an explicit MULTIVALUE policy", func() {
+			spec := privateNamespace()
+			spec.Services[0].DnsConfig.Records = []*AwsCloudMapServiceDnsRecord{{Type: "CNAME", Ttl: 30}}
+			spec.Services[0].DnsConfig.RoutingPolicy = "MULTIVALUE"
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects a port-less ip instance under a health-checked service", func() {
+			// Route 53 probes ip:port - RegisterInstance fails "A port must
+			// be supplied" (the health_checked_instances_need_port rule).
+			spec := &AwsCloudMapNamespaceSpec{
+				Region: "us-west-2",
+				Type:   "PUBLIC_DNS",
+				Services: []*AwsCloudMapService{
+					{
+						Name: "edge",
+						DnsConfig: &AwsCloudMapServiceDnsConfig{
+							Records:       []*AwsCloudMapServiceDnsRecord{{Type: "A", Ttl: 60}},
+							RoutingPolicy: "WEIGHTED",
+						},
+						HealthCheckConfig: &AwsCloudMapServiceHealthCheckConfig{Type: "HTTPS", ResourcePath: "/health", FailureThreshold: 2},
+						Instances:         []*AwsCloudMapInstance{{InstanceId: "edge-1", Ip: "8.8.8.8"}},
+					},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).NotTo(gomega.BeNil())
+			// The same instance WITH a port passes.
+			spec.Services[0].Instances[0].Port = 443
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
 		})
 
 		ginkgo.It("rejects a resource path on a TCP health check", func() {

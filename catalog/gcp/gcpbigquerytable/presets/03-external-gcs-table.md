@@ -1,4 +1,4 @@
-# Preset: External GCS Table
+# External GCS Table
 
 ## When to Use
 

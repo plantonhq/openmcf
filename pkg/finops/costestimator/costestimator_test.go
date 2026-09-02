@@ -6,9 +6,12 @@ import (
 	"testing"
 
 	albv1 "github.com/plantonhq/planton/catalog/aws/awsalb/v1alpha1"
+	ebsv1 "github.com/plantonhq/planton/catalog/aws/awsebsvolume/v1alpha1"
 	eksngv1 "github.com/plantonhq/planton/catalog/aws/awseksnodegroup/v1alpha1"
 	eipv1 "github.com/plantonhq/planton/catalog/aws/awselasticip/v1alpha1"
+	rdsclusterv1 "github.com/plantonhq/planton/catalog/aws/awsrdscluster/v1alpha1"
 	rdsv1 "github.com/plantonhq/planton/catalog/aws/awsrdsinstance/v1alpha1"
+	wafv1 "github.com/plantonhq/planton/catalog/aws/awswafwebacl/v1alpha1"
 	derivationv1 "github.com/plantonhq/planton/finops/componentcostderivation/v1"
 	pricebookv1 "github.com/plantonhq/planton/finops/pricebook/v1"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
@@ -505,6 +508,362 @@ func TestMergeAndDefaults(t *testing.T) {
 	}
 	if lines[0].GetQuantityBasis() != "the primary volume; two replicas hold copies" {
 		t.Errorf("merged basis: got %q", lines[0].GetQuantityBasis())
+	}
+}
+
+// TestExpandOverPerElementPricing pins the repeated-message expansion:
+// a rule with expand_over evaluates once per element with the element
+// as the scope for its value-carrying paths, so each instance's own
+// class picks its own rate; identical elements merge to one line whose
+// quantity is the sum and whose basis appears once, heterogeneous
+// elements keep their own lines, applies_when gates the whole rule
+// from the root while element_applies_when filters elements, an
+// element whose class the book does not carry refuses the whole
+// estimate, and an empty list emits nothing.
+func TestExpandOverPerElementPricing(t *testing.T) {
+	spec := &derivationv1.ComponentCostDerivationSpec{
+		Currency:      "USD",
+		HoursPerMonth: 730,
+		Region:        &derivationv1.RegionBinding{Assumption: "us-west-2"},
+		Lines: []*derivationv1.LineRule{
+			{
+				SkuMeter:   "instance hours",
+				ExpandOver: "instances",
+				AppliesWhen: []*derivationv1.Condition{
+					condition("engine_mode", derivationv1.Condition_not_equals, "serverless"),
+				},
+				ElementAppliesWhen: []*derivationv1.Condition{
+					condition("instance_class", derivationv1.Condition_not_equals, "db.serverless"),
+				},
+				Quantity: []*derivationv1.QuantityFactor{hoursFactor()},
+				Price: &derivationv1.LineRule_PriceLookup{PriceLookup: &derivationv1.PriceLookup{
+					ServiceName: "Amazon Relational Database Service",
+					PricingUnit: "hours",
+					Attributes: []*derivationv1.AttributeBinding{
+						{Key: "instance_class", Value: &derivationv1.AttributeBinding_FromField{FromField: "instance_class"}},
+					},
+				}},
+				Basis: "each provisioned instance's class selects its rate x 730 hours",
+			},
+		},
+	}
+	large := usdEntry("rds-large-us-west-2", "Amazon Relational Database Service", "hours", "us-west-2")
+	large.Attributes = map[string]string{"instance_class": "db.r6g.large"}
+	xlarge := usdEntry("rds-xlarge-us-west-2", "Amazon Relational Database Service", "hours", "us-west-2")
+	xlarge.Attributes = map[string]string{"instance_class": "db.r6g.xlarge"}
+	entries := entriesBySlug(large, xlarge)
+
+	manifest := &rdsclusterv1.AwsRdsCluster{Spec: &rdsclusterv1.AwsRdsClusterSpec{
+		Instances: []*rdsclusterv1.AwsRdsClusterInstance{
+			{Name: "writer", InstanceClass: "db.r6g.large"},
+			{Name: "reader-1", InstanceClass: "db.r6g.large"},
+		},
+	}}
+	preset, refusal, err := Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(homogeneous): err=%v refusal=%+v", err, refusal)
+	}
+	lines := preset.GetQuantityLines()
+	if len(lines) != 1 {
+		t.Fatalf("homogeneous lines: got %d, want 1 (identical elements merge)", len(lines))
+	}
+	if lines[0].GetPricingQuantity() != "1460" {
+		t.Errorf("merged quantity: got %q, want 1460 (2 instances x 730)", lines[0].GetPricingQuantity())
+	}
+	if lines[0].GetPrice() != "rds-large-us-west-2" {
+		t.Errorf("merged price: got %q, want rds-large-us-west-2", lines[0].GetPrice())
+	}
+	if want := "each provisioned instance's class selects its rate x 730 hours"; lines[0].GetQuantityBasis() != want {
+		t.Errorf("merged basis: got %q, want the rule's basis exactly once", lines[0].GetQuantityBasis())
+	}
+
+	// Heterogeneous classes keep their own lines, first-appearance order.
+	manifest.Spec.Instances[1].InstanceClass = "db.r6g.xlarge"
+	preset, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(heterogeneous): err=%v refusal=%+v", err, refusal)
+	}
+	lines = preset.GetQuantityLines()
+	if len(lines) != 2 {
+		t.Fatalf("heterogeneous lines: got %d, want 2", len(lines))
+	}
+	if lines[0].GetPrice() != "rds-large-us-west-2" || lines[1].GetPrice() != "rds-xlarge-us-west-2" {
+		t.Errorf("heterogeneous prices: got %q, %q", lines[0].GetPrice(), lines[1].GetPrice())
+	}
+	if lines[0].GetPricingQuantity() != "730" || lines[1].GetPricingQuantity() != "730" {
+		t.Errorf("heterogeneous quantities: got %q, %q, want 730 each", lines[0].GetPricingQuantity(), lines[1].GetPricingQuantity())
+	}
+
+	// element_applies_when filters elements: a serverless instance
+	// contributes nothing while its provisioned sibling still prices.
+	manifest.Spec.Instances[1].InstanceClass = "db.serverless"
+	preset, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(filtered): err=%v refusal=%+v", err, refusal)
+	}
+	if len(preset.GetQuantityLines()) != 1 {
+		t.Fatalf("filtered lines: got %d, want 1 (the serverless element is filtered)", len(preset.GetQuantityLines()))
+	}
+
+	// applies_when gates the WHOLE expanded rule from the spec root: a
+	// root value the rule's conditions reject drops every element.
+	manifest.Spec.Instances[1].InstanceClass = "db.r6g.large"
+	manifest.Spec.EngineMode = "serverless"
+	preset, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(root-gated): err=%v refusal=%+v", err, refusal)
+	}
+	if len(preset.GetQuantityLines()) != 0 {
+		t.Fatalf("root-gated lines: got %d, want 0 (applies_when reads the root)", len(preset.GetQuantityLines()))
+	}
+	manifest.Spec.EngineMode = ""
+
+	// An element whose class the book does not carry refuses the WHOLE
+	// estimate -- a total missing an instance it owes is a lie.
+	manifest.Spec.Instances[1].InstanceClass = "db.r6g.4xlarge"
+	_, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil {
+		t.Fatalf("Evaluate(unpriced): %v", err)
+	}
+	if refusal == nil || !strings.Contains(refusal.Reason, "no pinned price") {
+		t.Fatalf("unpriced element: got refusal %+v, want a no-pinned-price refusal", refusal)
+	}
+
+	// An empty list emits nothing.
+	manifest.Spec.Instances = nil
+	preset, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(empty): err=%v refusal=%+v", err, refusal)
+	}
+	if len(preset.GetQuantityLines()) != 0 {
+		t.Fatalf("empty-list lines: got %d, want 0", len(preset.GetQuantityLines()))
+	}
+
+	// expand_over must name a repeated message field.
+	spec.Lines[0].ExpandOver = "engine"
+	if _, _, err := Evaluate(manifest, spec, entries); err == nil {
+		t.Fatal("expand_over on a scalar field: want an error, got none")
+	}
+}
+
+// TestAnyElementCondition pins the existential condition: it ranges
+// over a repeated message field's elements and holds when ANY element
+// matches, reading paths element-relative -- the shape of billing
+// identities buried inside repeated configuration trees (a WAF rule
+// referencing a subscription-bearing managed rule group).
+func TestAnyElementCondition(t *testing.T) {
+	managedGroup := func(name string) *wafv1.AwsWafWebAclRule {
+		return &wafv1.AwsWafWebAclRule{
+			Name: name,
+			Statement: &wafv1.AwsWafWebAclStatement{
+				Statement: &wafv1.AwsWafWebAclStatement_ManagedRuleGroup{
+					ManagedRuleGroup: &wafv1.AwsWafWebAclManagedRuleGroupStatement{
+						Name:       name,
+						VendorName: "AWS",
+					},
+				},
+			},
+		}
+	}
+	spec := &derivationv1.ComponentCostDerivationSpec{
+		Currency:      "USD",
+		HoursPerMonth: 730,
+		Region:        &derivationv1.RegionBinding{Assumption: "us-east-1"},
+		Refusals: []*derivationv1.RefusalRule{
+			{
+				When: []*derivationv1.Condition{{
+					AnyElementOf: "rules",
+					FieldPath:    "statement.managed_rule_group.name",
+					Op:           derivationv1.Condition_equals,
+					Value:        "AWSManagedRulesBotControlRuleSet",
+				}},
+				Reason: "Bot Control carries a monthly subscription this price book does not carry",
+			},
+		},
+		Lines: []*derivationv1.LineRule{
+			{
+				SkuMeter: "web ACL monthly fee",
+				Quantity: []*derivationv1.QuantityFactor{constantFactor("1")},
+				Price:    &derivationv1.LineRule_PriceSlug{PriceSlug: "waf-acl-monthly"},
+				Basis:    "one web ACL",
+			},
+		},
+	}
+	entries := entriesBySlug(usdEntry("waf-acl-monthly", "AWS WAF", "months", "global"))
+
+	// Core managed groups carry no subscription -- the refusal must not
+	// fire, including for a rule whose statement is not a managed group
+	// at all (the intermediate resolves absent, never errors).
+	manifest := &wafv1.AwsWafWebAcl{Spec: &wafv1.AwsWafWebAclSpec{
+		Rules: []*wafv1.AwsWafWebAclRule{
+			managedGroup("AWSManagedRulesCommonRuleSet"),
+			{Name: "rate-limit", Statement: &wafv1.AwsWafWebAclStatement{}},
+		},
+	}}
+	preset, refusal, err := Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(core groups): err=%v refusal=%+v", err, refusal)
+	}
+	if len(preset.GetQuantityLines()) != 1 {
+		t.Fatalf("core-group lines: got %d, want 1", len(preset.GetQuantityLines()))
+	}
+
+	// Any element referencing the subscription group refuses.
+	manifest.Spec.Rules = append(manifest.Spec.Rules, managedGroup("AWSManagedRulesBotControlRuleSet"))
+	_, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil {
+		t.Fatalf("Evaluate(bot control): %v", err)
+	}
+	if refusal == nil || !strings.Contains(refusal.Reason, "subscription") {
+		t.Fatalf("bot control: got refusal %+v, want the subscription refusal", refusal)
+	}
+
+	// An empty list satisfies nothing.
+	manifest.Spec.Rules = nil
+	_, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(no rules): err=%v refusal=%+v", err, refusal)
+	}
+
+	// any_element_of must name a repeated message field.
+	spec.Refusals[0].When[0].AnyElementOf = "name"
+	if _, _, err := Evaluate(manifest, spec, entries); err == nil {
+		t.Fatal("any_element_of on a scalar field: want an error, got none")
+	}
+}
+
+// TestSubtractBaseline pins the excess-over-baseline factor: only the
+// amount above the included allotment bills (gp3's included 3,000 IOPS
+// shape), at-or-under the baseline is an honest zero that drops the
+// line, and the factor multiplies with its siblings (the per-hour
+// dialed-performance shape).
+func TestSubtractBaseline(t *testing.T) {
+	subtractFactor := func(path, baseline string) *derivationv1.QuantityFactor {
+		return &derivationv1.QuantityFactor{Factor: &derivationv1.QuantityFactor_SubtractBaseline{
+			SubtractBaseline: &derivationv1.SubtractBaseline{FieldPath: path, Baseline: baseline},
+		}}
+	}
+	spec := &derivationv1.ComponentCostDerivationSpec{
+		Currency:      "USD",
+		HoursPerMonth: 730,
+		Region:        &derivationv1.RegionBinding{Assumption: "us-east-1"},
+		Lines: []*derivationv1.LineRule{
+			{
+				SkuMeter: "provisioned IOPS",
+				Quantity: []*derivationv1.QuantityFactor{subtractFactor("iops", "3000")},
+				Price:    &derivationv1.LineRule_PriceSlug{PriceSlug: "gp3-iops-us-east-1"},
+				Basis:    "only IOPS above gp3's included 3,000 baseline bill monthly",
+			},
+		},
+	}
+	entries := entriesBySlug(usdEntry("gp3-iops-us-east-1", "Amazon Elastic Block Store", "IOPS-months", "us-east-1"))
+
+	manifest := &ebsv1.AwsEbsVolume{Spec: &ebsv1.AwsEbsVolumeSpec{Iops: 6000}}
+	preset, refusal, err := Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(6000): err=%v refusal=%+v", err, refusal)
+	}
+	if got := preset.GetQuantityLines(); len(got) != 1 || got[0].GetPricingQuantity() != "3000" {
+		t.Fatalf("excess: got %+v, want one line of 3000 (6000 - 3000)", got)
+	}
+
+	// At the baseline the excess is an honest zero and the line drops.
+	manifest.Spec.Iops = 3000
+	preset, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(3000): err=%v refusal=%+v", err, refusal)
+	}
+	if len(preset.GetQuantityLines()) != 0 {
+		t.Fatalf("at-baseline lines: got %d, want 0", len(preset.GetQuantityLines()))
+	}
+
+	// Unset (zero) floors at zero, never a negative quantity.
+	manifest.Spec.Iops = 0
+	preset, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(unset): err=%v refusal=%+v", err, refusal)
+	}
+	if len(preset.GetQuantityLines()) != 0 {
+		t.Fatalf("unset lines: got %d, want 0", len(preset.GetQuantityLines()))
+	}
+
+	// The factor multiplies with its siblings: (8000 - 3000) x 730, the
+	// dialed-performance per-hour shape.
+	spec.Lines[0].Quantity = []*derivationv1.QuantityFactor{subtractFactor("iops", "3000"), hoursFactor()}
+	manifest.Spec.Iops = 8000
+	preset, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(8000 x hours): err=%v refusal=%+v", err, refusal)
+	}
+	if got := preset.GetQuantityLines(); len(got) != 1 || got[0].GetPricingQuantity() != "3650000" {
+		t.Fatalf("product: got %+v, want one line of 3650000 (5000 x 730)", got)
+	}
+
+	// A non-positive or malformed baseline is a malformed derivation.
+	for _, bad := range []string{"0", "abc", ""} {
+		spec.Lines[0].Quantity = []*derivationv1.QuantityFactor{subtractFactor("iops", bad)}
+		if _, _, err := Evaluate(manifest, spec, entries); err == nil {
+			t.Errorf("baseline %q: want an error, got none", bad)
+		}
+	}
+}
+
+// TestStartsWithCondition pins the prefix op: version-family detection
+// where enumerating every member is impossible ("composer-3" must catch
+// composer-3.1.2 and every future patch), an unset field never matches,
+// and an empty prefix is a malformed derivation.
+func TestStartsWithCondition(t *testing.T) {
+	spec := &derivationv1.ComponentCostDerivationSpec{
+		Currency:      "USD",
+		HoursPerMonth: 730,
+		Region:        &derivationv1.RegionBinding{Assumption: "us-west-2"},
+		Refusals: []*derivationv1.RefusalRule{
+			{
+				When:   []*derivationv1.Condition{condition("engine_version", derivationv1.Condition_starts_with, "8.")},
+				Reason: "the 8.x engine family bills meters this price book does not carry",
+			},
+		},
+		Lines: []*derivationv1.LineRule{
+			{
+				SkuMeter: "instance hours",
+				Quantity: []*derivationv1.QuantityFactor{hoursFactor()},
+				Price:    &derivationv1.LineRule_PriceSlug{PriceSlug: "rds-hours-us-west-2"},
+				Basis:    "one instance x 730 hours",
+			},
+		},
+	}
+	entries := entriesBySlug(usdEntry("rds-hours-us-west-2", "Amazon Relational Database Service", "hours", "us-west-2"))
+
+	manifest := &rdsclusterv1.AwsRdsCluster{Spec: &rdsclusterv1.AwsRdsClusterSpec{EngineVersion: "8.0.mysql_aurora.3.05.2"}}
+	_, refusal, err := Evaluate(manifest, spec, entries)
+	if err != nil {
+		t.Fatalf("Evaluate(8.x): %v", err)
+	}
+	if refusal == nil || !strings.Contains(refusal.Reason, "8.x engine family") {
+		t.Fatalf("8.x: got refusal %+v, want the family refusal", refusal)
+	}
+
+	// A different family prices normally.
+	manifest.Spec.EngineVersion = "5.7.mysql_aurora.2.11.4"
+	preset, refusal, err := Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(5.7): err=%v refusal=%+v", err, refusal)
+	}
+	if len(preset.GetQuantityLines()) != 1 {
+		t.Fatalf("5.7 lines: got %d, want 1", len(preset.GetQuantityLines()))
+	}
+
+	// An unset field renders empty and never matches a non-empty prefix.
+	manifest.Spec.EngineVersion = ""
+	_, refusal, err = Evaluate(manifest, spec, entries)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(unset): err=%v refusal=%+v", err, refusal)
+	}
+
+	// An empty prefix is a malformed derivation, not a vacuous match.
+	spec.Refusals[0].When[0].Value = ""
+	if _, _, err := Evaluate(manifest, spec, entries); err == nil {
+		t.Fatal("empty starts_with value: want an error, got none")
 	}
 }
 

@@ -40,6 +40,20 @@ The GA provider is the parity baseline. Capability that exists only in a
 secondary channel (for Google, the `google-beta` provider) enters per kind
 through an explicitly enumerated admission list, never wholesale.
 
+## The provider block
+
+Parity covers the provider's own configuration block -- credentials,
+role-assumption chains, default tags, endpoint overrides, retry tuning --
+under the same total-accounting rule as resources: every configurable,
+non-deprecated provider-block argument is matched to a provider-config
+field, mapped by recorded judgment, owned by the modules by recorded
+judgment, or excluded with a recorded reason -- and arguments set inside
+catalog modules' own provider blocks must carry that judgment too.
+
+| Provider-block args | Matched | Mapped | Module-owned | Excluded | Open gaps | Accounted |
+|---|---|---|---|---|---|---|
+| 6 | 3 | 0 | 0 | 3 | 0 | ✅ |
+
 ## Depth: per-kind accounting
 
 Every configurable, non-deprecated provider argument of a kind's consumed

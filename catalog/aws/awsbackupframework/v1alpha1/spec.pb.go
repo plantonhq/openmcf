@@ -123,8 +123,17 @@ type AwsBackupFrameworkControl struct {
 	// The control's parameters (e.g. requiredRetentionDays for the
 	// minimum-retention check). Parameterless controls omit this.
 	InputParameters []*AwsBackupFrameworkControlInputParameter `protobuf:"bytes,2,rep,name=input_parameters,json=inputParameters,proto3" json:"input_parameters,omitempty"`
-	// Which resources the control evaluates. Omit to evaluate
-	// everything the control applies to.
+	// Which resources the control evaluates. PREFER DECLARING THIS
+	// EXPLICITLY on resource-scoped controls (e.g.
+	// BACKUP_RESOURCES_PROTECTED_BY_BACKUP_PLAN): omitting it is valid
+	// at AWS - the control then evaluates everything it applies to -
+	// but AWS materializes its default all-supported-types scope
+	// server-side, and the pinned Terraform provider ships no diff
+	// suppression for that echo, so a scope-less control makes every
+	// later plan propose stripping a scope AWS will re-materialize
+	// (live-verified 2026-08-25; the provider's own acceptance tests
+	// only exercise the scoped form). Parameter-only checks (e.g. the
+	// minimum-retention check) take no scope and are unaffected.
 	Scope         *AwsBackupFrameworkControlScope `protobuf:"bytes,3,opt,name=scope,proto3" json:"scope,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

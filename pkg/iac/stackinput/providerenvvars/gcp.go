@@ -8,8 +8,6 @@ import (
 // loadGcpEnvVars builds the GCP provider environment variables from the resolved provider
 // config:
 //
-//   - service_account_key set -> emit it as GOOGLE_CREDENTIALS (the terraform google provider
-//     reads the key JSON from that variable).
 //   - web_identity set -> fail loudly. The terraform google provider has no env-var form of
 //     its external_credentials block, so keyless auth on the tofu/terraform path needs its own
 //     deliberate design (per-module HCL vs a pre-exchanged access token) -- until that lands,
@@ -17,11 +15,18 @@ import (
 //     identity the environment happens to hold, which is exactly the failure keyless auth
 //     exists to prevent. The pulumi path supports web identity via the shared provider
 //     builder.
-//   - neither -> no credential env vars; the provider resolves credentials from the ambient
+//   - access_token set -> emit it as GOOGLE_OAUTH_ACCESS_TOKEN (the terraform google
+//     provider's env form of its access_token argument). It deliberately wins over a stale
+//     service_account_key, and only ONE credential variable is ever emitted: the token was
+//     minted for this run, and emitting both would leave the effective identity to provider
+//     precedence rules instead of this dispatch.
+//   - service_account_key set -> emit it as GOOGLE_CREDENTIALS (the terraform google provider
+//     reads the key JSON from that variable).
+//   - none -> no credential env vars; the provider resolves credentials from the ambient
 //     Application Default Credentials chain.
 //
-// Credential env vars are never emitted with empty values: an empty GOOGLE_CREDENTIALS would
-// poison the provider's ambient credential chain.
+// Credential env vars are never emitted with empty values: an empty GOOGLE_CREDENTIALS or
+// GOOGLE_OAUTH_ACCESS_TOKEN would poison the provider's ambient credential chain.
 func loadGcpEnvVars(providerConfigYaml []byte) (map[string]string, error) {
 	config := new(gcpprovider.GcpProviderConfig)
 	if err := loadProviderConfigProto(providerConfigYaml, config); err != nil {
@@ -34,6 +39,10 @@ func loadGcpEnvVars(providerConfigYaml []byte) (map[string]string, error) {
 	}
 
 	envVars := map[string]string{}
+	if config.GetAccessToken() != "" {
+		envVars["GOOGLE_OAUTH_ACCESS_TOKEN"] = config.GetAccessToken()
+		return envVars, nil
+	}
 	if config.GetServiceAccountKey() != "" {
 		envVars["GOOGLE_CREDENTIALS"] = config.GetServiceAccountKey()
 	}

@@ -52,6 +52,9 @@ spec:
       evidence:
         type: spec_default
         reference: Every provisioned user requires a password (a required spec field), delivered through a Kubernetes Secret and injected via valueFrom.secretKeyRef -- never plaintext in the CHI. The built-in default user stays passwordless but is operator-fenced to the cluster's own pods; passwordless named users are not provisioned by this kind.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The spec's user passwords are database credentials for clients on the native and HTTP query interfaces (including the bundled play console) -- workload access, not end-user sign-in; ClickHouse models no credential-strength policy for them.
     - control_id: audit-logging
       status: not_applicable
       notes: Server activity logs stream to the container filesystem (or the optional log_disk_size volume) for the cluster's log collector; a provider-style audit trail is not modeled in this spec. Changes to the cluster's own configuration are Kubernetes API operations, captured by the target cluster's audit policy.

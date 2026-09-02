@@ -36,14 +36,20 @@ var decimalPattern = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
 //  3. Every field path anywhere in the document (region binding,
 //     conditions, quantity factors, attribute bindings) resolves against
 //     the served version's compiled descriptors -- a schema rename that
-//     orphans a rule fails CI loudly -- and count_of paths are actually
-//     repeated fields.
+//     orphans a rule fails CI loudly -- UNDER THE ENGINE'S OWN traversal
+//     contract (specpath.ResolvableTerminal): a path that walks through
+//     a repeated or map field is refused here, at CI, instead of
+//     erroring at replay. count_of paths are actually repeated fields;
+//     expand_over and any_element_of paths are repeated MESSAGE fields,
+//     and the paths inside their scopes resolve against the element.
 //  4. Every line rule names a declared meter (a baseline charge or cost
 //     driver sku_meter in the component's cost.yaml), at least one
 //     quantity factor, exactly one price arm (a slug resolving in the
 //     provider's book, or a complete attribute lookup), and its basis
 //     prose; every refusal states its reason; conditions carry an op and
-//     the comparand exactly when the op compares.
+//     the comparand exactly when the op compares (starts_with demands a
+//     non-empty prefix); subtract_baseline baselines are positive
+//     decimals.
 //
 // Whether the rules reproduce the hand-verified numbers is the estimate
 // generator's replay check -- this gate keeps each derivation internally
@@ -109,7 +115,7 @@ func TestCostDerivationConformance(t *testing.T) {
 
 			if region := spec.GetRegion(); region != nil {
 				if path := region.GetFromField(); path != "" {
-					if err := specpath.Validate(specDescriptor, path); err != nil {
+					if _, err := specpath.ResolvableTerminal(specDescriptor, path); err != nil {
 						t.Errorf("region from_field: %v", err)
 					}
 				}
@@ -119,7 +125,7 @@ func TestCostDerivationConformance(t *testing.T) {
 				if len(refusal.GetWhen()) == 0 {
 					t.Errorf("refusal %d has no conditions -- an unconditional refusal means the component should ship no derivation", i)
 				}
-				checkConditions(t, specDescriptor, refusal.GetWhen())
+				checkConditions(t, specDescriptor, refusal.GetWhen(), false)
 				if strings.TrimSpace(refusal.GetReason()) == "" {
 					t.Errorf("refusal %d has no reason -- the honest sentence is the point", i)
 				}
@@ -140,19 +146,21 @@ func TestCostDerivationConformance(t *testing.T) {
 				if strings.TrimSpace(text.GetText()) == "" {
 					t.Errorf("exclusion %d has no text", i)
 				}
-				checkConditions(t, specDescriptor, text.GetAppliesWhen())
+				checkConditions(t, specDescriptor, text.GetAppliesWhen(), false)
 			}
 			for i, note := range spec.GetNotes() {
 				if strings.TrimSpace(note.GetText()) == "" {
 					t.Errorf("note %d has no text", i)
 				}
-				checkConditions(t, specDescriptor, note.GetAppliesWhen())
+				checkConditions(t, specDescriptor, note.GetAppliesWhen(), false)
 			}
 		})
 	}
 }
 
-// checkLineRule verifies one rule's internal soundness.
+// checkLineRule verifies one rule's internal soundness. A rule with
+// expand_over validates its paths against the ELEMENT descriptor -- the
+// scope the engine hands every path at replay.
 func checkLineRule(
 	t *testing.T,
 	specDescriptor protoreflect.MessageDescriptor,
@@ -167,7 +175,32 @@ func checkLineRule(
 	} else if !meters[meter] {
 		t.Errorf("sku_meter %q is not declared by the component's cost.yaml (baseline charges and cost drivers) -- a derivation cannot price an undeclared meter", meter)
 	}
-	checkConditions(t, specDescriptor, rule.GetAppliesWhen())
+
+	// The scope the rule's VALUE-carrying paths resolve against: the
+	// spec itself, or the expand_over field's element message.
+	// applies_when always reads the root; element_applies_when reads
+	// the element and is only legal on an expanded rule.
+	scopeDescriptor := specDescriptor
+	inExpansion := false
+	if path := rule.GetExpandOver(); path != "" {
+		terminal, err := specpath.ResolvableTerminal(specDescriptor, path)
+		if err != nil {
+			t.Errorf("line %q: expand_over: %v", meter, err)
+			return
+		}
+		if !terminal.IsList() || terminal.IsMap() || terminal.Kind() != protoreflect.MessageKind {
+			t.Errorf("line %q: expand_over %q is not a repeated message field", meter, path)
+			return
+		}
+		scopeDescriptor = terminal.Message()
+		inExpansion = true
+	}
+
+	checkConditions(t, specDescriptor, rule.GetAppliesWhen(), false)
+	if len(rule.GetElementAppliesWhen()) > 0 && !inExpansion {
+		t.Errorf("line %q carries element_applies_when without expand_over -- there are no elements to filter", meter)
+	}
+	checkConditions(t, scopeDescriptor, rule.GetElementAppliesWhen(), inExpansion)
 
 	if len(rule.GetQuantity()) == 0 {
 		t.Errorf("line %q has no quantity factors", meter)
@@ -179,7 +212,7 @@ func checkLineRule(
 				t.Errorf("line %q: constant %q is not a plain decimal string", meter, f.Constant)
 			}
 		case *derivationv1.QuantityFactor_FieldValue:
-			terminal, err := specpath.Terminal(specDescriptor, f.FieldValue.GetFieldPath())
+			terminal, err := specpath.ResolvableTerminal(scopeDescriptor, f.FieldValue.GetFieldPath())
 			if err != nil {
 				t.Errorf("line %q: field_value: %v", meter, err)
 			} else if terminal.IsList() || terminal.IsMap() {
@@ -189,7 +222,7 @@ func checkLineRule(
 				t.Errorf("line %q: default_when_unset %q is not a plain decimal string", meter, d)
 			}
 		case *derivationv1.QuantityFactor_CountOf:
-			terminal, err := specpath.Terminal(specDescriptor, f.CountOf)
+			terminal, err := specpath.ResolvableTerminal(scopeDescriptor, f.CountOf)
 			if err != nil {
 				t.Errorf("line %q: count_of: %v", meter, err)
 			} else if !terminal.IsList() {
@@ -198,6 +231,19 @@ func checkLineRule(
 		case *derivationv1.QuantityFactor_HoursInMonth:
 			if !f.HoursInMonth {
 				t.Errorf("line %q: hours_in_month must be true when used", meter)
+			}
+		case *derivationv1.QuantityFactor_SubtractBaseline:
+			terminal, err := specpath.ResolvableTerminal(scopeDescriptor, f.SubtractBaseline.GetFieldPath())
+			if err != nil {
+				t.Errorf("line %q: subtract_baseline: %v", meter, err)
+			} else if terminal.IsList() || terminal.IsMap() {
+				t.Errorf("line %q: subtract_baseline %q is not a scalar", meter, f.SubtractBaseline.GetFieldPath())
+			}
+			baseline := f.SubtractBaseline.GetBaseline()
+			if !decimalPattern.MatchString(baseline) {
+				t.Errorf("line %q: subtract_baseline baseline %q is not a plain decimal string", meter, baseline)
+			} else if allZeros(baseline) {
+				t.Errorf("line %q: subtract_baseline baseline %q is zero -- a zero baseline is a plain field_value, not a subtraction", meter, baseline)
 			}
 		default:
 			t.Errorf("line %q has a quantity factor with no arm set", meter)
@@ -227,7 +273,7 @@ func checkLineRule(
 					t.Errorf("line %q: attribute %q has an empty constant", meter, binding.GetKey())
 				}
 			case *derivationv1.AttributeBinding_FromField:
-				if err := specpath.Validate(specDescriptor, value.FromField); err != nil {
+				if _, err := specpath.ResolvableTerminal(scopeDescriptor, value.FromField); err != nil {
 					t.Errorf("line %q: attribute %q: %v", meter, binding.GetKey(), err)
 				}
 			default:
@@ -250,10 +296,32 @@ func checkLineRule(
 // reference would silently compare against "" -- an unknowable value must
 // never steer a comparison. Presence ops on wrappers are well-defined
 // (either arm populated reads set) and stay legal.
-func checkConditions(t *testing.T, specDescriptor protoreflect.MessageDescriptor, conditions []*derivationv1.Condition) {
+//
+// A condition with any_element_of validates its field_path against the
+// named repeated message field's ELEMENT descriptor -- the scope the
+// engine reads it against. inExpansion refuses any_element_of inside an
+// expanded rule: there the conditions already read the current element.
+func checkConditions(t *testing.T, specDescriptor protoreflect.MessageDescriptor, conditions []*derivationv1.Condition, inExpansion bool) {
 	t.Helper()
 	for _, condition := range conditions {
-		terminal, err := specpath.Terminal(specDescriptor, condition.GetFieldPath())
+		scopeDescriptor := specDescriptor
+		if listPath := condition.GetAnyElementOf(); listPath != "" {
+			if inExpansion {
+				t.Errorf("condition: any_element_of %q inside an expanded rule -- the conditions already read the current element", listPath)
+				continue
+			}
+			listTerminal, err := specpath.ResolvableTerminal(specDescriptor, listPath)
+			if err != nil {
+				t.Errorf("condition: any_element_of %q: %v", listPath, err)
+				continue
+			}
+			if !listTerminal.IsList() || listTerminal.IsMap() || listTerminal.Kind() != protoreflect.MessageKind {
+				t.Errorf("condition: any_element_of %q is not a repeated message field", listPath)
+				continue
+			}
+			scopeDescriptor = listTerminal.Message()
+		}
+		terminal, err := specpath.ResolvableTerminal(scopeDescriptor, condition.GetFieldPath())
 		if err != nil {
 			t.Errorf("condition: %v", err)
 			continue
@@ -266,6 +334,13 @@ func checkConditions(t *testing.T, specDescriptor protoreflect.MessageDescriptor
 			if isReferenceCapable(terminal) {
 				t.Errorf("condition on %q compares a value-or-reference field -- a referenced value is unknowable at estimate time; restructure the rule or use a presence op", condition.GetFieldPath())
 			}
+		case derivationv1.Condition_starts_with:
+			if condition.GetValue() == "" {
+				t.Errorf("condition on %q is a starts_with but carries no prefix -- an empty prefix would match everything", condition.GetFieldPath())
+			}
+			if isReferenceCapable(terminal) {
+				t.Errorf("condition on %q prefix-matches a value-or-reference field -- a referenced value is unknowable at estimate time; restructure the rule or use a presence op", condition.GetFieldPath())
+			}
 		case derivationv1.Condition_is_set, derivationv1.Condition_is_unset:
 			if condition.GetValue() != "" {
 				t.Errorf("condition on %q is a presence check but carries value %q", condition.GetFieldPath(), condition.GetValue())
@@ -274,6 +349,16 @@ func checkConditions(t *testing.T, specDescriptor protoreflect.MessageDescriptor
 			t.Errorf("condition on %q has no op", condition.GetFieldPath())
 		}
 	}
+}
+
+// allZeros reports whether a decimal string parses to zero ("0", "0.0").
+func allZeros(decimal string) bool {
+	for _, r := range decimal {
+		if r != '0' && r != '.' {
+			return false
+		}
+	}
+	return true
 }
 
 // isReferenceCapable reports whether a field is the value-or-reference

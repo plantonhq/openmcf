@@ -1,14 +1,13 @@
-# Zero Trust Tunnel on Cloudflare
+# Cloudflare Zero Trust Tunnel
 
-Provisions a Cloudflare Tunnel (cloudflared): a secure, outbound-only connection from a private network to Cloudflare's edge. A tunnel exposes private HTTP/TCP/SSH/RDP services via public hostnames (ingress rules) and makes private IP ranges reachable to WARP clients (via `CloudflareZeroTrustTunnelRoute`) -- without opening a single inbound firewall port. The connector authenticates with the run token exported in the stack outputs. Integrates with Planton's Provider Connections for Cloudflare credential management.
+Provisions a Cloudflare Tunnel (cloudflared): a secure, outbound-only connection from a private network to Cloudflare's edge. A tunnel exposes private HTTP/TCP/SSH/RDP services via public hostnames (ingress rules) and makes private IP ranges reachable to WARP clients (via `CloudflareZeroTrustTunnelRoute`) -- without opening a single inbound firewall port. The connector authenticates with the run token exported in the stack outputs.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Tunnel** -- the cloudflared tunnel object and its run token
-- **Ingress configuration** -- public-hostname rules and origin-connection settings, when the tunnel is Cloudflare-managed
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
+- **Ingress configuration** -- created only when `configSrc` is `cloudflare`; provisioned as its own provider resource, so editing ingress never recreates the tunnel
 
 ## Before You Deploy
 
@@ -26,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Zero Trust Tunnel on Cloudflare**, and click **Deploy**. The creation wizard captures the tunnel identity (account, name, configuration source, and an optional managed-secret run secret), the public-hostname ingress rules, and the tunnel-level origin connection defaults (including a Cloudflare Access block).
+Open the deployment store, find **Cloudflare Zero Trust Tunnel**, and click **Deploy**. The creation wizard captures the tunnel identity (account, name, configuration source, and an optional managed-secret run secret), the public-hostname ingress rules, and the tunnel-level origin connection defaults (including a Cloudflare Access block). Start from the **Publish a private app on a public hostname** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareZeroTrustTunnel
 metadata:
   name: prod-connector
@@ -55,6 +54,25 @@ planton apply -f cloudflare-zero-trust-tunnel.yaml
 
 This exposes `app.example.com` through the tunnel to a local service on port 8080, with a catch-all 404 for everything else. A Stack Job tracks the provisioning in real time.
 
+### InfraChart
+
+Protect an ingress hostname with an Access application deployed in the same composition, wiring the Access block with ValueFromRef:
+
+```yaml
+spec:
+  originRequest:
+    access:
+      audTag:
+        - valueFrom:
+            kind: CloudflareZeroTrustAccessApplication
+            name: internal-dashboard
+            fieldPath: status.outputs.aud
+      teamName: acme-corp
+      required: true
+```
+
+The InfraPipeline resolves the dependency graph, provisions the Access application first, then configures the tunnel with the resolved AUD tag.
+
 ## Key Configuration
 
 These are the most important decisions when configuring a tunnel. Explore the full field reference in the [API Explorer](#api-explorer) tab.
@@ -73,32 +91,35 @@ These are the most important decisions when configuring a tunnel. Explore the fu
 
 ### What This Component Consumes
 
-A tunnel's Access block references **CloudflareZeroTrustAccessApplication** resources (via `originRequest.access.audTag`).
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **CloudflareZeroTrustAccessApplication** (optional) | `originRequest.access.audTag[]` (also per-rule `ingress[].originRequest.access.audTag[]`) | `status.outputs.aud` |
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains:
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `tunnel_id` | The Cloudflare-assigned UUID of the tunnel | Referenced by `CloudflareZeroTrustTunnelRoute` |
-| `tunnel_cname` | The CNAME target for public hostnames | Point a `CloudflareDnsRecord` CNAME at it |
-| `tunnel_token` | The connector run token (sensitive) | `cloudflared tunnel run --token <token>` |
-| `tunnel_status` | The tunnel health (inactive/degraded/healthy/down) | Dashboards, alerting |
+| `tunnel_id` | The Cloudflare-assigned UUID of the tunnel | Referenced by a CloudflareZeroTrustTunnelRoute's `tunnelId`, or a Worker's `vpcNetworks` binding |
+| `tunnel_cname` | The CNAME target (`<tunnel_id>.cfargotunnel.com`) | Point a CloudflareDnsRecord CNAME at it to route a public hostname through the tunnel |
+| `tunnel_token` | The connector run token (sensitive) | `cloudflared tunnel run --token <token>` on the private network |
+
+`status.outputs` also carries `tunnel_status` (inactive/degraded/healthy/down), `account_tag`, and `created_on`.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Public hostname** -- an ingress rule maps a public hostname to a local HTTP service, with a catch-all 404.
+**Public hostname** -- an ingress rule maps a public hostname to a local HTTP service, with a catch-all 404. Start from the **Publish a private app on a public hostname** preset.
 
-**Access-protected** -- the origin Access block requires an Access application's JWT so only authorized users reach a hostname.
+**Access-protected** -- the origin Access block requires an Access application's JWT so only authorized users reach a hostname. Start from the **Access-protected admin hostname** preset.
 
-**Private network connector** -- pair the tunnel with `CloudflareZeroTrustTunnelRoute` resources to make private CIDRs reachable to WARP clients.
+**Private network connector** -- pair the tunnel with `CloudflareZeroTrustTunnelRoute` resources to make private CIDRs reachable to WARP clients; no ingress rules needed. Start from the **Private-network connector (for WARP access)** preset.
 
 ## Works With
 
-- [**Zero Trust Tunnel Route on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel-route) -- advertises private CIDRs through this tunnel
-- [**Zero Trust Tunnel Virtual Network on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) -- the routing segment a route belongs to
-- [**Zero Trust Access Application on Cloudflare**](/cloud-catalog/cloudflare-zero-trust-access-application) -- the Access apps an ingress Access block references
-- [**DNS Record on Cloudflare**](/cloud-catalog/cloudflare-dns-record) -- the CNAME that points a public hostname at the tunnel
+- [**Cloudflare Zero Trust Tunnel Route**](/cloud-catalog/cloudflare-zero-trust-tunnel-route) -- advertises private CIDRs through this tunnel
+- [**Cloudflare Zero Trust Tunnel Virtual Network**](/cloud-catalog/cloudflare-zero-trust-tunnel-virtual-network) -- the routing segment a route belongs to
+- [**Cloudflare Zero Trust Access Application**](/cloud-catalog/cloudflare-zero-trust-access-application) -- the Access apps an ingress Access block references
+- [**Cloudflare DNS Record**](/cloud-catalog/cloudflare-dns-record) -- the CNAME that points a public hostname at the tunnel

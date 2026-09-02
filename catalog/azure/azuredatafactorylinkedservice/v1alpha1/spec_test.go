@@ -669,16 +669,19 @@ var _ = ginkgo.Describe("AzureDataFactoryLinkedServiceSpec Validation Tests", fu
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
 
-			ginkgo.It("should reject a non-base64 private key", func() {
+			ginkgo.It("should accept a managed-secret reference in the private key", func() {
+				// Sensitive fields carry secret references on consuming
+				// platforms -- the base64 framing is taught in the field
+				// comment, never enforced on the stored value.
 				input := withoutVariant()
 				input.Spec.Sftp = &AzureDataFactoryLinkedServiceSftp{
 					AuthenticationType:      "SshPublicKey",
 					Host:                    "sftp.example.com",
 					Port:                    22,
 					Username:                "app",
-					PrivateKeyContentBase64: "not base64!!",
+					PrivateKeyContentBase64: "${secrets-group/sftp/private-key}",
 				}
-				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 			})
 
 			ginkgo.It("should reject an unknown authentication type", func() {

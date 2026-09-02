@@ -1,0 +1,16 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflarekvnamespace
+spec:
+  billing_model: usage_based
+  cost_drivers: []
+  free_tier: "Two distinct allowances. The Workers Free plan permanently includes 100,000 keys read/day, 1,000 keys written/day, 1,000 keys deleted/day, 1,000 list requests/day, and 1 GB stored data -- hard quotas that make further operations of that type FAIL when exceeded, never bill (limits reset daily at 00:00 UTC). The Workers Paid plan's monthly included allotments -- 10 million reads, 1 million writes, 1 million deletes, 1 million list requests, 1 GB stored -- are conditional on holding that $5/mo subscription (https://developers.cloudflare.com/kv/platform/pricing/, retrieved 2026-08-22)."
+  estimate_exclusions:
+    - keys read, keys written, keys deleted, and list requests are operation-driven -- billed per key (bulk reads bill by the number of keys read), including reads of non-existent keys that return null or HTTP 404, and including every operation issued from the dashboard or Wrangler
+    - stored data bills per GB-month and grows with what the application and any seeded CloudflareWorkersKvPair resources put into the namespace
+    - the $5/mo Workers Paid subscription is account-level plan spend chosen at the account -- no field in this spec pins or creates it
+  notes: "An empty namespace costs $0 -- it stores nothing and performs no operations, and this spec's two fields (namespace_name, account_id) cannot move any meter, which is why cost_drivers is empty. The meters live on USE of the namespace, verbatim from Cloudflare's Workers KV pricing page's Paid plan column: keys read \"10 million/month, + $0.50/million\", keys written \"1 million/month, + $5.00/million\", keys deleted \"1 million/month, + $5.00/million\", list requests \"1 million/month, + $5.00/million\", stored data \"1 GB, + $0.50/ GB-month\" (https://developers.cloudflare.com/kv/platform/pricing/, retrieved 2026-08-22). These are list-price overage rates past the plan's included allotments, never netted against them. Workers KV charges nothing for data transfer or egress (the pricing FAQ answers \"Does Workers KV charge for data transfer / egress?\" with \"No.\")."

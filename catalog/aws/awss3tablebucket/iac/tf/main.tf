@@ -136,6 +136,19 @@ resource "aws_s3tables_table" "this" {
     }
   }
 
+  # The schema (metadata) is a birth certificate: CreateTable consumes
+  # it, no read path ever returns it, and the provider marks every leaf
+  # RequiresReplace. Without this ignore, importing an existing table
+  # plans a DESTRUCTIVE delete+create against the empty imported state
+  # (upstream's own import tests ImportStateVerifyIgnore the whole
+  # block). Post-create schema evolution flows through query engines
+  # (ALTER TABLE), never through this field - editing it after create
+  # is deliberately inert. PARITY: the Pulumi module ignores the same
+  # path via IgnoreChanges.
+  lifecycle {
+    ignore_changes = [metadata]
+  }
+
   tags = local.aws_tags
 }
 

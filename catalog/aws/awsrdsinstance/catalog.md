@@ -1,6 +1,6 @@
 # AWS RDS Instance
 
-Deploys a single-instance relational database on Amazon RDS supporting PostgreSQL, MySQL, MariaDB, Oracle, and SQL Server engines — with Multi-AZ failover, AWS-managed master credentials in Secrets Manager, storage encryption and autoscaling, read replicas and snapshot/point-in-time/S3-XtraBackup creation sources, instance-owned parameter and option groups, feature-scoped IAM role associations, Performance Insights and Enhanced Monitoring, Blue/Green deployments, and the extended-support opt-out. The instance integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys a single-instance relational database on Amazon RDS supporting PostgreSQL, MySQL, MariaDB, Oracle, and SQL Server engines — with Multi-AZ failover, AWS-managed master credentials in Secrets Manager, storage encryption and autoscaling, read replicas and snapshot/point-in-time/S3-XtraBackup creation sources, instance-owned parameter and option groups, feature-scoped IAM role associations, Performance Insights and Enhanced Monitoring, Blue/Green deployments, and the extended-support opt-out. Aurora engines are the sibling AwsRdsCluster's territory — this kind covers everything RDS runs as a standalone instance, including the engines Aurora never will (Oracle and SQL Server).
 
 ## What Gets Created
 
@@ -8,10 +8,12 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **RDS DB Instance** -- a managed relational database instance running the specified engine and version (or a read replica / snapshot restore / point-in-time restore of an existing one), placed in the configured VPC subnets with the selected instance class and storage
 - **DB Subnet Group** -- created from the provided `subnetIds` when no existing `dbSubnetGroupName` is specified; groups subnets across Availability Zones for instance placement
-- **AWS-Managed Master Secret** -- when `manageMasterUserPassword` is enabled (the recommended posture), AWS generates, stores, and rotates the master password in Secrets Manager; its ARN is exported as an output
-- **Storage Configuration** -- gp3/io1/io2 volume with optional provisioned IOPS and throughput, optional storage autoscaling up to `maxAllocatedStorageGb`, and optional dedicated log volume
-- **Observability Wiring** -- Performance Insights, Enhanced Monitoring (through the provided IAM role), Database Insights tier, and CloudWatch log exports, each only when configured
+- **DB Parameter Group** -- created only when inline `parameters` are configured; an instance-owned group whose family is derived from the pinned engine version
+- **DB Option Group** -- created only when inline `options` are configured (Oracle and SQL Server features like TDE or native backup)
+- **IAM Role Associations** -- one per `iamRoles[]` entry, each managed as its own association resource so feature roles attach and detach without touching the instance
 - **AWS Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
+
+When `manageMasterUserPassword` is `true` (the recommended posture), AWS itself generates, stores, and rotates the master password in Secrets Manager -- no secret resource appears in the module, and its ARN surfaces as the `master_user_secret_arn` output.
 
 ## Before You Deploy
 
@@ -22,7 +24,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### AWS Account
 
-- **At least two subnets** in distinct Availability Zones within the target VPC. Private subnets are recommended for production. Provide subnet IDs directly or reference an AwsVpc Cloud Resource via ValueFromRef. Alternatively, provide an existing `dbSubnetGroupName`.
+- **At least two subnets** in distinct Availability Zones within the target VPC. Private subnets are recommended for production. Provide subnet IDs directly or reference AwsSubnet Cloud Resources via ValueFromRef. Alternatively, provide an existing `dbSubnetGroupName`.
 - **A security group** (optional) to attach to the instance for network access control. Provide security group IDs directly or reference an AwsSecurityGroup Cloud Resource via ValueFromRef.
 - **A KMS key** (optional) for encrypting instance storage with a customer-managed key. Provide the ARN directly or reference an AwsKmsKey Cloud Resource via ValueFromRef.
 - **A master username** -- AWS has no default and rejects a blank one on a new instance. Prefer `manageMasterUserPassword: true` (AWS keeps the password in Secrets Manager); a supplied `password` must be an org-secret reference, never plaintext.
@@ -31,14 +33,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS RDS Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **PostgreSQL Production** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS RDS Instance**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **PostgreSQL (Production Multi-AZ)** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsRdsInstance
 metadata:
   name: app-database
@@ -70,23 +72,23 @@ spec:
 planton apply -f rds-instance.yaml
 ```
 
-This creates a Multi-AZ PostgreSQL instance with encrypted gp3 storage that autoscales to 200 GiB, an AWS-managed master password in Secrets Manager, 7-day backups, and deletion protection. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a Multi-AZ PostgreSQL instance with encrypted gp3 storage that autoscales to 200 GiB, an AWS-managed master password in Secrets Manager, 7-day backups, and deletion protection. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-When deploying as part of a multi-resource environment, use ValueFromRef to wire the RDS instance to a VPC, security group, and KMS key deployed in the same InfraPipeline:
+When deploying as part of a multi-resource environment, use ValueFromRef to wire the RDS instance to subnets, a security group, and a KMS key deployed in the same InfraPipeline:
 
 ```yaml
 spec:
   subnetIds:
     - valueFrom:
-        kind: AwsVpc
-        name: production-vpc
-        fieldPath: status.outputs.private_subnets.[0].id
+        kind: AwsSubnet
+        name: db-subnet-az1
+        fieldPath: status.outputs.subnet_id
     - valueFrom:
-        kind: AwsVpc
-        name: production-vpc
-        fieldPath: status.outputs.private_subnets.[1].id
+        kind: AwsSubnet
+        name: db-subnet-az2
+        fieldPath: status.outputs.subnet_id
   securityGroupIds:
     - valueFrom:
         kind: AwsSecurityGroup
@@ -99,7 +101,7 @@ spec:
       fieldPath: status.outputs.key_arn
 ```
 
-The InfraPipeline resolves the dependency graph, deploys the VPC, security group, and KMS key first, then provisions the RDS instance with the resolved values.
+The InfraPipeline resolves the dependency graph, deploys the subnets, security group, and KMS key first, then provisions the RDS instance with the resolved values.
 
 ## Key Configuration
 
@@ -146,19 +148,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `arn` | Amazon Resource Name | IAM policies, resource tagging |
 | `resource_id` | Immutable dbi-resource ID | Point-in-time restore sources, IAM auth policies |
 | `hosted_zone_id` | The endpoint's Route 53 hosted zone | Alias records |
-| `engine_version_actual` | The running engine version | Upgrade auditing |
 | `master_user_secret_arn` | Secrets Manager ARN of the AWS-managed master secret | Application credential reads |
-| `db_subnet_group_name` | DB subnet group name | Audit, related resource lookups |
-| `db_parameter_group_name` | DB parameter group in use | Parameter auditing |
-| `option_group_name` | Option group in use | Option auditing |
+
+`engine_version_actual`, `db_subnet_group_name`, `db_parameter_group_name`, and `option_group_name` are also exported -- they record the resolved engine version and the groups in use, for auditing rather than downstream wiring.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**PostgreSQL production** -- Multi-AZ deployment with encrypted, autoscaling gp3 storage, an AWS-managed master password, 7-day backups, and Performance Insights. Start from the **PostgreSQL Production** preset.
+**PostgreSQL production** -- Multi-AZ deployment with encrypted, autoscaling gp3 storage, an AWS-managed master password, 7-day backups, and Performance Insights. Start from the **PostgreSQL (Production Multi-AZ)** preset.
 
-**MySQL production** -- Same resilience posture as PostgreSQL but configured for MySQL 8.0. Suitable for applications requiring MySQL-compatible SQL or migrating from on-premises MySQL. Start from the **MySQL Production** preset.
+**MySQL production** -- Same resilience posture as PostgreSQL but configured for MySQL 8.0. Suitable for applications requiring MySQL-compatible SQL or migrating from on-premises MySQL. Start from the **MySQL (Production Multi-AZ)** preset.
 
 **Read replica** -- Scales reads and stages cross-region DR; engine, storage, and credentials inherit from the source. Start from the **Read Replica** preset.
 
@@ -167,4 +167,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**AWS Subnet**](/cloud-catalog/aws-subnet) -- provides the subnets for the DB subnet group across multiple Availability Zones
 - [**AWS Security Group**](/cloud-catalog/aws-security-group) -- provides network access control for the instance endpoint
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides customer-managed keys for storage, the master secret, and Performance Insights
-- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the role Enhanced Monitoring publishes through
+- [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the role Enhanced Monitoring publishes through, plus feature-scoped engine roles and the S3 import ingestion role
+- [**AWS RDS Cluster**](/cloud-catalog/aws-rds-cluster) -- the cluster sibling for Aurora engines and Multi-AZ community clusters

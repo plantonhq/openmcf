@@ -413,9 +413,12 @@ For NEG backends GCP ignores utilization-based settings.
 
 How this backend's capacity is measured: UTILIZATION (instance CPU,
 the default — instance groups only), RATE (HTTP requests per second),
-CONNECTION (open connections, for TCP/SSL), or CUSTOM_METRICS
-(backend-reported ORCA metrics). NEG backends must use RATE (or
-CUSTOM_METRICS); serverless NEGs ignore balancing entirely. Mutable.
+CONNECTION (open connections, for TCP/SSL), CUSTOM_METRICS
+(backend-reported ORCA metrics), or IN_FLIGHT (concurrent in-flight
+requests). IN_FLIGHT's target dial is not surfaced by the pinned
+provider, so IN_FLIGHT backends ride the API's default target.
+NEG backends must use RATE (or CUSTOM_METRICS); serverless NEGs
+ignore balancing entirely. Mutable.
 
 - default: `UTILIZATION`
 - rule: balancing_mode must be one of UTILIZATION, RATE, CONNECTION, CUSTOM_METRICS, or IN_FLIGHT
@@ -1581,9 +1584,12 @@ one with: head -c 16 /dev/urandom | base64 | tr '+/' '-_'. 22
 characters of base64url, with or without the trailing == padding.
 Anyone holding this value can mint valid signed URLs, so it is
 handled as a secret. Immutable per key name: rotating means adding a
-new key and removing the old.
+new key and removing the old. The base64url shape is taught here
+rather than enforced by a validation rule, because sensitive fields
+hold a managed-secret reference on consuming platforms and a
+content-shape rule would reject every reference.
 
-- rule: {"required":true,"string":{"pattern":"^[A-Za-z0-9_-]{22}(==)?$"}}
+- rule: {"required":true}
 
 ### spec.resourceManagerTags
 

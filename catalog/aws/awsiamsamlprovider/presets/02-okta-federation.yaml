@@ -4,7 +4,30 @@ metadata:
   name: okta
 spec:
   region: us-east-1
+  # Replace the ENTIRE document below with the XML from Okta Admin ->
+  # Applications -> your AWS app -> Sign On -> "Identity Provider metadata"
+  # (a public URL of the form
+  # https://YOUR-ORG.okta.com/app/YOUR-APP-ID/sso/saml/metadata). The
+  # placeholder below only demonstrates the shape; AWS rejects it.
   samlMetadataDocument: |
-    <paste the XML from Okta Admin -> Applications -> your AWS app ->
-    Sign On -> "Identity Provider metadata" (a public URL of the form
-    https://<org>.okta.com/app/<app-id>/sso/saml/metadata)>
+    <?xml version="1.0" encoding="UTF-8"?>
+    <EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata"
+                      entityID="http://www.okta.com/exkREPLACEME0000000000">
+      <IDPSSODescriptor WantAuthnRequestsSigned="false"
+                        protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+        <KeyDescriptor use="signing">
+          <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+            <X509Data>
+              <X509Certificate>REPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEME
+              REPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEME
+              REPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEMEREPLACEME</X509Certificate>
+            </X509Data>
+          </KeyInfo>
+        </KeyDescriptor>
+        <NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</NameIDFormat>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+                             Location="https://YOUR-ORG.okta.com/app/YOUR-APP-ID/sso/saml"/>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect"
+                             Location="https://YOUR-ORG.okta.com/app/YOUR-APP-ID/sso/saml"/>
+      </IDPSSODescriptor>
+    </EntityDescriptor>

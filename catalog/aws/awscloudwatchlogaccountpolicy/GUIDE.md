@@ -10,9 +10,9 @@ The `policy_document` is NOT one grammar: DATA_PROTECTION carries data-identifie
 
 AWS bounds account policies per type (one for most). Treat the (name, type) pair as a singleton per capability: a second FIELD_INDEX_POLICY under a different name will be rejected server-side where the type is single-instance.
 
-## Selection criteria is the safety rail
+## Selection criteria exists only for subscription filters
 
-`LogGroupNamePrefix IN ["/app/payments"]` scopes the account-wide lever to a subtree. The criteria string's grammar is per-type (each type's AWS docs show it); it replaces on change, so widening scope is a deliberate replace.
+AWS accepts `selection_criteria` on SUBSCRIPTION_FILTER_POLICY alone, and its one supported grammar is an exact-name exclusion list: `LogGroupName NOT IN ["noisy-group"]`. Every other type — data protection, field index, transformer, metric extraction — applies account-wide with no narrowing; PutAccountPolicy rejects any criteria string on them with "Invalid selection criteria provided" (live-verified against every documented grammar, including the prefix form older AWS blog posts show). If you need a subtree-scoped transformer or index, use the per-log-group resource instead of the account policy.
 
 ## Transformer account policies vs per-group transformers
 

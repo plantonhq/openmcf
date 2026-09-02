@@ -1,6 +1,6 @@
-# Load Balancer on Cloudflare
+# Cloudflare Load Balancer
 
-Deploys a zone-scoped Cloudflare Load Balancer that attaches a DNS hostname to account-scoped origin pools and steers traffic across them with health-aware failover, geo-routing, weighted distribution, session affinity, and per-request traffic rules. Integrates with Planton's Provider Connections for Cloudflare credential management and supports ValueFromRef wiring to DNS zones and pools for cross-resource dependency resolution in InfraPipelines.
+Deploys a zone-scoped Cloudflare Load Balancer that attaches a DNS hostname to account-scoped origin pools and steers traffic across them with health-aware failover, geo-routing, weighted distribution, session affinity, and per-request traffic rules. Its zone and pool references wire to CloudflareDnsZone and CloudflareLoadBalancerPool resources via ValueFromRef, so the whole traffic path resolves as one dependency graph in an InfraPipeline.
 
 ## What Gets Created
 
@@ -27,7 +27,7 @@ Pools and health monitors are separate, reusable Cloud Resources (`CloudflareLoa
 
 ### Console
 
-Open the deployment store, find **Load Balancer on Cloudflare**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Active-Passive Failover** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **Cloudflare Load Balancer**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Active-Passive Failover** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
@@ -123,6 +123,6 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**DNS Zone on Cloudflare**](/cloud-catalog/cloudflare-dns-zone) -- provides the zone ID that determines which domain the load balancer hostname belongs to
-- [**Load Balancer Pool on Cloudflare**](/cloud-catalog/cloudflare-load-balancer-pool) -- the account-scoped origin pools the load balancer steers across
-- [**Load Balancer Monitor on Cloudflare**](/cloud-catalog/cloudflare-load-balancer-monitor) -- health-checks the pools' origins
+- [**Cloudflare DNS Zone**](/cloud-catalog/cloudflare-dns-zone) -- provides the zone ID that determines which domain the load balancer hostname belongs to
+- [**Cloudflare Load Balancer Pool**](/cloud-catalog/cloudflare-load-balancer-pool) -- the account-scoped origin pools the load balancer steers across
+- [**Cloudflare Load Balancer Monitor**](/cloud-catalog/cloudflare-load-balancer-monitor) -- health-checks the pools' origins

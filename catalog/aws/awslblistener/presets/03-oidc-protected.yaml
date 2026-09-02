@@ -25,7 +25,9 @@ spec:
         tokenEndpoint: <oidc-token-endpoint>
         userInfoEndpoint: <oidc-user-info-endpoint>
         clientId: <oidc-client-id>
-        clientSecret: replace-with-client-secret
+        # The client secret is sensitive: reference a managed secret
+        # ($secret/<slug>) -- never a plaintext value.
+        clientSecret: $secret/oidc-client-secret
         scope: openid email
     - type: forward
       forward:

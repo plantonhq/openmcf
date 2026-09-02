@@ -285,6 +285,20 @@ var _ = ginkgo.Describe("AzureMongoClusterSpec Validation Tests", func() {
 				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
 			})
 
+			ginkgo.It("should reject the Free tier with MicrosoftEntraID authentication", func() {
+				input := validResource()
+				input.Spec.ComputeTier = proto.String("Free")
+				input.Spec.HighAvailabilityMode = proto.String("Disabled")
+				input.Spec.ShardCount = proto.Int32(1)
+				input.Spec.StorageSizeInGb = proto.Int32(32)
+				input.Spec.AuthenticationMethods = []string{"NativeAuth", "MicrosoftEntraID"}
+				gomega.Expect(protovalidate.Validate(input)).NotTo(gomega.BeNil())
+
+				// The smallest paid tier lifts the restriction.
+				input.Spec.ComputeTier = proto.String("M10")
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			})
+
 			ginkgo.It("should reject the Data API on a non-Default-mode cluster", func() {
 				input := geoReplicaResource()
 				input.Spec.DataApiModeEnabled = proto.Bool(false)

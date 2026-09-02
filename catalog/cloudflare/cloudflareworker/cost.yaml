@@ -1,0 +1,61 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: cloudflareworker
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: schedules
+      sku_meter: Workers requests and CPU time
+      pricing_unit: requests + CPU milliseconds
+      impact: Each cron trigger invokes the Worker on its cadence -- every invocation is a billable request, and Cloudflare allows up to 15 minutes of CPU time per Cron Trigger invocation, so a heavy hourly job meters CPU milliseconds far beyond what a typical HTTP request would.
+    - field_path: limits.cpu_ms
+      sku_meter: Workers requests and CPU time
+      pricing_unit: CPU milliseconds
+      impact: Caps CPU time per invocation -- a hard brake on the CPU-milliseconds meter that turns a runaway invocation into an error instead of a bill. Zero rides the plan default (30 seconds, raisable to 5 minutes).
+    - field_path: usage_model
+      sku_meter: Workers requests and CPU time
+      pricing_unit: ""
+      impact: Selects BETWEEN metering models rather than scaling one -- standard is the current model; bundled and unbound are legacy models Cloudflare advises moving off. Changing it only affects billable usage, never behavior.
+    - field_path: cache_options
+      sku_meter: Workers requests and CPU time
+      pricing_unit: requests
+      impact: "With Workers Caching enabled, Cloudflare's pricing page states cache-served requests \"are billed at the same per-request rate as requests that invoke the Worker\" while \"CPU time is only billed when the Worker runs (on a cache miss or bypass)\" -- caching trims the CPU meter, not the request meter (https://developers.cloudflare.com/workers/platform/pricing/, retrieved 2026-08-22)."
+    - field_path: assets
+      sku_meter: Workers requests and CPU time
+      pricing_unit: requests
+      impact: "A zero-rate path on the request meter: Cloudflare's pricing page states \"Requests to static assets are free and unlimited\" -- routes served as static assets bill nothing, and only requests the script itself handles meter (https://developers.cloudflare.com/workers/platform/pricing/, retrieved 2026-08-22)."
+    - field_path: observability
+      sku_meter: Workers Logs
+      pricing_unit: log events
+      impact: "Enabling Workers Logs meters log events: the Workers Paid plan includes \"20 million included per month +$0.60 per additional million\" with 7-day retention (Workers Free: 200,000 events/day, 3-day retention). head_sampling_rate is the built-in brake -- sampling 10% of requests logs a tenth of the events (https://developers.cloudflare.com/workers/platform/pricing/, retrieved 2026-08-22)."
+    - field_path: logpush
+      sku_meter: Workers Trace Events Logpush
+      pricing_unit: millions of requests
+      impact: "Paid-plan-only log export: \"10 million / month, +$0.05/million\", charged for request logs that reach the destination after filtering or sampling (https://developers.cloudflare.com/workers/platform/pricing/, retrieved 2026-08-22)."
+    - field_path: kv_namespaces
+      sku_meter: Workers KV operations and storage
+      pricing_unit: operations + GB-months
+      impact: Every KV read, write, delete, or list the script performs through these bindings meters on the bound CloudflareKvNamespace's account-level KV allotments and overage rates, not on this Worker.
+    - field_path: d1_databases
+      sku_meter: D1 rows and storage
+      pricing_unit: rows + GB-months
+      impact: Queries the script runs through these bindings meter rows read and rows written on the bound CloudflareD1Database's account-level D1 allotments and overage rates.
+    - field_path: r2_buckets
+      sku_meter: R2 operations and storage
+      pricing_unit: operations + GB-months
+      impact: Object reads and writes the script performs through these bindings meter Class A/B operations and storage on the bound CloudflareR2Bucket.
+    - field_path: queues
+      sku_meter: Queues standard operations
+      pricing_unit: operations
+      impact: Messages the script enqueues through these producer bindings meter write operations on the bound CloudflareQueue.
+  free_tier: "The Workers Free plan permanently includes 100,000 requests/day (shared with Pages Functions) with 10 milliseconds of CPU time per invocation -- daily limits reset at 00:00 UTC. The Workers Paid plan's monthly included allotments -- \"10 million included per month\" requests and \"30 million CPU milliseconds included per month\" -- are conditional on holding that subscription (https://developers.cloudflare.com/workers/platform/pricing/, retrieved 2026-08-22)."
+  estimate_exclusions:
+    - request volume is traffic-driven -- whatever exposure surface receives it (workers.dev, custom domains, pattern routes, service bindings from other Workers, cron schedules), no manifest can know it
+    - CPU milliseconds per invocation are code-driven, and duration is explicitly not billed on the Standard model
+    - usage the script generates through its bindings (KV operations, D1 rows, R2 operations, queued messages, Durable Objects, AI inference, and the rest) bills on the bound services' own meters, not here
+    - the $5/mo Workers Paid subscription is account-level plan spend chosen at the account -- no field in this spec pins or creates it (usage_model selects a metering model within a plan, not the plan itself)
+  notes: "A deployed Worker with no traffic costs $0 -- the dominant meter is requests plus CPU time on the account's Workers plan, verbatim from Cloudflare's pricing page for the Standard usage model: requests \"10 million included per month +$0.30 per additional million\", CPU time \"30 million CPU milliseconds included per month +$0.02 per additional million CPU milliseconds\", and \"No charge or limit for duration\" (https://developers.cloudflare.com/workers/platform/pricing/, retrieved 2026-08-22). These are list-price overage rates past the plan's included allotments, never netted. The same page states the Workers Paid plan is \"a minimum charge of $5 USD per month for an account\" and that \"There are no additional charges for data transfer (egress) or throughput (bandwidth)\". A pure static-asset Worker (assets without a script) serves free at any traffic level. The one flat-fee surface in this spec is observability and logging, and even those meters are event-driven with zero traffic."

@@ -1,11 +1,12 @@
 # =============================================================================
 # Definitions Release (Reusable Workflow)
 # =============================================================================
-# Packages the skill and agent definition trees (skills/, agents/) into a
+# Packages the definition trees (skills/, agents/, automations/) into a
 # definitions release and uploads it to Cloudflare R2 (downloads.planton.dev):
-# one deterministic zip per skill, each agent's instructions file, and a
-# definitions-manifest.json carrying the release version, per-artifact
-# SHA-256 checksums, and the compatibility floor from skills/compat.yaml.
+# one deterministic zip per skill, each agent's instructions file, each
+# automation's definition file, and a definitions-manifest.json carrying the
+# release version, per-artifact SHA-256 checksums, and the compatibility
+# floor from skills/compat.yaml.
 #
 # Consumers resolve the manifest at a pinned tag and verify every artifact's
 # checksum before installing -- which is why the manifest publishes checksums
@@ -14,17 +15,37 @@
 # Job shape -- the Actions UI shows exactly what a release ships:
 #   package                  builds everything ONCE (the manifest's checksums
 #                            cover all artifacts, so packaging is atomic) and
-#                            discovers the skill/agent slugs from the output
+#                            discovers the skill/agent/automation slugs from
+#                            the output
 #   skill (<slug>)           one job per skill, uploads skill-<slug>.zip
 #   agent (<slug>)           one job per agent, uploads agent-<slug>-instructions.md
-#   publish-manifest         uploads definitions-manifest.json, then moves the
-#                            stable channel pointer -- it needs every upload
-#                            job, so the DAG itself enforces that the pointer
-#                            never names a release whose artifacts are not yet
-#                            retrievable
+#   automation (<slug>)      one job per automation, uploads automation-<slug>.yaml
+#                            (skipped entirely when the release carries none)
+#   exploded                 unzips every skill archive into the browsable
+#                            exploded/<slug>/ layout, verifies every file's
+#                            checksum against definitions-browse.json (both
+#                            directions: checklist + file count), then uploads
+#                            the tree and the browse manifest -- reading
+#                            surfaces fetch one file per click instead of a
+#                            whole archive. The tree is DERIVED from the
+#                            archives (deterministic stored zips), never
+#                            packaged twice, so the two shapes cannot diverge.
+#   publish-manifest         uploads definitions-manifest.json, moves the
+#                            stable channel pointer, then appends the tag to
+#                            the releases index -- it needs every upload
+#                            job, so the DAG itself enforces that neither the
+#                            pointer nor the index ever names a release whose
+#                            artifacts are not yet retrievable
 #
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/definitions/{file}
 # Public URL:  https://downloads.planton.dev/releases/{tag}/definitions/{file}
+# Exploded:    .../releases/{tag}/definitions/exploded/{skill-slug}/{path}
+#              (tree described by .../definitions-browse.json at the same tag)
+#
+# Releases index (browse surfaces' release picker; appended only after every
+# upload succeeded, so -- unlike the GitHub releases list -- it can never name
+# a tag whose definitions content is incomplete):
+#   https://downloads.planton.dev/definitions/releases/index.json
 #
 # Channel pointer:
 #   s3://downloads-dot-planton-dot-dev-bucket/definitions/stable/version.txt
@@ -66,6 +87,7 @@ jobs:
     outputs:
       skills: ${{ steps.discover.outputs.skills }}
       agents: ${{ steps.discover.outputs.agents }}
+      automations: ${{ steps.discover.outputs.automations }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,16 +106,16 @@ jobs:
           go run ./pkg/skills/defspack -version "$TAG" -out build/definitions -embed-catalog-pack
 
       # The slug lists are derived from what defspack actually built, so a
-      # new skill or agent gets its own upload job with zero workflow edits.
-      # Any file outside the three contractual name patterns fails the
-      # release -- a straggler would upload nowhere.
-      - name: Discover skills and agents
+      # new skill, agent, or automation gets its own upload job with zero
+      # workflow edits. Any file outside the four contractual name patterns
+      # fails the release -- a straggler would upload nowhere.
+      - name: Discover skills, agents, and automations
         id: discover
         run: |
           cd build/definitions
           for f in *; do
             case "$f" in
-              definitions-manifest.json|skill-*.zip|agent-*-instructions.md) ;;
+              definitions-manifest.json|definitions-browse.json|skill-*.zip|agent-*-instructions.md|automation-*.yaml) ;;
               *)
                 echo "ERROR: unexpected artifact '$f' matches no upload job"
                 exit 1
@@ -102,10 +124,13 @@ jobs:
           done
           skills=$(find . -maxdepth 1 -name 'skill-*.zip' | sed -E 's|^\./skill-(.+)\.zip$|\1|' | sort | jq -R . | jq -cs .)
           agents=$(find . -maxdepth 1 -name 'agent-*-instructions.md' | sed -E 's|^\./agent-(.+)-instructions\.md$|\1|' | sort | jq -R . | jq -cs .)
+          automations=$(find . -maxdepth 1 -name 'automation-*.yaml' | sed -E 's|^\./automation-(.+)\.yaml$|\1|' | sort | jq -R . | jq -cs .)
           echo "skills=$skills" >> "$GITHUB_OUTPUT"
           echo "agents=$agents" >> "$GITHUB_OUTPUT"
+          echo "automations=$automations" >> "$GITHUB_OUTPUT"
           echo "skills: $skills"
           echo "agents: $agents"
+          echo "automations: $automations"
 
       - name: Share the packaged release with the upload jobs
         uses: actions/upload-artifact@v4
@@ -164,12 +189,102 @@ jobs:
             --endpoint-url "${AWS_ENDPOINT_URL}"
           echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
 
+  automation:
+    needs: package
+    # A matrix over an empty list fails the workflow outright, so a release
+    # carrying zero automations skips this job instead; publish-manifest's
+    # condition below accepts exactly this skip and nothing else.
+    if: needs.package.outputs.automations != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        slug: ${{ fromJSON(needs.package.outputs.automations) }}
+    steps:
+      - name: Download packaged release
+        uses: actions/download-artifact@v4
+        with:
+          name: definitions
+
+      - name: Upload automation-${{ matrix.slug }}.yaml to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          R2_KEY="releases/${GITHUB_REF_NAME}/definitions/automation-${{ matrix.slug }}.yaml"
+          aws s3 cp "automation-${{ matrix.slug }}.yaml" "s3://${R2_BUCKET}/${R2_KEY}" \
+            --endpoint-url "${AWS_ENDPOINT_URL}"
+          echo "uploaded: https://downloads.planton.dev/${R2_KEY}"
+
+  exploded:
+    needs: package
+    runs-on: ubuntu-latest
+    # ~3,700 objects ride this upload today (the catalog pack's exploded
+    # tree), so this job gets headroom the single-file upload jobs don't
+    # need.
+    timeout-minutes: 20
+    steps:
+      - name: Download packaged release
+        uses: actions/download-artifact@v4
+        with:
+          name: definitions
+
+      - name: Explode skill archives and verify against the browse manifest
+        # The exploded tree is the archives unzipped -- deterministic stored
+        # zips make the bytes identical by construction -- and the browse
+        # manifest is built from the same source of truth by defspack. The
+        # verification here closes the loop in both directions before any
+        # byte reaches the CDN: every listed file must exist with its exact
+        # checksum, and no file may exist that the manifest does not list.
+        run: |
+          set -euo pipefail
+          for zipfile in skill-*.zip; do
+            slug="${zipfile#skill-}"
+            slug="${slug%.zip}"
+            mkdir -p "exploded/${slug}"
+            unzip -q "$zipfile" -d "exploded/${slug}"
+          done
+          jq -r '.skills[] | .slug as $slug | .files[] | "\(.sha256)  exploded/\($slug)/\(.path)"' \
+            definitions-browse.json > exploded.sha256
+          sha256sum --check --quiet exploded.sha256
+          listed=$(wc -l < exploded.sha256 | tr -d ' ')
+          actual=$(find exploded -type f | wc -l | tr -d ' ')
+          if [ "$listed" != "$actual" ]; then
+            echo "ERROR: exploded tree carries ${actual} files but the browse manifest lists ${listed}"
+            exit 1
+          fi
+          echo "verified ${actual} exploded file(s) against the browse manifest"
+
+      - name: Upload exploded layout and browse manifest to R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          aws s3 cp exploded "s3://${R2_BUCKET}/releases/${GITHUB_REF_NAME}/definitions/exploded" \
+            --recursive --only-show-errors --endpoint-url "${AWS_ENDPOINT_URL}"
+          aws s3 cp definitions-browse.json \
+            "s3://${R2_BUCKET}/releases/${GITHUB_REF_NAME}/definitions/definitions-browse.json" \
+            --content-type application/json --endpoint-url "${AWS_ENDPOINT_URL}"
+          echo "uploaded: https://downloads.planton.dev/releases/${GITHUB_REF_NAME}/definitions/definitions-browse.json"
+
   # Runs only after EVERY artifact upload succeeded: the manifest that names
-  # the artifacts, then the channel pointer that names the release. A consumer
-  # can never resolve a tag whose content is missing -- the ordering is
-  # enforced by the job DAG, not by step order inside one job.
+  # the artifacts, then the channel pointer that names the release, then the
+  # releases index entry. A consumer can never resolve a tag whose content is
+  # missing -- the ordering is enforced by the job DAG, not by step order
+  # inside one job. The automation job may legitimately SKIP (zero
+  # automations in the release); any other non-success still refuses the
+  # pointer move.
   publish-manifest:
-    needs: [skill, agent]
+    needs: [skill, agent, automation, exploded]
+    if: |
+      always()
+      && needs.skill.result == 'success'
+      && needs.agent.result == 'success'
+      && needs.exploded.result == 'success'
+      && (needs.automation.result == 'success' || needs.automation.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -201,3 +316,26 @@ jobs:
             --content-type text/plain \
             --cache-control "no-cache"
           echo "  stable channel -> ${TAG} (https://downloads.planton.dev/definitions/stable/version.txt)"
+
+      - name: Append the release to the definitions releases index
+        # The index is the browse surfaces' release picker. It lives HERE --
+        # after every upload job and the pointer move -- so it inherits the
+        # DAG's only-complete-releases guarantee; the GitHub releases list
+        # cannot promise that (a release tag can exist whose definitions
+        # uploads failed). First release: no index exists yet, start empty.
+        # Re-run safe: a tag enters the list once, newest first.
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_ENDPOINT_URL: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          INDEX_KEY="definitions/releases/index.json"
+          aws s3 cp "s3://${R2_BUCKET}/${INDEX_KEY}" index.json \
+            --endpoint-url "${AWS_ENDPOINT_URL}" || echo '{"releases":[]}' > index.json
+          jq --arg tag "$TAG" '.releases |= ([$tag] + (. - [$tag]))' index.json > index.next.json
+          aws s3 cp index.next.json "s3://${R2_BUCKET}/${INDEX_KEY}" \
+            --endpoint-url "${AWS_ENDPOINT_URL}" \
+            --content-type application/json \
+            --cache-control "no-cache"
+          echo "  releases index += ${TAG} (https://downloads.planton.dev/${INDEX_KEY})"

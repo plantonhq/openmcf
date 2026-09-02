@@ -3,17 +3,18 @@ kind: ComponentE2EProfile
 metadata:
   name: azuredataprotectionbackupvault
 spec:
-  # pending_proof: authored to the full offline bar (spec/CEL tests,
-  # both engine builds, offline tofu plan green); live dual-engine
-  # proof has not yet run. The vault is FREE at rest and creates in
-  # one to three minutes; deletion runs past the API's early answer
-  # (the provider polls until the name frees). The smoke proves the
-  # storage settings, soft-delete defaults, and identity live; the
-  # one-way doors (Locked immutability, AlwaysOn soft delete, CMK)
-  # stay offline-proven BY DESIGN -- each is permanent on a live
-  # vault, so their wire shapes are proven at plan time instead of
-  # welding a test vault shut.
+  # PROVEN live on both engines (proof session, 2026-08-20): Pulumi
+  # 4m20s; Terraform 7m3s incl. a blind import round-trip (36s) with a
+  # no-differences re-plan. The vault is FREE at rest and creates in
+  # under a minute; deletion runs past the API's early answer (the
+  # provider polls until the name frees) -- measured destroy tails
+  # 1m18s (Pulumi) and 3m13s (Terraform), well inside the timeout.
+  # The smoke proves the storage settings, soft-delete dial, and
+  # system-assigned identity live; the one-way doors (Locked
+  # immutability, AlwaysOn soft delete, CMK) stay offline-proven BY
+  # DESIGN -- each is permanent on a live vault, so their wire shapes
+  # are proven at plan time instead of welding a test vault shut.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

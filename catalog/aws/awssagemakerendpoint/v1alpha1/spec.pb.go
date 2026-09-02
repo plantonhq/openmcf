@@ -64,7 +64,12 @@ type AwsSagemakerEndpointSpec struct {
 	DataCapture *AwsSagemakerEndpointDataCapture `protobuf:"bytes,7,opt,name=data_capture,json=dataCapture,proto3" json:"data_capture,omitempty"`
 	// How UpdateEndpoint rolls new capacity: blue/green with traffic
 	// shifting (AWS default when omitted) or rolling batches, plus
-	// CloudWatch-alarm auto-rollback.
+	// CloudWatch-alarm auto-rollback. NOTE: AWS rejects a ROLLING policy
+	// on a single-instance fleet at Create/UpdateEndpoint ("Cannot update
+	// endpoint with single instance using RollingUpdatePolicy",
+	// live-caught 2026-08-25) - a one-instance endpoint uses blue/green
+	// or omits deployment; the CEL below front-loads the confirmed
+	// single-variant case.
 	Deployment    *AwsSagemakerEndpointDeployment `protobuf:"bytes,8,opt,name=deployment,proto3" json:"deployment,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -173,7 +178,16 @@ type AwsSagemakerEndpointVariant struct {
 	// Instance type for dedicated capacity (an "ml.*" type, e.g.
 	// "ml.m5.large", "ml.g5.xlarge"). AWS's accepted set grows with every
 	// release - the value passes through to the API, which rejects
-	// unknown types. Required unless `serverless` is set.
+	// unknown types. Required unless `serverless` is set. NOTE the
+	// per-type "for endpoint usage" Service Quota: on a fresh AWS
+	// account it defaults to ZERO for nearly every instance family
+	// (ml.m5.large and ml.c6i.large included) - CreateEndpoint fails
+	// with ResourceLimitExceeded until a quota increase is granted. The
+	// entry-level exceptions whose default is 2 are ml.t2.* (x86) and
+	// ml.m6g.large (Graviton - the container image must be arm64);
+	// `serverless` needs no per-type quota (default: 5 endpoints per
+	// region). Check with: aws service-quotas list-service-quotas
+	// --service-code sagemaker.
 	InstanceType string `protobuf:"bytes,3,opt,name=instance_type,json=instanceType,proto3" json:"instance_type,omitempty"`
 	// Number of instances to launch initially (>= 1). With
 	// `managed_instance_scaling` or application auto-scaling this is the
@@ -184,7 +198,8 @@ type AwsSagemakerEndpointVariant struct {
 	// traffic while keeping the variant deployed.
 	InitialVariantWeight *float32 `protobuf:"fixed32,5,opt,name=initial_variant_weight,json=initialVariantWeight,proto3,oneof" json:"initial_variant_weight,omitempty"`
 	// Serverless compute instead of dedicated instances: SageMaker scales
-	// capacity with traffic and bills per inference ($0 idle). Excludes
+	// capacity with traffic and bills per inference (nothing while idle).
+	// Excludes
 	// every instance-based setting on this variant.
 	Serverless *AwsSagemakerEndpointServerlessConfig `protobuf:"bytes,6,opt,name=serverless,proto3" json:"serverless,omitempty"`
 	// Endpoint-managed instance range (min/max autoscaling handled by
@@ -1072,7 +1087,7 @@ var File_catalog_aws_awssagemakerendpoint_v1alpha1_spec_proto protoreflect.FileD
 
 const file_catalog_aws_awssagemakerendpoint_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"4catalog/aws/awssagemakerendpoint/v1alpha1/spec.proto\x12-dev.planton.aws.awssagemakerendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xa9\f\n" +
+	"4catalog/aws/awssagemakerendpoint/v1alpha1/spec.proto\x12-dev.planton.aws.awssagemakerendpoint.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xaa\x10\n" +
 	"\x18AwsSagemakerEndpointSpec\x12\x1f\n" +
 	"\x06region\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06region\x12\x87\x01\n" +
 	"\x13production_variants\x18\x02 \x03(\v2J.dev.planton.aws.awssagemakerendpoint.v1alpha1.AwsSagemakerEndpointVariantB\n" +
@@ -1086,10 +1101,11 @@ const file_catalog_aws_awssagemakerendpoint_v1alpha1_spec_proto_rawDesc = "" +
 	"\fdata_capture\x18\a \x01(\v2N.dev.planton.aws.awssagemakerendpoint.v1alpha1.AwsSagemakerEndpointDataCaptureR\vdataCapture\x12m\n" +
 	"\n" +
 	"deployment\x18\b \x01(\v2M.dev.planton.aws.awssagemakerendpoint.v1alpha1.AwsSagemakerEndpointDeploymentR\n" +
-	"deployment:\x8a\x05\xbaH\x86\x05\x1a\xe0\x01\n" +
+	"deployment:\x8b\t\xbaH\x87\t\x1a\xe0\x01\n" +
 	"\x14variant_names_unique\x12Kvariant names must be unique across production_variants and shadow_variants\x1a{(this.production_variants.map(v, v.variant_name) + this.shadow_variants.map(v, v.variant_name)).filter(n, n != '').unique()\x1a\xd5\x01\n" +
 	"\x14shadow_one_each_side\x12Mshadow testing requires exactly one production variant and one shadow variant\x1anthis.shadow_variants.size() == 0 || (this.production_variants.size() == 1 && this.shadow_variants.size() == 1)\x1a\xc8\x01\n" +
-	"\x1crole_required_without_models\x12;execution_role_arn is required when any variant omits model\x1ak!(this.production_variants + this.shadow_variants).exists(v, !has(v.model)) || has(this.execution_role_arn)\"\xbb\x13\n" +
+	"\x1crole_required_without_models\x12;execution_role_arn is required when any variant omits model\x1ak!(this.production_variants + this.shadow_variants).exists(v, !has(v.model)) || has(this.execution_role_arn)\x1a\xfe\x03\n" +
+	"%rolling_requires_multi_instance_fleet\x12\x89\x01a rolling deployment policy cannot manage a single-instance endpoint - use two or more instances, a blue_green policy, or omit deployment\x1a\xc8\x02!has(this.deployment) || !has(this.deployment.rolling) || !(this.production_variants.size() == 1 && !has(this.production_variants[0].serverless) && !has(this.production_variants[0].managed_instance_scaling) && (!has(this.production_variants[0].initial_instance_count) || this.production_variants[0].initial_instance_count == 1))\"\xbb\x13\n" +
 	"\x1bAwsSagemakerEndpointVariant\x12>\n" +
 	"\fvariant_name\x18\x01 \x01(\tB\x1b\xbaH\x18\xd8\x01\x01r\x13\x18?2\x0f^[0-9A-Za-z-]+$R\vvariantName\x12l\n" +
 	"\x05model\x18\x02 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc4\t\x92\xd4a\x19status.outputs.model_nameR\x05model\x12N\n" +

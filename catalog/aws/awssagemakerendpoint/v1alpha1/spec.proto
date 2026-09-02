@@ -61,7 +61,12 @@ message AwsSagemakerEndpointSpec {
 
   // How UpdateEndpoint rolls new capacity: blue/green with traffic
   // shifting (AWS default when omitted) or rolling batches, plus
-  // CloudWatch-alarm auto-rollback.
+  // CloudWatch-alarm auto-rollback. NOTE: AWS rejects a ROLLING policy
+  // on a single-instance fleet at Create/UpdateEndpoint ("Cannot update
+  // endpoint with single instance using RollingUpdatePolicy",
+  // live-caught 2026-08-25) - a one-instance endpoint uses blue/green
+  // or omits deployment; the CEL below front-loads the confirmed
+  // single-variant case.
   AwsSagemakerEndpointDeployment deployment = 8;
 
   // Variant names are identity within the endpoint configuration - AWS
@@ -85,6 +90,16 @@ message AwsSagemakerEndpointSpec {
     id: "role_required_without_models"
     message: "execution_role_arn is required when any variant omits model"
     expression: "!(this.production_variants + this.shadow_variants).exists(v, !has(v.model)) || has(this.execution_role_arn)"
+  };
+
+  // AWS rejects RollingUpdatePolicy on a single-instance fleet
+  // (server contract, live-caught 2026-08-25). Scoped true-positive:
+  // fires only on the confirmed shape - one instance-backed production
+  // variant at one (or unspecified) instance with no managed scaling.
+  option (buf.validate.message).cel = {
+    id: "rolling_requires_multi_instance_fleet"
+    message: "a rolling deployment policy cannot manage a single-instance endpoint - use two or more instances, a blue_green policy, or omit deployment"
+    expression: "!has(this.deployment) || !has(this.deployment.rolling) || !(this.production_variants.size() == 1 && !has(this.production_variants[0].serverless) && !has(this.production_variants[0].managed_instance_scaling) && (!has(this.production_variants[0].initial_instance_count) || this.production_variants[0].initial_instance_count == 1))"
   };
 }
 
@@ -115,7 +130,16 @@ message AwsSagemakerEndpointVariant {
   // Instance type for dedicated capacity (an "ml.*" type, e.g.
   // "ml.m5.large", "ml.g5.xlarge"). AWS's accepted set grows with every
   // release - the value passes through to the API, which rejects
-  // unknown types. Required unless `serverless` is set.
+  // unknown types. Required unless `serverless` is set. NOTE the
+  // per-type "for endpoint usage" Service Quota: on a fresh AWS
+  // account it defaults to ZERO for nearly every instance family
+  // (ml.m5.large and ml.c6i.large included) - CreateEndpoint fails
+  // with ResourceLimitExceeded until a quota increase is granted. The
+  // entry-level exceptions whose default is 2 are ml.t2.* (x86) and
+  // ml.m6g.large (Graviton - the container image must be arm64);
+  // `serverless` needs no per-type quota (default: 5 endpoints per
+  // region). Check with: aws service-quotas list-service-quotas
+  // --service-code sagemaker.
   string instance_type = 3 [
     (buf.validate.field).ignore = IGNORE_IF_ZERO_VALUE,
     (buf.validate.field).string.pattern = "^ml\\.[a-z0-9]+([.-][a-z0-9]+)*$"
@@ -132,7 +156,8 @@ message AwsSagemakerEndpointVariant {
   optional float initial_variant_weight = 5 [(buf.validate.field).float.gte = 0];
 
   // Serverless compute instead of dedicated instances: SageMaker scales
-  // capacity with traffic and bills per inference ($0 idle). Excludes
+  // capacity with traffic and bills per inference (nothing while idle).
+  // Excludes
   // every instance-based setting on this variant.
   AwsSagemakerEndpointServerlessConfig serverless = 6;
 

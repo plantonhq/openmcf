@@ -53,6 +53,9 @@ spec:
         type: spec_default
         reference: Azure's default is true -- SSH password logins are off and keys are the only path; setting it false (with admin_password) reopens password authentication. Spec validation requires at least one SSH key whenever passwords are disabled.
       notes: Windows VMs authenticate with a password by ARM's own contract (there is no key-based alternative); both Linux presets stay keys-only.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

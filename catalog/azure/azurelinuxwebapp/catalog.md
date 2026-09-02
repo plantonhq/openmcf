@@ -1,6 +1,6 @@
 # Azure Linux Web App
 
-Deploys a Linux Web App on Azure App Service with configurable application stacks (.NET, Node.js, Python, PHP, Java, or Docker containers), VNet integration, managed identity, IP restrictions, CORS, logging, and storage mounts. The web app integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, service plans, subnets, Application Insights, and user-assigned identities.
+Deploys a Linux Web App on Azure App Service with configurable application stacks (.NET, Node.js, Python, PHP, Java, or Docker containers), VNet integration, managed identity, IP restrictions, CORS, logging, and storage mounts. The App Service Plan it binds to sets the feature ceiling -- always-on needs Basic or higher, VNet integration needs Standard or higher -- so the plan choice decides what the app can do before a single spec field is set.
 
 ## What Gets Created
 
@@ -42,7 +42,7 @@ Open the deployment store, find **Azure Linux Web App**, and click **Deploy**. T
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLinuxWebApp
 metadata:
   name: platform-api
@@ -54,7 +54,7 @@ spec:
     value: "acme-prod-rg"
   webAppName: "acme-platform-api"
   servicePlanId:
-    value: "/subscriptions/.../serverFarms/acme-prod-plan"
+    value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/acme-prod-rg/providers/Microsoft.Web/serverFarms/acme-prod-plan"
   siteConfig:
     applicationStack:
       nodeVersion: "22-lts"
@@ -66,7 +66,7 @@ spec:
 planton apply -f linux-web-app.yaml
 ```
 
-This creates a Node.js 22 LTS web app with always-on and health check monitoring. VNet integration, managed identity, IP restrictions, CORS, and logging are not configured.
+This creates a Node.js 22 LTS web app with always-on and health check monitoring -- VNet integration, managed identity, IP restrictions, CORS, and logging are not configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -142,10 +142,8 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | `identity_principal_id` | Principal ID of the system-assigned managed identity | Azure RBAC role assignments (Key Vault, Storage, ACR) |
 | `identity_tenant_id` | Tenant ID of the system-assigned managed identity | Azure RBAC configuration |
 | `custom_domain_verification_id` | Domain verification ID for custom domain binding | DNS TXT record at `asuid.{custom-domain}` |
-| `hosting_environment_id` | The App Service Environment ID (Isolated plans only) | Informational -- network isolation audits |
 | `site_credential_name` | Basic-auth publishing username (secret -- masked in the console) | Web Deploy/FTP publishing; inert when both basic-auth toggles are off |
 | `site_credential_password` | Basic-auth publishing password (secret -- masked in the console) | Web Deploy/FTP publishing; inert when both basic-auth toggles are off |
-| `kind` | Resource kind string as reported by Azure | Informational |
 
 ## Common Patterns
 

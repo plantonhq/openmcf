@@ -31,11 +31,11 @@ spec:
   enableNetworkIsolation: true
   inferenceExecutionMode: Serial
   containers:
-    - image: 746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1
+    - image: 246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1
       containerHostname: stage-one
       environment:
         STAGE: preprocess
-    - image: 746614075791.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1
+    - image: 246618743249.dkr.ecr.us-west-2.amazonaws.com/sagemaker-scikit-learn:1.2-1
       containerHostname: stage-two
       environment:
         STAGE: score

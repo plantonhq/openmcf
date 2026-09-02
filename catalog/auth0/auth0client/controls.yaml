@@ -1,0 +1,71 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: auth0client
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "The client registration -- including the client secret Auth0 generates for it -- lives inside Auth0's managed cloud, which encrypts all data at rest with AES-256 at multiple layers (disk, file, database, application), per Auth0's published platform security statements (auth0.com/blog/securing-auth0s-new-private-cloud-platform and the support.auth0.com 'Security questions' article, both retrieved 2026-08-22). No customer toggle exists."
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: "No spec field selects an encryption key. Auth0 does offer tenant-level bring-your-own-key (customers import a root key that wraps the tenant's data encryption keys) as part of the Enterprise-only Highly Regulated Identity add-on (auth0.com/blog/bring-your-own-key-byok-in-auth0, retrieved 2026-08-22) -- but that is tenant posture configured outside this component, not a per-client seam."
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: "Every path to this component travels TLS: the modules manage it through the Auth0 Management API, served exclusively over HTTPS (the endpoint contract at auth0.com/docs/api/management/v2/clients/post-clients, retrieved 2026-08-22, addresses only https://{tenant-domain}/api/v2/...), and the OAuth/OIDC flows the client's users exercise run against the tenant's HTTPS endpoints -- Auth0 states all data in transit is encrypted with TLS 1.2+ (auth0.com/blog/securing-auth0s-new-private-cloud-platform, retrieved 2026-08-22)."
+      notes: The redirect targets the CUSTOMER registers (callbacks, allowed_logout_urls) can be plain-http URLs -- the spec does not forbid http://localhost entries, common in development. Production lists should be HTTPS-only; that discipline lives in the manifest author's hands.
+    - control_id: no-public-access
+      status: not_applicable
+      notes: A client is a registration object with no network endpoint of its own. The tenant's OAuth endpoints it is exercised against are public by design -- Auth0 is a SaaS identity provider whose reachability is a property of the tenant, configured nowhere in this spec.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: "No inbound network surface exists to filter. The nearest analogues in this spec restrict destinations and origins, not sources: callbacks pins where Auth0 may redirect after login, and allowed_origins/web_origins pin which browser origins may make cross-origin calls -- valuable OAuth hygiene, but not network-source filtering."
+    - control_id: edge-protection
+      status: not_applicable
+      notes: The client receives no HTTP requests directly. Auth0 operates WAF rules, DDoS protection, bot detection, and rate limiting at its own network edge as platform posture (auth0.com/blog/securing-auth0s-new-private-cloud-platform, retrieved 2026-08-22); nothing in this spec attaches or configures a request filter.
+    - control_id: rbac
+      status: not_applicable
+      notes: "The spec carries no surface governing WHO may manage this client -- that is the Auth0 tenant's own control plane (Management API scopes on credentials, dashboard roles for humans; the deploy credential's least-privilege scope set is documented in iac/permissions.yaml). What the spec DOES author is the inverse direction: api_grants declares which APIs this client may call and with which scopes, the least-privilege authoring seam for M2M access -- authorization this client HOLDS, not access control OVER the component."
+    - control_id: workload-identity
+      status: not_applicable
+      notes: "No seam exists for platform-issued identities. An M2M client authenticates to Auth0 with the static client secret Auth0 generates at creation (read back through the module's data source and surfaced as an output) -- the spec exposes no field to select key-based or certificate-based client authentication instead. The credential the IaC runner itself presents is a separate M2M client secret, documented in iac/permissions.yaml."
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: grant_types
+      evidence:
+        type: spec_default
+        reference: "grant_types empty lets Auth0 assign defaults based on application_type; listing grants explicitly is how weak flows are kept off. The spec contract itself flags the legacy paths: 'implicit' is marked legacy and not recommended, and 'password' (resource owner password grant) not recommended -- a client whose grant_types omits them cannot exercise them. oidc_conformant (default true per the spec contract) enforces strict OIDC behavior on the flows that remain."
+      notes: "A second legacy path lives at refresh_token.rotation_type: the spec contract calls non-rotating refresh tokens 'legacy behavior' -- set rotating so each use retires the old token. Both fields exist in v1alpha1/spec.proto; presets are not shipped for this component, so the manifest author carries the posture."
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The client selects OAuth flows, token lifetimes, and redirect surfaces -- it enforces no credential policy on the humans signing in through it. Password strength, brute-force protection, and MFA live on the tenant's connections (the Auth0Connection kind models password_policy and brute_force_protection) and tenant-level policy, none of it reachable from this spec.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: The spec exposes no audit surface -- there is no per-client logging toggle in the Management API contract the modules drive. Whether and how long management and sign-in events are retained is the Auth0 tenant's log posture, configured at the tenant level outside this component.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No per-client metric surface exists in the spec or the Management API contract the modules drive; exporting tenant events to a monitoring system is tenant-level log-stream configuration, outside this component.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: "The client is declaratively re-creatable from the manifest, with one sharp edge worth knowing: Auth0 generates the client_id and client_secret at creation, so a re-created client is a NEW identity -- every application holding the old credentials must be updated. That is credential distribution, not data loss; no backup surface exists to configure."
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist at this component's level to retain (see backup-recovery); the manifest is the recovery path.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A client has no placement to configure -- it is served wherever the Auth0 tenant runs. Availability of the platform is the SaaS provider's posture, with no seam in this spec.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: "Neither the Auth0 Management API contract the modules drive nor the auth0 Terraform provider's client resource exposes a deletion-protection flag, and the module sets none: a destroy proceeds when issued, deleting the registration and its grants -- applications presenting the old client_id stop authenticating immediately. Protection, where wanted, is operational."
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A client is a pure configuration object with no software of its own to patch; the platform serving it is Auth0-managed SaaS, patched by the provider on its own channel.

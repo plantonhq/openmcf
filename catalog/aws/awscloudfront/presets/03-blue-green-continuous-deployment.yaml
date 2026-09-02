@@ -6,7 +6,9 @@ spec:
   region: us-east-1
   origins:
     - originId: s3-site
-      domainName: <bucket-name>.s3.<bucket-region>.amazonaws.com
+      # Origin domains must be real DNS shapes (the field's own pattern
+      # rejects angle brackets) -- replace the bucket and region segments.
+      domainName: replace-me-bucket.s3.us-east-1.amazonaws.com
       s3Origin:
         createOriginAccessControl: true
   defaultCacheBehavior:

@@ -48,6 +48,9 @@ spec:
         type: spec_default
         reference: Where a provider has both a modern and a legacy credential, the spec models them as an explicit exclusive choice -- Cloudflare accepts a scoped api_token (recommended) or the legacy account-wide api_key, exactly one of which must be set.
       notes: The 01-cloudflare preset uses the scoped api_token, not the legacy key. Other solvers carry a single credential model with no legacy path.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Changes to the ClusterIssuer and its credential Secrets are Kubernetes API operations captured by the target cluster's audit policy; issuance events are visible as CertificateRequest resources owned by cert-manager, not as a provider audit log of this resource.

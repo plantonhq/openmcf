@@ -44,7 +44,7 @@ resources as tags, so a platform key there would leak internal detail.
 |---|---|
 | `planton.dev/provisioner` | Which IaC engine deploys this resource: `pulumi`, `tofu`, or `terraform` (case-insensitive) |
 | `pulumi.planton.dev/stack.fqdn` | Pulumi stack as `organization/project/stack`; takes precedence over the three component annotations (`pulumi.planton.dev/organization`, `.../project`, `.../stack.name`) |
-| `tofu.planton.dev/backend.type` | Terraform/OpenTofu state backend type: `s3`, `gcs`, `azurerm`, `local` (key prefix matches the provisioner: `terraform.planton.dev/...` for terraform) |
+| `tofu.planton.dev/backend.type` | Terraform/OpenTofu state backend type: `s3`, `gcs`, `azurerm`, `remote` (TFE-protocol state storage), `local` (key prefix matches the provisioner: `terraform.planton.dev/...` for terraform) |
 | `tofu.planton.dev/backend.bucket`, `.../backend.key`, `.../backend.region`, `.../backend.endpoint` | State backend location details |
 
 ## Referencing another resource (value / valueFrom)

@@ -1,0 +1,33 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarezonetlssettings
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageCertificates
+        name: SSL and Certificates Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Universal SSL issuance via PATCH /zones/{zone_id}/ssl/universal/settings, Total TLS via POST /zones/{zone_id}/acm/total_tls, per-hostname TLS overrides via PUT/DELETE /zones/{zone_id}/hostnames/settings/{setting_id}/{hostname}, and CA hostname associations via PUT /zones/{zone_id}/certificate_authorities/hostname_associations (each named by its endpoint reference's Accepted Permissions, retrieved 2026-08-22). Covers the Terraform module's conditional cloudflare_universal_ssl_setting and cloudflare_total_tls singletons plus per-row cloudflare_hostname_tls_setting and cloudflare_certificate_authorities_hostname_associations resources, and the Pulumi module's matching UniversalSslSetting, TotalTls, HostnameTlsSetting, and CertificateAuthoritiesHostnameAssociations resources; neither engine performs secondary lookups. Group name verbatim from the Cloudflare API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22).
+      - purpose: ReadCertificates
+        name: SSL and Certificates Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Refresh/import the same four surfaces via GET on the same paths (named by the matching get endpoint references, retrieved 2026-08-22).
+      - purpose: ManageOriginTlsSettings
+        name: Zone Settings Write
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Auto origin TLS key exchange via PATCH /zones/{zone_id}/settings/auto_origin_tls_kex and origin TLS compliance modes via PUT/PATCH/DELETE /zones/{zone_id}/settings/origin_tls_compliance_modes. These two endpoint references publish no Accepted Permissions section; the group is derived from the module's API surface -- both are named settings under the zone-settings path, whose generic edit endpoint names Zone Settings Write. Covers the Terraform module's conditional cloudflare_zone_auto_origin_tls_kex and cloudflare_origin_tls_compliance_modes singletons and the Pulumi module's matching ZoneAutoOriginTlsKex and OriginTlsComplianceModes resources.
+      - purpose: ReadOriginTlsSettings
+        name: Zone Settings Read
+        scope: com.cloudflare.api.account.zone
+        provenance: derived
+        notes: Refresh the two settings via GET on the same paths (derived from the module's API surface).

@@ -4,7 +4,7 @@ Judgment calls that matter when you run DigitalOcean load balancers.
 
 ## Size is the cost knob; pick one way to express it
 
-`size` (`lb-small` / `lb-medium` / `lb-large`) and `sizeUnit` (1–200) describe the same capacity. `lb-small` is 1 unit, `lb-medium` is 3, `lb-large` is 6. Past `lb-large`, only `sizeUnit` applies. Carrying both is rejected before any provisioner runs. Unset means DigitalOcean provisions `lb-small` (~$12/month). Scale units, not Droplet count, are what you pay for.
+`size` (`lb-small` / `lb-medium` / `lb-large`) and `sizeUnit` (1–200) describe the same capacity. `lb-small` is 1 unit, `lb-medium` is 3, `lb-large` is 6. Past `lb-large`, only `sizeUnit` applies. Carrying both is rejected before any provisioner runs. Unset means DigitalOcean provisions `lb-small`. Scale units, not Droplet count, are what you pay for — the bill scales with units. Verified per-preset figures live in the generated estimate at `catalog/_pricing/estimates/digitaloceanloadbalancer.yaml`, computed from the pinned, source-dated price book.
 
 ## Certificates are names, not UUIDs
 

@@ -902,7 +902,14 @@ type AwsAppSyncGraphqlType struct {
 	// mismatch surfaces as a perpetual diff).
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The type definition - SDL (format SDL) or introspection JSON
-	// (format JSON).
+	// (format JSON). The text is CREATE-TIME: AWS rewrites it
+	// server-side into its own whitespace form (indentation stripped,
+	// braces re-placed, blank lines injected), so both engines ignore
+	// the textual echo to keep plans converging. Editing the definition
+	// body in place therefore does NOT propagate - to change a managed
+	// type's definition, remove the entry, apply, and re-add it with
+	// the new text (the same replace-the-entry choreography the format
+	// field requires).
 	Definition string `protobuf:"bytes,2,opt,name=definition,proto3" json:"definition,omitempty"`
 	// The definition's format. Fixed for life at AWS: the provider
 	// ignores format changes on update (a perpetual-diff trap) -

@@ -1,0 +1,23 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanvolume
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Volumes Block Storage
+      sku_meter: provisioned storage
+      pricing_unit: GiB-months
+      description: The provisioned capacity bills flat per GiB per month (prorated hourly) from creation to deletion, whether or not a droplet is attached or a single byte is written.
+  cost_drivers:
+    - field_path: size_gib
+      sku_meter: provisioned storage
+      pricing_unit: GiB-months
+      impact: "The entire bill: 0.10 USD/GiB/mo, linear (the pricing page publishes 100 GiB at 10.00 USD/mo, 500 GiB at 50.00 USD/mo, 1,000 GiB at 100.00 USD/mo -- https://www.digitalocean.com/pricing/volumes, retrieved 2026-08-22, 'flat pricing across all data centers'). Size can only be EXPANDED after creation -- the bill ratchets up and never back down."
+  free_tier: ""
+  estimate_exclusions:
+    - "volume snapshots bill 0.06 USD/GiB per month (https://www.digitalocean.com/pricing/volumes, retrieved 2026-08-22) and are taken outside this spec; snapshot_id here only restores FROM one at create"
+  notes: "Provisioned capacity is the whole meter -- filesystem formatting, labels, tags, and droplet attachment are all free. DigitalOcean prices volumes identically across regions (the page says flat pricing across all data centers). Deleting the volume stops the meter; snapshots taken from it keep billing their own meter until deleted."

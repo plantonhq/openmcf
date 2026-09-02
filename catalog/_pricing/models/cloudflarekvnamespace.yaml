@@ -1,0 +1,27 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. The single preset is genuinely zero-committed: an empty
+# namespace stores nothing and performs no operations per the component's
+# own cost profile, and the spec's two fields cannot move any meter --
+# stated in exclusions, never padded into fabricated dollars. Schema:
+# finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: cloudflarekvnamespace
+spec:
+  presets:
+    - preset: 01-standard
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      exclusions:
+        - the keys-read meter (Workers Paid 10 million/month included, then $0.50/million; Workers Free 100,000/day hard quota) follows the application's read traffic, billed per key including reads of non-existent keys
+        - the keys-written meter (Workers Paid 1 million/month included, then $5.00/million; Workers Free 1,000/day hard quota) follows write traffic from the application and any seeded CloudflareWorkersKvPair resources
+        - the keys-deleted meter (Workers Paid 1 million/month included, then $5.00/million; Workers Free 1,000/day hard quota) follows delete traffic
+        - the list-requests meter (Workers Paid 1 million/month included, then $5.00/million; Workers Free 1,000/day hard quota) follows namespace enumeration calls, including from the dashboard and Wrangler
+        - the stored-data meter (Workers Paid 1 GB included, then $0.50/GB-month; Workers Free 1 GB hard cap) grows with what lands in the namespace
+        - the $5/mo Workers Paid subscription is account-level plan spend -- no field in this spec pins it
+      notes: "Zero committed cost -- the preset creates an empty container (a title and an account); every KV meter is per-operation or per-stored-GB and waits for the first key."

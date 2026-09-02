@@ -1,6 +1,6 @@
 # Azure AI Search Service
 
-Creates an Azure AI Search service -- the managed search-and-retrieval engine AI applications index and query their own data with (keyword, vector, and semantic search; the standard retrieval companion to Azure OpenAI). It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Creates an Azure AI Search service -- the managed search-and-retrieval engine AI applications index and query their own data with (keyword, vector, and semantic search; the standard retrieval companion to Azure OpenAI). Capacity is SKU × partitions × replicas -- partitions scale storage and indexing, replicas scale query throughput and availability -- and the SKU upgrades in place only along basic → standard → standard2 → standard3; every other SKU change replaces the service.
 
 ## What Gets Created
 
@@ -26,7 +26,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure AI Search Service**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production Search** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure AI Search Service**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production Search Service** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -55,11 +55,31 @@ spec:
 planton apply -f azure-search-service.yaml
 ```
 
-The service provisions in a few minutes.
+This creates a standard-tier search service named `acme-search-prod` with three replicas (the 99.9% read-write SLA threshold) and a system-assigned identity for keyless indexer access to data sources. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
-In an AI-platform chart the order is: resource group → **search service** alongside the Azure OpenAI account; applications consume `endpoint` plus a key (or Entra RBAC), and indexers reach data sources via the service identity or shared private links.
+In an AI-platform chart the order is: resource group → **search service** alongside the Azure OpenAI account; applications consume `endpoint` plus a key (or Entra RBAC), and indexers reach data sources via the service identity or shared private links:
+
+```yaml
+spec:
+  resourceGroup:
+    valueFrom:
+      kind: AzureResourceGroup
+      name: ai-platform-rg
+      fieldPath: status.outputs.resource_group_name
+  sharedPrivateLinkServices:
+    - name: to-blob
+      subresourceName: blob
+      targetResourceId:
+        valueFrom:
+          kind: AzureStorageAccount
+          name: corpus-store
+          fieldPath: status.outputs.storage_account_id
+      requestMessage: "Search indexers need private reach to the corpus"
+```
+
+The InfraPipeline resolves the dependency graph, deploying the resource group and storage account before the service and its private link.
 
 ## Key Configuration
 
@@ -89,22 +109,21 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `search_service_id` | ARM ID of the service | Diagnostic settings, RBAC scopes |
-| `search_service_name` | The service's name | Operational tooling |
+| `search_service_id` | ARM ID of the service | Scope for Azure Role Assignments granting data-plane RBAC; diagnostic-setting targets |
 | `endpoint` | `https://{name}.search.windows.net` | What applications and SDKs call |
-| `primary_key` / `secondary_key` | Admin API keys (sensitive) | Application config via managed secrets |
+| `primary_key` / `secondary_key` | Admin API keys (sensitive) | Application config via managed secrets; empty when local auth is disabled |
 | `default_query_key` | The built-in read-only query key (sensitive) | Client-side query access |
-| `customer_managed_key_encryption_compliance_status` | CMK compliance readback | Governance checks |
-| `system_assigned_identity_principal_id` | The system identity's principal ID | Data-source grants for indexers |
-| `shared_private_link_service_ids` | Per-link ARM IDs, keyed by name | Operational tooling |
+| `system_assigned_identity_principal_id` | The system identity's principal ID | Azure Role Assignment `principalId` -- data-source grants for indexers |
+
+The `search_service_name`, `customer_managed_key_encryption_compliance_status`, and name-keyed `shared_private_link_service_ids` outputs are readbacks for operational and governance tooling rather than values other Cloud Resources typically wire in.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production search** -- standard SKU, SLA replicas, RBAC alongside keys. Start from the **Production Search** preset.
+**Production search** -- standard SKU, SLA replicas, RBAC alongside keys. Start from the **Production Search Service** preset.
 
-**Development** -- the cheap basic tier. Start from the **Dev Basic Search** preset.
+**Development** -- the cheap basic tier. Start from the **Development Basic Search** preset.
 
 **RAG retrieval** -- semantic ranking for Azure OpenAI grounding. Start from the **Semantic RAG Search** preset.
 

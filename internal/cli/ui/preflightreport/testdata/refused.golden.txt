@@ -1,0 +1,11 @@
+✖ Manifests load and validate
+   ✔ 2 of 3 documents load as known kinds and pass schema validation
+   ✖ manifests/cache.yaml: spec.memory_size_gb: value is required
+✖ References resolve inside this set
+   ✖ manifests/service.yaml: spec.redis_host: references GcpMemorystoreRedis "cache" outside this set; the set does not deploy it — the value must come from a resource that already exists — no backend exists here to discover it; add its manifest to this set, or deploy connected
+   ≈ manifests/service.yaml: relationship contains GcpProject "acme-prod" is outside this set — its existence is assumed and verified by the module at apply
+✔ State backends are configured and reachable
+   ✔ s3 state bucket "acme-state" reachable
+   ⚠ 1 node(s) keep state on this machine only — re-runs must happen here; name a remote backend (s3/gcs/azurerm) for CI
+
+✖ preflight refused the deploy: 2 problems named above — nothing was handed to an IaC engine

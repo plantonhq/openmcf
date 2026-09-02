@@ -61,6 +61,9 @@ spec:
         type: spec_default
         reference: RBAC user groups supersede the legacy single shared auth_token; the two are mutually exclusive (CEL-enforced), so adopting RBAC structurally retires the shared-secret path.
       notes: auth_token remains supported for compatibility and is marked sensitive; rotation rides auth_token_update_strategy.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: log_delivery_configurations

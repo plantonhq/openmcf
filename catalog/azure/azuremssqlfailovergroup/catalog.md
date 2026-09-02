@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure MSSQL Failover Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — with a live topology diagram resolving the primary and partner as you pick them. Start from the **automatic-failover** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure MSSQL Failover Group**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — with a live topology diagram resolving the primary and partner as you pick them. Start from the **Automatic Failover Group** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureMssqlFailoverGroup
 metadata:
   name: appdb-dr
@@ -72,7 +72,30 @@ This creates an automatic-failover group replicating one database to the partner
 
 ### InfraChart
 
-The group references both servers and every listed database — the InfraPipeline deploys the servers first, then the databases, then the group, in one resolved graph.
+When the whole DR topology deploys as one chart, the group references both servers and every listed database:
+
+```yaml
+spec:
+  name: appdb-dr
+  serverId:
+    valueFrom:
+      kind: AzureMssqlServer
+      name: app-sql
+      fieldPath: status.outputs.server_id
+  partnerServers:
+    - serverId:
+        valueFrom:
+          kind: AzureMssqlServer
+          name: app-sql-dr
+          fieldPath: status.outputs.server_id
+  databaseIds:
+    - valueFrom:
+        kind: AzureMssqlDatabase
+        name: app-database
+        fieldPath: status.outputs.database_id
+```
+
+The InfraPipeline deploys the servers first, then the databases, then the group, in one resolved graph.
 
 ## Key Configuration
 
@@ -104,16 +127,16 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 |--------|-------------|----------------------|
 | `read_write_listener_endpoint` | The listener that follows the primary | Application connection strings |
 | `read_only_listener_endpoint` | The listener pointed at the secondary | Reporting/read-intent connection strings |
-| `failover_group_id` | Azure resource ID of the group | Diagnostics, automation |
-| `failover_group_name` | Name of the group | Monitoring, dashboards |
+
+`status.outputs` also carries `failover_group_id` and `failover_group_name`, but no catalog component consumes a failover group by reference — the listeners are what downstream configuration actually uses.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Automatic failover** -- The hands-off DR posture: Azure promotes the partner after the grace window. Start from the **automatic-failover** preset.
+**Automatic failover** -- The hands-off DR posture: Azure promotes the partner after the grace window. Start from the **Automatic Failover Group** preset.
 
-**Manual failover** -- Tier-1 estates with a runbook: a human confirms the region is really gone before accepting the lag loss. Start from the **manual-failover** preset.
+**Manual failover** -- Tier-1 estates with a runbook: a human confirms the region is really gone before accepting the lag loss. Start from the **Manual Failover Group** preset.
 
 ## Works With
 

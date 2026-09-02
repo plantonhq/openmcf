@@ -1,4 +1,4 @@
-# Preset: Bulk Redirect List
+# Bulk Redirect List
 
 A `redirect`-kind list holding source→target URL rules. A redirect ruleset
 (`CloudflareRuleset`, http_request_redirect phase) resolves these with `from_list`,

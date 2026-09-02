@@ -29,7 +29,12 @@ type AwsConfigConformancePackStackOutputs struct {
 	PackName string `protobuf:"bytes,1,opt,name=pack_name,json=packName,proto3" json:"pack_name,omitempty"`
 	// The pack's ARN (the account-scope or organization-scope ARN,
 	// whichever this instance deployed).
-	PackArn       string `protobuf:"bytes,2,opt,name=pack_arn,json=packArn,proto3" json:"pack_arn,omitempty"`
+	PackArn string `protobuf:"bytes,2,opt,name=pack_arn,json=packArn,proto3" json:"pack_arn,omitempty"`
+	// The AWS region the pack lives in. Conformance packs are
+	// region-scoped and addressed by region + name, so any consumer (or
+	// verifier) reaching the pack off the ambient region needs this
+	// alongside pack_name.
+	Region        string `protobuf:"bytes,3,opt,name=region,proto3" json:"region,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -78,14 +83,22 @@ func (x *AwsConfigConformancePackStackOutputs) GetPackArn() string {
 	return ""
 }
 
+func (x *AwsConfigConformancePackStackOutputs) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
 var File_catalog_aws_awsconfigconformancepack_v1alpha1_outputs_proto protoreflect.FileDescriptor
 
 const file_catalog_aws_awsconfigconformancepack_v1alpha1_outputs_proto_rawDesc = "" +
 	"\n" +
-	";catalog/aws/awsconfigconformancepack/v1alpha1/outputs.proto\x121dev.planton.aws.awsconfigconformancepack.v1alpha1\"^\n" +
+	";catalog/aws/awsconfigconformancepack/v1alpha1/outputs.proto\x121dev.planton.aws.awsconfigconformancepack.v1alpha1\"v\n" +
 	"$AwsConfigConformancePackStackOutputs\x12\x1b\n" +
 	"\tpack_name\x18\x01 \x01(\tR\bpackName\x12\x19\n" +
-	"\bpack_arn\x18\x02 \x01(\tR\apackArnB\x9b\x03\n" +
+	"\bpack_arn\x18\x02 \x01(\tR\apackArn\x12\x16\n" +
+	"\x06region\x18\x03 \x01(\tR\x06regionB\x9b\x03\n" +
 	"5com.dev.planton.aws.awsconfigconformancepack.v1alpha1B\fOutputsProtoP\x01Zkgithub.com/plantonhq/planton/catalog/aws/awsconfigconformancepack/v1alpha1;awsconfigconformancepackv1alpha1\xa2\x02\x04DPAA\xaa\x021Dev.Planton.Aws.Awsconfigconformancepack.V1alpha1\xca\x021Dev\\Planton\\Aws\\Awsconfigconformancepack\\V1alpha1\xe2\x02=Dev\\Planton\\Aws\\Awsconfigconformancepack\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Aws::Awsconfigconformancepack::V1alpha1b\x06proto3"
 
 var (

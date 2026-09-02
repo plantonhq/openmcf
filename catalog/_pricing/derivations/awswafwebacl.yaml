@@ -1,0 +1,96 @@
+# Cost derivation: the machine-executable rules turning any AwsWafWebAcl
+# manifest's spec values into metered quantities and price choices. The
+# estimate generator replays the catalog presets through these rules to
+# emit ../estimates/awswafwebacl.yaml; a server-side estimator evaluates
+# the same rules against live manifests. Prices live in the provider's
+# price book (../pricebook/). The committed bill is one web-ACL fee plus
+# one rule fee per top-level rule. The intelligent-threat managed rule
+# groups (Bot Control, ATP, ACFP, anti-DDoS) carry monthly subscriptions
+# this price book does not carry -- their identity lives inside the
+# repeated rules tree, so the refusals range over the elements and any
+# rule referencing one refuses the whole estimate rather than
+# understating it. A custom_statement is an opaque escape hatch these
+# rules cannot inspect and refuses for the same reason.
+# Schema: finops/componentcostderivation/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostDerivation
+metadata:
+  name: awswafwebacl
+spec:
+  currency: USD
+  hours_per_month: 730
+  region:
+    from_field: region
+    assumption: us-east-1
+  refusals:
+    - when:
+        - any_element_of: rules
+          field_path: statement.managed_rule_group.name
+          op: equals
+          value: AWSManagedRulesBotControlRuleSet
+      reason: the Bot Control managed rule group carries a monthly intelligent-threat subscription this price book does not carry -- an estimate without it would understate a committed charge
+    - when:
+        - any_element_of: rules
+          field_path: statement.managed_rule_group.name
+          op: equals
+          value: AWSManagedRulesATPRuleSet
+      reason: the Account Takeover Prevention managed rule group carries a monthly intelligent-threat subscription this price book does not carry -- an estimate without it would understate a committed charge
+    - when:
+        - any_element_of: rules
+          field_path: statement.managed_rule_group.name
+          op: equals
+          value: AWSManagedRulesACFPRuleSet
+      reason: the Account Creation Fraud Prevention managed rule group carries a monthly intelligent-threat subscription this price book does not carry -- an estimate without it would understate a committed charge
+    - when:
+        - any_element_of: rules
+          field_path: statement.managed_rule_group.name
+          op: equals
+          value: AWSManagedRulesAntiDDoSRuleSet
+      reason: the anti-DDoS managed rule group carries a monthly intelligent-threat subscription this price book does not carry -- an estimate without it would understate a committed charge
+    - when:
+        - any_element_of: rules
+          field_path: statement.custom_statement
+          op: is_set
+      reason: a custom_statement is an opaque escape hatch whose managed-rule-group references (and their subscriptions) these rules cannot inspect -- a number that might omit a subscription would be a guess
+  lines:
+    - sku_meter: web ACL monthly fee
+      quantity:
+        - constant: "1"
+      price_slug: waf-web-acl-month-us-east-1
+      basis: one web ACL, billed monthly (prorated hourly)
+    - sku_meter: rule monthly fee
+      quantity:
+        - count_of: rules
+      price_slug: waf-rule-month-us-east-1
+      basis: one rule fee per top-level rule (a managed rule group bills as one rule regardless of internal size)
+  exclusions:
+    - text: requests processed bill per million and follow traffic
+    - text: CloudWatch metrics and sampled requests (module defaults) add no WAF charge of their own
+    - applies_when:
+        - any_element_of: rules
+          field_path: statement.rate_based
+          op: is_set
+      text: the rate-based rule's block action adds no charge of its own -- blocked requests still count as processed requests
+    - applies_when:
+        - field_path: logging
+          op: is_set
+        - field_path: logging.filter
+          op: is_unset
+      text: request-log delivery bills as vended-log ingestion beyond WAF's free allowance of 500 MB per 1 million requests
+    - applies_when:
+        - field_path: logging
+          op: is_set
+        - field_path: logging.filter
+          op: is_set
+      text: request-log delivery bills as vended-log ingestion beyond WAF's free allowance of 500 MB per 1 million requests -- the configured logging filter drops records before delivery, which is exactly the logging-cost lever
+    - text: marketplace-vendor managed rule groups bill their own subscriptions through AWS Marketplace, outside this price book
+  notes:
+    - applies_when:
+        - any_element_of: rules
+          field_path: statement.managed_rule_group
+          op: is_set
+      text: The referenced managed rule groups are AWS core protection packs with no subscription fee -- the offer's only managed-group entity fees are Bot Control, ATP, ACFP, and anti-DDoS, which these rules refuse to price.
+    - applies_when:
+        - field_path: logging
+          op: is_unset
+      text: No logging is configured, so no delivery charges arise.

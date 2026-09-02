@@ -366,9 +366,16 @@ ARN.
 `object` · required
 
 The destination's access policy: which accounts/principals may
-logs:PutSubscriptionFilter against this destination. NOTE the
-AWS contract: destroying the policy alone never removes it -
-only destroying the whole destination does.
+logs:PutSubscriptionFilter against this destination. Write AWS
+principals as BARE ACCOUNT IDs ("AWS": "123456789012") - the
+service rejects the ARN form with "Principal section of policy
+contains ARN instead of account ID: arn:aws:iam::...:root"
+(server contract; the usual IAM root-ARN spelling is invalid
+here). In YAML, QUOTE the id: an unquoted account id parses as a
+number and IAM's grammar rejects a numeric principal ("Error
+occurred while parsing accessPolicy"). NOTE the AWS contract:
+destroying the policy alone never removes it - only destroying
+the whole destination does.
 
 - rule: {"required":true}
 

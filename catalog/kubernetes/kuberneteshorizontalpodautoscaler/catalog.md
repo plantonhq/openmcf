@@ -1,6 +1,6 @@
 # Kubernetes HorizontalPodAutoscaler
 
-Deploys a Kubernetes HorizontalPodAutoscaler carrying the full autoscaling/v2 surface — resource utilization, per-container resources, custom per-pod metrics, object metrics, and external metrics (queue depths, cloud LB QPS) driving a workload's replica count between a floor and a ceiling, with per-direction scaling behavior. Manages autoscaling declaratively through a Kubernetes Provider Connection with full audit trail and versioning.
+Deploys a Kubernetes HorizontalPodAutoscaler carrying the full autoscaling/v2 surface — resource utilization, per-container resources, custom per-pod metrics, object metrics, and external metrics (queue depths, cloud LB QPS) driving a workload's replica count between a floor and a ceiling, with per-direction scaling behavior. The standalone autoscaler is the right shape for scale targets a Planton workload kind does not manage and for the advanced v2 surface; simple CPU/memory autoscaling of a Planton Deployment belongs in the workload's own availability block instead.
 
 ## What Gets Created
 
@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **HorizontalPodAutoscaler on Kubernetes**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **CPU Autoscale** preset for the workhorse case or **Queue Driven** for worker fleets in the [Presets](#presets) tab.
+Open the deployment store, find **Kubernetes HorizontalPodAutoscaler**, and click **Deploy**. The creation wizard walks you through placement, the scale target, the replica bounds, the metric list, and the per-direction behavior tuning. Start from the **CPU Autoscale** preset for the workhorse case or **Queue Driven** for worker fleets in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesHorizontalPodAutoscaler
 metadata:
   name: checkout-hpa
@@ -42,25 +42,47 @@ spec:
   name: checkout-hpa
   namespace:
     value: backend-services
-  scale_target:
+  scaleTarget:
     name:
       value: checkout
-  min_replicas: 2
-  max_replicas: 10
+  minReplicas: 2
+  maxReplicas: 10
   metrics:
     - type: resource
       resource:
         name: cpu
         target:
           type: utilization
-          average_utilization: 60
+          averageUtilization: 60
 ```
 
 ```shell
 planton apply -f hpa.yaml
 ```
 
-This holds the `checkout` Deployment's average CPU at 60% of requests, between 2 and 10 replicas.
+This holds the `checkout` Deployment's average CPU at 60% of requests, between 2 and 10 replicas. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the autoscaler to its workload by reference so it deploys after the Deployment it governs:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: backend-namespace
+      fieldPath: spec.name
+  scaleTarget:
+    name:
+      valueFrom:
+        kind: KubernetesDeployment
+        name: checkout-deployment
+        fieldPath: status.outputs.deployment_name
+  maxReplicas: 10
+```
+
+The InfraPipeline deploys the namespace and the Deployment first, then creates the autoscaler against them.
 
 ## Key Configuration
 
@@ -68,7 +90,7 @@ These are the most important decisions when configuring a Kubernetes HorizontalP
 
 **One controller per replica count** -- Once this HPA governs the target, the workload's own `replicas` is advisory. Pointing this AND the workload's built-in autoscaling at the same target flaps the fleet.
 
-**The ceiling is the capacity conversation** -- `max_replicas` is required and deliberate: an autoscaler without a ceiling is a blank check to the metric driving it. The floor (default 1) is what survives quiet hours.
+**The ceiling is the capacity conversation** -- `maxReplicas` is required and deliberate: an autoscaler without a ceiling is a blank check to the metric driving it. The floor (default 1) is what survives quiet hours.
 
 **Metrics OR toward scale-out** -- Each configured metric proposes a replica count and the HIGHEST wins. With no metrics, Kubernetes applies its default: 80% average CPU utilization (pods must declare CPU requests — utilization measures against them).
 
@@ -80,10 +102,12 @@ These are the most important decisions when configuring a Kubernetes HorizontalP
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | The autoscaler's namespace — must be the target's own; omitted means the cluster's `default` namespace |
-| `spec.scale_target.name` | KubernetesDeployment (`status.outputs.deployment_name`) | The workload whose replica count this autoscaler owns (other kinds by their exported name) |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesDeployment** | `scaleTarget.name` | `status.outputs.deployment_name` |
+
+The namespace must be the target's own (omitted means the cluster's `default` namespace); other scale-target kinds are referenced by their exported name output explicitly.
 
 ### What This Component Provides
 
@@ -111,7 +135,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Kubernetes Deployment** -- the default scale target, referenced declaratively by its exported name.
-- **Kubernetes MetricsServer** -- the prerequisite for CPU/memory metrics.
-- **Kubernetes Keda** -- event-driven scale-to-zero semantics built on the external-metrics path this HPA consumes.
-- **Kubernetes PodDisruptionBudget** -- bounds how fast maintenance may shrink what this autoscaler grew.
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- the default scale target, referenced declaratively by its exported name.
+- [**Metrics Server**](/cloud-catalog/kubernetes-metrics-server) -- the prerequisite for CPU/memory metrics.
+- [**KEDA**](/cloud-catalog/kubernetes-keda) -- event-driven scale-to-zero semantics built on the external-metrics path this HPA consumes.
+- [**Kubernetes PodDisruptionBudget**](/cloud-catalog/kubernetes-pod-disruption-budget) -- bounds how fast maintenance may shrink what this autoscaler grew.

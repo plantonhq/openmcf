@@ -67,7 +67,7 @@ const capabilities: CapabilityCardProps[] = [
       'Cloud-native identity federation — no static keys to rotate',
       'Credentials resolved at execution time inside your cloud boundary',
       'Control plane never sees, stores, or proxies your cloud credentials',
-      'Secret backend options: platform Vault, bring-your-own Vault, bring-your-own envelope key (AWS KMS / GCP KMS), or cloud-native secret managers',
+      'Secret backend options: platform Vault, bring-your-own Vault or OpenBAO, or your cloud\'s own secret manager — values stored native in your store',
     ],
     modules: ['Runner', 'Security'],
   },
@@ -109,7 +109,7 @@ const capabilities: CapabilityCardProps[] = [
 const architectureLayers = [
   {
     label: 'Level 1 — Encrypted Secret Backends',
-    items: ['Platform-provided Vault', 'Bring Your Own Vault', 'AWS KMS / GCP KMS Envelope Key', 'Cloud-native Secret Managers'],
+    items: ['Platform-provided Vault', 'Bring Your Own Vault / OpenBAO', 'AWS / GCP / Azure Secret Managers', 'Native values in your store'],
     border: 'border-[#3a3a3a]',
   },
   {

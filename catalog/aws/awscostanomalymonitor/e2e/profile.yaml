@@ -4,23 +4,31 @@ metadata:
   name: awscostanomalymonitor
 spec:
   # A Cost Explorer anomaly monitor under live E2E: one lane proves the
-  # recommended DIMENSIONAL/SERVICE shape with a folded daily email
-  # subscription above an absolute impact threshold. Anomaly detection
-  # is free (~$0); a fresh monitor trains silently, so no alert ever
-  # fires within the lane.
+  # CUSTOM (tag-slice) shape -- the Struct-to-JSON Expression render --
+  # with a folded daily email subscription above an absolute impact
+  # threshold. Anomaly detection is free (~$0); a fresh monitor trains
+  # silently, so no alert ever fires within the lane.
   #
   # Deliberately not exercised live:
-  #   - the CUSTOM monitor shape (monitor_specification) -- one monitor
-  #     carries exactly one shape; DIMENSIONAL is the canonical form
-  #     and the Struct-to-JSON render is proven offline. Unblock: a
-  #     second scenario when the proof queue wants the datapoint.
+  #   - the DIMENSIONAL (services) shape -- an account SINGLETON that
+  #     AWS auto-creates ("Default-Services-Monitor") on post-2023
+  #     Cost Explorer accounts, this one included: CreateAnomalyMonitor
+  #     fails with "Limit exceeded on dimensional spend monitor
+  #     creation" (live-caught 2026-08-25, identical on both engines).
+  #     The two-field render (type + dimension) is proven offline.
+  #     Unblock: an owner call to delete the auto-created default
+  #     monitor (recreatable, but it is the account's live cost
+  #     alerting), or an account predating the 2023-03-27 auto-enable.
   #   - IMMEDIATE/SNS delivery -- needs an AwsSnsTopic fixture with a
   #     costalerts.amazonaws.com publish policy. Unblock: the fixture
   #     via scenario annotations.
   #
-  # pending_proof: forged this session to the full offline bar -- Q43
-  # proves it live.
+  # PROVEN live 2026-08-25 (Q43): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under
+  # the armed apply-idempotency gate (two live catches fixed: the
+  # pre-occupied DIMENSIONAL singleton and the canonical Expression
+  # document form).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

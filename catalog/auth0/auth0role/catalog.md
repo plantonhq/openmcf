@@ -1,6 +1,6 @@
 # Auth0 Role
 
-Deploys an Auth0 Role and its complete set of API permissions (scopes) as a single Cloud Resource. Roles are the middle layer of Auth0 role-based access control (RBAC) -- they group the scopes defined on a Resource Server into a reusable access tier that you assign to users. Integrates with Planton's Auth0 Provider Connection for credential management.
+Deploys an Auth0 Role and its complete set of API permissions (scopes) as a single Cloud Resource. Roles are the middle layer of Auth0 role-based access control (RBAC) -- they group the scopes defined on a Resource Server into a reusable access tier that you assign to users.
 
 ## What Gets Created
 
@@ -32,7 +32,7 @@ Open the deployment store, find **Auth0 Role**, and click **Deploy**. The creati
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: auth0.planton.dev/v1
+apiVersion: auth0.planton.dev/v1alpha1
 kind: Auth0Role
 metadata:
   name: editor
@@ -43,9 +43,9 @@ spec:
   description: Read and write access to the orders API
   permissions:
     - name: read:orders
-      resource_server_identifier: https://api.example.com/
+      resourceServerIdentifier: https://api.example.com/
     - name: write:orders
-      resource_server_identifier: https://api.example.com/
+      resourceServerIdentifier: https://api.example.com/
 ```
 
 ```shell
@@ -60,11 +60,11 @@ These are the most important decisions when configuring an Auth0 Role. Explore t
 
 **Display name** -- The `name` field sets the human-readable role name shown in the Auth0 dashboard and when assigning the role to users. When omitted, it defaults to `metadata.name`. Set it when you want a friendlier label (e.g., resource name `viewer`, display name `Viewer`).
 
-**Permission set** -- The `permissions` array is the heart of the role. Each entry pairs a scope `name` (e.g., `read:orders`) with the `resource_server_identifier` (audience) of the API that defines it. A single role can span multiple APIs by listing permissions with different identifiers.
+**Permission set** -- The `permissions` array is the heart of the role. Each entry pairs a scope `name` (e.g., `read:orders`) with the `resourceServerIdentifier` (audience) of the API that defines it. A single role can span multiple APIs by listing permissions with different identifiers.
 
 **Authoritative reconciliation** -- The permission set is authoritative: each deploy sets the role's permissions to exactly the list provided. Removing a permission from the spec revokes it from everyone who holds the role on the next apply -- there is no partial or additive mode.
 
-**Audience accuracy** -- The `resource_server_identifier` must exactly match the target Resource Server's identifier. A mismatched audience silently grants nothing, so reuse the same value across permissions on the same API.
+**Audience accuracy** -- The `resourceServerIdentifier` must exactly match the target Resource Server's identifier. A mismatched audience silently grants nothing, so reuse the same value across permissions on the same API.
 
 ## Outputs and Dependencies
 
@@ -88,10 +88,10 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Role with permissions** -- A named access tier backed by a focused set of scopes on one API. Start from the **Role with Permissions** preset.
 
-**Administrator across APIs** -- A role that grants scopes spanning multiple Resource Servers. Start from the **Admin Role Multi-API** preset.
+**Administrator across APIs** -- A role that grants scopes spanning multiple Resource Servers. Start from the **Administrator Role (Multiple APIs)** preset.
 
-**Empty role** -- A role created without permissions, to be populated later or assigned as a placeholder tier. Start from the **Role without Permissions** preset.
+**Empty role** -- A role created without permissions, to be populated later or assigned as a placeholder tier. Start from the **Role Without Permissions** preset.
 
 ## Works With
 
-- [**Auth0 Resource Server**](/cloud-catalog/auth0-resource-server) -- defines the scopes a role grants; each permission references a Resource Server by its identifier (audience).
+- [**Auth0 Resource Server (API)**](/cloud-catalog/auth0-resource-server) -- defines the scopes a role grants; each permission references a Resource Server by its identifier (audience).

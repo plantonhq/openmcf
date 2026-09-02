@@ -39,6 +39,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: Policies gate token-authenticated (Entra) clients only -- access-key clients bypass them entirely. The switches that enable Entra auth and disable access keys live on the AzureRedisCache kind's spec.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Policy creation, updates, and deletion land in the Azure Activity Log as subscription-level posture; data-plane connection auditing is the cache's diagnostic-settings surface.

@@ -35,9 +35,22 @@ running a feature store in production.
 - **TTL is your one online lever.** Records hard-delete at
   `EventTime + ttl`; size it to serving freshness, and adjust it freely
   — it is the only online-store setting that updates in place.
-- **Offline data outlives the group.** Deleting the group leaves its S3
-  objects in place by AWS design — budget for the bucket's lifecycle
-  separately, and clean it yourself when a group's data must go.
+- **Offline data outlives the group — S3 objects AND the Glue table.**
+  Deleting the group leaves its S3 objects in place by AWS design, and
+  the auto-created Glue table (in the `sagemaker_featurestore`
+  database) survives the delete too (live-verified 2026-08-25). Budget
+  for the bucket's lifecycle separately, and clean both yourself when a
+  group's data must go.
+- **The offline store validates the role against the bucket at create.**
+  `CreateFeatureGroup` assumes your `role_arn` and calls
+  `s3:GetBucketAcl` on the offline-store bucket before creating
+  anything; writes also carry `s3:PutObjectAcl`. A role that can merely
+  read and write objects fails the create with a `ValidationException`
+  reading "Invalid S3Uri" that wraps the underlying S3 `AccessDenied`
+  (live-verified 2026-08-25). Grant both ACL verbs — they are exactly
+  what AWS's own `AmazonSageMakerFeatureStoreAccess` managed policy
+  carries — or attach that policy when your bucket name contains
+  "sagemaker" (the managed policy only matches such buckets).
 - **Collections need InMemory storage.** List / Set / Vector features
   require the online store's InMemory tier (server-enforced), which
   bills an at-rest floor — reach for vectors only when embeddings truly

@@ -32,12 +32,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Planton Runner**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **private-vpc-worker** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS Planton Runner**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Private VPC Worker** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
+Create a manifest and apply it:
+
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsPlantonRunner
 metadata:
   name: vpc-runner
@@ -61,9 +63,11 @@ spec:
 planton apply -f runner.yaml
 ```
 
-This minimal manifest deploys a pull-based worker at the default sizing (0.5 vCPU, 1 GiB) tracking the latest runner release, with a permissionless runtime role and 30-day log retention -- sizing, version pinning, and the runtime identity are not configured. The runner registers itself as `prod-vpc-runner` (`<env>-<metadata.name>`) the moment it joins.
+This minimal manifest deploys a pull-based worker at the default sizing (0.5 vCPU, 1 GiB) tracking the latest runner release, with a permissionless runtime role and 30-day log retention -- sizing, version pinning, and the runtime identity are not configured. The runner registers itself as `prod-vpc-runner` (`<env>-<metadata.name>`) the moment it joins. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
+
+When the runner deploys alongside its network and identity in one chart, wire the subnet, security group, and role references via ValueFromRef:
 
 ```yaml
 spec:
@@ -90,11 +94,15 @@ The InfraPipeline resolves the dependency graph, deploys the subnets, security g
 
 These are the most important decisions when configuring the runner. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-- **Subnet placement** -- `subnets` is the whole point of the appliance: whatever those subnets' route tables can reach, the runner can deploy to. All subnets must belong to the same VPC; two Availability Zones let the service reschedule across an AZ event.
-- **Control-plane endpoint** -- `controlPlaneEndpoint` (host:port) is only for self-hosted control planes; leave it unset for Planton's hosted endpoint. It is the one bootstrap coordinate the join cannot deliver -- everything else arrives in the join response, so the runner self-configures its execution mode on arrival and no mode knob exists.
-- **Sizing** -- `cpu` and `memory` must form one of the fixed serverless pairings (validated up front; AWS would otherwise reject them only at deploy time). The 512/1024 default handles typical IaC operations; memory pressure shows up as failed operations mid-apply, so size memory up before CPU.
-- **Runner build** -- empty `runnerVersion` tracks the newest release on every task (re)start; pin a version tag for change control. `imageRepository` is only for air-gapped or mirrored registries hosting a digest-identical copy.
-- **Runtime identity** -- leave `taskRole` empty to get a permissionless role (the identity seam always exists, so permissions can be granted later without replacing the runner), or reference an `AwsIamRole` composed with exactly the permissions keyless cloud access needs.
+**Subnet placement** -- `subnets` is the whole point of the appliance: whatever those subnets' route tables can reach, the runner can deploy to. All subnets must belong to the same VPC; two Availability Zones let the service reschedule across an AZ event.
+
+**Control-plane endpoint** -- `controlPlaneEndpoint` (host:port) is only for self-hosted control planes; leave it unset for Planton's hosted endpoint. It is the one bootstrap coordinate the join cannot deliver -- everything else arrives in the join response, so the runner self-configures its execution mode on arrival and no mode knob exists.
+
+**Sizing** -- `cpu` and `memory` must form one of the fixed serverless pairings (validated up front; AWS would otherwise reject them only at deploy time). The 512/1024 default handles typical IaC operations; memory pressure shows up as failed operations mid-apply, so size memory up before CPU.
+
+**Runner build** -- empty `runnerVersion` tracks the newest release on every task (re)start; pin a version tag for change control. `imageRepository` is only for air-gapped or mirrored registries hosting a digest-identical copy.
+
+**Runtime identity** -- leave `taskRole` empty to get a permissionless role (the identity seam always exists, so permissions can be granted later without replacing the runner), or reference an `AwsIamRole` composed with exactly the permissions keyless cloud access needs.
 
 ## Outputs and Dependencies
 
@@ -112,25 +120,23 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `service_arn` | The ECS service keeping the runner running | Inspecting the appliance with AWS tooling |
-| `service_name` | The service's name | Console and CLI lookups |
-| `cluster_arn` | The dedicated ECS cluster's ARN | Scoping AWS operations to the appliance |
-| `task_definition_arn` | The running family:revision | Tracking configuration/version rollouts |
-| `log_group_name` | The CloudWatch log group | Tailing the operation audit trail (`aws logs tail <name> --follow`) |
 | `security_group_id` | The outbound-only group's id | Private targets reference it to trust the runner (e.g. an EKS API's allowed sources) |
-| `execution_role_arn` | The setup identity | Auditing image-pull/log/secret access |
-| `task_role_arn` | The runtime identity | Granting the runner AWS permissions for keyless operations |
+| `task_role_arn` | The runtime identity -- the referenced `taskRole` when one was supplied, else the permissionless role created with the appliance | Granting the runner AWS permissions for keyless operations |
+| `log_group_name` | The CloudWatch log group | Tailing the operation audit trail (`aws logs tail <name> --follow`) |
 | `token_secret_arn` | The token secret's ARN -- the token authorizes joining and is never the runner's identity | Auditing secret access; rotation tooling |
-| `region` | The deployed region | Targeting follow-up AWS operations correctly |
 | `runner_name` | The name the runner registers itself under with the control plane | Console and `planton runner list` lookups |
+
+The remaining outputs (`service_arn`, `service_name`, `cluster_arn`, `task_definition_arn`, `execution_role_arn`, `region`) echo the appliance's own AWS identifiers for inspection with AWS tooling; downstream Cloud Resources have no real use for them.
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-- **Private VPC worker** -- the standard appliance: a pull-based worker on two private subnets that makes a private-endpoint cluster deployable. Start from the **private-vpc-worker** preset.
-- **Public subnet worker** -- the same worker on public subnets with `assignPublicIp: true`, for VPCs with an internet gateway but no NAT; still zero inbound exposure. Start from the **public-subnet** preset.
-- **High-capacity deploy worker** -- pinned version and larger sizing for heavy Terraform/Pulumi stacks and concurrent operations. Start from the **high-capacity** preset.
+**Private VPC worker** -- the standard appliance: a pull-based worker on two private subnets that makes a private-endpoint cluster deployable. Start from the **Private VPC Worker** preset.
+
+**Public subnet worker** -- the same worker on public subnets with `assignPublicIp: true`, for VPCs with an internet gateway but no NAT; still zero inbound exposure. Start from the **Public Subnet Worker** preset.
+
+**High-capacity deploy worker** -- pinned version and larger sizing for heavy Terraform/Pulumi stacks and concurrent operations. Start from the **High Capacity (Production Hardened)** preset.
 
 ## Works With
 

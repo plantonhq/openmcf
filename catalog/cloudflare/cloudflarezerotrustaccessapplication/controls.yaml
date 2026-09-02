@@ -1,0 +1,85 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrustaccessapplication
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The application stores no customer data -- it is access-control configuration. The SCIM authentication secrets the spec can carry (password, token, client_secret) are marked sensitive and live in Cloudflare's control plane, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest); Access exposes no KMS surface.
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Every path through an Access application is TLS at Cloudflare's edge -- login flows, the Access cookie exchange, SaaS SAML/OIDC federation, and brokered SSH/VNC/RDP sessions all ride Cloudflare's encrypted front door; no spec field can serve the application in the clear.
+      notes: The Cloudflare-to-origin hop behind the application is the zone's SSL-mode posture (CloudflareZoneSettings / an Origin CA certificate), not this component's.
+    - control_id: no-public-access
+      status: configurable
+      field_path: destinations
+      evidence:
+        type: spec_default
+        reference: A destination of type "private" (CIDR, hostname, port range on a Cloudflare Tunnel virtual network) is never exposed to the public internet -- users reach it only through WARP after passing the application's policies. Public destinations stay internet-reachable but identity-gated.
+      notes: For self-hosted apps on a public hostname, pair the application with a Cloudflare Tunnel origin so the origin itself has no public ingress -- otherwise the origin must validate Access JWTs to be safe against direct approach.
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: policies
+      evidence:
+        type: spec_default
+        reference: Every request to the protected resource must pass the attached Access policies before it is admitted -- Access denies by default, so a request that matches no allow policy is turned away at the edge. allowed_idps further narrows which identity providers may even begin authentication.
+      notes: options_preflight_bypass exempts CORS OPTIONS requests from Access -- a deliberate, narrow bypass to enable cross-origin API calls; leave it off unless the app needs it.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Access filters WHO may reach the application, not WHAT the requests contain -- payload inspection (WAF, rate limiting) is CloudflareRuleset territory and composes in front of the same hostname.
+    - control_id: rbac
+      status: configurable
+      field_path: policies
+      evidence:
+        type: spec_default
+        reference: The application IS an RBAC enforcement point -- it binds standalone Access policies (allow/deny decisions built from include/require/exclude identity rules) in explicit evaluation order (precedence), scopes which IdPs may authenticate (allowed_idps), and caps how long an authenticated session lives (session_duration). Application-level mfa_config can require specific authenticators (TOTP, biometrics, security keys) on top.
+      notes: The quality of the gate is the attached policies' -- an application whose only policy allows "everyone" is public with extra steps. mfa_config.mfa_disabled true switches the app-level MFA requirement off; that is an explicit operator choice, not a default.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: Machine access to Access applications is the CloudflareZeroTrustAccessServiceToken kind's territory; this spec only tunes how such tokens are read (read_service_tokens_from_header) and answered (service_auth_401_redirect).
+    - control_id: no-legacy-auth
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The only ways through an Access application are an IdP-backed Access authentication or an Access service token -- there is no password-only, basic-auth, or other legacy protocol path to enable or disable.
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: mfa_config
+      evidence:
+        type: spec_default
+        reference: Unset leaves multi-factor policy to the organization's defaults; declaring mfa_config requires a second factor for THIS application -- allowed_authenticators pins which factors count (totp, biometrics, security_key; the spec's own validation rejects anything else), session_duration bounds how long an MFA assertion stays valid, and mfa_disabled is the explicit opt-out that overrides the list.
+      notes: First-factor credential strength rides the IdPs allowed_idps selects -- Access verifies identity, it stores no passwords -- while this field is the per-application second-factor requirement layered on top; the organization kind carries the org-wide MFA stance.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Cloudflare records every Access authentication decision (allow and deny) in the Zero Trust Access audit logs unconditionally -- not a property this component configures. Shipping those logs elsewhere is CloudflareLogpushJob territory.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring toggle in the spec; Access analytics are built into the Zero Trust dashboard unconditionally.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest together with its referenced policies.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: Access policy evaluation runs at every Cloudflare edge location; there is no zonal placement to configure.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete, and deleting the application removes the identity wall from the protected hostname -- if the origin trusts Access instead of validating Access JWTs itself, it becomes reachable ungated. Keep the origin private (Cloudflare Tunnel) or validate JWTs at the origin so deletion fails closed rather than open.
+    - control_id: managed-patching
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: Fully managed service -- Cloudflare operates the Access identity-aware proxy; no customer-visible patch surface exists.

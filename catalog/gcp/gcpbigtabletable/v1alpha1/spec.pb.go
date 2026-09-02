@@ -298,6 +298,7 @@ type GcpBigtableTableSpec struct {
 	// GCP project owning the Bigtable instance. Can be a literal project
 	// ID or a reference to a GcpProject resource. If omitted, the
 	// provider's default project is used.
+	// Immutable: changing the project destroys and recreates the table.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// The Bigtable instance this table lives in — the instance's short
 	// name (a GcpBigtableInstance reference resolves to it). Immutable

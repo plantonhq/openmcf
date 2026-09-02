@@ -6,19 +6,30 @@ spec:
   region: us-east-1
   monitorName: Team Platform Spend Monitor
   monitorType: CUSTOM
+  # The expression is authored in the provider's canonical stored
+  # form: every root member present (unused ones null) and the tag
+  # key "user:"-prefixed - a sparser or unprefixed document makes
+  # every re-plan after create propose a replacement.
   monitorSpecification:
+    And: null
+    CostCategories: null
+    Dimensions: null
+    Not: null
+    Or: null
     Tags:
-      Key: team
-      Values:
-        - platform
+      Key: user:team
       MatchOptions:
         - EQUALS
+      Values:
+        - platform
   subscriptions:
     - name: platform-alerts
       frequency: IMMEDIATE
       subscribers:
+        # AWS validates the ARN at apply time -- replace the region, account
+        # id, and topic name (angle brackets would malform the ARN).
         - address:
-            value: <arn:aws:sns:us-east-1:123456789012:platform-cost-alerts>
+            value: arn:aws:sns:us-east-1:123456789012:platform-cost-alerts
           type: SNS
       thresholdExpression:
         and:

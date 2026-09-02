@@ -59,6 +59,9 @@ spec:
         type: spec_default
         reference: The weak path is NFS_V3's AUTH_SYS -- client-asserted numeric UID/GID with no cryptographic identity, and it is the unset default; NFS_V4_1 enables Kerberos authentication. Immutable after creation.
       notes: No preset opts up to NFS_V4_1; ROOT_SQUASH in export options (preset 02) blunts the sharpest AUTH_SYS edge but does not authenticate anyone.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

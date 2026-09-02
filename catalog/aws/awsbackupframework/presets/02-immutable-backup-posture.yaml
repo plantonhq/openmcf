@@ -7,6 +7,12 @@ spec:
   frameworkName: immutable_backup_posture
   description: Are recovery points encrypted, undeletable, and inside a vault lock
   controls:
+    # Resource-scoped controls declare an EXPLICIT scope (see the
+    # coverage-audit preset) -- declare the types you actually back up.
     - name: BACKUP_RECOVERY_POINT_ENCRYPTED
+      scope:
+        complianceResourceTypes:
+          - EBS
+          - RDS
     - name: BACKUP_RECOVERY_POINT_MANUAL_DELETION_DISABLED
     - name: BACKUP_RESOURCES_PROTECTED_BY_BACKUP_VAULT_LOCK

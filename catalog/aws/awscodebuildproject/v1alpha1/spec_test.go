@@ -177,6 +177,11 @@ var _ = ginkgo.Describe("AwsCodeBuildProjectSpec validations", func() {
 							GroupName:  svRef("/aws/codebuild/my-project"),
 							StreamName: "build",
 						},
+						S3Logs: &AwsCodeBuildS3Logs{
+							Status: stringPtr("ENABLED"),
+							Bucket: svRef("my-log-bucket"),
+							Prefix: "build-logs",
+						},
 					},
 					VpcConfig: &AwsCodeBuildVpcConfig{
 						VpcId:            svRef("vpc-abc123"),
@@ -1143,6 +1148,71 @@ var _ = ginkgo.Describe("AwsCodeBuildProjectSpec validations", func() {
 				}
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+	})
+
+	// =========================================================================
+	// S3 build logs: AWS stores them only under "bucket/prefix", so an
+	// ENABLED destination needs both halves (the modules compose the
+	// provider's single location argument from them).
+	// =========================================================================
+
+	ginkgo.Describe("S3 logs bucket and prefix", func() {
+
+		ginkgo.Context("when ENABLED with bucket and prefix", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalGitHubSpec()
+				spec.LogsConfig = &AwsCodeBuildLogsConfig{
+					S3Logs: &AwsCodeBuildS3Logs{
+						Status: stringPtr("ENABLED"),
+						Bucket: svRef("my-log-bucket"),
+						Prefix: "build-logs",
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("when ENABLED without a prefix", func() {
+			ginkgo.It("should return a validation error -- AWS rejects a bare bucket", func() {
+				spec := minimalGitHubSpec()
+				spec.LogsConfig = &AwsCodeBuildLogsConfig{
+					S3Logs: &AwsCodeBuildS3Logs{
+						Status: stringPtr("ENABLED"),
+						Bucket: svRef("my-log-bucket"),
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("when ENABLED without a bucket", func() {
+			ginkgo.It("should return a validation error", func() {
+				spec := minimalGitHubSpec()
+				spec.LogsConfig = &AwsCodeBuildLogsConfig{
+					S3Logs: &AwsCodeBuildS3Logs{
+						Status: stringPtr("ENABLED"),
+						Prefix: "build-logs",
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).ToNot(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("when DISABLED with neither half", func() {
+			ginkgo.It("should not return a validation error", func() {
+				spec := minimalGitHubSpec()
+				spec.LogsConfig = &AwsCodeBuildLogsConfig{
+					S3Logs: &AwsCodeBuildS3Logs{
+						Status: stringPtr("DISABLED"),
+					},
+				}
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).To(gomega.BeNil())
 			})
 		})
 	})

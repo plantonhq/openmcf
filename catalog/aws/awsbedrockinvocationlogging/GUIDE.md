@@ -40,6 +40,7 @@ know before operating region-wide model-call auditing.
   validate permissions for log group") and both engines retry through
   IAM propagation lag; a persistent failure means the role/policy is
   actually wrong, not slow.
+- **Bedrock leaves permission-check canaries in your buckets.** Configuring any S3 destination writes zero-byte `amazon-bedrock-logs-permission-check` objects under every configured prefix — with zero invocations ever made — and they survive deleting the logging configuration. A bucket that has ever been a destination is never empty: give it `force_destroy` (or a lifecycle rule) if you expect to delete it later, or its deletion fails `BucketNotEmpty`.
 
 ---
 

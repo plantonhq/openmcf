@@ -25,7 +25,7 @@ spec:
           - cloudtasks.queues.pause
           - cloudtasks.queues.resume
         provenance: derived
-        notes: Covers google_cloud_tasks_queue -- create, read/refresh, in-place updates (rate limits, retry config, targets, logging), and destroy. The pause and resume entries exist because desired_state is declarative -- the provider calls the dedicated PauseQueue/ResumeQueue RPCs on a state transition, and Cloud Tasks defines cloudtasks.queues.pause and cloudtasks.queues.resume as distinct permissions. The cloudtasks service prefix is not yet in the committed action-inventory snapshot; every cloudtasks.* permission here was verified live against Google's Cloud Tasks access-control documentation (https://cloud.google.com/tasks/docs/reference-access-control, which lists all six under roles/cloudtasks.queueAdmin).
+        notes: Covers google_cloud_tasks_queue -- create, read/refresh, in-place updates (rate limits, retry config, targets, logging), and destroy. The pause and resume entries exist because desired_state is declarative -- the provider calls the dedicated PauseQueue/ResumeQueue RPCs on a state transition, and Cloud Tasks defines cloudtasks.queues.pause and cloudtasks.queues.resume as distinct permissions. The committed action-inventory snapshot (pkg/iac/actioninventory/gcp.yaml) carries the cloudtasks service prefix and lists every cloudtasks.* permission here; the list was also verified live against Google's Cloud Tasks access-control documentation (https://cloud.google.com/tasks/docs/reference-access-control, which lists all six under roles/cloudtasks.queueAdmin).
       - purpose: ActAsDispatchServiceAccount
         permissions:
           - iam.serviceAccounts.actAs

@@ -29,10 +29,7 @@ spec:
   #     single-account wall; the provider's own acceptance tests gate
   #     all four org resources behind an Organizations precheck.
   #     Unblock: an organization-enabled test account pair.
-  #
-  # pending_proof: forged this session to the full offline bar -- Q39
-  # proves it live.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 25

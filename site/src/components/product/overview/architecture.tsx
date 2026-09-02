@@ -82,8 +82,8 @@ export const ProductArchitecture = () => {
           <Box className="flex-1 p-4 rounded-lg bg-white/5 border border-[#2a2a2a]">
             <BodyText className="!text-[#666]">
               <strong className="text-[#b0b0b0]">Credentials stay in your cloud.</strong>{' '}
-              Runner resolves secrets at execution time using your cloud provider&apos;s native IAM.
-              The control plane never sees them.
+              Runner authenticates at execution time using your cloud provider&apos;s native IAM.
+              Those credentials never cross into the control plane.
             </BodyText>
           </Box>
           <Box className="flex-1 p-4 rounded-lg bg-white/5 border border-[#2a2a2a]">

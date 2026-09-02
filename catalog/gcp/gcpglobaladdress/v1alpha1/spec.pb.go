@@ -71,7 +71,10 @@ type GcpGlobalAddressSpec struct {
 	// Not applicable for single IP reservations or PRIVATE_SERVICE_CONNECT addresses.
 	// Valid range: 8 to 29.
 	PrefixLength *int32 `protobuf:"varint,8,opt,name=prefix_length,json=prefixLength,proto3,oneof" json:"prefix_length,omitempty"`
-	// The purpose of this address reservation. Only applicable for INTERNAL addresses.
+	// The purpose of this address reservation. Only applicable for INTERNAL addresses,
+	// and REQUIRED for them — the GCP API rejects an internal global reservation
+	// without a purpose ("The field must be specified for reserving internal IP
+	// Addresses").
 	// VPC_PEERING — reserves a CIDR range for VPC network peering. Used by managed services
 	// like Cloud SQL, Redis, AlloyDB, and Filestore for private networking.
 	// PRIVATE_SERVICE_CONNECT — reserves an address for a Private Service Connect endpoint.
@@ -208,7 +211,7 @@ var File_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto protoreflect.FileDescr
 
 const file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"0catalog/gcp/gcpglobaladdress/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpglobaladdress.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x94\x0e\n" +
+	"0catalog/gcp/gcpglobaladdress/v1alpha1/spec.proto\x12)dev.planton.gcp.gcpglobaladdress.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd5\x0f\n" +
 	"\x14GcpGlobalAddressSpec\x12u\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\"\x88\xd4a\xc1\x17\x92\xd4a\x19status.outputs.project_idR\tprojectId\x12N\n" +
@@ -230,10 +233,11 @@ const file_catalog_gcp_gcpglobaladdress_v1alpha1_spec_proto_rawDesc = "" +
 	"\x15valid_deletion_policy\x128deletion_policy must be one of: DELETE, PREVENT, ABANDON\x1a6this == '' || this in ['DELETE', 'PREVENT', 'ABANDON']R\x0edeletionPolicy\x1a9\n" +
 	"\vLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xee\x03\xbaH\xea\x03\x1a\x89\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xaf\x05\xbaH\xab\x05\x1a\x89\x01\n" +
 	"\x19purpose_requires_internal\x125purpose can only be set when address_type is INTERNAL\x1a5this.purpose == '' || this.address_type == 'INTERNAL'\x1a\x95\x01\n" +
 	"\"vpc_peering_requires_prefix_length\x125prefix_length is required when purpose is VPC_PEERING\x1a8this.purpose != 'VPC_PEERING' || has(this.prefix_length)\x1a\xc3\x01\n" +
-	"\x19internal_requires_network\x121network is required when address_type is INTERNAL\x1asthis.address_type != 'INTERNAL' || (has(this.network) && (has(this.network.value) || has(this.network.value_from)))B\x0f\n" +
+	"\x19internal_requires_network\x121network is required when address_type is INTERNAL\x1asthis.address_type != 'INTERNAL' || (has(this.network) && (has(this.network.value) || has(this.network.value_from)))\x1a\xbe\x01\n" +
+	"\x19internal_requires_purpose\x12jpurpose is required when address_type is INTERNAL (GCP rejects a purpose-less internal global reservation)\x1a5this.address_type != 'INTERNAL' || this.purpose != ''B\x0f\n" +
 	"\r_address_typeB\r\n" +
 	"\v_ip_versionB\x10\n" +
 	"\x0e_prefix_lengthB\xe0\x02\n" +

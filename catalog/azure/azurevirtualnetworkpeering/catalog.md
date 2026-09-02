@@ -36,7 +36,7 @@ Open the deployment store, find **Azure Virtual Network Peering**, and click **D
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureVirtualNetworkPeering
 metadata:
   name: hub-to-spoke1
@@ -45,9 +45,9 @@ metadata:
 spec:
   name: hub-to-spoke1
   virtualNetworkId:
-    value: "/subscriptions/…/resourceGroups/rg-network-hub/providers/Microsoft.Network/virtualNetworks/hub-vnet"
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-network-hub/providers/Microsoft.Network/virtualNetworks/hub-vnet
   remoteVirtualNetworkId:
-    value: "/subscriptions/…/resourceGroups/rg-spoke1/providers/Microsoft.Network/virtualNetworks/spoke1-vnet"
+    value: /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-spoke1/providers/Microsoft.Network/virtualNetworks/spoke1-vnet
   allowForwardedTraffic: true
   allowGatewayTransit: true
 ```
@@ -56,7 +56,7 @@ spec:
 planton apply -f peering.yaml
 ```
 
-This declares the HUB side. Apply the reciprocal manifest (local and remote swapped, `useRemoteGateways: true`) on the spoke to complete the pair.
+This declares the HUB side. Apply the reciprocal manifest (local and remote swapped, `useRemoteGateways: true`) on the spoke to complete the pair. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -103,10 +103,10 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `peering_id` | Azure Resource Manager ID of the peering | Automation, audit |
-| `peering_name` | The peering's name within its local network | Topology inventory |
 | `virtual_network_name` | The LOCAL network's name, derived from its ARM ID | Chart composition without re-parsing IDs |
 | `resource_group_name` | The local network's resource group, derived from its ARM ID | Chart composition without re-parsing IDs |
+
+The peering also surfaces `peering_id` and `peering_name` -- identity echoes of the edge itself; no downstream Cloud Resource consumes them.
 
 ## Common Patterns
 
@@ -116,7 +116,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Spoke to hub** -- the reciprocal direction: rides the hub's gateway (`useRemoteGateways: true`). Start from the **Spoke to Hub** preset.
 
-**Subnet-scoped** -- only the listed subnets participate — shared-services exposure without opening whole networks. Start from the **Subnet Scoped Peering** preset.
+**Subnet-scoped** -- only the listed subnets participate — shared-services exposure without opening whole networks. Start from the **Subnet-Scoped Peering** preset.
 
 ## Works With
 

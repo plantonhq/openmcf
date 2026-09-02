@@ -24,4 +24,9 @@ message GcpCloudRunStackOutputs {
   // Every URL serving this service: the canonical run.app URL plus any
   // deterministic URLs.
   repeated string urls = 6;
+
+  // GCP project the service is created in — with location and service_name,
+  // the service's full provider-side coordinate
+  // (projects/{project}/locations/{location}/services/{name}).
+  string project_id = 7;
 }

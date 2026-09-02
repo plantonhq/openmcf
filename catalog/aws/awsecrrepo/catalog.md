@@ -1,4 +1,4 @@
-# AWS ECR Repo
+# AWS ECR Repository
 
 Deploys an Elastic Container Registry repository — the private Docker/OCI image registry that container workloads (ECS, EKS, Lambda container images, App Runner) pull from. The spec covers the full repository surface: tag mutability including the exclusion-filter modes (freeze releases while `latest` floats), encryption at rest (AES-256, KMS, or dual-layer KMS_DSSE), push-time vulnerability scanning, structured lifecycle rules for storage cost control, and a folded repository policy for cross-account or cross-service pull access.
 
@@ -20,20 +20,20 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### AWS Account
 
-- **A KMS key** (optional) -- required only when using KMS encryption (`encryptionType: KMS`). Provide the key ARN directly or reference an AwsKmsKey Cloud Resource via ValueFromRef. If omitted, ECR uses AWS-managed AES-256 encryption at no additional cost.
+- **A KMS key** (optional) -- required only when using KMS encryption (`encryptionType: KMS`). Provide the key ARN directly or reference an AwsKmsKey Cloud Resource via ValueFromRef. If omitted, ECR uses AWS-managed AES-256 encryption.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **AWS ECR Repo**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production Immutable** preset in the [Presets](#presets) tab to pre-populate a secure default configuration.
+Open the deployment store, find **AWS ECR Repository**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Production Immutable ECR Repository** preset in the [Presets](#presets) tab to pre-populate a secure default configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsEcrRepo
 metadata:
   name: api-service
@@ -62,7 +62,7 @@ spec:
 planton apply -f ecr-repo.yaml
 ```
 
-This creates an ECR repository with immutable tags, scan-on-push enabled, AWS-default AES-256 encryption, and lifecycle rules that expire untagged images after 7 days and retain the 100 most recent images. A Stack Job tracks the provisioning and streams progress in real time.
+This creates an ECR repository with immutable tags, scan-on-push enabled, AWS-default AES-256 encryption, and lifecycle rules that expire untagged images after 7 days and retain the 100 most recent images. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -86,7 +86,7 @@ These are the most important decisions when configuring an ECR repository. Explo
 
 **Image tag mutability** -- Set `imageTagMutability: IMMUTABLE` for production registries to guarantee that a tag like `v1.2.3` always refers to the same image. The exclusion modes give you both worlds: `IMMUTABLE_WITH_EXCLUSION` freezes everything except tags matching `imageTagMutabilityExclusionFilters` (float `latest`, freeze releases); `MUTABLE_WITH_EXCLUSION` inverts it. Unset keeps the AWS default (mutable).
 
-**Encryption type** -- Unset keeps the AWS default (`AES256`, no cost). Set `encryptionType: KMS` with a `kmsKeyId` when you need CloudTrail audit logging of key usage or customer-controlled rotation; `KMS_DSSE` adds a second independent envelope layer for DoD CC SRG-class requirements. Encryption is a create-time choice — changing it replaces the repository, and images are not migrated.
+**Encryption type** -- Unset keeps the AWS default (`AES256`). Set `encryptionType: KMS` with a `kmsKeyId` when you need CloudTrail audit logging of key usage or customer-controlled rotation; `KMS_DSSE` adds a second independent envelope layer for DoD CC SRG-class requirements. Encryption is a create-time choice — changing it replaces the repository, and images are not migrated.
 
 **Lifecycle rules** -- Structured `lifecycleRules[]` evaluated daily by ascending priority; an image is acted on by the FIRST rule that selects it. The starter pair: expire untagged images by age, and keep the newest N per release prefix. The cost-tiering pattern: `actionType: transition` + `targetStorageClass: archive` moves images nobody pulls to the cheaper archive tier (`sinceImagePulled`), and a `storageClass: archive` + `sinceImageTransitioned` rule expires them after their time in archive. At most one `tagStatus: any` rule per storage-class tier.
 
@@ -119,9 +119,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Production immutable registry** -- Immutable tags, scan-on-push, 7-day untagged expiration, 100-image retention. Ensures tag integrity for production deployments and provides rollback capability across recent releases. Start from the **Production Immutable** preset.
+**Production immutable registry** -- Immutable tags, scan-on-push, 7-day untagged expiration, 100-image retention. Ensures tag integrity for production deployments and provides rollback capability across recent releases. Start from the **Production Immutable ECR Repository** preset.
 
-**Development registry** -- Mutable tags, scan-on-push, 3-day untagged expiration, 20-image retention. Allows rapid iteration with tag overwriting and aggressive cleanup to minimize storage costs. Start from the **Development** preset.
+**Development registry** -- Mutable tags, scan-on-push, 3-day untagged expiration, 20-image retention. Allows rapid iteration with tag overwriting and aggressive cleanup to minimize storage costs. Start from the **Development ECR Repository** preset.
+
+**Archive cost tiering** -- transition rules move images nobody pulls to the archive storage class, and an archive-scoped rule expires them after their time there — storage cost control for registries that accumulate history. Start from the **Archive Cost-Tiering ECR Repository** preset.
 
 ## Works With
 

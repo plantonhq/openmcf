@@ -90,7 +90,7 @@ spec:
         - field_path: dags.git_sync
           op: is_set
       text: the git-sync sidecar rides every Airflow component -- its declared resources are per-sidecar and are not multiplied into this footprint
-    - text: volume sizes left undeclared fall back to chart defaults this footprint cannot count -- the triggerer and each Celery worker default to 100Gi volumes
+    - text: a triggerer or worker component block declared without its persistence size is stated at the 100Gi spec-declared default; with no component block at all the chart still provisions the volume, a reservation this footprint cannot count
     - applies_when:
         - field_path: helm_values
           op: is_set

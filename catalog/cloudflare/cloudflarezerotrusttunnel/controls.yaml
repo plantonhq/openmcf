@@ -1,0 +1,75 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: cloudflarezerotrusttunnel
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: A tunnel stores no customer data -- it is a connectivity object. Its credentials (the optional tunnel_secret and the exported run token) are marked sensitive and handled as stack outputs, not a data store this component owns.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: No data at rest to key (see enc-at-rest).
+    - control_id: enc-in-transit
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The cloudflared-to-Cloudflare leg is always encrypted -- Cloudflare's Tunnel page describes "post-quantum encrypted tunnels" (https://developers.cloudflare.com/tunnel/, fetched 2026-08-22); no spec field can carry that leg in the clear.
+      notes: The LAST HOP, cloudflared to the local origin service, is the spec's to weaken or harden -- no_tls_verify true accepts any origin certificate, ca_pool pins a CA bundle, http2_origin requires an HTTPS origin, and match_sni_to_host/origin_server_name control certificate-name checks. Leave no_tls_verify off outside local experiments.
+    - control_id: no-public-access
+      status: enforced_by_default
+      evidence:
+        type: provider_default
+        reference: The tunnel's entire connectivity model is outbound-only -- cloudflared dials out from the origin, the origin needs no publicly routable IP, and the firewall can block ALL inbound traffic; Cloudflare's docs describe exactly this posture (https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/, fetched 2026-08-22).
+      notes: Ingress rules deliberately re-expose CHOSEN services through Cloudflare's edge under public hostnames -- that exposure is the operator's explicit per-rule decision, and gating those hostnames is Access-application territory (or the access block below).
+    - control_id: restricted-ingress
+      status: configurable
+      field_path: ingress
+      evidence:
+        type: spec_default
+        reference: Only the hostnames and paths declared in ingress rules route anywhere -- rules are evaluated top to bottom, and the spec REQUIRES the final rule to be a catch-all with no hostname (e.g. http_status:404), so undeclared traffic dead-ends by construction.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: Payload filtering (WAF, rate limiting) for hostnames published through the tunnel is CloudflareRuleset territory on the zone; the tunnel itself moves traffic, it does not inspect it.
+    - control_id: rbac
+      status: configurable
+      field_path: origin_request.access
+      evidence:
+        type: spec_default
+        reference: origin_request.access makes cloudflared itself validate each request's Access JWT against the declared Access-application AUD tags (aud_tag, team_name, required true denies anything unauthorized) -- enforcement at the connector, so even traffic that somehow bypasses the edge-side Access application is rejected at the origin.
+      notes: This is the defense-in-depth pairing for the Access application's deletion-protection caveat -- with required true, removing the edge-side identity wall does not open the origin.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: The connector authenticates with the tunnel run token -- a static credential exported as a sensitive output, not a platform-issued short-lived identity. Rotate it by rotating tunnel_secret (or recreating the tunnel) if it leaks.
+    - control_id: no-legacy-auth
+      status: not_applicable
+      notes: No user-facing authentication path of its own -- user auth on tunneled hostnames belongs to the Access application in front of them.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Tunnel lifecycle changes land in the Cloudflare account audit log unconditionally -- not a property this component configures.
+    - control_id: monitoring-integration
+      status: not_applicable
+      notes: No monitoring toggle in the spec. cloudflared can expose local metrics via its own flags, but that is connector-runtime configuration on the machine running it, outside this object.
+    - control_id: backup-recovery
+      status: not_applicable
+      notes: Declarative configuration, fully re-creatable from the manifest -- but recreating the tunnel mints a NEW tunnel ID, CNAME target, and run token, so connectors must be restarted with the new token and DNS records re-pointed.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: No backups exist to retain (see backup-recovery).
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: The Cloudflare side is the global edge. Availability on YOUR side comes from running multiple cloudflared connectors against the same tunnel (Cloudflare's docs -- "you can run as many cloudflared processes (connectors) as needed"), which is a deployment concern on the machines running the connector, not a field of this spec.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Destroy is a real delete -- connectors disconnect immediately and every hostname CNAMEd to the tunnel's tunnel_cname output goes dark. Re-point or retire dependent DNS records and tunnel routes first.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: Split responsibility with no spec surface -- Cloudflare patches its edge of the tunnel; the cloudflared binary on your machines is yours to keep updated (package manager or container image bumps on the host running it).

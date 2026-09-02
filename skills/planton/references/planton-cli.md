@@ -54,6 +54,12 @@ records carry each entry's `env`, which decides the reference form. Creating
 one (`planton secret set` / `planton variable set`) is a mutation — one
 confirmation, same as any other.
 
+`planton env list` includes pull-request PREVIEW environments
+(`{service}-pr-{n}`, marked as previews in the KIND column). They come and go
+with pull requests, refuse direct deletes, and never join promotion order —
+never propose architecture that depends on one. Their story lives in the
+`planton-service` skill's `preview-environments.md`.
+
 Read `infra project list` results with an eye on `env` and
 `infra_project_source` — a chart-sourced project in env `dev` means that
 chart's resources exist in dev. Caveat: the list rides the search index, so a
@@ -106,7 +112,7 @@ planton infra pipeline logs <infpipe_id> --node <slug> # a specific node (slug f
 # 4. Deeper: the stack job record carries the full error detail:
 planton infra stack-job list <cloud-resource-id> -o json
 planton get stack-job <sj_id> -o json
-planton infra stack-job logs <sj_id>      # tail the engine output directly
+planton infra stack-job stream-progress-events <sj_id>   # tail the engine output directly
 ```
 
 Typical reading of `status` output: a node with result `failed` and a

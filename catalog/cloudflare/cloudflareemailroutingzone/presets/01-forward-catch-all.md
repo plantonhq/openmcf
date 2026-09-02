@@ -1,4 +1,4 @@
-# Preset: Forward-All Email Routing
+# Forward-All Email Routing
 
 Enable Email Routing on a zone and forward all otherwise-unmatched mail to a
 verified destination address. The simplest "catch everything → my inbox" setup.

@@ -1,4 +1,4 @@
-# Preset: Shared Multi-VPC Security Group
+# Shared Multi-VPC Security Group
 
 **Use case:** One firewall definition attached by workloads in several VPCs —
 instead of maintaining drifting per-VPC copies of the same rules.

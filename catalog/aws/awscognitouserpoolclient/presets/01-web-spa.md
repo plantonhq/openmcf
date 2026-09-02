@@ -1,4 +1,4 @@
-# Preset: Web SPA
+# Web SPA
 
 **Rank**: 1 (most common starting point)
 

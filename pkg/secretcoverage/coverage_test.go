@@ -32,6 +32,9 @@ func TestSecretCoverageGate(t *testing.T) {
 			t.Errorf("%s:%s -- %s", f.Kind, f.Path, v)
 		}
 	}
+	for _, id := range res.StaleViolationEntries {
+		t.Errorf("stale baseline violation entry (no longer violating): %s -- remove it from baseline.yaml", id)
+	}
 }
 
 func TestClassify(t *testing.T) {
@@ -40,19 +43,25 @@ func TestClassify(t *testing.T) {
 		fieldName      string
 		isSensitive    bool
 		exemptReason   string
+		valueRule      string
 		wantClass      Classification
 		wantViolations int
 	}{
-		{"annotated secret", "password", true, "", Covered, 0},
-		{"annotation wins over neutral name", "value", true, "", Covered, 0},
-		{"exempt false positive", "token_dialect", false, "format selector", Exempt, 0},
-		{"unannotated secret-looking name", "password", false, "", Gap, 0},
-		{"neutral name", "region", false, "", NotSensitive, 0},
-		{"sensitive + exempt is a contradiction", "password", true, "because", Covered, 1},
-		{"exemption on a non-heuristic name is pointless", "region", false, "no reason", Exempt, 1},
+		{"annotated secret", "password", true, "", "", Covered, 0},
+		{"annotation wins over neutral name", "value", true, "", "", Covered, 0},
+		{"exempt false positive", "token_dialect", false, "format selector", "", Exempt, 0},
+		{"unannotated secret-looking name", "password", false, "", "", Gap, 0},
+		{"neutral name", "region", false, "", "", NotSensitive, 0},
+		{"sensitive + exempt is a contradiction", "password", true, "because", "", Covered, 1},
+		{"exemption on a non-heuristic name is pointless", "region", false, "no reason", "", Exempt, 1},
+		// A value-shape rule on a sensitive field rejects every stored secret
+		// reference -- the field becomes impossible to fill on the platform.
+		{"sensitive + value rule is a violation", "authorization_key", true, "", `cel rule "is_uuid"`, Covered, 1},
+		{"value rule on a non-sensitive field is normal", "alias_name", false, "", "string.pattern", NotSensitive, 0},
+		{"sensitive + exempt + value rule stacks both violations", "password", true, "because", "string.pattern", Covered, 2},
 	}
 	for _, tc := range cases {
-		gotClass, gotViol := classify(tc.fieldName, tc.isSensitive, tc.exemptReason)
+		gotClass, gotViol := classify(tc.fieldName, tc.isSensitive, tc.exemptReason, tc.valueRule)
 		if gotClass != tc.wantClass {
 			t.Errorf("%s: class = %q, want %q", tc.name, gotClass, tc.wantClass)
 		}
@@ -99,17 +108,24 @@ func TestCollectFindings_HermeticFixture(t *testing.T) {
 func TestGate(t *testing.T) {
 	gap := Finding{Kind: "AwsRdsInstance", Path: "spec.password", Class: Gap}
 	contradiction := Finding{Kind: "AwsX", Path: "spec.secret", Class: Covered, Violations: []string{"contradiction"}}
+	empty := Baseline{Gaps: map[string]bool{}, Violations: map[string]bool{}}
 
-	if res := Gate([]Finding{gap}, map[string]bool{}); res.OK() || len(res.NewGaps) != 1 {
+	if res := Gate([]Finding{gap}, empty); res.OK() || len(res.NewGaps) != 1 {
 		t.Errorf("expected a new gap to be detected, got %+v", res)
 	}
-	if res := Gate([]Finding{gap}, map[string]bool{"AwsRdsInstance:spec.password": true}); !res.OK() {
+	if res := Gate([]Finding{gap}, Baseline{Gaps: map[string]bool{"AwsRdsInstance:spec.password": true}}); !res.OK() {
 		t.Errorf("expected a baselined gap to pass, got %+v", res)
 	}
-	if res := Gate(nil, map[string]bool{"Old:spec.gone": true}); res.OK() || len(res.StaleEntries) != 1 {
+	if res := Gate(nil, Baseline{Gaps: map[string]bool{"Old:spec.gone": true}}); res.OK() || len(res.StaleEntries) != 1 {
 		t.Errorf("expected a stale baseline entry to be detected, got %+v", res)
 	}
-	if res := Gate([]Finding{contradiction}, map[string]bool{}); res.OK() || len(res.AnnotationViolations) != 1 {
+	if res := Gate([]Finding{contradiction}, empty); res.OK() || len(res.AnnotationViolations) != 1 {
 		t.Errorf("expected an annotation violation to be detected, got %+v", res)
+	}
+	if res := Gate([]Finding{contradiction}, Baseline{Violations: map[string]bool{"AwsX:spec.secret": true}}); !res.OK() {
+		t.Errorf("expected a baselined violation to pass, got %+v", res)
+	}
+	if res := Gate(nil, Baseline{Violations: map[string]bool{"Old:spec.fixed": true}}); res.OK() || len(res.StaleViolationEntries) != 1 {
+		t.Errorf("expected a stale violation entry to be detected, got %+v", res)
 	}
 }

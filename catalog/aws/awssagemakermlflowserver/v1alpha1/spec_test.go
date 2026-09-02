@@ -47,7 +47,7 @@ var _ = ginkgo.Describe("AwsSagemakerMlflowServerSpec validations", func() {
 				spec.Size = "Medium"
 				spec.MlflowVersion = "3.0"
 				spec.AutomaticModelRegistration = true
-				spec.WeeklyMaintenanceWindowStart = "TUE:03:30"
+				spec.WeeklyMaintenanceWindowStart = "Tue:03:30"
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).To(gomega.BeNil())
 			})
@@ -86,7 +86,16 @@ var _ = ginkgo.Describe("AwsSagemakerMlflowServerSpec validations", func() {
 		ginkgo.Context("with a bad maintenance window", func() {
 			ginkgo.It("should return a validation error", func() {
 				spec := minimalServer()
-				spec.WeeklyMaintenanceWindowStart = "TUE:25:00"
+				spec.WeeklyMaintenanceWindowStart = "Tue:25:00"
+				err := protovalidate.Validate(spec)
+				gomega.Expect(err).NotTo(gomega.BeNil())
+			})
+		})
+
+		ginkgo.Context("with an uppercase day token", func() {
+			ginkgo.It("should return a validation error (AWS's API is mixed-case, live-caught)", func() {
+				spec := minimalServer()
+				spec.WeeklyMaintenanceWindowStart = "TUE:03:30"
 				err := protovalidate.Validate(spec)
 				gomega.Expect(err).NotTo(gomega.BeNil())
 			})

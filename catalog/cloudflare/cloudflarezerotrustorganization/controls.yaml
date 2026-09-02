@@ -47,6 +47,13 @@ spec:
       evidence:
         type: spec_default
         reference: mfa_required_for_all_apps applies global MFA to every application by default, removing password-only access across the organization.
+    - control_id: strong-user-auth
+      status: configurable
+      field_path: mfa_config
+      evidence:
+        type: spec_default
+        reference: Unset leaves the organization's MFA policy unmanaged; allowed_authenticators pins which second factors count (totp, biometrics, security_key, ssh_piv_key), session_duration bounds how long an MFA assertion stays valid, and mfa_ssh_piv_key_requirements constrains accepted hardware keys down to PIN/touch policy and FIPS certification. mfa_required_for_all_apps then applies the policy to every application by default.
+      notes: The 02-mfa-hardening preset allows only security_key and totp with a 12-hour MFA session and enables mfa_required_for_all_apps. First-factor password strength rides the configured identity providers -- Access verifies identity, it stores no passwords of its own.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

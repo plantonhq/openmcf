@@ -118,3 +118,10 @@ func TestBuildDefinitionsDownloadURL(t *testing.T) {
 		t.Errorf("BuildDefinitionsDownloadURL() = %q, want %q", got, want)
 	}
 }
+
+func TestBuildDefinitionsExplodedFileURL(t *testing.T) {
+	want := "https://downloads.planton.dev/releases/v0.4.0/definitions/exploded/planton/references/chart-format.md"
+	if got := BuildDefinitionsExplodedFileURL("v0.4.0", "planton", "references/chart-format.md"); got != want {
+		t.Errorf("BuildDefinitionsExplodedFileURL() = %q, want %q", got, want)
+	}
+}

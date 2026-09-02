@@ -439,7 +439,12 @@ spec:
 # assumability); the S3 statement covers the data-plane writes the
 # feature group's offline store and the MLflow artifact stores perform
 # against the shared bucket fixture, and the ECR pulls image versions
-# would need.
+# would need. The two ACL verbs are load-bearing for the feature group:
+# CreateFeatureGroup validates the offline store by calling
+# s3:GetBucketAcl on the bucket AS this role at create time (live-caught
+# 2026-08-25, Q36), and s3:PutObjectAcl is the companion verb AWS's own
+# AmazonSageMakerFeatureStoreAccess managed policy grants - without them
+# the create fails with "Invalid S3Uri" wrapping the S3 AccessDenied.
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsIamRole
 metadata:
@@ -464,11 +469,13 @@ spec:
         - Effect: Allow
           Action:
             - s3:AbortMultipartUpload
+            - s3:GetBucketAcl
             - s3:GetBucketLocation
             - s3:GetObject
             - s3:ListBucket
             - s3:ListBucketMultipartUploads
             - s3:PutObject
+            - s3:PutObjectAcl
             - s3:DeleteObject
           Resource:
             - arn:aws:s3:::planton-oss-e2e-awss3bucket-prereq

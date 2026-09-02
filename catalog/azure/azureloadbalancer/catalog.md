@@ -1,6 +1,6 @@
 # Azure Load Balancer
 
-Deploys an Azure Load Balancer -- the Layer 4 (TCP/UDP) traffic distributor, complete with its frontend IP configurations, backend address pools, health probes, load-balancing rules, inbound NAT rules, and outbound (SNAT) rules. The load balancer and its sub-resources are configured as one unit because none of them has a life outside it; what IS independent -- pool membership -- is expressed from the member side, matching Azure's own attachment model (a network interface or scale set references the pool's exported ID). Public vs internal is decided per frontend, not per load balancer: one resource can carry public ingress and internal east-west traffic side by side. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an Azure Load Balancer -- the Layer 4 (TCP/UDP) traffic distributor, complete with its frontend IP configurations, backend address pools, health probes, load-balancing rules, inbound NAT rules, and outbound (SNAT) rules. The load balancer and its sub-resources are configured as one unit because none of them has a life outside it; what IS independent -- pool membership -- is expressed from the member side, matching Azure's own attachment model (a network interface or scale set references the pool's exported ID). Public vs internal is decided per frontend, not per load balancer: one resource can carry public ingress and internal east-west traffic side by side.
 
 ## What Gets Created
 
@@ -36,14 +36,14 @@ Pool membership is NOT created here -- each AzureNetworkInterface or scale set r
 
 ### Console
 
-Open the deployment store, find **Azure Load Balancer**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public** preset for an internet-facing load balancer or the **Internal** preset for private VNet traffic in the [Presets](#presets) tab.
+Open the deployment store, find **Azure Load Balancer**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Public Load Balancer** preset for an internet-facing load balancer or the **Internal Load Balancer** preset for private VNet traffic in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureLoadBalancer
 metadata:
   name: web-lb
@@ -58,7 +58,7 @@ spec:
   frontendIpConfigurations:
     - name: public
       publicIpAddressId:
-        value: "/subscriptions/.../publicIPAddresses/web-pip"
+        value: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/web-rg/providers/Microsoft.Network/publicIPAddresses/web-pip"
   backendPools:
     # Membership joins from the member side: a NIC ip_configuration or a
     # VM scale set references status.outputs.backend_pool_ids.web.
@@ -149,7 +149,6 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `load_balancer_id` | Azure Resource Manager ID of the load balancer | Diagnostics settings, RBAC scopes |
-| `load_balancer_name` | Name of the load balancer | Operational tooling |
 | `private_ip_address` | The first internal frontend's private IP | The address internal DNS records point at |
 | `private_ip_addresses` | All internal frontends' private IPs, in declaration order | Multi-frontend internal DNS |
 | `frontend_ip_configuration_ids.<name>` | Each frontend's ARM ID, keyed by name | Chaining behind a Gateway LB; registering a regional frontend in a GLOBAL-tier pool |
@@ -161,11 +160,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Public web tier** -- A public frontend on a referenced Standard public IP, a `web` pool, an HTTP health probe, and TCP rules with TCP reset: the internet-facing production shape. Start from the **Public** preset.
+**Public web tier** -- A public frontend on a referenced Standard public IP, a `web` pool, an HTTP health probe, and TCP rules with TCP reset: the internet-facing production shape. Start from the **Public Load Balancer** preset.
 
-**Internal east-west tier** -- A zone-redundant internal frontend with a pinned static address in your subnet, an `app` pool, and a raised idle timeout for long-lived connections. Start from the **Internal** preset.
+**Internal east-west tier** -- A zone-redundant internal frontend with a pinned static address in your subnet, an `app` pool, and a raised idle timeout for long-lived connections. Start from the **Internal Load Balancer** preset.
 
-**Full traffic story** -- Inbound load balancing, explicit outbound SNAT (with implicit SNAT disabled on the rule), a single-target admin SSH NAT rule, and a pool-style per-instance SSH range -- all on one public load balancer. Start from the **Outbound & NAT** preset.
+**Full traffic story** -- Inbound load balancing, explicit outbound SNAT (with implicit SNAT disabled on the rule), a single-target admin SSH NAT rule, and a pool-style per-instance SSH range -- all on one public load balancer. Start from the **Outbound SNAT + NAT Port Forwarding** preset.
 
 ## Works With
 

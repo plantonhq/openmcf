@@ -69,12 +69,19 @@ locals {
   # the blind import path needs each key's resource id, method, and
   # status code as individually addressable map entries keyed exactly
   # like the instances (see iac/import-map.yaml).
+  #
+  # The try() is load-bearing: resource_id_by_path is built from
+  # resource STATE instances, which is total at plan/apply (every
+  # instance is in the graph) but PARTIAL while `tofu import` adds
+  # tree nodes one at a time -- an eager index on a not-yet-imported
+  # path hard-errors the import ("Invalid index"). Missing keys
+  # resolve to null mid-import and heal as the remaining nodes land.
   route_resource_ids = {
-    for key, r in local.routes : key => r.path == "/" ? aws_api_gateway_rest_api.this.root_resource_id : local.resource_id_by_path[r.path]
+    for key, r in local.routes : key => r.path == "/" ? aws_api_gateway_rest_api.this.root_resource_id : try(local.resource_id_by_path[r.path], null)
   }
   route_methods = { for key, r in local.routes : key => r.method }
   response_resource_ids = {
-    for key, rr in local.route_responses : key => rr.route.path == "/" ? aws_api_gateway_rest_api.this.root_resource_id : local.resource_id_by_path[rr.route.path]
+    for key, rr in local.route_responses : key => rr.route.path == "/" ? aws_api_gateway_rest_api.this.root_resource_id : try(local.resource_id_by_path[rr.route.path], null)
   }
   response_methods      = { for key, rr in local.route_responses : key => rr.route.method }
   response_status_codes = { for key, rr in local.route_responses : key => rr.response.status_code }

@@ -22,9 +22,16 @@ spec:
   #     spec's rule CELs and the offline renders are the load-bearing
   #     guards. Unblock: an owner-approved long-running lane.
   #
-  # pending_proof: forged this session to the full offline bar -- Q46
-  # proves it live.
+  # PROVEN live 2026-08-26 (Q46): both engines through the full
+  # six-phase runner + the Terraform blind import round-trip under the
+  # armed apply-idempotency gate (~50s per engine). One HARNESS catch
+  # fixed at the bar: the scenario had annotated the consumer-scoped
+  # role file its registry AwsIamRole edge already resolves - the
+  # duplicate deployed one fixture stack twice and broke the Pulumi
+  # teardown (second destroy: "no stack named"); the dependency
+  # resolver now dedupes identical manifest paths, and the annotation
+  # is gone. The policy itself was a clean first-pass.
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 20

@@ -1,6 +1,6 @@
 # Azure User Assigned Identity
 
-Deploys an Azure user-assigned managed identity: a standalone Entra ID identity that workloads authenticate as, with no credential to store, rotate, or leak. Unlike a system-assigned identity (born and destroyed with one resource), a user-assigned identity exists independently and can be shared — the same identity can back an AKS cluster's kubelets, a Function App, a Container App, and a VM at once, and it survives all of them. The component integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to the resource group.
+Deploys an Azure user-assigned managed identity: a standalone Entra ID identity that workloads authenticate as, with no credential to store, rotate, or leak. Unlike a system-assigned identity (born and destroyed with one resource), a user-assigned identity exists independently and can be shared — the same identity can back an AKS cluster's kubelets, a Function App, a Container App, and a VM at once, and it survives all of them. That independent lifecycle is what makes it the right anchor for permissions — grants outlive any single consumer.
 
 ## What Gets Created
 
@@ -27,14 +27,14 @@ The identity is deliberately just the identity. What it may DO is granted throug
 
 ### Console
 
-Open the deployment store, find **Azure User Assigned Identity**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Azure User Assigned Identity**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Managed Identity** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureUserAssignedIdentity
 metadata:
   name: ci-deployer
@@ -51,7 +51,7 @@ spec:
 planton apply -f identity.yaml
 ```
 
-This creates a user-assigned managed identity with NO permissions -- a freshly-created identity can do nothing until AzureRoleAssignment resources grant it access.
+This creates a user-assigned managed identity with NO permissions -- a freshly-created identity can do nothing until AzureRoleAssignment resources grant it access. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -120,7 +120,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **The identity/grant/trust triad** -- One AzureUserAssignedIdentity, one or more AzureRoleAssignment resources granting it exactly what it needs, and (for keyless CI or AKS workload identity) AzureFederatedIdentityCredential resources declaring who may act as it. Each node is individually reviewable and removable.
 
-**Keyless CI deployment** -- An identity named for the pipeline (`ci-deployer`), a federated credential trusting the repository's OIDC token, and role assignments scoped to exactly the resources the pipeline deploys. No stored service-principal secret anywhere.
+**Keyless CI deployment** -- An identity named for the pipeline (`ci-deployer`), a federated credential trusting the repository's OIDC token, and role assignments scoped to exactly the resources the pipeline deploys. No stored service-principal secret anywhere. Start from the **CI Deployer Identity** preset.
 
 ## Works With
 

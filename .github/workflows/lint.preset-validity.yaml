@@ -1,0 +1,51 @@
+# =============================================================================
+# Preset Validity Guard
+# =============================================================================
+# Fails the PR when a preset YAML ships that fails its own kind's validation
+# rules -- the exact rejection a user copying the preset would hit -- and the
+# gap is not in the accepted baseline. Also fails on a stale baseline entry,
+# so the burn-down list can only shrink truthfully.
+#
+# To fix a failure: bring the preset to the bar (pattern-valid placeholders
+# in fenced fields, $secret/<slug> references in sensitive fields, real
+# values elsewhere), or -- for a preset whose repair is deliberately routed
+# to its provider's sweep batch -- regenerate the baseline with
+# PLANTON_REGEN_PRESET_VALIDITY_BASELINE=1 and justify the growth in review.
+# See pkg/presetvalidity.
+# =============================================================================
+
+name: lint.preset-validity
+
+on:
+  pull_request:
+    paths:
+      - 'catalog/**/presets/*.yaml'
+      - 'catalog/**/v1alpha1/**'
+      - 'pkg/presetvalidity/**'
+      - '.github/workflows/lint.preset-validity.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'catalog/**/presets/*.yaml'
+      - 'catalog/**/v1alpha1/**'
+      - 'pkg/presetvalidity/**'
+      - '.github/workflows/lint.preset-validity.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  preset-validity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Run preset-validity gate
+        run: go test ./pkg/presetvalidity/...

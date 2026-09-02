@@ -27,14 +27,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS CloudWatch Composite Alarm**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Shared-Cause Outage** preset in the [Presets](#presets) tab to pre-populate the storm-suppression shape.
+Open the deployment store, find **AWS CloudWatch Composite Alarm**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Shared-Cause Outage Page** preset in the [Presets](#presets) tab to pre-populate the storm-suppression shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchCompositeAlarm
 metadata:
   name: orders-shared-cause
@@ -94,7 +94,14 @@ These are the most important decisions when configuring a composite alarm. Explo
 
 ### What This Component Consumes
 
-References [AwsSnsTopic](/cloud-catalog/aws-sns-topic) resources (`topic_arn`) for its action lists and an [AwsCloudwatchAlarm](/cloud-catalog/aws-cloudwatch-alarm) (`alarm_name`) as its actions suppressor. The rule expression composes alarm names — typically from `alarm_name` outputs.
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **AwsSnsTopic** (optional) | `alarmActions` | `status.outputs.topic_arn` |
+| **AwsSnsTopic** (optional) | `okActions` | `status.outputs.topic_arn` |
+| **AwsSnsTopic** (optional) | `insufficientDataActions` | `status.outputs.topic_arn` |
+| **AwsCloudwatchAlarm** (optional) | `actionsSuppressor.alarm` | `status.outputs.alarm_name` |
+
+The rule expression itself composes alarm names as plain strings — typically taken from constituent alarms' `alarm_name` outputs.
 
 ### What This Component Provides
 
@@ -109,13 +116,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Shared-cause outage** -- one composite over the database and API alarms; one page instead of five. Start from the **Shared-Cause Outage** preset.
+**Shared-cause outage** -- one composite over the database and API alarms; one page instead of five. Start from the **Shared-Cause Outage Page** preset.
 
-**Maintenance-suppressed paging** -- the same composite with an actions suppressor bound to a maintenance-flag alarm the deploy pipeline flips. Start from the **Maintenance-Suppressed** preset.
+**Maintenance-suppressed paging** -- the same composite with an actions suppressor bound to a maintenance-flag alarm the deploy pipeline flips. Start from the **Maintenance-Suppressed Paging** preset.
 
 ## Works With
 
 - [**AWS CloudWatch Alarm**](/cloud-catalog/aws-cloudwatch-alarm) -- the constituent alarms the rule composes, and the suppressor flag
 - [**AWS SNS Topic**](/cloud-catalog/aws-sns-topic) -- where ALARM / OK / INSUFFICIENT_DATA notifications go
-- [**AWS Route53 Health Check**](/cloud-catalog/aws-route53-health-check) -- a CLOUDWATCH_METRIC health check can mirror an alarm's state into DNS failover
+- [**AWS Route 53 Health Check**](/cloud-catalog/aws-route53-health-check) -- a CLOUDWATCH_METRIC health check can mirror an alarm's state into DNS failover
 - [**AWS CloudWatch Log Group**](/cloud-catalog/aws-cloudwatch-log-group) -- where the metrics feeding the constituent alarms often originate

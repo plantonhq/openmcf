@@ -52,6 +52,7 @@ type GcpFirestoreDatabaseSpec struct {
 	// GCP project where the Firestore database will be created.
 	// Can be a literal project ID or a reference to a GcpProject resource.
 	// If omitted, the provider's default project is used.
+	// Immutable: changing the project destroys and recreates the database.
 	ProjectId *v1.StringValueOrRef `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	// Location of the Firestore database. This determines where data is stored
 	// and affects latency and availability. Immutable after creation.

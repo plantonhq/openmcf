@@ -1,6 +1,6 @@
 # AWS SageMaker Domain
 
-Deploys an Amazon SageMaker Domain providing a shared workspace for JupyterLab notebooks, the Code Editor IDE, Canvas no-code ML, custom kernels, and ML tooling with configurable authentication (IAM or SSO), VPC networking, EFS home directories, idle shutdown policies, RStudio Workbench, and Docker build support. The domain integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Deploys an Amazon SageMaker Domain providing a shared workspace for JupyterLab notebooks, the Code Editor IDE, Canvas no-code ML, custom kernels, and ML tooling with configurable authentication (IAM or SSO), VPC networking, EFS home directories, idle shutdown policies, RStudio Workbench, and Docker build support. The domain also declares its people and collaboration surfaces as code: user profiles and shared spaces are name-keyed lists on the spec, so team membership changes are one-line diffs.
 
 ## What Gets Created
 
@@ -40,7 +40,7 @@ Open the deployment store, find **AWS SageMaker Domain**, and click **Deploy**. 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsSagemakerDomain
 metadata:
   name: ml-workspace
@@ -63,7 +63,7 @@ spec:
 planton apply -f sagemaker-domain.yaml
 ```
 
-This creates a SageMaker Domain with IAM authentication, public internet network access, default JupyterLab settings, and AWS-managed EFS encryption. No idle shutdown, custom images, or Docker access is configured. A Stack Job tracks the provisioning and streams progress in real time.
+This creates a SageMaker Domain with IAM authentication, public internet network access, default JupyterLab settings, and AWS-managed EFS encryption. No idle shutdown, custom images, or Docker access is configured. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -171,11 +171,13 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Basic JupyterLab domain** -- IAM authentication with public internet access and default settings. Suited for development, exploration, and small teams getting started with SageMaker Studio. Start from the **Basic JupyterLab Domain** preset.
 
-**Production VPC-only domain** -- SSO authentication, VPC-only networking, customer-managed KMS encryption, idle shutdown, and layered security groups. Suited for production ML platforms with compliance requirements. Start from the **Production VPC-Only** preset.
+**Production VPC-only domain** -- SSO authentication, VPC-only networking, customer-managed KMS encryption, idle shutdown, and layered security groups. Suited for production ML platforms with compliance requirements. Start from the **Production VPC-Only Domain** preset.
 
 **ML team with custom images** -- SSO authentication, VPC-only networking, Docker access with trusted accounts, custom JupyterLab and KernelGateway images, GPU compute, notebook sharing to S3, and auto-cloned Git repositories. Suited for advanced ML teams building custom training containers. Start from the **ML Team with Custom Images** preset.
 
 **Governed Canvas workspace** -- IAM authentication with Canvas configured for business analysts: direct endpoint deployment disabled, Model Registry registration enabled, time-series forecasting under a dedicated role, a pinned S3 workspace, and the code-first Studio surfaces hidden from the launcher. Start from the **Governed Canvas Workspace** preset.
+
+**Team workspaces** -- The domain plus its people and collaboration surfaces in one manifest: `userProfiles` for each team member and named `spaces` with `Private` or `Shared` posture. Membership changes become one-line diffs reviewed like any other code. Start from the **Team Workspaces SageMaker Domain** preset.
 
 ## Works With
 

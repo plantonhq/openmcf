@@ -2,7 +2,7 @@
 display_name: IP Allowlist
 ---
 
-# Preset: IP Allowlist
+# IP Allowlist
 
 An `ip`-kind list to collect trusted IPs/CIDRs that WAF or custom rules reference
 with `ip.src in $office_allowlist`.

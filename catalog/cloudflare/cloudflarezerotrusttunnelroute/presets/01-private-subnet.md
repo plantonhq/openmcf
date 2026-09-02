@@ -1,4 +1,4 @@
-# Preset: Private subnet via a tunnel
+# Private subnet via a tunnel
 
 Advertise a private subnet through a tunnel so WARP clients can reach hosts in it — the
 most common private-networking route.

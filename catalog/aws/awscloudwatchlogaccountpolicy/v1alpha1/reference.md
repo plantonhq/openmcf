@@ -25,8 +25,10 @@ own - AWS validates it server-side at Put time.
 
 ```yaml
 # Canonical AwsCloudwatchLogAccountPolicy example (hack/dev manifest
-# and refgen Example source): an account-wide field-index policy
-# narrowed to one log-group prefix.
+# and refgen Example source): an account-wide field-index policy.
+# Field-index policies always apply account-wide - AWS accepts
+# selection criteria only on SUBSCRIPTION_FILTER_POLICY, as an
+# exact-name exclusion list (LogGroupName NOT IN [...]).
 apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogAccountPolicy
 metadata:
@@ -42,7 +44,6 @@ spec:
     Fields:
       - requestId
       - sourceIp
-  selectionCriteria: LogGroupNamePrefix IN ["/app/api"]
 ```
 
 ## Spec Fields
@@ -102,14 +103,22 @@ it semantically so formatting never causes drift.
 
 `string`
 
-Narrows which log groups the policy applies to, in AWS's selection
-syntax (e.g. "LogGroupNamePrefix IN [\"my-service\"]" - the exact
-grammar each policy type documents). Unset applies account-wide.
-Changing it replaces the policy. The provider's scope argument is
-deliberately not modeled: ALL is its only legal value at the pin,
-so the modules pin it (a recorded exclusion).
+Excludes log groups from a SUBSCRIPTION_FILTER_POLICY, in AWS's
+one supported grammar: "LogGroupName NOT IN [\"name1\", \"name2\"]"
+(an exact-name exclusion list - no prefix form, no IN form). AWS
+accepts selection criteria ONLY on subscription-filter policies:
+PutAccountPolicy rejects any criteria string on the other four
+types with "Invalid selection criteria provided", so every other
+policy type applies account-wide, period. Changing it replaces the
+policy. The provider's scope argument is deliberately not modeled:
+ALL is its only legal value at the pin, so the modules pin it (a
+recorded exclusion).
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
+
+## Validation Rules
+
+- `spec.selection_criteria_subscription_filter_only`: selection_criteria is accepted by AWS only when policy_type is SUBSCRIPTION_FILTER_POLICY
 
 ## Outputs
 

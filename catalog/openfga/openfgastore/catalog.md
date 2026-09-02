@@ -1,86 +1,68 @@
 # OpenFGA Store
 
-Deploys an OpenFGA store -- the top-level container for authorization models and relationship tuples. Each store provides an isolated authorization boundary, making it suitable for separating environments, applications, or tenants. A store is always the first resource created in an OpenFGA deployment; authorization models and relationship tuples are then added inside it. Integrates with Planton's Provider Connections for OpenFGA credential management.
+Deploys an OpenFGA store -- the top-level container for authorization models and relationship tuples, and the isolation boundary that keeps one environment's, application's, or tenant's authorization data invisible to every other. A store is always the first resource in an OpenFGA deployment: models and tuples are created inside it and every downstream operation -- creating models, writing tuples, running permission checks -- addresses it by the server-generated store ID. The spec is intentionally minimal, a single `name` field, because all authorization complexity lives in the model and tuples deployed into the store.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **OpenFGA Store** -- a named store on the configured OpenFGA server that serves as the container for all authorization models and relationship tuples. The store ID generated during creation is the primary identifier used by all downstream OpenFGA operations.
+- **OpenFGA Store** -- a single `openfga_store` resource named from `spec.name` on the connected OpenFGA server. The server generates the store ID at creation; that ID -- not the name -- is what authorization models, relationship tuples, and permission checks reference.
 
 ## Before You Deploy
 
 ### Planton Setup
 
-- **OpenFGA Provider Connection** -- an active connection in the Connect module with the OpenFGA API URL and authentication credentials (API token or client credentials). Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
+- **OpenFGA Provider Connection** -- an active connection in the Connect module with the OpenFGA API URL and authentication credentials: an API token, or client credentials (client ID, client secret, token issuer, and audience). Map it as the default for your environment, or specify it explicitly when creating the Cloud Resource.
 - **Planton Runner** -- required when using Runner-based credential delivery. Not needed for inline authentication.
 
 ### OpenFGA Server
 
-- **A running OpenFGA instance** -- self-hosted or cloud-hosted, reachable from the Planton Runner or provisioner environment. The server must be accessible at the URL configured in the Provider Connection.
-- **Network connectivity** -- the provisioner environment must be able to reach the OpenFGA API endpoint over HTTPS (or HTTP for local development).
+- **A running OpenFGA instance** -- self-hosted or cloud-hosted, reachable from the Planton Runner or provisioner environment at the API URL configured in the Provider Connection.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **OpenFGA Store**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Standard Authorization Store** preset in the [Presets](#presets) tab. After deployment, the store ID is available in the Cloud Resource's status outputs for use by downstream components.
+Open the deployment store, find **OpenFGA Store**, and click **Deploy**. The creation wizard walks you through environment and connection configuration and the single spec field -- the store name. Start from the **Standard Authorization Store** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: openfga.planton.dev/v1
+apiVersion: openfga.planton.dev/v1alpha1
 kind: OpenFgaStore
 metadata:
   name: prod-authz
   org: acme-corp
   env: prod
 spec:
-  name: production-authorization-store
+  name: production-authz
 ```
 
 ```shell
 planton apply -f openfga-store.yaml
 ```
 
-This creates a store named `production-authorization-store` on the configured OpenFGA server. No additional configuration is needed beyond the store name. A Stack Job tracks the provisioning in real time.
-
-A development store with a shorter name:
-
-```yaml
-apiVersion: openfga.planton.dev/v1
-kind: OpenFgaStore
-metadata:
-  name: dev-authz
-  org: acme-corp
-  env: dev
-spec:
-  name: dev-authorization-store
-```
-
-```shell
-planton apply -f openfga-store-dev.yaml
-```
+This creates a store named `production-authz` on the connected OpenFGA server and surfaces the generated store ID in `status.outputs`. OpenFGA ships only a Terraform provider -- the Pulumi module is a pass-through placeholder that creates nothing -- so this component provisions with Terraform/OpenTofu (pass `--provisioner tofu` when applying outside a managed environment). A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
 These are the most important decisions when configuring an OpenFGA store. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Store name** -- The `name` field sets the display name of the store on the OpenFGA server. Choose a descriptive name that reflects the store's purpose or environment (e.g., `production-authz`, `billing-service-permissions`). The name is immutable -- changing it requires replacing the store and all associated authorization models and relationship tuples.
+**Store name** -- The `name` field is immutable: changing it replaces the store, and the replacement destroys every authorization model and relationship tuple inside it. Name the store for its long-term grain (`production-authz`, `billing-permissions`), not the first project that happens to use it.
 
-**Environment isolation** -- Create separate stores per environment (development, staging, production) or per application to keep authorization data isolated. Authorization models and tuples in one store have no effect on other stores, making it safe to test model changes in a development store without risking production access rules.
+**Isolation grain** -- The one real decision this component carries: what a store represents. Models and tuples in one store can never affect checks in another, so the store boundary IS the authorization blast radius. Choose per-environment, per-application, or per-tenant (see Common Patterns) before writing tuples -- there is no move operation between stores, so changing grain later means re-writing every tuple.
 
-**Store-per-application vs shared store** -- A single store can serve multiple applications if they share the same authorization model. Alternatively, create a dedicated store for each application when their authorization models are unrelated or when you want independent lifecycle management.
+**No deletion protection** -- Neither the OpenFGA API nor the Terraform provider exposes a deletion guard for stores. A destroy proceeds the moment it is issued and removes the store together with all models and tuples inside it. Where protection matters, it has to be operational -- restrict who can delete the Cloud Resource.
 
-**Provisioner** -- OpenFGA only has a Terraform provider. This component uses Terraform/Tofu as the provisioner. Ensure the provisioner label is set to `tofu` when deploying outside of Planton's managed environment.
+**Where the data actually lives** -- The store is a logical container inside the OpenFGA server; its contents persist in the server's backing datastore (PostgreSQL, MySQL, or SQLite). Backups, encryption at rest, and availability are that datastore deployment's posture -- nothing in this spec configures them.
 
 ## Outputs and Dependencies
 
 ### What This Component Consumes
 
-This component has no foreign key dependencies.
+This component has no foreign key dependencies -- it is the root of the OpenFGA dependency graph.
 
 ### What This Component Provides
 
@@ -88,21 +70,21 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `id` | Unique identifier of the OpenFGA store, generated by the OpenFGA server | Referenced by OpenFGA Authorization Model and Relationship Tuple components via `storeId` |
-| `name` | Display name of the store as configured in `spec.name` | Audit logs, environment identification, dashboards |
+| `id` | Server-generated store identifier (a ULID) | `storeId` on OpenFGA Authorization Model and OpenFGA Relationship Tuple resources |
 
 ## Common Patterns
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard authorization store** -- A single store to hold all authorization models and relationship tuples for an application. This is the starting point for every OpenFGA deployment: create the store first, then deploy an authorization model into it, then write relationship tuples that populate the authorization data. Start from the **Standard Authorization Store** preset.
+**Standard authorization store** -- One store holding all authorization data for an application: create the store, deploy an authorization model into it, then write relationship tuples. Start from the **Standard Authorization Store** preset.
 
-**Per-environment stores** -- Separate stores for development, staging, and production to isolate authorization data across environments. Each store gets its own models and tuples, preventing test data from affecting production access decisions. Deploy each environment's store with a descriptive name like `dev-authz`, `staging-authz`, `production-authz`.
+**Per-environment stores** -- Separate stores for development, staging, and production. Each environment gets its own models and tuples, so a model change tested in the dev store cannot alter a single production access decision. This is the minimum isolation any real deployment should run with.
 
-**Per-application stores** -- When multiple applications share the same OpenFGA server but require independent authorization models, create a dedicated store for each. This avoids model conflicts and allows independent model versioning per application.
+**Per-application stores** -- When multiple applications share one OpenFGA server but their authorization models are unrelated, a store per application avoids type-definition conflicts and lets each application version its model independently. Share a store only when the applications genuinely share one model.
 
-**Per-tenant stores** -- In multi-tenant systems, create a store per tenant for complete authorization data isolation. Each tenant's access rules and relationship data are self-contained, simplifying compliance and data residency requirements.
+**Per-tenant stores** -- A store per tenant gives complete authorization data isolation with a clean compliance and data-residency story, at the cost of store count growing with tenants -- every model change must then be rolled out once per store.
 
 ## Works With
 
-This component operates independently and does not reference other components.
+- [**OpenFGA Authorization Model**](/cloud-catalog/openfga-authorization-model) -- the schema of types and relations deployed into the store, referenced through the store's `id` output
+- [**OpenFGA Relationship Tuple**](/cloud-catalog/openfga-relationship-tuple) -- the authorization data written into the store, one tuple per resource

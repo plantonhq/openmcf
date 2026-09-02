@@ -1,0 +1,33 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: digitaloceanloadbalancer
+spec:
+  billing_model: always_on
+  baseline_charges:
+    - service_name: Load Balancers
+      sku_meter: load balancer nodes
+      pricing_unit: months
+      description: The balancer bills a flat monthly amount per node (prorated hourly) from creation to deletion, whether or not any request flows -- the smallest regional balancer is one node, and every size is some node count.
+  cost_drivers:
+    - field_path: size
+      sku_meter: load balancer nodes
+      pricing_unit: months
+      impact: "The size slug sets the node count -- lb-small is 1 node, lb-medium 3, lb-large 6 -- and each regional node bills 12.00 USD/mo (https://www.digitalocean.com/pricing/load-balancers, retrieved 2026-08-22: regional pricing starts at 12.00 USD per month for one node, scaling to 100 nodes). When both size and size_unit are unset, DigitalOcean provisions lb-small."
+    - field_path: size_unit
+      sku_meter: load balancer nodes
+      pricing_unit: months
+      impact: "Node count directly (1-200): each unit adds a node at the per-node monthly rate, plus 10,000 requests/sec, 10,000 simultaneous connections, and 250 SSL connections/sec of capacity per the pricing page."
+    - field_path: type
+      sku_meter: load balancer nodes
+      pricing_unit: months
+      impact: "REGIONAL (the default) bills the per-node regional rate; GLOBAL (anycast) and REGIONAL_NETWORK bill from their own rate tables, which this catalog has not pinned -- estimates refuse those types honestly rather than guess."
+  free_tier: ""
+  estimate_exclusions:
+    - "GLOBAL and REGIONAL_NETWORK balancers bill from rate tables not pinned in the price book -- no catalog preset uses them, and estimates refuse them"
+    - "backend droplets bill on their own DigitalOceanDroplet components; attaching them to the balancer adds no charge"
+    - "traffic through the balancer carries no separate bandwidth meter -- outbound transfer draws from the backend droplets' pooled monthly allowance"
+  notes: "A regional balancer node bills 12.00 USD/mo flat (prorated hourly) from creation. Forwarding rules, health checks, sticky sessions, the balancer firewall, and TLS termination are all free configuration on the same nodes -- node count is the entire bill. DigitalOcean prices load balancers identically across regions -- the pricing page carries no region dimension. Deleting the balancer stops the meter; the backends keep billing on their own components."

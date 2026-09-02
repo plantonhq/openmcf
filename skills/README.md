@@ -46,6 +46,15 @@ embedded copy — it resolves a stable release-channel pointer at boot and
 seeds the pointed-at release into its engine, verifying each artifact's
 checksum, the compatibility floor, and content shape before adopting it.
 
+Each release also ships in a second, browsable shape for reading surfaces:
+every skill's files individually fetchable under
+`releases/{tag}/definitions/exploded/{slug}/`, described by a
+`definitions-browse.json` file tree with per-file checksums, and a releases
+index at `definitions/releases/index.json` naming every complete release.
+The exploded files are the archive entries byte for byte (the archives are
+deterministic stored zips), verified against the browse manifest before
+upload — so browsing a release reads exactly what installers install.
+
 ## The authoring bar
 
 Every skill in this tree is crafted individually, grounded in thorough
@@ -56,6 +65,10 @@ agent's judgment are proven against a live engine before they ship.
 
 Skills carry judgment and workflow. Component facts (what a deployment
 component is, its fields, its examples) live in the generated reference
-pages beside each component's protos (`catalog/...`) and
-are composed into agents by reference — never duplicated into a skill's
-prose, where they would rot.
+pages beside each component's protos (`catalog/...`), and the verified
+data layer (cost fact-sheets with generated estimates, control posture,
+provisioning-permission manifests) lives in the catalog's committed
+sidecars and central `_pricing/`/`_compliance/` trees — both are composed
+into agents by reference (the multi-cloud-catalog skill's reference pack
+teaches reading them as files), never duplicated into a skill's prose,
+where they would rot.

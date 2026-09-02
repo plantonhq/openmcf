@@ -1,0 +1,31 @@
+# Least-privilege permissions the IaC runner's DigitalOcean credential
+# needs to provision, update, and destroy this component with the official
+# modules. DigitalOcean authenticates with a bearer API token carrying
+# named scopes; every group entry is `derived` (static analysis of the
+# module sources, cited in notes) until the live capture lane upgrades it
+# to `proven`. Schema: iac/componentpermissions/v1.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: digitaloceandatabasecluster
+spec:
+  digital_ocean:
+    groups:
+      - purpose: ManageDatabaseCluster
+        scopes:
+          - database:create
+          - database:read
+          - database:update
+          - database:delete
+        provenance: derived
+        notes: Covers digitalocean_database_cluster's create/read/update/delete/import paths, waiters included, in both the Terraform and Pulumi modules -- create the cluster via POST /v2/databases, where engine, size, node count, VPC, project, storage, and restore-from-backup all ride the create body (database:create), read the cluster via GET /v2/databases/{id} on refresh/import and while the create waiter polls for online status (database:read), resize/migrate/grow storage and set maintenance window, eviction policy, sql_mode, and storage autoscale via the PUT/POST endpoints under /v2/databases/{id} (database:update), and destroy via DELETE /v2/databases/{id} (database:delete). Scope names per https://docs.digitalocean.com/reference/api/scopes/, read 2026-08-22. A full-access token also works; it is never least-privilege.
+      - purpose: ViewConnectionCredentials
+        scopes:
+          - database:view_credentials
+        provenance: derived
+        notes: The provider reads the cluster's connection details (URIs, default user password) into state on every read to serve the connection outputs.
+      - purpose: ApplyTags
+        scopes:
+          - tag:create
+        provenance: derived
+        notes: Both modules always apply the Planton label tags (plus spec tags); assigning a tag name the account has never used materializes it.

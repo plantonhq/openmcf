@@ -31,7 +31,7 @@ Open the deployment store, find **Karpenter EC2 Node Class**, and click **Deploy
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesKarpenterEc2NodeClass
 metadata:
   name: default-al2023
@@ -53,7 +53,7 @@ spec:
 planton apply -f node-class.yaml
 ```
 
-NodePools then reference the class through their node class ref, and every node they launch is built from this template.
+NodePools then reference the class through their node class ref, and every node they launch is built from this template. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
@@ -73,7 +73,7 @@ These are the most important decisions when configuring an EC2NodeClass. Explore
 
 ### What This Component Consumes
 
-This component references no other Planton Cloud Resources — the AWS selectors (AMI ids, tags, role name) are plain values validated by the CRD's own rules.
+This component has no foreign key dependencies — the AWS selectors (AMI ids, tags, role name) are plain values validated by the CRD's own rules.
 
 ### What This Component Provides
 
@@ -95,5 +95,5 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- **Karpenter** -- the controller that realizes this template; install it first.
-- **Karpenter Node Pool** -- references this class; one class typically serves a default pool, a spot pool, and a GPU pool.
+- [**Karpenter**](/cloud-catalog/kubernetes-karpenter) -- the controller that realizes this template; install it first
+- [**Karpenter Node Pool**](/cloud-catalog/kubernetes-karpenter-node-pool) -- references this class; one class typically serves a default pool, a spot pool, and a GPU pool

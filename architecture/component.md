@@ -23,6 +23,11 @@ A component consists of:
    - Authored operational judgment (`GUIDE.md`, where the component carries non-obvious judgment)
    - Ready-to-deploy presets and a validated example manifest (`e2e/manifest.yaml`)
 
+4. **Verified Fact-Sheets** - Machine-checked data every surface answers from:
+   - Cost facts (`cost.yaml`: billing model, dimensions, price provenance) with generated per-preset estimates priced from the pinned price books
+   - Technical control posture with evidence (`controls.yaml`, citing the central control catalog and framework crosswalks in `catalog/_compliance/`)
+   - Least-privilege provisioning permissions (`iac/permissions.yaml`), validated against the providers' own published action/scope inventories
+
 ### Role in Planton
 
 Components are the **atomic units of deployment** in Planton. They serve as:
@@ -178,6 +183,7 @@ The following sections define the complete, ideal state of any component. This s
   - `provider` - Correct provider enum value
   - `version` - The served API version (e.g. `v1alpha1`; never bare `v1`)
   - `id_prefix` - Short, descriptive prefix (3-7 characters)
+  - `service_group` - The provider-console service group the component is browsed under (a `CloudProviderServiceGroup` value belonging to the kind's own provider). REQUIRED for grouped providers (aws, azure, gcp, kubernetes, cloudflare, digital_ocean) and prohibited for providers without a service taxonomy — registry tests enforce both directions
 - [ ] **Optional Metadata (when applicable)** - `kind_meta` may also include:
   - `prerequisites` - Other `CloudResourceKind`s that must exist first (e.g. an operator or CRD-installer like `KubernetesGatewayApiCrds`); drives resource-graph and infra-chart ordering
   - `is_service_kind` - Whether this kind is a Service Hub deployment target
@@ -191,6 +197,7 @@ GcpCertManagerCert = 3016 [(kind_meta) = {
   provider: gcp
   version: "v1alpha1"
   id_prefix: "gcpcert"
+  service_group: gcp_security
 }];
 ```
 
@@ -270,9 +277,9 @@ catalog/gcp/gcpcertmanagercert/
         └── README.md
 ```
 
-The runner permissions manifests are machine-verified beyond their structure: every AWS action name a `permissions.yaml` declares is checked against a committed snapshot of AWS's own machine-readable service reference, every Azure operation against a snapshot of ARM's provider-operations inventory — on its own plane, since Azure separates management-plane `actions` from data-plane `data_actions` and an operation on the wrong plane would grant nothing — and every GCP permission against a snapshot of IAM's testable-permissions inventory, keyed by the service segment of the dotted name (all snapshots refreshed by `make generate-action-inventory`; validated in CI by the `lint.catalog-data` gate). An invented or misspelled permission action cannot ship — wildcard patterns must match at least one action the provider actually defines. The AWS snapshot also records which actions the service reference declares no resource types for: IAM evaluates those against `Resource "*"` only, so the gate holds every statement carrying one to exactly the wildcard resource (an ARN-scoped grant would read tighter than required and silently deny at runtime) and, conversely, refuses a wildcard statement whose actions all support scoping. The GCP snapshot unions three scope-anchored queries — project, organization, and billing account — because IAM's inventory lists a permission only under the resource types it can be tested on, and permissions like `resourcemanager.projects.create` (org-scoped) or `billing.resourceAssociations.create` (billing-scoped) are invisible to a project-anchored query alone.
+The runner permissions manifests are machine-verified beyond their structure: every AWS action name a `permissions.yaml` declares is checked against a committed snapshot of AWS's own machine-readable service reference, every Azure operation against a snapshot of ARM's provider-operations inventory — on its own plane, since Azure separates management-plane `actions` from data-plane `data_actions` and an operation on the wrong plane would grant nothing — and every GCP permission against a snapshot of IAM's testable-permissions inventory, keyed by the service segment of the dotted name (all snapshots refreshed by `make generate-action-inventory`; validated in CI by the `lint.catalog-data` gate). An invented or misspelled permission action cannot ship — wildcard patterns must match at least one action the provider actually defines. The AWS snapshot also records which actions the service reference declares no resource types for: IAM evaluates those against `Resource "*"` only, so the gate holds every statement carrying one to exactly the wildcard resource (an ARN-scoped grant would read tighter than required and silently deny at runtime) and, conversely, refuses a wildcard statement whose actions all support scoping. The GCP snapshot unions three scope-anchored queries — project, organization, and billing account — because IAM's inventory lists a permission only under the resource types it can be tested on, and permissions like `resourcemanager.projects.create` (org-scoped) or `billing.resourceAssociations.create` (billing-scoped) are invisible to a project-anchored query alone. Token-authenticated providers get the same treatment in their own vocabulary: every Cloudflare permission group a manifest names is checked as a (name, scope) pair against a snapshot of Cloudflare's own permission-group inventory — names are not unique across scopes, so a real group declared at the wrong scope is refused as distinctly as an invented one — and every DigitalOcean token scope against a snapshot of the provider's published scope reference, matched exactly (DigitalOcean evaluates no wildcards) with the global alias scopes (`api:read`/`api:write`) refused outright as never least-privilege. DigitalOcean's second credential plane — Spaces object storage, which speaks the S3-compatible API under a separate Spaces key pair no API token can reach — is declared as per-bucket grant levels held to the provider's own closed grant vocabulary (read, readwrite, fullaccess).
 
-Two central homes at the catalog root complement the per-component files: `catalog/_compliance/` holds the control catalog and framework crosswalks that every `controls.yaml` references, and `catalog/_pricing/` holds the cost-estimate pipeline — prices are volatile, so they live in one refreshable tree instead of beside 676 components. A component's quantities have exactly one home, in one of three forms: `derivations/` carries machine-executable rules turning ANY manifest's spec values into metered quantities and price choices (schema `finops/componentcostderivation/v1` — conditions select which rules apply, quantity factors multiply out consumption, and prices resolve by slug or by the manifest's own values through the price book's attribute identities; configurations whose cost is unknowable refuse with the reason, never a guess), `capacity/` carries the cluster-capacity twin (schema `finops/componentcapacityderivation/v1` — workload bindings locate the manifest's ContainerResources blocks, instance counts, and per-instance volumes, and exact Kubernetes-quantity arithmetic sums them into the capacity footprint the workload reserves; cluster-capacity components create no cloud SKU, so their estimates state capacity, never dollars), while `models/` carries hand-authored per-preset quantity assumptions for components not yet derived (schema `finops/componentcostestimatemodel/v1`). `pricebook/` carries one pinned price book per provider (schema `finops/pricebook/v1` — every unit price with its source URL and retrieval date; entries with a machine selector are refreshed from the provider's public price API by `make generate-price-book`; entries carrying attributes are the value-keyed identities derivations look prices up by). `estimates/` is GENERATED by `make generate-cost-estimates` — for derived components by replaying every preset manifest through the rules, for modeled components by joining the model with the book — every line cost, total, and footprint computed exactly, never authored. The `lint.catalog-data` gate re-computes every figure, holds the committed estimates byte-identical to their inputs, and rejects any disagreement between the rules or model, the price book, and the component's `cost.yaml`.
+Two central homes at the catalog root complement the per-component files: `catalog/_compliance/` holds the control catalog and framework crosswalks that every `controls.yaml` references (each crosswalk may declare its provider scope in `spec.providers` -- a benchmark that names a provider in its own title, like CIS AWS, appears only on that provider's components, while an empty scope means provider-neutral and applies everywhere), and `catalog/_pricing/` holds the cost-estimate pipeline — prices are volatile, so they live in one refreshable tree instead of beside every component. A component's quantities have exactly one home, in one of three forms: `derivations/` carries machine-executable rules turning ANY manifest's spec values into metered quantities and price choices (schema `finops/componentcostderivation/v1` — conditions select which rules apply, and may range existentially over the elements of a repeated tree or match a value's version-family prefix; quantity factors multiply out consumption, including the excess over a provider's included allotment; a rule may expand once per element of a repeated list so each instance's own class picks its own rate; and prices resolve by slug or by the manifest's own values through the price book's attribute identities; configurations whose cost is unknowable refuse with the reason, never a guess), `capacity/` carries the cluster-capacity twin (schema `finops/componentcapacityderivation/v1` — workload bindings locate the manifest's ContainerResources blocks, instance counts, and per-instance volumes, falling back to the spec's own declared defaults when a manifest omits what the modules default at deploy time, and exact Kubernetes-quantity arithmetic sums them into the capacity footprint the workload reserves; cluster-capacity components create no cloud SKU, so their estimates state capacity, never dollars), while `models/` carries hand-authored per-preset quantity assumptions for components not yet derived (schema `finops/componentcostestimatemodel/v1`). `pricebook/` carries one pinned price book per provider (schema `finops/pricebook/v1` — every unit price with its source URL and retrieval date; entries with a machine selector are refreshed from the provider's public price API by `make generate-price-book`; entries carrying attributes are the value-keyed identities derivations look prices up by). `estimates/` is GENERATED by `make generate-cost-estimates` — for derived components by replaying every preset manifest through the rules, for modeled components by joining the model with the book — every line cost, total, and footprint computed exactly, never authored. The `lint.catalog-data` gate re-computes every figure, holds the committed estimates byte-identical to their inputs, and rejects any disagreement between the rules or model, the price book, and the component's `cost.yaml`.
 
 The fact-sheets also ship: the catalog bundle packs each covered component's cost profile, control profile, permission manifest, generated estimates, and (when derived) its cost derivation as their own cargo trees (`costs/`, `controls/`, `permissions/`, `estimates/`, `derivations/`), together with the central control catalog, crosswalks, and price books (`compliance/`, `pricebooks/`) — every file byte-identical to its tree source. The derivations and price books riding together is what lets a consuming control plane compute a manifest's exact monthly estimate server-side with zero external calls. Each covered component's catalog entry additionally carries projected summaries (monthly cost range across priced presets, control-posture counts, permissions provenance), computed at bundle build time from the same documents the cargo packs and re-proven by the bundle conformance gate — a summary can never disagree with the document behind it. Components without fact-sheets ship no cargo and no summaries: absence means "not yet covered", never "free".
 
@@ -730,13 +737,25 @@ variable "alternate_domain_names" {
 
 **Location:** `catalog.md` (component root)
 
-**Purpose:** THE catalog page -- rendered by the public site and the console
+**Purpose:** THE catalog page -- the user-facing landing page rendered by the console's public catalog; the page a person or AI agent lands on when searching for this software
 
 **Requirements:**
 
 - [ ] **File Exists** - `catalog.md` is present at the component root (enforced by the anatomy gate)
-- [ ] **Follows the Catalog Page Standard** - Structure, tone, and content follow `_rules/docs/write-planton-component-catalog-md.mdc`
+- [ ] **Head-Shape Contract** - The `# H1` is the human display name and the first sentence stands alone as the one-line description -- the catalog bundle machine-parses both for the kind's display metadata (and the bundle deliberately falls back rather than fail on a malformed head, which is why the shape is gated below)
+- [ ] **Follows the Catalog Page Standard** - The mandatory section structure (What Gets Created / Before You Deploy / Deploy with Console + CLI + InfraChart arms / Key Configuration / Outputs and Dependencies / Common Patterns / Works With), tone, and content follow `_rules/docs/write-planton-component-catalog-md.mdc`. The structural half is machine-enforced: the `pkg/catalogpage` gate (CI lane `.github/workflows/lint.catalog-page.yaml`) checks the head shape, the H2/H3 skeleton, the InfraChart-arm law, and the validity of every embedded manifest against a shrink-only baseline -- a new page ships at the bar or fails the PR
+- [ ] **Judgment-First Configuration** - `Key Configuration` teaches decisions and consequences; the exhaustive field list belongs to the generated `v1alpha1/reference.md`, never duplicated here
+- [ ] **Source-Verified** - Every manifest validates against `spec.proto`, every output exists in `outputs.proto`, every What Gets Created bullet matches the IaC module
 - [ ] **Current** - Field references and examples match the current `spec.proto`
+
+**NOT Included:**
+- Exhaustive field tables (that's the generated `v1alpha1/reference.md`)
+- Deep operational judgment for architects (that's `GUIDE.md`)
+- External URLs, marketing language, or research prose (banned by the standard)
+
+**Tone:**
+- Senior documentation writer: precise, earned, trusts the reader
+- Written for three readers at once: the evaluating developer, the 2 AM engineer, and the AI agent grounding a deployment plan
 
 ---
 
@@ -777,7 +796,7 @@ and deploys exactly this manifest.
 
 #### 8.3 Terraform Supporting Files
 
-**Location:** `v1/iac/tf/`
+**Location:** `iac/tf/` (component root)
 
 **Files:**
 
@@ -845,6 +864,18 @@ presets/
 
 ---
 
+### 10. Verified Fact-Sheets
+
+Every component carries the machine-checked data layer beside its contract. These files are what the console's Cost/Posture/Permissions tabs, the compose canvas's cost figures, the CLI, and the assistant's file-first answers are built from — a component without them is honestly uncovered on every surface, never approximated.
+
+- [ ] **cost.yaml** (component root) - Billing model, cost dimensions, and price provenance. Committed prices come from the pinned price books in `catalog/_pricing/pricebook/`; quantities have exactly one home (a derivation, a capacity derivation, or a model — see the central-homes paragraph above). Never hand-type a dollar figure here or anywhere else in the component's docs: estimates are GENERATED by `make generate-cost-estimates`, and the `lint.catalog-data` gate recomputes every figure.
+- [ ] **controls.yaml** (component root) - Technical control posture with evidence, citing control IDs from the central catalog in `catalog/_compliance/`. Posture maps onto framework requirements through the crosswalks; it never claims a component is "compliant", "certified", or "authorized".
+- [ ] **iac/permissions.yaml** - The least-privilege provisioning permissions the runner needs, per provider plane. Every action/scope is validated against the provider's own published inventory — an invented or misspelled permission fails CI.
+
+Fact-sheet conformance is enforced by its own CI gates (the anatomy burn-down ledger and the catalog-data lint), so it is deliberately not folded into the audit percentage scheme below — the gates, not a score, decide whether the data layer is present and truthful.
+
+---
+
 ## Completeness Assessment Criteria
 
 When evaluating whether a component is "complete," assess each category:
@@ -860,7 +891,7 @@ These are non-negotiable for a component to be considered functional:
 5. ✅ spec_test.go with validation tests (2.77%)
 6. ✅ **Tests execute and pass** (2.78%) - Component-specific `go test` succeeds
 7. ✅ Pulumi module with main.go, locals.go, outputs.go (6.66%)
-8. ✅ Pulumi entrypoint (main.go, Pulumi.yaml, Makefile) (6.66%)
+8. ✅ Pulumi entrypoint (main.go, Pulumi.yaml — no Makefile; the anatomy gate rejects build scaffolding) (6.66%)
 9. ✅ Terraform module with all 5 core files (variables.tf, provider.tf, locals.tf, main.tf, outputs.tf) (4.24%)
 
 **Note:** Test execution is now explicitly part of critical items. Failing tests = incomplete component.

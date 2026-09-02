@@ -48,6 +48,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: cert-manager exposes no authentication surface of its own -- every interaction is a Kubernetes API operation authenticated by the cluster, and outbound CA traffic uses the ACME protocol's key-signed requests. There is no weaker path to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Controller activity streams to stdout for the cluster's log collector (log_level tunes verbosity) and issuance milestones land as Kubernetes Events; administrative changes to cert-manager and its custom resources are Kubernetes API operations, captured by the target cluster's audit policy.

@@ -30,9 +30,24 @@ spec:
   #   - the resource policy arm -- the policy JSON needs a second
   #     account's principal to say anything real (the org-wall class).
   #
-  # pending_proof: forged this session to the full offline bar -- Q48
-  # proves it live.
+  # PROVEN 2026-08-26: both engines green through the full lifecycle
+  # plus the TF blind import round-trip (the catalog's first
+  # tofu_resource_name-scoped recipes re-imported 4 resources at zero
+  # real change; the declared not-importable ACM permission re-created
+  # by the reconcile-apply). The composed CSR->issue->install
+  # activation ran clean first contact, SHORT_LIVED mode ACCEPTED the
+  # 10-year ROOT CA validity (the 7-day cap is end-entity-only,
+  # settled live), the issued certificate revoked on destroy, and the
+  # CA parked DELETED for its 7-day window (the verifier's documented
+  # absent state). TWO live catches fixed at the full bar: the five
+  # issue-request fields are a birth certificate (create-only, never
+  # read back, replace-forcing - both engines now ignore post-create
+  # edits; a blind import had planned a destructive re-issue of the
+  # CA's own trust anchor), and the restore window is an engine-side
+  # delete-time instruction whose window-only update composes an
+  # empty UpdateCertificateAuthority AWS rejects 400 (provider gap at
+  # ~> 6.58 - both engines fix the window at create).
   tier: 1
-  status: pending_proof
-  validated_provisioners: []
+  status: green
+  validated_provisioners: [pulumi, terraform]
   timeout_minutes: 30

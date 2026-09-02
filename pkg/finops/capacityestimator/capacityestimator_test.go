@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	kubernetes "github.com/plantonhq/planton/catalog/kubernetes"
+	grafanav1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesgrafana/v1alpha1"
+	keycloakv1 "github.com/plantonhq/planton/catalog/kubernetes/kuberneteskeycloak/v1alpha1"
 	kpgv1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetespostgres/v1alpha1"
 	capacityv1 "github.com/plantonhq/planton/finops/componentcapacityderivation/v1"
 	derivationv1 "github.com/plantonhq/planton/finops/componentcostderivation/v1"
@@ -148,6 +150,144 @@ func TestNoReservationRefuses(t *testing.T) {
 	}
 	if refusal == nil || !strings.Contains(refusal.Reason, "no resource requests") {
 		t.Fatalf("want the no-reservation refusal, got %+v", refusal)
+	}
+}
+
+// TestSpecDeclaredDefaults pins the annotation fallbacks: a manifest
+// omitting resources reserves the spec's own
+// (default_container_resources) values -- the sizing the modules apply
+// at deploy time -- with the defaults' origin named in the basis; a
+// PRESENT storage block omitting its size reserves the field's
+// (options.default) size; and an ABSENT storage block reserves nothing
+// (the block is the volume's existence switch -- a default applied to an
+// unconfigured volume would fabricate a reservation).
+func TestSpecDeclaredDefaults(t *testing.T) {
+	// kuberneteskeycloak's resources field carries the annotation
+	// (requests 250m/768Mi, limits 1/1Gi) -- the paired fixture from the
+	// committed 02-dev-sandbox preset, which omits resources entirely.
+	keycloakBinding := &capacityv1.ComponentCapacityDerivationSpec{
+		Workloads: []*capacityv1.WorkloadBinding{{
+			Label:         "instance",
+			ResourcesPath: "resources",
+			Instances: &capacityv1.InstanceCount{Count: &capacityv1.InstanceCount_FieldValue{
+				FieldValue: &derivationv1.FieldValue{FieldPath: "instances", DefaultWhenUnset: "1"},
+			}},
+		}},
+		Exclusions: []*derivationv1.ConditionalText{
+			{Text: "the dollar value of this capacity is the target cluster's node economics"},
+		},
+	}
+	manifest := &keycloakv1.KubernetesKeycloak{Spec: &keycloakv1.KubernetesKeycloakSpec{}}
+	preset, refusal, err := Evaluate(manifest, keycloakBinding)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(defaults): err=%v refusal=%+v", err, refusal)
+	}
+	footprint := preset.GetCapacityFootprint()
+	for _, check := range []struct{ name, got, want string }{
+		{"cpu_requests", footprint.GetCpuRequests(), "250m"},
+		{"memory_requests", footprint.GetMemoryRequests(), "768Mi"},
+		{"cpu_limits", footprint.GetCpuLimits(), "1"},
+		{"memory_limits", footprint.GetMemoryLimits(), "1Gi"},
+	} {
+		if check.got != check.want {
+			t.Errorf("defaults %s: got %q, want %q (the spec's own annotation)", check.name, check.got, check.want)
+		}
+	}
+	if !strings.Contains(footprint.GetBasis(), "spec-declared defaults") {
+		t.Errorf("basis %q does not name the defaults' origin", footprint.GetBasis())
+	}
+
+	// Explicit manifest values still win over the annotation.
+	manifest.Spec.Resources = resources("2", "4Gi", "4", "8Gi")
+	preset, refusal, err = Evaluate(manifest, keycloakBinding)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(explicit): err=%v refusal=%+v", err, refusal)
+	}
+	if got := preset.GetCapacityFootprint().GetCpuRequests(); got != "2" {
+		t.Errorf("explicit resources: got cpu_requests %q, want 2 (manifest wins over the annotation)", got)
+	}
+	if strings.Contains(preset.GetCapacityFootprint().GetBasis(), "spec-declared defaults") {
+		t.Error("explicit resources wear the defaults marker -- the basis lies about the values' origin")
+	}
+
+	// kubernetesgrafana's storage.size carries (options.default) "10Gi":
+	// a PRESENT block without a size reserves the default; an ABSENT
+	// block reserves nothing.
+	grafanaBinding := &capacityv1.ComponentCapacityDerivationSpec{
+		Workloads: []*capacityv1.WorkloadBinding{{
+			Label:     "state volume",
+			Instances: &capacityv1.InstanceCount{Count: &capacityv1.InstanceCount_Constant{Constant: "1"}},
+			Volumes:   []*capacityv1.VolumeBinding{{Label: "state", SizePath: "storage.size"}},
+		}},
+		Exclusions: []*derivationv1.ConditionalText{
+			{Text: "the dollar value of this capacity is the target cluster's node economics"},
+		},
+	}
+	grafana := &grafanav1.KubernetesGrafana{Spec: &grafanav1.KubernetesGrafanaSpec{
+		Storage: &grafanav1.KubernetesGrafanaStorage{},
+	}}
+	preset, refusal, err = Evaluate(grafana, grafanaBinding)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(size default): err=%v refusal=%+v", err, refusal)
+	}
+	if got := preset.GetCapacityFootprint().GetPersistentStorage(); got != "10Gi" {
+		t.Errorf("present block, omitted size: got %q, want the 10Gi spec-declared default", got)
+	}
+	if !strings.Contains(preset.GetCapacityFootprint().GetBasis(), "spec-declared default size") {
+		t.Errorf("basis %q does not name the size default's origin", preset.GetCapacityFootprint().GetBasis())
+	}
+
+	grafana.Spec.Storage = nil
+	_, refusal, err = Evaluate(grafana, grafanaBinding)
+	if err != nil {
+		t.Fatalf("Evaluate(absent block): %v", err)
+	}
+	if refusal == nil {
+		t.Fatal("an absent storage block must reserve NOTHING -- the size default fabricated a volume that never binds")
+	}
+}
+
+// TestVolumeAppliesWhen pins the volume-existence gate: a mode that
+// provisions no volume (ephemeral on emptyDir) keeps its size value and
+// its spec default while binding NOTHING -- a size without a volume must
+// contribute nothing, never a fabricated reservation.
+func TestVolumeAppliesWhen(t *testing.T) {
+	binding := &capacityv1.ComponentCapacityDerivationSpec{
+		Workloads: []*capacityv1.WorkloadBinding{{
+			Label:     "state volume",
+			Instances: &capacityv1.InstanceCount{Count: &capacityv1.InstanceCount_Constant{Constant: "1"}},
+			Volumes: []*capacityv1.VolumeBinding{{
+				Label:    "state",
+				SizePath: "storage.size",
+				AppliesWhen: []*derivationv1.Condition{{
+					FieldPath: "database", Op: derivationv1.Condition_is_unset,
+				}},
+			}},
+		}},
+		Exclusions: []*derivationv1.ConditionalText{
+			{Text: "the dollar value of this capacity is the target cluster's node economics"},
+		},
+	}
+	grafana := &grafanav1.KubernetesGrafana{Spec: &grafanav1.KubernetesGrafanaSpec{
+		Storage: &grafanav1.KubernetesGrafanaStorage{Size: proto.String("25Gi")},
+	}}
+	preset, refusal, err := Evaluate(grafana, binding)
+	if err != nil || refusal != nil {
+		t.Fatalf("Evaluate(volume exists): err=%v refusal=%+v", err, refusal)
+	}
+	if got := preset.GetCapacityFootprint().GetPersistentStorage(); got != "25Gi" {
+		t.Errorf("gated volume: got %q, want 25Gi", got)
+	}
+
+	// The gate condition failing means NO volume -- even with an
+	// explicit size on the manifest.
+	grafana.Spec.Database = &grafanav1.KubernetesGrafanaDatabase{}
+	_, refusal, err = Evaluate(grafana, binding)
+	if err != nil {
+		t.Fatalf("Evaluate(volume gated off): %v", err)
+	}
+	if refusal == nil {
+		t.Fatal("a gated-off volume still contributed -- the size fabricated a reservation the mode never binds")
 	}
 }
 

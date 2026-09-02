@@ -46,6 +46,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The only access paths are SigV4-signed HTTPS and IAM-minted presigned URLs -- no legacy or weaker authentication path exists to disable.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:
@@ -71,5 +74,5 @@ spec:
       field_path: weekly_maintenance_window_start
       evidence:
         type: spec_default
-        reference: AWS applies maintenance to the managed app on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "DDD:HH:MM") schedules when the maintenance disruption lands.
-      notes: MLflow version upgrades are automatic and in-place on this serverless app (the launch post names automatic upgrades; MLflow 3.4 at launch) -- unlike the sibling tracking server there is no version pin, so currency is provider-managed, not a drift risk this manifest carries. The 02-studio-default-mlflow preset pins SUN:03:00.
+        reference: AWS applies maintenance to the managed app on a weekly window -- omitted means AWS picks the slot; setting the field (UTC "Ddd:HH:MM", mixed-case day token) schedules when the maintenance disruption lands.
+      notes: MLflow version upgrades are automatic and in-place on this serverless app (the launch post names automatic upgrades; MLflow 3.4 at launch) -- unlike the sibling tracking server there is no version pin, so currency is provider-managed, not a drift risk this manifest carries. The 02-studio-default-mlflow preset pins Sun:03:00.

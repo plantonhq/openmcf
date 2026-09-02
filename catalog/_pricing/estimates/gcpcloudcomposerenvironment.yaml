@@ -62,7 +62,7 @@ spec:
         - the DAG bucket (auto-created or referenced) bills Cloud Storage rates by actual usage
         - network egress follows traffic and destination
         - no triggerer block is declared -- if Composer's per-version defaults run one, its allocation bills the same meters but is invisible in this manifest
-      notes: These rules price Composer 2 image versions; a manifest pinning a composer-3 image bills Data Compute Unit meters instead, and only the Composer 3 signals the spec carries (network attachment, private-environment flags, DAG processor sizing, an unpinned image) are detectable for refusal.
+      notes: These rules price Composer 2 image versions; a manifest pinning a composer-3 image, or carrying any Composer 3 signal (network attachment, private-environment flags, DAG processor sizing, an unpinned image), refuses instead of pricing on Composer 2 meters.
     - preset: 02-production-private
       region_assumption: us-central1
       currency: USD
@@ -110,7 +110,7 @@ spec:
         - managed database storage grows with task history, XComs, and DAG count, billed per GiB-month
         - the DAG bucket (auto-created or referenced) bills Cloud Storage rates by actual usage
         - network egress follows traffic and destination
-      notes: These rules price Composer 2 image versions; a manifest pinning a composer-3 image bills Data Compute Unit meters instead, and only the Composer 3 signals the spec carries (network attachment, private-environment flags, DAG processor sizing, an unpinned image) are detectable for refusal.
+      notes: These rules price Composer 2 image versions; a manifest pinning a composer-3 image, or carrying any Composer 3 signal (network attachment, private-environment flags, DAG processor sizing, an unpinned image), refuses instead of pricing on Composer 2 meters.
     - preset: 03-enterprise-encrypted
       region_assumption: us-central1
       currency: USD
@@ -159,4 +159,4 @@ spec:
         - the DAG bucket (auto-created or referenced) bills Cloud Storage rates by actual usage
         - network egress follows traffic and destination
         - scheduled snapshots accumulate in the named Cloud Storage location, billed at storage rates by size and cadence
-      notes: These rules price Composer 2 image versions; a manifest pinning a composer-3 image bills Data Compute Unit meters instead, and only the Composer 3 signals the spec carries (network attachment, private-environment flags, DAG processor sizing, an unpinned image) are detectable for refusal.
+      notes: These rules price Composer 2 image versions; a manifest pinning a composer-3 image, or carrying any Composer 3 signal (network attachment, private-environment flags, DAG processor sizing, an unpinned image), refuses instead of pricing on Composer 2 meters.

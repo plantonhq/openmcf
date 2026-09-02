@@ -1,0 +1,78 @@
+# Control profile: this component's posture against every control in the
+# central catalog (catalog/_compliance/controls-catalog.yaml). Every control
+# is examined; not_applicable states why. Evidence is verifiable against the
+# spec contract and the official modules. Schema:
+# compliance/componentcontrolprofile/v1.
+apiVersion: compliance.planton.dev/v1
+kind: ComponentControlProfile
+metadata:
+  name: digitaloceandroplet
+spec:
+  controls:
+    - control_id: enc-at-rest
+      status: not_applicable
+      notes: The spec has no encryption surface because DigitalOcean exposes none for droplet local SSDs -- disk encryption on a droplet is workload-side (LUKS or filesystem-level). Attached block storage volumes are encrypted at rest by DigitalOcean, but they are DigitalOceanVolume resources, not this component.
+    - control_id: enc-at-rest-cmk
+      status: not_applicable
+      notes: DigitalOcean offers no customer-managed-key service for droplets or any attached storage -- there is no CMK to configure anywhere on this kind.
+    - control_id: enc-in-transit
+      status: not_applicable
+      notes: A droplet is raw compute -- it terminates whatever protocols the workload runs. Transport encryption belongs to the software on the droplet and the load balancers in front of it, not to the droplet resource itself.
+    - control_id: no-public-access
+      status: configurable
+      field_path: public_networking
+      evidence:
+        type: spec_default
+        reference: Tri-state and create-only -- unset defers to DigitalOcean's default (public networking on, a public IPv4 on every new droplet); an explicit false creates a droplet with NO public network interface at all, reachable only inside its VPC.
+      notes: Both presets leave the field unset (public on, the provider default); private-only droplets must set explicit false at create because the field cannot change later.
+    - control_id: restricted-ingress
+      status: not_applicable
+      notes: Inbound rules live on DigitalOceanFirewall resources that target droplets by tag or ID from outside this spec -- the tags field here is the targeting handle firewalls attach to, not a rule set. A droplet with no firewall attached accepts whatever its OS listens on.
+    - control_id: edge-protection
+      status: not_applicable
+      notes: DigitalOcean attaches no WAF or request filter to a raw droplet; request filtering belongs to the load balancer or CDN tier routing traffic here.
+    - control_id: rbac
+      status: not_applicable
+      notes: Management-plane actions on the droplet are governed by DigitalOcean team roles and API token scopes on the caller's side, outside this spec; the droplet itself has no data-plane RBAC surface.
+    - control_id: workload-identity
+      status: not_applicable
+      notes: DigitalOcean has no droplet-scoped workload identity -- no metadata service issues short-lived API credentials to code on the droplet. Workloads calling DigitalOcean APIs must carry an API token they manage themselves.
+    - control_id: no-legacy-auth
+      status: configurable
+      field_path: ssh_keys
+      evidence:
+        type: spec_default
+        reference: Create-only -- injecting account-registered SSH keys at create is the standard access path; a droplet created without keys falls back to DigitalOcean emailing a root password, the legacy path.
+      notes: The production preset injects a key fingerprint; the development preset does not and inherits the root-password-email fallback. Keys cannot be added later without recreating the droplet.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
+    - control_id: audit-logging
+      status: not_applicable
+      notes: Management-plane actions land in the DigitalOcean team's account-level activity history outside this component, and OS-level audit logs belong to agents the workload runs; the spec wires no droplet-scoped audit log stream.
+    - control_id: monitoring-integration
+      status: configurable
+      field_path: monitoring
+      evidence:
+        type: spec_default
+        reference: Defaults false (matching the provider) and create-only -- true installs the DigitalOcean monitoring agent, enabling enhanced graphs and DigitalOceanMonitorAlert policies against this droplet's metrics.
+      notes: The production preset enables it; basic hypervisor metrics (CPU, bandwidth) flow without the agent, but memory/disk metrics and alert policies need it.
+    - control_id: backup-recovery
+      status: configurable
+      field_path: enable_backups
+      evidence:
+        type: spec_default
+        reference: Defaults false; true enables DigitalOcean's automated droplet backups (full-disk snapshots on a daily or weekly plan), restorable from the control panel or API. Toggling updates in place.
+      notes: The production preset enables weekly backups with a Sunday 04:00 window via backup_policy.
+    - control_id: backup-retention-policy
+      status: not_applicable
+      notes: backup_policy sets WHEN backups run (plan, weekday, hour), not how long they are kept -- retention is fixed by DigitalOcean per plan on the percentage-based plans this spec models. Custom-retention usage-based backup plans exist on DigitalOcean but the provider resource carries no retention field.
+    - control_id: multi-zone-ha
+      status: not_applicable
+      notes: A droplet lives in exactly one datacenter region by definition -- DigitalOcean has no multi-AZ droplet concept. Zone-redundant capacity is the fleet concern of DigitalOceanDropletAutoscalePool or a load-balanced droplet group, not this single machine.
+    - control_id: deletion-protection
+      status: not_applicable
+      notes: Neither the DigitalOcean API nor the provider offers a droplet deletion-protection flag -- there is nothing in the spec or the platform to refuse a delete. graceful_shutdown shapes HOW a destroy powers off, not whether it proceeds.
+    - control_id: managed-patching
+      status: not_applicable
+      notes: A droplet is an unmanaged VM -- OS and package patching is the customer's side of the shared-responsibility line, driven through cloud-init user_data, configuration management, or image rebuilds. The spec has no managed patch channel to configure.

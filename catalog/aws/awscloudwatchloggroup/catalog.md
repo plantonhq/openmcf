@@ -1,6 +1,6 @@
 # AWS CloudWatch Log Group
 
-Deploys a CloudWatch Logs log group with configurable retention, optional customer-managed KMS encryption, log group class selection, and deletion protection. Log groups are the centralized destination for application logs, service logs, and operational data across AWS services. The component integrates with Planton's Provider Connections for credential management and ValueFromRef for wiring KMS encryption keys.
+Deploys a CloudWatch Logs log group with configurable retention, optional customer-managed KMS encryption, log group class selection, and deletion protection. Log groups are the centralized destination for application logs, service logs, and operational data across AWS services -- and this component also carries the processing attached to the group: metric filters that turn log patterns into alarmable metrics, subscription filters that stream events to Kinesis, Firehose, or Lambda, and an ingest-time transformer pipeline.
 
 ## What Gets Created
 
@@ -33,7 +33,7 @@ Open the deployment store, find **AWS CloudWatch Log Group**, and click **Deploy
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCloudwatchLogGroup
 metadata:
   name: app-logs
@@ -118,10 +118,14 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Infrequent access long retention** -- INFREQUENT_ACCESS class with 365-day retention and KMS encryption. ~50% cheaper storage for high-volume logs queried rarely, such as VPC flow logs and CDN access logs. Start from the **Infrequent Access Long Retention** preset.
 
+**Error-count metric filter** -- A metric filter counting ERROR-level log lines into a custom metric, ready for an AwsCloudwatchAlarm to page on. The cheapest path from a log line to an alert -- no processing code, no subscription. Start from the **Error-Count Metric Filter** preset.
+
+**Transformed ingest pipeline** -- A transformer that parses raw events at ingest (JSON, grok, or a vended AWS format) and reshapes keys before Logs Insights, metric filters, or subscribers see them. Normalize once at the group instead of in every query. Start from the **Transformed Ingest Pipeline** preset.
+
 ## Works With
 
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- provides a customer-managed key for encrypting log data at rest
-- [**AWS Kinesis Stream**](/cloud-catalog/aws-kinesis-stream) -- real-time subscription filter destination for custom consumers
+- [**AWS Kinesis Data Stream**](/cloud-catalog/aws-kinesis-stream) -- real-time subscription filter destination for custom consumers
 - [**AWS Kinesis Firehose**](/cloud-catalog/aws-kinesis-firehose) -- buffered subscription filter destination for delivery to S3, OpenSearch, and more
 - [**AWS Lambda**](/cloud-catalog/aws-lambda) -- per-batch subscription filter processing with your own code
 - [**AWS IAM Role**](/cloud-catalog/aws-iam-role) -- the delivery role CloudWatch Logs assumes for Kinesis and Firehose destinations

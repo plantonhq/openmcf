@@ -1,6 +1,6 @@
-# Certificate on DigitalOcean
+# DigitalOcean Certificate
 
-Deploys an SSL/TLS certificate on DigitalOcean, supporting both free auto-renewing Let's Encrypt certificates and user-provided custom certificates. The certificate name can be referenced by DigitalOcean Load Balancers for HTTPS termination. Integrates with Planton's Provider Connections for DigitalOcean credential management.
+Deploys an SSL/TLS certificate on DigitalOcean, supporting both free auto-renewing Let's Encrypt certificates and user-provided custom certificates. The certificate name can be referenced by DigitalOcean Load Balancers for HTTPS termination. Every field is create-only -- any change replaces the certificate, with the replacement created before the old one is destroyed, so consumers referencing the stable name never observe a gap.
 
 ## What Gets Created
 
@@ -19,14 +19,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### DigitalOcean Account
 
-- **For Let's Encrypt certificates** -- the domain(s) must be managed by DigitalOcean DNS so that ACME validation can succeed. Wildcard certificates (e.g., `*.example.com`) require DNS validation.
-- **For custom certificates** -- have the PEM-encoded leaf certificate, private key, and optional intermediate chain ready.
+- **For Let's Encrypt certificates** -- every listed domain must be managed by DigitalOcean DNS in the SAME account, or issuance fails -- no challenge records get planted. Wildcards (e.g., `*.example.com`) work under the same condition.
+- **For custom certificates** -- have the PEM-encoded leaf certificate, private key, and optional intermediate chain ready. Store the private key as a managed secret and reference it as `$secret/<slug>` in the manifest -- never paste PEM key material.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Certificate on DigitalOcean**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Let's Encrypt Certificate** preset in the [Presets](#presets) tab for a free, auto-renewing certificate.
+Open the deployment store, find **DigitalOcean Certificate**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Let's Encrypt Certificate** preset in the [Presets](#presets) tab for a free, auto-renewing certificate.
 
 ### CLI
 
@@ -51,7 +51,7 @@ spec:
 planton apply -f certificate.yaml
 ```
 
-This creates a free Let's Encrypt certificate covering `example.com` and `www.example.com` with automatic renewal enabled. Reference the certificate name in load balancer configurations for HTTPS termination.
+This creates a free Let's Encrypt certificate covering `example.com` and `www.example.com`, with renewal handled by DigitalOcean. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
@@ -61,9 +61,11 @@ These are the most important decisions when configuring a DigitalOcean certifica
 
 **Let's Encrypt domains** -- The `letsEncrypt.domains` field accepts multiple FQDNs and wildcard domains (e.g., `*.example.com`). All domains must have DNS managed by DigitalOcean in the same account for ACME validation. DigitalOcean always auto-renews Let's Encrypt certificates.
 
-**Custom certificate materials** -- When using `custom` type, provide `leafCertificate` (server cert), `privateKey` (matching key), and optionally `certificateChain` (intermediate certs). Custom certificates have no automatic renewal -- plan for manual rotation before expiry.
+**Custom certificate materials** -- When using the `custom` branch, provide `leafCertificate` (server cert), `privateKey` (matching key), and optionally `certificateChain` (intermediate certs). `privateKey` is a sensitive field: bind it as a managed-secret reference (`privateKey: $secret/<slug>`), never pasted PEM. The DigitalOcean API never returns certificate material, so the manifest (or the secret store feeding it) is the only home the key has -- there is no "download my key" recovery path.
 
-**Certificate naming** -- Use a stable, descriptive `certificateName` since load balancers reference certificates by name, and the name IS the certificate's resource identity (a Let's Encrypt certificate's UUID rotates on every auto-renewal; the name never does).
+**Rotation and renewal** -- Custom certificates have no renewal machinery: DigitalOcean serves exactly what you uploaded until it expires. Rotation is editing the manifest with new PEM material and re-applying; the replacement is created before the old certificate is destroyed, so load balancers referencing the name never observe a gap. Watch the `expiry_rfc3339` output and alert well before it.
+
+**Certificate naming** -- Use a stable, descriptive `certificateName` since load balancers reference certificates by name, and the name IS the certificate's resource identity (a Let's Encrypt certificate's UUID rotates on every auto-renewal; the name never does). One deletion-order caveat: DigitalOcean refuses to delete a certificate while a load balancer still references it, so when restructuring HTTPS termination, update the forwarding rule first -- the reverse order looks hung.
 
 ## Outputs and Dependencies
 
@@ -90,4 +92,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 ## Works With
 
-- [**Load Balancer on DigitalOcean**](/cloud-catalog/digital-ocean-load-balancer) -- HTTPS forwarding rules reference this certificate by name via the `certificate_id` output
+- [**DigitalOcean Load Balancer**](/cloud-catalog/digital-ocean-load-balancer) -- HTTPS forwarding rules reference this certificate by name via the `certificate_id` output

@@ -1,0 +1,4 @@
+order:
+    - TestCloudResourceGeneric/consumer@dev
+findings:
+    - external-value-from TestCloudResourceGeneric/consumer@dev spec.optional_ref

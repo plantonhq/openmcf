@@ -56,6 +56,9 @@ spec:
       evidence:
         type: spec_default
         reference: Unspecified applies true (the provider's default -- Azure Machine Learning token authentication works); setting it false forces Entra ID authentication only. Fixed at creation; pair it with an identity block.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: enforced_by_default
       evidence:

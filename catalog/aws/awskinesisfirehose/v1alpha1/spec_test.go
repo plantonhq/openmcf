@@ -614,6 +614,16 @@ var _ = ginkgo.Describe("AwsKinesisFirehoseSpec validations", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 	})
 
+	ginkgo.It("rejects Iceberg with no destination tables", func() {
+		// A table-less Iceberg destination cannot route records -- AWS
+		// rejects it at apply time, so min_items catches it here.
+		ib := minimalIceberg()
+		ib.DestinationTables = nil
+		spec.DestinationConfig = &AwsKinesisFirehoseSpec_Iceberg{Iceberg: ib}
+		err := protovalidate.Validate(spec)
+		gomega.Expect(err).ToNot(gomega.BeNil())
+	})
+
 	// =========================================================================
 	// Happy path: production-ready Extended S3 (full config)
 	// =========================================================================

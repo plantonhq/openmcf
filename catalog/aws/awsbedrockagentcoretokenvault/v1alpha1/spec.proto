@@ -65,7 +65,12 @@ message AwsBedrockAgentCoreTokenVaultSpec {
   // with key_type "CustomerManagedKey", forbidden with
   // "ServiceManagedKey". The key must be symmetric and live in the
   // same region; AgentCore's grants on it are created by AWS when the
-  // setting is applied.
+  // setting is applied. KEEP THIS KEY ENABLED until after you revert:
+  // AWS validates the PREVIOUS key's state on every vault write, so
+  // once this key is disabled or scheduled for deletion the vault
+  // cannot even be reverted to ServiceManagedKey ("Old KMS Key
+  // validation failed ... expected KeyState:ENABLED" - live-caught).
+  // Revert first, retire the key second.
   dev.planton.shared.foreignkey.v1.StringValueOrRef kms_key_arn = 4 [
     (dev.planton.shared.foreignkey.v1.default_kind) = AwsKmsKey,
     (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.key_arn"

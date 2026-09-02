@@ -44,6 +44,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: No legacy authentication path exists to disable -- the runner introduces itself to the control plane by joining with its runner token (delivered through the app's secret store, never a plain environment variable) and serving on the identity it receives.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: The runner logs every operation it executes to stdout/stderr, but where those console logs land is the REFERENCED Container App Environment's choice -- an environment wired to Log Analytics captures them; one left unwired does not. This spec has no seam for that decision, so the honest claim is that log capture is owned by the environment's component, not this one.

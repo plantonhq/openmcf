@@ -1,0 +1,40 @@
+# Cost profile: what drives this component's bill. Field paths are
+# spec-relative proto field names, held to the served contract by the
+# catalog-data conformance gate. Schema: finops/componentcostprofile/v1.
+# Rates from https://cloud.google.com/identity-platform/pricing (read
+# 2026-08-22).
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostProfile
+metadata:
+  name: gcpidentityplatformtenant
+spec:
+  billing_model: usage_based
+  cost_drivers:
+    - field_path: allow_password_signup
+      sku_meter: Tier 1 monthly active users
+      pricing_unit: MAU
+      impact: Email/password users in this tenant bill per Monthly Active User at Google's Tier 1 rates -- and they meter into the PROJECT's MAU count, pooled with every other tenant and the project-level users. The project pays 0 to 50,000 MAU free, then $0.0055 per MAU (50,000 to 100,000), $0.0046 (100,000 to 1,000,000), $0.0032 (1,000,000 to 10,000,000), and $0.0025 above that, each per month per account. Opening the password door on a tenant changes how fast the shared count climbs, not the rate card.
+    - field_path: enable_email_link_signin
+      sku_meter: Tier 1 monthly active users
+      pricing_unit: MAU
+      impact: Passwordless email-link sign-in is a Tier 1 method like any other email path -- its users join the same pooled project MAU count and tiered rates. The link emails themselves carry no published per-message charge on this meter.
+    - field_path: default_supported_idps
+      sku_meter: Tier 1 monthly active users
+      pricing_unit: MAU
+      impact: Social providers scoped to this tenant (Google, Facebook, Apple, and the rest of the default-supported list) are Tier 1 -- their users pool into the project's shared MAU count and tiered rates alongside email and password users from every tenant.
+    - field_path: oauth_idp_configs
+      sku_meter: Tier 2 monthly active users
+      pricing_unit: MAU
+      impact: Custom OIDC sign-in for this tenant is Tier 2 -- 0 to 50 MAU free, then $0.015 per MAU per month. The 50-MAU free allotment is per PROJECT, shared across every tenant's OIDC and SAML users together, so a multi-tenant B2B project exhausts it almost immediately and each customer organization's federated headcount bills at the full rate.
+    - field_path: inbound_saml_configs
+      sku_meter: Tier 2 monthly active users
+      pricing_unit: MAU
+      impact: Enterprise SAML SSO -- the classic B2B tenant shape, wired by preset 02 -- bills on the same Tier 2 meter as OIDC at $0.015 per MAU per month after the project's shared 50-MAU free allotment. The tenant costs whatever the customer organization's actual monthly sign-in headcount is; a 1,000-seat customer where 800 sign in monthly is 800 Tier 2 MAU.
+    - field_path: disable_auth
+      sku_meter: Tier 1 monthly active users
+      impact: The kill switch is also a cost brake -- with all authentication in the tenant disabled, no user can sign in, so no NEW monthly-active-user charges accrue from this tenant while it is off (a user already counted this month stays counted; MAU bills per account per month).
+  estimate_exclusions:
+    - Tier 1 MAU charges (email, email-link, social) pool into the PROJECT's count across all tenants -- 0 to 50,000 MAU free, then $0.0055 / $0.0046 / $0.0032 / $0.0025 per MAU per month per account by tier
+    - Tier 2 MAU charges (OIDC, SAML) follow this tenant's federated sign-in traffic -- the 50-MAU free allotment is per project, shared across all tenants, then $0.015 per MAU per month
+    - SMS charges (per-country table, US $0.01 per SMS; first ten per day not billed) arise only from phone sign-in and SMS MFA, which are project-level surfaces on GcpIdentityPlatformConfig -- this tenant spec models neither
+  notes: "The tenant object itself has no meter: creating an isolated user pool with its sign-up switches, client permissions, and IdP configs costs nothing at rest -- Google's pricing page bills Identity Platform only per Monthly Active User and per SMS sent, and a tenant's users meter into the SAME project-level MAU tiers as everyone else's. The split that matters for a B2B project is tier: password and social users ride Tier 1 (50,000 free project-wide), while each customer's OIDC/SAML federation is Tier 2 at $0.015 per MAU after a free allotment of just 50 per project shared across all tenants. Rates read live from https://cloud.google.com/identity-platform/pricing on 2026-08-22. Deletion is where money meets risk rather than savings: DELETE removes the tenant with ALL its users unrecoverably (its MAU simply stop accruing), and PREVENT -- pinned by both presets -- exists because a live customer user pool is worth more than the zero dollars its object costs."

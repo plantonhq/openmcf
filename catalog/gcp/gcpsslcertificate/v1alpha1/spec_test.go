@@ -22,8 +22,10 @@ func litRef(v string) *foreignkeyv1.StringValueOrRef {
 	}
 }
 
-// Syntactically-shaped PEM stand-ins: spec validation checks PEM framing,
-// not cryptographic validity (GCP verifies the real material at deploy time).
+// Syntactically-shaped PEM stand-ins: spec validation checks the certificate's
+// PEM framing, not cryptographic validity (GCP verifies the real material at
+// deploy time). The private key carries no framing rule — it is sensitive, so
+// consuming platforms store a managed-secret reference in the field.
 const (
 	testCertPem  = "-----BEGIN CERTIFICATE-----\nMIIBszCCAVmgAwIBAgIUTest\n-----END CERTIFICATE-----\n"
 	testPkcs8Pem = "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49Test\n-----END PRIVATE KEY-----\n"
@@ -140,14 +142,6 @@ var _ = ginkgo.Describe("GcpSslCertificateSpec", func() {
 		target.Spec.Certificate = testPkcs8Pem
 		err := validator.Validate(target)
 		gomega.Expect(err).To(gomega.HaveOccurred())
-	})
-
-	ginkgo.It("should reject a certificate pasted into the private_key field", func() {
-		target := minimal()
-		target.Spec.PrivateKey = testCertPem
-		err := validator.Validate(target)
-		gomega.Expect(err).To(gomega.HaveOccurred())
-		gomega.Expect(strings.Contains(err.Error(), "PEM-encoded unencrypted private key")).To(gomega.BeTrue())
 	})
 
 	ginkgo.It("should reject an invalid certificate_name", func() {

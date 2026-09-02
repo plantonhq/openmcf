@@ -1,16 +1,16 @@
 ---
-description: Action rule to audit an existing catalog.md for consistency, correctness, and adherence to the catalog page standard.
+description: Action rule to audit an existing catalog.md against the catalog page standard — structure, head-shape contract, source accuracy, judgment density, and boundaries.
 globs: []
 alwaysApply: false
 ---
 
 # Rule: Audit Catalog Page (catalog.md)
 
-**Purpose**: Guide an AI agent through auditing an existing `catalog.md` file — the component-root catalog page (`catalog/{provider}/{kind}/catalog.md`) rendered by the public site and the console. Verifies structural consistency, source code accuracy, tone adherence, and formatting against the established standard.
+**Purpose**: Guide an AI agent through auditing a component's `catalog.md` (`catalog/{provider}/{kind}/catalog.md`) against the standard defined in `_rules/docs/write-planton-component-catalog-md.mdc`. Verifies the head-shape machine contract, structural conformance, source-code accuracy, judgment density, and the product-surface boundary.
 
 **Trigger**: User references this rule or asks to audit/verify/review a catalog page.
 
-**Output**: An audit report listing issues found, organized by severity (Critical, Warning, Style), with specific fixes for each issue.
+**Output**: An audit report listing issues by severity (Critical, Warning, Style), with specific fixes for each.
 
 ---
 
@@ -18,155 +18,129 @@ alwaysApply: false
 
 ### Step 1: Read Source Files
 
-Before auditing, read the following files for the component (version dir shown as `v1alpha1/`; use the component's actual version dir):
+Before auditing, read (version dir shown as `v1alpha1/`; use the component's actual version dir):
 
-1. `v1alpha1/api.proto` — verify apiVersion and kind
-2. `v1alpha1/spec.proto` — verify all fields in Configuration Reference
-3. `v1alpha1/outputs.proto` — verify all outputs in Stack Outputs
-4. `iac/pulumi/module/main.go` — verify What Gets Created
-5. `iac/pulumi/module/*.go` — verify all resources listed
+1. `v1alpha1/api.proto` — apiVersion and kind
+2. `v1alpha1/spec.proto` — fields, validations, defaults, foreign keys
+3. `v1alpha1/outputs.proto` — every output field
+4. `iac/pulumi/module/*.go` (cross-check `iac/tf/*.tf`) — every resource created
+5. `presets/` — the real preset inventory
+6. `GUIDE.md` when present — to catch drift or duplication between the two authored surfaces
 
-### Step 2: Run Structural Checks
+### Step 2: Head-Shape Contract
 
-Verify the catalog page contains all required sections in the correct order:
+The catalog bundle parses this file's head for display metadata:
+
+- The H1 must be the human display name ("AWS S3 Bucket", never `AwsS3Bucket`).
+- The first sentence of the opening paragraph must stand alone as the component's one-line description.
+- **Critical issue** if either fails — this is machine-consumed, not style.
+- **Critical issue** if the opening paragraph carries the banned tic ("Integrates with Planton's {X} Provider Connection for credential management").
+
+### Step 3: Structural Checks
+
+Verify the exact section set and order:
 
 ```
-1. H1 title
-2. Overview paragraph (no heading)
-3. ## What Gets Created
-4. ## Prerequisites
-5. ## Quick Start
-6. ## Configuration Reference
-   - ### Required Fields
-   - ### Optional Fields
-7. ## Examples
-   - At least 3 H3 sub-sections
-8. ## Stack Outputs
-9. ## Related Components
+1. H1 title + opening paragraph (no heading)
+2. ## What Gets Created
+3. ## Before You Deploy
+   - ### Planton Setup
+   - ### {Provider Account | GCP Project | Kubernetes Cluster | ...}
+4. ## Deploy
+   - ### Console
+   - ### CLI
+   - ### InfraChart      <- present exactly when Consumes is non-empty
+5. ## Key Configuration
+6. ## Outputs and Dependencies
+   - ### What This Component Consumes
+   - ### What This Component Provides
+7. ## Common Patterns
+8. ## Works With
 ```
 
 **Critical issues:**
-- Missing required section
-- Sections out of order
-- Extra sections not in the standard (e.g., "## Overview", "## Conclusion", "## What's Not Implemented")
+- Missing or extra H2 sections, or sections out of order (legacy shapes: `## Quick Start`, `## Stack Outputs`, `## Related Components`, `## Prerequisites`, `## Destroy Semantics`, `## After Deploy` — all superseded)
+- An InfraChart arm missing while the Consumes table has entries, or present while it has none
 
-### Step 3: Run Field Verification
+### Step 4: Field and Resource Verification
 
-**Configuration Reference completeness:**
-- Every field in spec.proto must appear in either Required Fields or Optional Fields
-- Field names must be in camelCase (JSON serialization)
-- Types must be accurate (string, bool, int, enum, etc.)
-- Validation rules from `buf.validate` must be documented
-- Default values from `recommended_default` annotations must be listed
-- `StringValueOrRef` fields must note the `valueFrom` capability and the `default_kind`
+- Every spec field mentioned exists in spec.proto and is camelCase.
+- Every output in the Provides table exists in outputs.proto and is snake_case.
+- Every What Gets Created bullet is backed by module code; conditional resources state their governing condition; no listed resource is absent from the module.
+- Table headers are exactly `| Dependency | Field | ValueFromRef Path |` (Consumes) and `| Output | Description | Common Downstream Use |` (Provides). Prose fallbacks are legitimate on BOTH sides: Consumes when there are no foreign key dependencies, Provides when `status.outputs` carries nothing consumable (input echoes only) — the prose must say why.
 
-**Stack Outputs completeness:**
-- Every field in outputs.proto (the `{Kind}StackOutputs` message) must appear in the Stack Outputs table
-- Field names must match the proto field names (snake_case)
-- Types must be accurate
+### Step 5: Manifest Verification
 
-**What Gets Created accuracy:**
-- Every resource created in the Pulumi module must be listed
-- No resources listed that aren't actually created
-- Conditional resources must note their conditions
+For every complete YAML manifest (has `apiVersion` + `kind`):
 
-### Step 4: Run Manifest Verification
+- `apiVersion` and `kind` match api.proto's constants
+- `metadata` carries `name`, `org`, `env`; values are realistic, never `<placeholder>` tokens
+- Spec fields are camelCase, exist in spec.proto, and required fields are present
+- The CLI arm's shell block is exactly `planton apply -f {file}.yaml`
 
-For every YAML manifest in the page:
+For `spec:` fragments (InfraChart arm): syntactically valid YAML; `valueFrom` carries `kind`, `name`, `fieldPath`; the fieldPath uses snake_case output keys.
 
-- `apiVersion` matches the const in api.proto
-- `kind` matches the const in api.proto
-- `metadata.name` is present
-- `metadata.labels` includes `planton.dev/provisioner` and stack labels
-- All spec field names are camelCase
-- All spec field values are valid types (string, bool, int — not quoted booleans, etc.)
-- Required fields (per spec.proto) are present in the Quick Start manifest
-- No fields that don't exist in spec.proto
+### Step 6: Judgment-Density Audit
 
-### Step 5: Run Tone and Persona Audit
+The page must read authored, not template-filled. Flag:
 
-Check that the page reads like it was written by the same senior documentation writer who wrote the exemplars. Flag:
+**Critical:**
+- Key Configuration entries that define a field instead of teaching a decision ("{Field} — choose the {field} based on the use case")
+- "No presets are available yet" (or any empty-section filler) under Common Patterns
+- Provides-table rows padded with input echoes or filler uses ("Audit logs, lifecycle tracking" on rows with no real downstream story)
 
-**Critical tone issues:**
-- Marketing language: "seamless", "effortless", "powerful", "robust", "cutting-edge", "game-changing", "revolutionary"
-- Research-style prose: deployment maturity spectrums, tool comparisons, historical context
-- Explaining the cloud service itself rather than what Planton does with it
-- Speculative content about unimplemented features
-- Filler introductions or conclusions
+**Warning:**
+- A generic Console arm where the component's wizard steps are knowable
+- One-way doors, immutable fields, or destroy semantics present in the sources but absent from Key Configuration
+- Preserved claims not re-verifiable against today's spec.proto or module code
 
-**Warning tone issues:**
-- Overly terse reference-only style missing helpful context
-- Inconsistent formality (mixing casual and formal tone)
-- Unnecessary adjectives that don't add information
+### Step 7: Boundary Checks
 
-**Style checks:**
-- Quick Start: Is it approachable for a less experienced ops engineer?
-- Configuration Reference: Is it complete enough for a power user?
-- Examples: Do they progress from simple to complex?
-- Overview paragraph: Is it 1-3 sentences (not a full paragraph)?
+- No external URLs — links are catalog-internal (`/cloud-catalog/{slug}`) and tab anchors (`#presets`, `#api-explorer`) only
+- No marketing language: seamless, effortless, powerful, robust, cutting-edge, game-changing, revolutionary
+- No research prose: landscape essays, maturity spectrums, tool comparisons, historical context, explanations of the cloud service itself
+- Product surfaces named correctly: deployment store, creation wizard, Stack Job, InfraChart/InfraPipeline, Provider Connections, Planton Runner
 
-### Step 6: Run Boundary Checks
+### Step 8: Formatting Checks
 
-- Zero references to "Planton", "planton.ai", or any commercial platform
-- Zero references to SaaS, web console, hosted service
-- Zero references to Infra Hub, Service Hub, Cloud Ops, Runner, Connect, Security
-- Zero references to `webapp:*`, `cloud-resource:*`, `credential:*` commands
-- Only acceptable Planton reference: `plantonhq` in GitHub URLs
-
-### Step 7: Run Formatting Checks
-
-- No frontmatter (build script adds it)
-- Field names in camelCase in YAML manifests
-- Code blocks use correct language tags (`yaml`, `shell`)
-- Tables use consistent column alignment
-- Links use absolute paths from docs root (`/docs/catalog/...`)
+- No frontmatter (the build adds it)
+- Code blocks tagged `yaml` / `shell`
+- Works With entries linked as `[**{Display Name}**](/cloud-catalog/{slug})`
 - No emoji in prose
-- H1 is the component display name, not the proto kind
-- H2s match the exact section names from the standard
-- H3s under Examples have descriptive use-case names
 
-### Step 8: Cross-Reference with Exemplars
+### Step 9: Cross-Reference with Exemplars
 
-Compare the audited page against the AWS ALB exemplar at:
+Compare density and tone against:
 
 ```
-catalog/aws/awsalb/catalog.md
+catalog/aws/awss3bucket/catalog.md
+catalog/kubernetes/kubernetespostgres/catalog.md
+catalog/auth0/auth0role/catalog.md
 ```
-
-Check for:
-- Similar density of detail in Configuration Reference tables
-- Similar number and progression of examples
-- Similar level of description in What Gets Created bullets
-- Consistent table column formatting
-- Similar overview paragraph length and style
 
 ---
 
 ## Audit Report Format
 
-Present findings organized by severity:
-
 ```markdown
 ## Catalog Page Audit: {Component Name}
 
 ### Critical Issues (must fix)
-- [ ] {Issue description} — {specific fix}
+- [ ] {Issue} — {specific fix}
 
 ### Warnings (should fix)
-- [ ] {Issue description} — {specific fix}
+- [ ] {Issue} — {specific fix}
 
 ### Style Notes (optional fix)
-- [ ] {Issue description} — {suggested improvement}
+- [ ] {Issue} — {suggested improvement}
 
 ### Summary
-- Fields in spec.proto: {N}
-- Fields documented: {N}
-- Missing fields: {list or "none"}
-- Output fields in proto: {N}
-- Output fields documented: {N}
-- Missing outputs: {list or "none"}
-- Examples count: {N}
+- Head-shape contract: {pass|fail}
+- Structure: {pass|fail — deviations}
+- Spec fields mentioned / verified: {N}/{N}
+- Outputs documented / in proto: {N}/{N}
 - Manifest errors: {N}
+- Judgment-density flags: {N}
 - Boundary violations: {N}
 ```
 
@@ -174,40 +148,23 @@ Present findings organized by severity:
 
 ## Severity Definitions
 
-**Critical** — The page is factually incorrect, structurally broken, or violates the boundary rule. Must be fixed before the page can ship.
-- Missing or extra sections
-- Incorrect field names, types, or defaults
-- Missing required fields in Configuration Reference
-- Manifest examples with non-existent fields
-- Planton/SaaS references
-- Resources listed in What Gets Created that don't exist in the module
+**Critical** — factually wrong, structurally non-conformant, machine-contract-breaking, or boundary-violating. Must fix before the page ships.
 
-**Warning** — The page is technically correct but has quality issues that should be addressed.
-- Missing optional fields that are important for the component
-- Tone deviations (marketing language, research prose)
-- Missing foreign key reference documentation
-- Examples that don't progress from simple to complex
-- Inconsistent formatting compared to exemplars
+**Warning** — technically correct but below the quality bar: thin judgment, generic arms, unverified preserved claims.
 
-**Style** — Minor improvements that would bring the page closer to exemplar quality.
-- Table column alignment inconsistencies
-- Slightly verbose descriptions that could be tightened
-- Example names that could be more descriptive
-- Related Components that could include additional relevant references
+**Style** — polish that brings the page closer to exemplar quality.
 
 ---
 
 ## Batch Audit Mode
 
-When auditing multiple catalog pages at once, produce a summary table:
+When auditing multiple pages, produce a summary table:
 
 ```markdown
 | Component | Critical | Warnings | Style | Status |
 |-----------|----------|----------|-------|--------|
-| AwsAlb | 0 | 1 | 2 | Pass |
-| KubernetesPostgres | 2 | 0 | 1 | Fail |
+| AwsS3Bucket | 0 | 1 | 2 | Pass |
+| Auth0Client | 2 | 0 | 1 | Fail |
 ```
 
-Status:
-- **Pass**: Zero critical issues
-- **Fail**: One or more critical issues
+Status: **Pass** = zero critical issues; **Fail** = one or more.

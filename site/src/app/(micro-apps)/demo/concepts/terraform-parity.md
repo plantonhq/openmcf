@@ -50,6 +50,10 @@ Every resource in the provider's catalog is accounted for in exactly one of thre
 
 Omission is a decision, and every decision is recorded — never a silent gap.
 
+### The Provider Block: Parity Below the Resources
+
+Parity covers the provider's own configuration block, not just its resources. Enterprise-mandatory settings live there — role-assumption chains, organization-wide default tags, private endpoint overrides, retry tuning — and they are held to the same rule: every provider-block argument is expressible through the connection's provider configuration, deliberately excluded with a recorded reason, or owned by the modules by recorded judgment. Even an argument a module sets inside its own provider block is a census fact that must carry a decision — never an invisible leak.
+
 ### Pinned Versions Keep the Promise Honest
 
 Parity is always declared against a named provider version, never against "latest". Providers ship weekly; the pinned version is kept fresh so the catalog never silently decays.

@@ -1,8 +1,10 @@
 # Starter Notebook
 
 This preset gives a data scientist a ready Jupyter workstation on the
-cheapest current-generation instance (~$0.05/hour), with the everyday
-Python stack installed once at creation.
+cheapest current-generation instance — billed hourly while running,
+with the verified figure in the component's generated estimate at
+`catalog/_pricing/estimates/awssagemakernotebookinstance.yaml` — and
+the everyday Python stack installed once at creation.
 
 ## When to Use
 

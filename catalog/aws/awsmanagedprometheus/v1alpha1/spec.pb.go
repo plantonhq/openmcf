@@ -72,7 +72,16 @@ type AwsManagedPrometheusSpec struct {
 	// and where.
 	QueryLogging *AwsManagedPrometheusQueryLogging `protobuf:"bytes,8,opt,name=query_logging,json=queryLogging,proto3" json:"query_logging,omitempty"`
 	// The workspace's resource policy - the IAM document granting other
-	// principals/accounts access to this workspace. The provider's
+	// principals/accounts access to this workspace. Write statements
+	// WITHOUT a Resource member: AMP requires every statement's Resource
+	// to be exactly this workspace's own ARN (PutResourcePolicy rejects
+	// anything else with "Resource in policy does not match workspace
+	// resource ARN"), so both modules compose it after the workspace
+	// exists - an authored Resource is replaced, never honored. Author
+	// a single action as a STRING ("Action": "aps:RemoteWrite"), not a
+	// one-element list - AMP's stored form collapses single-element
+	// Action arrays to the scalar, and an adopted (imported) policy
+	// authored as a list diffs forever against that echo. The provider's
 	// revision_id concurrency token is deliberately not modeled (a
 	// state-managed apply-behavior knob, meaningless as declarative
 	// config).

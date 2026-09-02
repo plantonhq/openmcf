@@ -1,4 +1,4 @@
-# Preset: Static Site (Workers Static Assets)
+# Static Site (Workers Static Assets)
 
 A pure static site or single-page app served from Cloudflare's edge — no
 server-side code. This is the build-and-upload hosting model (the converged

@@ -27,6 +27,53 @@ var (
 		"get": true, "list": true, "watch": true, "create": true,
 		"update": true, "patch": true, "delete": true, "deletecollection": true,
 	}
+	// cloudflareScopePattern is Cloudflare's scope identifier spelling,
+	// e.g. "com.cloudflare.api.account.zone". The spelling is checked
+	// here; EXISTENCE of the (name, scope) pair is the inventory gate's
+	// job (pkg/iac/actioninventory) -- Cloudflare grows the scope
+	// vocabulary, so the snapshot, never a regex, is the closed set.
+	cloudflareScopePattern = regexp.MustCompile(`^com\.cloudflare\.[a-z0-9]+(\.[a-z0-9]+)*$`)
+	// digitalOceanScopePattern is DigitalOcean's "resource:action" token
+	// scope spelling. Underscores are legal in BOTH segments, and action
+	// segments go beyond CRUD (view_credentials, access_cluster, admin) --
+	// a closed verb vocabulary here would wrongly reject real published
+	// scopes, so the spelling is checked here and existence against the
+	// provider's own inventory is the real check (pkg/iac/actioninventory).
+	digitalOceanScopePattern = regexp.MustCompile(`^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$`)
+	// digitalOceanAliasScopes are the global alias scopes. Each expands to
+	// every current AND future endpoint, so neither can ever appear in a
+	// least-privilege manifest -- the gate refuses them outright.
+	digitalOceanAliasScopes = map[string]bool{"api:read": true, "api:write": true}
+	// digitalOceanSpacesPermissions is the CLOSED grant-level vocabulary of
+	// DigitalOcean's Spaces keys, verified against the provider's own
+	// Spaces-keys API reference (a grant is {bucket, permission} with
+	// exactly these levels). Three values from the provider's API contract
+	// -- no machine inventory exists to snapshot, so this closed set IS
+	// the existence check, stated here rather than silently absent from
+	// the inventory gates.
+	digitalOceanSpacesPermissions = map[string]bool{"read": true, "readwrite": true, "fullaccess": true}
+	// tokenScopedProviders are catalog providers whose modules authenticate
+	// with a bearer credential and touch NONE of the schema's modeled
+	// provider APIs -- so, per the schema's own absence semantics, their
+	// manifests may legally carry no provider section. Two distinct
+	// tenures live here:
+	//
+	//   - auth0: exempt only until the schema grows its arm. Auth0's
+	//     Management API scopes are DigitalOcean's flat-scope class; the
+	//     arm lands with Auth0's coverage, and auth0 leaves this map in
+	//     the same change.
+	//   - openfga: exempt as long as the provider offers no scope
+	//     vocabulary at all -- a pre-shared key grants the server's
+	//     entire API, so there is nothing finer-grained a manifest could
+	//     truthfully declare. The exemption is the honest model, not a
+	//     schema gap.
+	//
+	// Cloudflare and DigitalOcean left this map when their arms landed:
+	// their manifests declare token permission groups / scopes as
+	// first-class sections, held to the providers' own inventories.
+	tokenScopedProviders = map[string]bool{
+		"auth0": true, "openfga": true,
+	}
 )
 
 // TestPermissionsConformance holds every authored permissions manifest to
@@ -75,14 +122,19 @@ func TestPermissionsConformance(t *testing.T) {
 				}
 
 				spec := manifest.GetSpec()
-				if spec.GetAws() == nil && spec.GetGcp() == nil && spec.GetAzure() == nil && spec.GetKubernetes() == nil {
-					t.Fatal("manifest declares no provider section -- a permissions file that grants nothing describes no module")
+				if spec.GetAws() == nil && spec.GetGcp() == nil && spec.GetAzure() == nil && spec.GetKubernetes() == nil &&
+					spec.GetCloudflare() == nil && spec.GetDigitalOcean() == nil {
+					if !tokenScopedProviders[provider] {
+						t.Fatal("manifest declares no provider section -- a permissions file that grants nothing describes no module")
+					}
 				}
 
 				checkAws(t, spec.GetAws())
 				checkGcp(t, spec.GetGcp())
 				checkAzure(t, spec.GetAzure())
 				checkKubernetes(t, spec.GetKubernetes())
+				checkCloudflare(t, spec.GetCloudflare())
+				checkDigitalOcean(t, spec.GetDigitalOcean())
 			})
 		}
 	}
@@ -213,6 +265,65 @@ func checkKubernetes(t *testing.T, kubernetes *permissionsv1.KubernetesPermissio
 
 func ruleLabel(rule *permissionsv1.KubernetesRule) string {
 	return strings.Join(rule.GetResources(), ",")
+}
+
+func checkCloudflare(t *testing.T, cloudflare *permissionsv1.CloudflarePermissions) {
+	t.Helper()
+	if cloudflare == nil {
+		return
+	}
+	if len(cloudflare.GetGroups()) == 0 {
+		t.Error("cloudflare section is present but declares no groups")
+	}
+	for _, group := range cloudflare.GetGroups() {
+		if strings.TrimSpace(group.GetPurpose()) == "" {
+			t.Error("cloudflare group with empty purpose")
+		}
+		if group.GetName() == "" {
+			t.Errorf("cloudflare %s: no permission-group name", group.GetPurpose())
+		}
+		if !cloudflareScopePattern.MatchString(group.GetScope()) {
+			t.Errorf("cloudflare %s: scope %q is not Cloudflare's scope identifier spelling (e.g. com.cloudflare.api.account.zone)", group.GetPurpose(), group.GetScope())
+		}
+		checkProvenance(t, "cloudflare "+group.GetPurpose(), group.GetProvenance(), group.GetNotes())
+	}
+}
+
+func checkDigitalOcean(t *testing.T, digitalOcean *permissionsv1.DigitalOceanPermissions) {
+	t.Helper()
+	if digitalOcean == nil {
+		return
+	}
+	if len(digitalOcean.GetGroups()) == 0 && len(digitalOcean.GetSpacesGrants()) == 0 {
+		t.Error("digitalocean section is present but declares no groups and no spaces grants")
+	}
+	for _, grant := range digitalOcean.GetSpacesGrants() {
+		if strings.TrimSpace(grant.GetPurpose()) == "" {
+			t.Error("digitalocean spaces grant with empty purpose")
+		}
+		if !digitalOceanSpacesPermissions[grant.GetPermission()] {
+			t.Errorf("digitalocean spaces %s: permission %q is not a Spaces key grant level (read, readwrite, or fullaccess)", grant.GetPurpose(), grant.GetPermission())
+		}
+		checkProvenance(t, "digitalocean spaces "+grant.GetPurpose(), grant.GetProvenance(), grant.GetNotes())
+	}
+	for _, group := range digitalOcean.GetGroups() {
+		if strings.TrimSpace(group.GetPurpose()) == "" {
+			t.Error("digitalocean group with empty purpose")
+		}
+		if len(group.GetScopes()) == 0 {
+			t.Errorf("digitalocean %s: no scopes", group.GetPurpose())
+		}
+		for _, scope := range group.GetScopes() {
+			if digitalOceanAliasScopes[scope] {
+				t.Errorf("digitalocean %s: scope %q is a global alias that expands to every current and future endpoint -- never least privilege; declare the resource scopes the modules actually need", group.GetPurpose(), scope)
+				continue
+			}
+			if !digitalOceanScopePattern.MatchString(scope) {
+				t.Errorf("digitalocean %s: scope %q is not resource:action spelling", group.GetPurpose(), scope)
+			}
+		}
+		checkProvenance(t, "digitalocean "+group.GetPurpose(), group.GetProvenance(), group.GetNotes())
+	}
 }
 
 // repoRoot walks up from this test file to the directory containing go.mod.

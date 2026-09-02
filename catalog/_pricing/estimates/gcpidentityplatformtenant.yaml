@@ -1,0 +1,33 @@
+# GENERATED -- DO NOT EDIT. Regenerate with `make generate-cost-estimates`.
+# This file joins the component's estimate model (../models/, the authored
+# quantities with their derivations) with the provider's price book
+# (../pricebook/, pinned unit prices with source URL and retrieval date):
+# every line cost and preset total is computed exactly, lines are ordered
+# largest cost first, and the catalog-data conformance gate re-verifies all
+# arithmetic. Schema: finops/componentcostestimate/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimate
+metadata:
+  name: gcpidentityplatformtenant
+spec:
+  presets:
+    - preset: 01-b2b-tenant
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - the tenant's password-signup users bill on the project's Tier 1 monthly-active-user meter as they actually sign in -- tenant users pool into the SAME project MAU count, 0 to 50,000 free, then $0.0055 / $0.0046 / $0.0032 / $0.0025 per MAU per month by tier (https://cloud.google.com/identity-platform/pricing, read 2026-08-22)
+        - the Tier 2 MAU meter (OIDC/SAML, $0.015 per MAU after 50 free per project, shared across all tenants) never engages -- this manifest configures no federated provider
+        - the per-country SMS meter never engages -- the tenant spec models no phone sign-in or SMS MFA surface
+      notes: A tenant is an isolated user pool inside the project's Identity Platform -- the object itself bills nothing at rest, and multi-tenancy adds no meter of its own; zero committed because spend starts only when the tenant's users sign in, against the project's shared MAU tiers.
+    - preset: 02-sso-tenant
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      total_list_cost: "0.00"
+      exclusions:
+        - SAML SSO users in this tenant bill on the project's Tier 2 MAU meter -- 50 free per project (shared across every tenant and the project-level config, not 50 per tenant), then $0.015 per MAU per month; the enterprise headcount actually signing in is the expensive population
+        - any password-signup users ride the Tier 1 MAU meter (50,000 free per account, then $0.0055 / $0.0046 / $0.0032 / $0.0025 per MAU per month by tier)
+        - the per-country SMS meter never engages -- no phone or SMS MFA surface exists at tenant level
+      notes: Zero committed at creation -- the tenant, its SAML config, and its certificates are free objects (https://cloud.google.com/identity-platform/pricing, read 2026-08-22); the bill follows federated sign-in traffic on Tier 2 rates, and because the 50-MAU Tier 2 allotment is per PROJECT, a second SSO tenant does not reset it.

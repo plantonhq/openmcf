@@ -4,10 +4,10 @@ metadata:
   name: awssecretsmanagersecret
 spec:
   # Every resource in this module rides the secret's ARN (the module names
-  # the secret after the Planton resource -- locals.tf: secret_name =
-  # var.metadata.name -- but the ARN carries AWS's random 6-character
-  # suffix, so the ARN itself is the import identity, never derivable from
-  # the name alone). The version adds its version id.
+  # the secret from spec.secret_name, else metadata.name -- but the ARN
+  # carries AWS's random 6-character suffix, so the ARN itself is the
+  # import identity, never derivable from the name alone). The version
+  # adds its version id.
   values:
     - name: secret_arn
       derivations:

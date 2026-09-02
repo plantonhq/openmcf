@@ -7,4 +7,10 @@ package dev.planton.aws.awsbackupframework.v1alpha1;
 message AwsBackupFrameworkStackOutputs {
   // The framework's ARN - what report plans reference.
   string framework_arn = 1;
+
+  // The AWS region the framework lives in. Frameworks are
+  // region-scoped and addressed by region + name, so any consumer (or
+  // verifier) reaching the framework off the ambient region needs
+  // this alongside the ARN.
+  string region = 2;
 }

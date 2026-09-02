@@ -1,4 +1,4 @@
-# Preset: WAF OWASP Protection
+# WAF OWASP Protection
 
 ## Use Case
 

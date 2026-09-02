@@ -25,7 +25,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **GCP Monitoring Dashboard**, and click **Deploy**. Start from the **Golden Signals** preset in the [Presets](#presets) tab.
+Open the deployment store, find **GCP Monitoring Dashboard**, and click **Deploy**. The creation wizard walks you through the target project and the dashboard JSON document. Start from the **Golden Signals** preset in the [Presets](#presets) tab.
 
 ### CLI
 
@@ -67,9 +67,30 @@ spec:
 planton apply -f dashboard.yaml
 ```
 
+This creates a one-chart grid dashboard charting fleet CPU utilization. A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, the dashboard references its project via ValueFromRef:
+
+```yaml
+spec:
+  projectId:
+    valueFrom:
+      kind: GcpProject
+      name: observability-project
+      fieldPath: status.outputs.project_id
+  dashboardJson: |
+    { "displayName": "API health", "gridLayout": { "columns": "2", "widgets": [] } }
+```
+
+The InfraPipeline deploys the project first, then creates the dashboard in it.
+
 ## Key Configuration
 
-**dashboardJson** -- the whole dashboard as one JSON document (the Monitoring API's [Dashboard format](https://cloud.google.com/monitoring/api/ref_v3/rest/v1/projects.dashboards)): `displayName` plus exactly one layout (`gridLayout`, `mosaicLayout`, `rowLayout`, or `columnLayout`) whose widgets carry the charts. The practical workflow: build the dashboard visually in the GCP console, open its **JSON editor**, and paste the export here — server-assigned keys round-trip cleanly.
+These are the most important decisions when configuring a dashboard. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
+**dashboardJson** -- the whole dashboard as one JSON document in the Monitoring API's own Dashboard format: `displayName` plus exactly one layout (`gridLayout`, `mosaicLayout`, `rowLayout`, or `columnLayout`) whose widgets carry the charts. The practical workflow: build the dashboard visually in the GCP console, open its **JSON editor**, and paste the export here — server-assigned keys round-trip cleanly.
 
 **deletionPolicy** -- `DELETE` (default), `PREVENT` (protects a team's primary operational view from accidental teardown), or `ABANDON` (remove from management, keep in GCP).
 
@@ -82,6 +103,8 @@ planton apply -f dashboard.yaml
 | **GcpProject** (optional) | `projectId` | `status.outputs.project_id` |
 
 ### What This Component Provides
+
+After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|

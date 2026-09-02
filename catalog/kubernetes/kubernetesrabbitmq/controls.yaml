@@ -53,6 +53,9 @@ spec:
       evidence:
         type: spec_default
         reference: With TLS enabled, the plaintext listeners (AMQP 5672, management 15672, and the plain ports of any enabled plugin) stay open by default; disable_non_tls_listeners closes every one of them, so only TLS-enabled clients can connect.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The management UI signs users in against RabbitMQ's internal user store, and password policy or stronger factors on those accounts are broker configuration inside the product -- this spec models the listener surface (see no-legacy-auth), not credential strength.
     - control_id: audit-logging
       status: not_applicable
       notes: No audit trail is modeled -- broker logs stream to stdout for the cluster's log collector. Changes to the RabbitmqCluster resource itself are Kubernetes API operations, captured by the target cluster's audit policy.

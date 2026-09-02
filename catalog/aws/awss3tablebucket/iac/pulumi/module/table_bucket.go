@@ -178,7 +178,18 @@ func tableBucket(ctx *pulumi.Context, locals *Locals, provider *aws.Provider) er
 				tableArgs.Metadata = &s3tables.TableMetadataArgs{Iceberg: iceberg}
 			}
 
-			createdTable, err := s3tables.NewTable(ctx, "table-"+tableKey, tableArgs, pulumi.Provider(provider))
+			// The schema (metadata) is a birth certificate: CreateTable
+			// consumes it, no read path ever returns it, and the provider
+			// marks every leaf replace-on-change. Without this ignore,
+			// adopting an existing table plans a DESTRUCTIVE replace
+			// against the empty imported state (upstream's own import
+			// tests ignore the whole block). Post-create schema evolution
+			// flows through query engines (ALTER TABLE), never through
+			// this field - editing it after create is deliberately inert.
+			// PARITY: the Terraform module ignores the same path via
+			// lifecycle ignore_changes.
+			createdTable, err := s3tables.NewTable(ctx, "table-"+tableKey, tableArgs,
+				pulumi.Provider(provider), pulumi.IgnoreChanges([]string{"metadata"}))
 			if err != nil {
 				return errors.Wrapf(err, "table %s", tableKey)
 			}

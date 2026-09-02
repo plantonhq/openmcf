@@ -52,6 +52,9 @@ spec:
       evidence:
         type: provider_default
         reference: The only caller-auth mechanism is the cf-aig-authorization bearer token -- no basic auth or legacy scheme exists on this surface.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: configurable
       field_path: collect_logs

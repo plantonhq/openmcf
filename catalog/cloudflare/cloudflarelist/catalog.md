@@ -1,13 +1,12 @@
-# List on Cloudflare
+# Cloudflare List
 
-Deploys a reusable, named Cloudflare List -- a collection you reference from rule expressions such as a WAF rule's `ip.src in $office_ips` or a Bulk Redirect ruleset's `from_list`. A list fixes a single entry shape at creation (IP/CIDR, redirect, hostname, or ASN); its entries are managed independently as List Item Cloud Resources, so one list can hold a handful of curated values or a large, separately-owned set. Lists are account-scoped and integrate with Planton's Provider Connections for Cloudflare credential management.
+Deploys a reusable, named Cloudflare List -- a collection you reference from rule expressions such as a WAF rule's `ip.src in $office_ips` or a Bulk Redirect ruleset's `from_list`. A list fixes a single entry shape at creation (IP/CIDR, redirect, hostname, or ASN); its entries are managed independently as List Item Cloud Resources, so one list can hold a handful of curated values or a large, separately-owned set. Lists are account-scoped, and an empty list is a valid, referenceable object -- the right shape for a container you fill later.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
-- **List** -- an account-scoped, named collection of the chosen kind (ip, redirect, hostname, or asn), empty until entries are added
-- **Cloudflare Labels** -- resource metadata applied for organization and environment tracking
+- **List** -- an account-scoped, named collection of the chosen kind (`ip`, `redirect`, `hostname`, or `asn`), created empty and ready for entries
 
 ## Before You Deploy
 
@@ -24,14 +23,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **List on Cloudflare**, and click **Deploy**. The creation wizard captures the owning account, the list type, an expression-friendly name, and an optional description. Start from the **IP allowlist** preset in the [Presets](#presets) tab for a typical firewall list.
+Open the deployment store, find **Cloudflare List**, and click **Deploy**. The creation wizard captures the owning account, the list type, an expression-friendly name, and an optional description. Start from the **IP Allowlist** preset in the [Presets](#presets) tab for a typical firewall list.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: cloudflare.planton.dev/v1
+apiVersion: cloudflare.planton.dev/v1alpha1
 kind: CloudflareList
 metadata:
   name: office-ips
@@ -54,11 +53,11 @@ This creates an empty IP list named `office_ips`, ready for entries and referenc
 
 These are the most important decisions when configuring a list. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Kind (`kind`)** -- Fixes which entry shape the list accepts: `ip` (addresses/CIDRs), `redirect` (Bulk Redirect rules), `hostname` (optionally wildcarded), or `asn` (Autonomous System Numbers). Immutable -- changing it replaces the list.
+**Kind (`kind`)** -- a create-time contract fixing which entry shape the list accepts: `ip` (addresses/CIDRs), `redirect` (Bulk Redirect rules), `hostname` (optionally wildcarded), or `asn` (Autonomous System Numbers). Immutable -- changing it replaces the list. Pick the kind from the consumer, not the data: a redirect list is what Bulk Redirect rulesets consume via `from_list`; an ip list is what WAF/custom rules consume via `ip.src in $name`.
 
-**Name (`name`)** -- The identifier used in filter and rule expressions, written as `$name`. Prefer short, lowercase, expression-friendly names. Immutable -- because rules reference it literally, renaming would break them, so changing it replaces the list.
+**Name (`name`)** -- the identifier used in filter and rule expressions, written as `$name`. That is why hyphens are forbidden (letters, digits, underscores only) and why the name is immutable: rules reference it literally, so renaming replaces the list -- and every item has to be rewritten. Pick a short, stable, lowercase identifier before the first apply.
 
-**Description (`description`)** -- An optional human-readable summary shown in the Cloudflare dashboard.
+**Entries never live on the list itself** -- create the list empty and add `CloudflareListItem` resources, one per entry with an independent lifecycle. Inline items and List Item resources are competing writers on the same collection; mixing them makes the provider fight itself and lose entries.
 
 ## Outputs and Dependencies
 
@@ -73,18 +72,17 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
 | `list_id` | The Cloudflare-assigned identifier of the list | Referenced by a CloudflareListItem's `listId` field |
-| `name` | The list name (echoed; the identifier used in rule expressions) | Referenced by a CloudflareRuleset Bulk Redirect rule's `from_list` |
-| `kind` | The list kind (ip, redirect, hostname, or asn) | Verification, dashboards |
+| `name` | The list name -- the identifier used in rule expressions as `$name` | Referenced by a CloudflareRuleset Bulk Redirect rule's `from_list` and by WAF expressions |
 
 ## Common Patterns
 
-Browse the [Presets](#presets) tab for ready-to-deploy configurations.
+**IP allowlist** -- an `ip` list referenced from a WAF or firewall rule to allow (or block) a managed set of addresses: office egress IPs, partner ranges, known-bad CIDRs. Start from the **IP Allowlist** preset.
 
-**IP allowlist** -- An `ip` list referenced from a WAF or firewall rule to allow (or block) a managed set of addresses. Use for office egress IPs, partner ranges, or known-bad CIDRs. Start from the **IP allowlist** preset.
+**Bulk redirect list** -- a `redirect` list a Bulk Redirect ruleset points at via `from_list`, to migrate large numbers of legacy URLs in one place. Start from the **Bulk Redirect List** preset.
 
-**Bulk redirect list** -- A `redirect` list a Bulk Redirect ruleset points at via `from_list`, to migrate large numbers of legacy URLs in one place. Start from the **Bulk redirect** preset.
+**Container-first rollout** -- create the empty list before the first rule or item exists, so rules can reference `$name` from day one and entries arrive on their own lifecycle.
 
 ## Works With
 
-- [**List Item on Cloudflare**](/cloud-catalog/cloudflare-list-item) -- adds entries to this list (via `listId`), one independently-managed entry at a time
-- [**Ruleset on Cloudflare**](/cloud-catalog/cloudflare-ruleset) -- a Bulk Redirect rule references a redirect list by name (via `from_list`)
+- [**Cloudflare List Item**](/cloud-catalog/cloudflare-list-item) -- adds entries to this list (via `listId`), one independently-managed entry at a time
+- [**Cloudflare Ruleset**](/cloud-catalog/cloudflare-ruleset) -- a Bulk Redirect rule references a redirect list by name (via `from_list`); WAF custom rules match against `$name`

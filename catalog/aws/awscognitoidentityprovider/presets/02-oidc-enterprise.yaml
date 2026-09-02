@@ -19,7 +19,9 @@ spec:
   providerType: OIDC
   oidc:
     clientId: <oidc-client-id>
-    clientSecret: <oidc-client-secret>
+    # The client secret is sensitive: reference a managed secret
+    # ($secret/<slug>) -- never a plaintext value.
+    clientSecret: $secret/oidc-client-secret
     oidcIssuer: https://sso.example.com
     authorizeScopes: "openid email profile"
   attributeMapping:

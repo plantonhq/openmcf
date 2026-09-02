@@ -52,12 +52,19 @@ func satellites(ctx *pulumi.Context, locals *Locals, provider *aws.Provider,
 	if graphql := locals.Spec.GetGraphql(); graphql != nil {
 		for _, entry := range graphql.Types {
 			typeFormats[entry.Name] = pulumi.String(entry.Format).ToStringOutput()
+			// AWS rewrites the SDL definition text server-side
+			// (indentation stripped, braces re-placed, blank lines
+			// injected -- live-caught), and the provider reads the
+			// rewritten form back with no diff suppression: without
+			// the ignore, every preview proposes a textual update that
+			// never converges. Body edits therefore join this kind's
+			// replace-to-change class (taught on the spec field).
 			if _, err := appsync.NewType(ctx, fmt.Sprintf("type-%s", entry.Name),
 				&appsync.TypeArgs{
 					ApiId:      api.ApiId,
 					Definition: pulumi.String(entry.Definition),
 					Format:     pulumi.String(entry.Format),
-				}, pulumi.Provider(provider)); err != nil {
+				}, pulumi.Provider(provider), pulumi.IgnoreChanges([]string{"definition"})); err != nil {
 				return errors.Wrapf(err, "create type %s", entry.Name)
 			}
 		}

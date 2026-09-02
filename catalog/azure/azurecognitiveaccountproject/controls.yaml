@@ -40,6 +40,9 @@ spec:
     - control_id: no-legacy-auth
       status: not_applicable
       notes: The project has no authentication path of its own -- key-based versus Entra-only access to the AI endpoints is the parent account's posture.
+    - control_id: strong-user-auth
+      status: not_applicable
+      notes: The component itself enforces no end-user sign-in -- it packages no human sign-in surface; any credentials it carries are workload or administrative access, whose posture rbac and workload-identity carry.
     - control_id: audit-logging
       status: not_applicable
       notes: Project creation and deletion land in the Azure Activity Log automatically as subscription-level posture; data-plane audit logs are the parent account's diagnostic settings, a separate kind's concern.

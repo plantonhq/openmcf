@@ -1,0 +1,69 @@
+# Estimate model: the authored half of this component's per-preset cost
+# estimates -- quantity assumptions derived from the preset manifests and
+# defended in prose. Prices live in the provider's price book (../pricebook/,
+# referenced by entry slug); the estimate generator joins the two and emits
+# ../estimates/. Hand model rather than a derivation: the only committed
+# quantity a manifest can know is the account-level add-on's base fee (a
+# constant), and the facts that scale the bill -- origin counts -- live on
+# the referenced CloudflareLoadBalancerPool manifests outside this
+# component's spec contract, where no derivation condition or quantity
+# factor can reach them. Each preset's actual topology is therefore stated
+# here in prose. Schema: finops/componentcostestimatemodel/v1.
+apiVersion: finops.planton.dev/v1
+kind: ComponentCostEstimateModel
+metadata:
+  name: cloudflareloadbalancer
+spec:
+  presets:
+    - preset: 01-active-passive-failover
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: Load Balancing subscription
+          price: cloudflare-load-balancing-basic-monthly
+          pricing_quantity: "1"
+          quantity_basis: "one month of the account's Load Balancing add-on at the published entry tier (invoiced as \"Basic Load Balancing\") -- the add-on is account-scoped and shared by every load balancer on the account; this estimate attributes the full base fee to this load balancer (stated assumption), and \"Starting at $5/mo\" means selections made at purchase can set the subscription above the entry tier"
+      exclusions:
+        - "this preset ships one pool with 2 origins -- Cloudflare invoices pools, origins, health check intervals, and health check regions as Load Balancing sub-line items ($0.00 within the subscription's included allocation), and publishes neither the allocations nor the overage rates on a fetchable Cloudflare-own page"
+        - DNS queries to the load-balanced hostname meter past the included 500,000 per month; the overage rate is not published on a fetchable Cloudflare-own page
+      notes: "Static failover (steering off) is the add-on's baseline behavior; the health monitor probing the pool is a separate free component whose probe frequency drives the unpublished health-check sub-line items."
+    - preset: 02-geographic-routing
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: Load Balancing subscription
+          price: cloudflare-load-balancing-basic-monthly
+          pricing_quantity: "1"
+          quantity_basis: "one month of the account's Load Balancing add-on at the published entry tier (invoiced as \"Basic Load Balancing\") -- account-scoped and shared; full base fee attributed to this load balancer (stated assumption); \"Starting at $5/mo\" means purchase-time selections can set the subscription higher"
+      exclusions:
+        - "geographic steering (steeringPolicy geo with region_pools) may require a Load Balancing subscription tier above the $5 entry price -- Cloudflare publishes tier contents only in the dashboard checkout, not on a fetchable page, so this estimate carries the entry tier and names the gap instead of guessing"
+        - "this preset ships two pools with 1 origin each (us-pool, eu-pool) -- pool/origin/health-check sub-line items bill at unpublished rates past unpublished included allocations"
+        - DNS queries to the load-balanced hostname meter past the included 500,000 per month; the overage rate is not published on a fetchable Cloudflare-own page
+    - preset: 03-weighted-ab-testing
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: Load Balancing subscription
+          price: cloudflare-load-balancing-basic-monthly
+          pricing_quantity: "1"
+          quantity_basis: "one month of the account's Load Balancing add-on at the published entry tier (invoiced as \"Basic Load Balancing\") -- account-scoped and shared; full base fee attributed to this load balancer (stated assumption); \"Starting at $5/mo\" means purchase-time selections can set the subscription higher"
+      exclusions:
+        - "this preset ships two pools with 1 origin each (control-pool, variant-pool) -- pool/origin/health-check sub-line items bill at unpublished rates past unpublished included allocations"
+        - DNS queries to the load-balanced hostname meter past the included 500,000 per month; the overage rate is not published on a fetchable Cloudflare-own page
+      notes: "Weighted random steering (70/30 A/B split) is a traffic-distribution dial, not a separate meter."
+    - preset: 04-traffic-rules
+      region_assumption: global
+      currency: USD
+      hours_per_month: 730
+      quantity_lines:
+        - sku_meter: Load Balancing subscription
+          price: cloudflare-load-balancing-basic-monthly
+          pricing_quantity: "1"
+          quantity_basis: "one month of the account's Load Balancing add-on at the published entry tier (invoiced as \"Basic Load Balancing\") -- account-scoped and shared; full base fee attributed to this load balancer (stated assumption); \"Starting at $5/mo\" means purchase-time selections can set the subscription higher"
+      exclusions:
+        - "custom traffic rules and session affinity ride the add-on subscription; whether they require a tier above the entry price is published only in the dashboard checkout, not on a fetchable page"
+        - "this preset ships two pools with 1 origin each (web-pool, api-pool) -- pool/origin/health-check sub-line items bill at unpublished rates past unpublished included allocations"
+        - DNS queries to the load-balanced hostname meter past the included 500,000 per month; the overage rate is not published on a fetchable Cloudflare-own page

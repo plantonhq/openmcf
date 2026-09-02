@@ -1,6 +1,6 @@
 # Azure ExpressRoute Gateway
 
-Deploys an ExpressRoute Gateway -- the Virtual WAN on-ramp for ExpressRoute circuits -- together with its connections, each joining one circuit peering to the hub. The gateway bills per scale unit from creation and takes roughly 30 minutes to provision; a hub holds at most one. It integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring.
+Deploys an ExpressRoute Gateway -- the Virtual WAN on-ramp for ExpressRoute circuits -- together with its connections, each joining one circuit peering to the hub. The gateway bills per scale unit from creation and takes roughly 30 minutes to provision; a hub holds at most one, and each connection requires the circuit's provider side to already be provisioned.
 
 ## What Gets Created
 
@@ -57,11 +57,29 @@ spec:
 planton apply -f azure-express-route-gateway.yaml
 ```
 
-The gateway bills ~$0.42/hr per scale unit from creation, and ARM takes roughly 30 minutes to provision one.
+This creates a one-scale-unit ExpressRoute gateway in the `hub-eastus` Virtual WAN hub, ready for circuit connections. A Stack Job tracks the provisioning in real time. The gateway bills hourly per scale unit from creation, and ARM takes roughly 30 minutes to provision one.
 
 ### InfraChart
 
-In a hybrid-connectivity chart, the gateway follows the hub: WAN → hub → **ExpressRoute gateway** → connections referencing circuit peerings.
+In a hybrid-connectivity chart, the gateway follows the hub: WAN → hub → **ExpressRoute gateway** → connections referencing circuit peerings. Wire the gateway to its hub, and each connection to its circuit's private peering, deployed in the same InfraPipeline:
+
+```yaml
+spec:
+  virtualHubId:
+    valueFrom:
+      kind: AzureVirtualHub
+      name: hub-eastus
+      fieldPath: status.outputs.virtual_hub_id
+  connections:
+    - name: dc-primary
+      expressRouteCircuitPeeringId:
+        valueFrom:
+          kind: AzureExpressRouteCircuitPeering
+          name: hq-private-peering
+          fieldPath: status.outputs.express_route_circuit_peering_id
+```
+
+The InfraPipeline resolves the dependency graph, deploys the hub and the peering first, then provisions the gateway and its connections.
 
 ## Key Configuration
 
@@ -72,6 +90,10 @@ These are the most important decisions when configuring a gateway. Explore the f
 **Connections** -- each joins one circuit PRIVATE PEERING to the hub. A cross-subscription circuit needs the `authorizationKey` its owner generated; a same-subscription circuit needs none.
 
 **Non-Virtual-WAN traffic** -- off by default; on lets classic VNets connected to the same circuit exchange traffic through this gateway.
+
+**Connection routing** -- leave `routing` unset for ARM's default: associate with and propagate to the hub's built-in default route table. A configured block must name an associated route table or propagation targets; route maps shape what arrives from and is advertised to the circuit, and `routingWeight` (0-32000) breaks ties when the same prefix is reachable over multiple connections.
+
+**One-way doors** -- `name`, `region`, `resourceGroup`, and `virtualHubId` are fixed at creation: changing any of them replaces the gateway, and a replacement is another ~30-minute build. `scaleUnits`, the traffic policy, and the connections list edit in place.
 
 ## Outputs and Dependencies
 
@@ -86,13 +108,7 @@ These are the most important decisions when configuring a gateway. Explore the f
 
 ### What This Component Provides
 
-After provisioning, `status.outputs` contains values that downstream Cloud Resources can consume via ValueFromRef:
-
-| Output | Description | Common Downstream Use |
-|--------|-------------|----------------------|
-| `express_route_gateway_id` | ARM ID of the gateway | Operational tooling |
-| `express_route_gateway_name` | Name of the gateway | Operational tooling |
-| `connection_ids` | Connection ARM IDs, keyed by name | Operational tooling |
+After provisioning, `status.outputs` surfaces the gateway's ARM ID and name (`express_route_gateway_id`, `express_route_gateway_name`) and a name-keyed map of connection ARM IDs (`connection_ids`). No catalog kind consumes these via ValueFromRef -- the gateway is the end of the hybrid-connectivity chain, and its connections are declared inline rather than as separate resources -- so the outputs exist for inspection and external tooling.
 
 ## Common Patterns
 

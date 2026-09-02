@@ -35,12 +35,18 @@ spec:
   notes:
     - text: collection-level shards, replication factor, and quantization are data operations declared per collection through the Qdrant API -- they shape how the reserved capacity is used, never how much is reserved
     - applies_when:
+        - field_path: storage
+          op: is_set
         - field_path: storage.size
           op: is_unset
-      text: the chart provisions a 10Gi data volume per pod by default even without a declared size -- a reservation this footprint cannot count
+      text: the data volume is stated at its 10Gi spec-declared default size when storage declares no size
+    - applies_when:
+        - field_path: storage
+          op: is_unset
+      text: the chart still provisions a 10Gi data volume per pod with no storage block at all -- a reservation this footprint cannot count
     - applies_when:
         - field_path: snapshots
           op: is_set
         - field_path: snapshots.size
           op: is_unset
-      text: the snapshots volume defaults to 10Gi per pod when declared without a size -- a reservation this footprint cannot count
+      text: the snapshots volume declared without a size is stated at its 10Gi spec-declared default

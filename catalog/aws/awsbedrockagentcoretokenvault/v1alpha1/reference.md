@@ -101,7 +101,12 @@ The customer-managed KMS key that encrypts the vault. Required
 with key_type "CustomerManagedKey", forbidden with
 "ServiceManagedKey". The key must be symmetric and live in the
 same region; AgentCore's grants on it are created by AWS when the
-setting is applied.
+setting is applied. KEEP THIS KEY ENABLED until after you revert:
+AWS validates the PREVIOUS key's state on every vault write, so
+once this key is disabled or scheduled for deletion the vault
+cannot even be reverted to ServiceManagedKey ("Old KMS Key
+validation failed ... expected KeyState:ENABLED" - live-caught).
+Revert first, retire the key second.
 
 - references: AwsKmsKey (`status.outputs.key_arn`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: AwsKmsKey, name: <that resource's name>, fieldPath: status.outputs.key_arn}} -- a bare string does not parse

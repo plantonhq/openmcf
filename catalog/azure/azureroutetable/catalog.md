@@ -35,7 +35,7 @@ Open the deployment store, find **Azure Route Table**, and click **Deploy**. The
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureRouteTable
 metadata:
   name: egress-via-firewall
@@ -59,7 +59,7 @@ spec:
 planton apply -f route-table.yaml
 ```
 
-This sends every attached subnet's internet-bound traffic through the firewall at 10.0.1.4, with BGP propagation disabled so learned on-premises routes cannot bypass it.
+This creates a route table that sends every attached subnet's internet-bound traffic through the firewall at 10.0.1.4, with BGP propagation disabled so learned on-premises routes cannot bypass it. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -110,8 +110,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 | Output | Description | Common Downstream Use |
 |--------|-------------|----------------------|
-| `route_table_id` | Azure Resource Manager ID of the table | AzureSubnet `routeTableId` — the attachment seam |
-| `route_table_name` | Name of the table | Automation scripts, inventory |
+| `route_table_id` | Azure Resource Manager ID of the table | AzureSubnet `routeTableId` — the attachment seam that adopts this table's routing |
+
+The `route_table_name` output echoes the spec's name back for convenience; it has no downstream wiring story of its own.
 
 ## Common Patterns
 
@@ -119,9 +120,9 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 **Firewall egress** -- 0.0.0.0/0 forwarded to the hub firewall's private IP by reference, propagation disabled — the hub-and-spoke standard. Start from the **Firewall Egress** preset.
 
-**Forced tunnel** -- 0.0.0.0/0 to the virtual network gateway, sending all egress on-premises for compliance regimes that require inspection there. Start from the **Forced Tunnel** preset.
+**Forced tunnel** -- 0.0.0.0/0 to the virtual network gateway, sending all egress on-premises for compliance regimes that require inspection there. Start from the **Forced Tunneling On-Premises** preset.
 
-**Black-hole guardrails** -- drop-routes for prefixes a workload must never reach — a routing-layer guardrail that survives NSG mistakes. Start from the **Blackhole Guardrails** preset.
+**Black-hole guardrails** -- drop-routes for prefixes a workload must never reach — a routing-layer guardrail that survives NSG mistakes. Start from the **Black-Hole Guardrails** preset.
 
 ## Works With
 

@@ -131,7 +131,7 @@ spec:
 | `spec.voiceReceivers[].phoneNumber` | `string` | yes |  |  |
 | `spec.webhookReceivers` | `[]AzureMonitorActionGroupWebhookReceiver` |  |  |  |
 | `spec.webhookReceivers[].name` | `string` | yes |  |  |
-| `spec.webhookReceivers[].serviceUri` | `string` | yes |  |  |
+| `spec.webhookReceivers[].serviceUri` | `string` (sensitive) | yes |  |  |
 | `spec.webhookReceivers[].useCommonAlertSchema` | `bool` |  |  |  |
 | `spec.webhookReceivers[].aadAuth` | `AzureMonitorActionGroupWebhookAadAuth` |  |  |  |
 | `spec.webhookReceivers[].aadAuth.objectId` | `string` | yes |  |  |
@@ -146,18 +146,18 @@ spec:
 | `spec.automationRunbookReceivers[].runbookName` | `string` | yes |  |  |
 | `spec.automationRunbookReceivers[].webhookResourceId` | `string` | yes |  |  |
 | `spec.automationRunbookReceivers[].isGlobalRunbook` | `bool` |  |  |  |
-| `spec.automationRunbookReceivers[].serviceUri` | `string` | yes |  |  |
+| `spec.automationRunbookReceivers[].serviceUri` | `string` (sensitive) | yes |  |  |
 | `spec.automationRunbookReceivers[].useCommonAlertSchema` | `bool` |  |  |  |
 | `spec.logicAppReceivers` | `[]AzureMonitorActionGroupLogicAppReceiver` |  |  |  |
 | `spec.logicAppReceivers[].name` | `string` | yes |  |  |
 | `spec.logicAppReceivers[].resourceId` | `string` | yes |  |  |
-| `spec.logicAppReceivers[].callbackUrl` | `string` | yes |  |  |
+| `spec.logicAppReceivers[].callbackUrl` | `string` (sensitive) | yes |  |  |
 | `spec.logicAppReceivers[].useCommonAlertSchema` | `bool` |  |  |  |
 | `spec.azureFunctionReceivers` | `[]AzureMonitorActionGroupAzureFunctionReceiver` |  |  |  |
 | `spec.azureFunctionReceivers[].name` | `string` | yes |  |  |
 | `spec.azureFunctionReceivers[].functionAppResourceId` | `string \| valueFrom` | yes |  | AzureFunctionApp (`status.outputs.function_app_id`) |
 | `spec.azureFunctionReceivers[].functionName` | `string` | yes |  |  |
-| `spec.azureFunctionReceivers[].httpTriggerUrl` | `string` | yes |  |  |
+| `spec.azureFunctionReceivers[].httpTriggerUrl` | `string` (sensitive) | yes |  |  |
 | `spec.azureFunctionReceivers[].useCommonAlertSchema` | `bool` |  |  |  |
 | `spec.armRoleReceivers` | `[]AzureMonitorActionGroupArmRoleReceiver` |  |  |  |
 | `spec.armRoleReceivers[].name` | `string` | yes |  |  |
@@ -321,11 +321,16 @@ The receiver's name, unique within the action group.
 
 ### spec.webhookReceivers[].serviceUri
 
-`string` · required
+`string` · required · sensitive
 
-The endpoint to POST the alert payload to (http:// or https://).
+The endpoint to POST the alert payload to -- an http:// or https://
+URL. SECRET-BEARING: webhook URLs commonly embed the credential
+itself (a token query parameter, a signed path), so the whole value
+is treated as a secret. The URL shape is taught here rather than
+enforced by a validation rule, because sensitive fields hold a
+managed-secret reference on consuming platforms and a scheme rule
+would reject every reference.
 
-- rule: the webhook service_uri must be an http:// or https:// URL
 - rule: {"required":true}
 
 ### spec.webhookReceivers[].useCommonAlertSchema
@@ -439,11 +444,14 @@ Whether the runbook is a global runbook (true) or a user runbook
 
 ### spec.automationRunbookReceivers[].serviceUri
 
-`string` · required
+`string` · required · sensitive
 
-The webhook's invocation URI.
+The webhook's invocation URI -- an http:// or https:// URL.
+SECRET-BEARING: Automation webhook URIs embed their token in the
+URL, so the whole value is treated as a secret (the URL shape is
+taught, never rule-enforced -- a stored secret reference would fail
+any scheme rule).
 
-- rule: the runbook service_uri must be an http:// or https:// URL
 - rule: {"required":true}
 
 ### spec.automationRunbookReceivers[].useCommonAlertSchema
@@ -476,12 +484,15 @@ The ARM ID of the Logic App workflow.
 
 ### spec.logicAppReceivers[].callbackUrl
 
-`string` · required
+`string` · required · sensitive
 
 The Logic App trigger's callback URL (from the workflow's HTTP
-request trigger).
+request trigger) -- an http:// or https:// URL. SECRET-BEARING: the
+callback URL embeds the workflow's shared access signature, so the
+whole value is treated as a secret (the URL shape is taught, never
+rule-enforced -- a stored secret reference would fail any scheme
+rule).
 
-- rule: the Logic App callback_url must be an http:// or https:// URL
 - rule: {"required":true}
 
 ### spec.logicAppReceivers[].useCommonAlertSchema
@@ -525,12 +536,15 @@ The name of the function within the app.
 
 ### spec.azureFunctionReceivers[].httpTriggerUrl
 
-`string` · required
+`string` · required · sensitive
 
-The function's HTTP trigger URL (including its code parameter when the
-function uses key-based auth).
+The function's HTTP trigger URL (including its code parameter when
+the function uses key-based auth) -- an http:// or https:// URL.
+SECRET-BEARING: the code parameter IS the function key, so the whole
+value is treated as a secret (the URL shape is taught, never
+rule-enforced -- a stored secret reference would fail any scheme
+rule).
 
-- rule: the function http_trigger_url must be an http:// or https:// URL
 - rule: {"required":true}
 
 ### spec.azureFunctionReceivers[].useCommonAlertSchema

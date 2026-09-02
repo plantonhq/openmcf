@@ -1,6 +1,6 @@
-# AWS Cert Manager Certificate
+# AWS ACM Certificate
 
-Provisions an AWS Certificate Manager (ACM) certificate in any of ACM's three creation modes: Amazon-issued public certificates validated by DNS or email, imported bring-your-own certificate material, or private certificates issued by an ACM Private CA. For Amazon-issued certificates with a Route53 zone, the module creates the DNS validation records and optionally waits for issuance; without one, it exports the records for external DNS. The certificate integrates with Planton's Provider Connections for credential management and ValueFromRef for dependency wiring.
+Provisions an AWS Certificate Manager (ACM) certificate in any of ACM's three creation modes: Amazon-issued public certificates validated by DNS or email, imported bring-your-own certificate material, or private certificates issued by an ACM Private CA. For Amazon-issued certificates with a Route53 zone, the module creates the DNS validation records and optionally waits for issuance; without one, it exports the records for external DNS. Amazon-issued certificates renew automatically while their validation records stay in place; imported certificates never renew.
 
 ## What Gets Created
 
@@ -28,14 +28,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **AWS Cert Manager Certificate**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single Domain DNS** preset in the [Presets](#presets) tab to pre-populate a working configuration.
+Open the deployment store, find **AWS ACM Certificate**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Single Domain DNS-Validated Certificate** preset in the [Presets](#presets) tab to pre-populate a working configuration.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsCertManagerCert
 metadata:
   name: api-cert
@@ -52,7 +52,7 @@ spec:
 planton apply -f cert-manager-cert.yaml
 ```
 
-This requests an Amazon-issued certificate for `api.example.com` with DNS validation, automatically creating the required CNAME record in the specified Route53 hosted zone and waiting for issuance. Certificates issued in `us-east-1` can be used with CloudFront distributions globally.
+This requests an Amazon-issued certificate for `api.example.com` with DNS validation, automatically creating the required CNAME record in the specified Route53 hosted zone and waiting for issuance. Certificates issued in `us-east-1` can be used with CloudFront distributions globally. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -94,6 +94,7 @@ These are the most important decisions when configuring an ACM certificate. Expl
 | Dependency | Field | ValueFromRef Path |
 |------------|-------|-------------------|
 | **AwsRoute53Zone** (optional) | `route53HostedZoneId` | `status.outputs.zone_id` |
+| **AwsPrivateCa** (private mode only) | `certificateAuthorityArn` | `status.outputs.certificate_authority_arn` |
 
 ### What This Component Provides
 
@@ -111,14 +112,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Single domain certificate** -- A certificate for one specific domain or subdomain (e.g., `api.example.com`) with managed DNS validation. The simplest and most common pattern for HTTPS on a single endpoint. Start from the **Single Domain DNS** preset.
+**Single domain certificate** -- A certificate for one specific domain or subdomain (e.g., `api.example.com`) with managed DNS validation. The simplest and most common pattern for HTTPS on a single endpoint. Start from the **Single Domain DNS-Validated Certificate** preset.
 
-**Wildcard certificate** -- A certificate covering all first-level subdomains (`*.example.com`) with the apex domain as a SAN. Suited for microservice architectures where each service has its own subdomain. Start from the **Wildcard Domain** preset.
+**Wildcard certificate** -- A certificate covering all first-level subdomains (`*.example.com`) with the apex domain as a SAN. Suited for microservice architectures where each service has its own subdomain. Start from the **Wildcard Domain DNS-Validated Certificate** preset.
 
-**External DNS** -- A certificate whose validation records live outside Route53. The deployment exports the records and finishes without waiting; create them in your DNS provider and ACM issues within minutes. Start from the **External DNS** preset.
+**External DNS** -- A certificate whose validation records live outside Route53. The deployment exports the records and finishes without waiting; create them in your DNS provider and ACM issues within minutes. Start from the **DNS-Validated Certificate with External DNS** preset.
 
 ## Works With
 
-- [**AWS Route53 Zone**](/cloud-catalog/aws-route53-zone) -- provides the hosted zone for managed DNS validation records
+- [**AWS Route 53 Zone**](/cloud-catalog/aws-route53-zone) -- provides the hosted zone for managed DNS validation records
+- [**AWS Private Certificate Authority**](/cloud-catalog/aws-private-ca) -- signs private certificates, wired via `certificateAuthorityArn`
 - [**AWS ALB**](/cloud-catalog/aws-alb) -- consumes the certificate on HTTPS listeners via `cert_arn`
 - [**AWS CloudFront**](/cloud-catalog/aws-cloud-front) -- consumes us-east-1 certificates for custom domain TLS

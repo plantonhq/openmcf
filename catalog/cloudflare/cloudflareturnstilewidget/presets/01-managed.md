@@ -1,4 +1,4 @@
-# Preset: Managed Widget
+# Managed Widget
 
 The recommended default: a `managed` Turnstile widget where Cloudflare chooses the
 challenge dynamically. Best general-purpose protection for forms.

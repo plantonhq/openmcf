@@ -1,0 +1,30 @@
+# Least-privilege permissions the IaC runner's Cloudflare credential needs
+# to provision, update, and destroy this component with the official
+# modules. Cloudflare authenticates with a bearer API token assembled from
+# named permission groups; every group entry is `derived` (static analysis
+# of the module sources, cited in notes) until the live capture lane
+# upgrades it to `proven`. Schema: iac/componentpermissions/v1.
+#
+# HONEST UNKNOWN: the module also manages the site's include/exclude rules
+# via POST/PUT/DELETE /accounts/{account_id}/rum/v2/{ruleset_id}/rule --
+# those endpoint docs carry NO "Accepted Permissions" section, so the exact
+# group for the rules endpoints is undocumented. They belong to the same RUM
+# API family as the site endpoints, but we do not assert a group we cannot
+# cite.
+apiVersion: iac.planton.dev/v1
+kind: ComponentPermissions
+metadata:
+  name: cloudflarewebanalyticssite
+spec:
+  cloudflare:
+    groups:
+      - purpose: ManageSite
+        name: Account Settings Write
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Create/update/delete the site via POST/PUT/DELETE /accounts/{account_id}/rum/site_info[/{site_id}] (each method page names this group as its accepted permission). Covers the Terraform module's cloudflare_web_analytics_site and per-row cloudflare_web_analytics_rule resources and the Pulumi module's matching WebAnalyticsSite and WebAnalyticsRule resources; neither engine performs secondary lookups -- the provider deliberately never reads rules back after writing them. The general API token permissions reference (https://developers.cloudflare.com/fundamentals/api/reference/permissions/, retrieved 2026-08-22) lists NO Web Analytics group; the groups are verbatim from the "Accepted Permissions" sections of the Web Analytics site API endpoint docs (https://developers.cloudflare.com/api/resources/rum/subresources/site_info/, create/get/update/delete method pages, retrieved 2026-08-22).
+      - purpose: ReadSite
+        name: Account Settings Read
+        scope: com.cloudflare.api.account
+        provenance: derived
+        notes: Refresh/import the site via GET /accounts/{account_id}/rum/site_info/{site_id} (the get method page names this group).

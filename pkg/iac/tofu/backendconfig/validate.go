@@ -46,11 +46,22 @@ func Validate(config *TofuBackendConfig) *ValidationResult {
 		result = validateAzureBackend(config)
 	case "local", "":
 		// Local backend has no required fields
+	case "remote":
+		// TFE-protocol backend (Terraform Cloud / HCP Terraform, Terraform Enterprise,
+		// Scalr), state storage only. None of the bucket-shaped fields apply: addressing
+		// (hostname, organization, token) rides raw --backend-config key=value flags or
+		// the ambient TF_TOKEN_<hostname> environment variable, and the workspaces block
+		// must already be part of the backend.tf declaration -- an HCL block cannot be
+		// expressed as a flag, so this config carries nothing for it.
+		result.Warnings = append(result.Warnings,
+			"Remote (TFE-protocol) backend: supply hostname, organization, and token via --backend-config "+
+				"key=value flags (or TF_TOKEN_<hostname> in the environment), and declare the workspaces "+
+				"block in the configuration's backend declaration.")
 	default:
 		result.Valid = false
 		result.MissingFields = append(result.MissingFields, MissingField{
 			Name:        "type",
-			Description: fmt.Sprintf("Unknown backend type: %s. Supported types: s3, gcs, azurerm, local", config.BackendType),
+			Description: fmt.Sprintf("Unknown backend type: %s. Supported types: s3, gcs, azurerm, remote, local", config.BackendType),
 			Required:    true,
 		})
 	}

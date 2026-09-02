@@ -1,11 +1,12 @@
 # GCP Bigtable Table
 
-Deploys a table inside a Cloud Bigtable instance — the schema-bearing unit: column families with their garbage-collection (retention) policies, pre-split keys for load distribution, change streams for CDC, automated backups, and deletion protection. Integrates with Planton's Provider Connections for GCP credential management and supports ValueFromRef wiring to the parent GcpBigtableInstance and GCP projects.
+Deploys a table inside a Cloud Bigtable instance — the schema-bearing unit: column families with their garbage-collection (retention) policies, pre-split keys for load distribution, change streams for CDC, automated backups, and deletion protection. Tables are many-per-instance with independent lifecycles: teams add and remove tables without touching the instance, and a table's GC-policy changes never disturb its neighbors.
 
 ## What Gets Created
 
 When you deploy this Cloud Resource, the IaC module provisions:
 
+- **Bigtable Admin API enablement** (`bigtableadmin.googleapis.com`) on the target project (never disabled on destroy)
 - **Bigtable Table** -- a table inside the referenced instance, named for clients to open with project + instance + table name
 - **Column Families** -- the units of data organization and retention; each family carries its own GC policy (max age, max versions, a combined UNION/INTERSECTION policy, or a raw nested rule tree)
 - **Pre-splits** -- created only when `splitKeys` is set; distributes initial write load across tablets instead of hammering one server
@@ -22,20 +23,19 @@ When you deploy this Cloud Resource, the IaC module provisions:
 ### GCP Project
 
 - **A Bigtable instance** the table will live in. Reference a GcpBigtableInstance Cloud Resource via ValueFromRef or provide the instance's short name directly.
-- **Bigtable API** (`bigtable.googleapis.com`) and **Bigtable Admin API** (`bigtableadmin.googleapis.com`) enabled in the target project.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **GCP Bigtable Table**, and click **Deploy**. The creation wizard walks you through the parent instance, column families with their GC policies, pre-splits and CDC, and deletion protection. Start from the **Time-Series** preset in the [Presets](#presets) tab for the classic measurements-plus-metadata shape.
+Open the deployment store, find **GCP Bigtable Table**, and click **Deploy**. The creation wizard walks you through the parent instance, column families with their GC policies, pre-splits and CDC, and deletion protection. Start from the **Time-Series Table** preset in the [Presets](#presets) tab for the classic measurements-plus-metadata shape.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: gcp.planton.dev/v1
+apiVersion: gcp.planton.dev/v1alpha1
 kind: GcpBigtableTable
 metadata:
   name: sensor-readings
@@ -43,10 +43,7 @@ metadata:
   env: prod
 spec:
   instance:
-    valueFrom:
-      kind: GcpBigtableInstance
-      name: prod-bigtable
-      fieldPath: status.outputs.instance_name
+    value: events-store-prod
   columnFamilies:
     - family: measurements
       gcPolicy:
@@ -60,7 +57,7 @@ spec:
 planton apply -f bigtable-table.yaml
 ```
 
-This creates a table with two GC-bounded families and deletion protection on (the PROTECTED default) — retention is the lever that controls storage cost.
+This creates a table with two GC-bounded families and deletion protection on (the PROTECTED default) — retention is the lever that controls storage cost. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -78,6 +75,8 @@ spec:
 The InfraPipeline resolves the dependency graph, deploys the instance first, then provisions the table with the resolved instance name.
 
 ## Key Configuration
+
+These are the most important decisions when configuring a Bigtable table. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
 **Column families and GC** -- families must exist before applications can write; columns are created on write and never declared. Each family's GC policy bounds retention: `maxAge` alone, `maxVersions` alone, both combined with `mode` (UNION collects when either condition is met; INTERSECTION when both), or a raw `gcRules` JSON tree for nested policies (mutually exclusive with the typed fields). **A family without a GC policy accumulates every cell version forever** — the most common source of surprise Bigtable bills.
 
@@ -112,11 +111,11 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Time-series** -- a wide measurements family with age-based retention, a small metadata family capped by versions, and key-prefix pre-splits. Start from the **Time-Series** preset.
+**Time-series** -- a wide measurements family with age-based retention, a small metadata family capped by versions, and key-prefix pre-splits. Start from the **Time-Series Table** preset.
 
-**CDC-enabled** -- a change-stream feed for Dataflow pipelines, daily automated backups, and a combined age-plus-versions retention policy. Start from the **CDC Enabled** preset.
+**CDC-enabled** -- a change-stream feed for Dataflow pipelines, daily automated backups, and a combined age-plus-versions retention policy. Start from the **CDC-Enabled Table with Backups** preset.
 
-**Aggregate counters** -- an `intsum` family incremented atomically at write time for usage metering and leaderboards. Start from the **Aggregate Counters** preset.
+**Aggregate counters** -- an `intsum` family incremented atomically at write time for usage metering and leaderboards. Start from the **Aggregate Counter Table** preset.
 
 ## Works With
 

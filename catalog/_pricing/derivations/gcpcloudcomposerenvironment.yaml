@@ -31,6 +31,11 @@ spec:
           op: is_unset
       reason: an empty image_version rides the latest stable image, which today is Composer 3 -- an environment billed in Data Compute Units this price book does not carry; pin a composer-2 image version for a priceable manifest
     - when:
+        - field_path: software_config.image_version
+          op: starts_with
+          value: composer-3
+      reason: a composer-3 image version bills Data Compute Unit meters this price book does not carry
+    - when:
         - field_path: node_config.composer_network_attachment
           op: is_set
       reason: a PSC network attachment is Composer 3 networking, and Composer 3 environments bill Data Compute Unit meters this price book does not carry
@@ -257,7 +262,7 @@ spec:
           op: is_unset
       text: no triggerer block is declared -- if Composer's per-version defaults run one, its allocation bills the same meters but is invisible in this manifest
   notes:
-    - text: These rules price Composer 2 image versions; a manifest pinning a composer-3 image bills Data Compute Unit meters instead, and only the Composer 3 signals the spec carries (network attachment, private-environment flags, DAG processor sizing, an unpinned image) are detectable for refusal.
+    - text: These rules price Composer 2 image versions; a manifest pinning a composer-3 image, or carrying any Composer 3 signal (network attachment, private-environment flags, DAG processor sizing, an unpinned image), refuses instead of pricing on Composer 2 meters.
     - applies_when:
         - field_path: workloads_config.worker
           op: is_set

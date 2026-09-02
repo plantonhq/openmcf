@@ -1,8 +1,8 @@
-# Tekton on Kubernetes
+# Tekton
 
-Declare the cluster's [Tekton](https://tekton.dev/) installation — which components run (Pipelines, Triggers, Dashboard, Chains), where they install, the pipeline feature flags and execution defaults, and the cleanup policy — as a `TektonConfig` custom resource that the Tekton Operator reconciles into running components and keeps converged.
+Declares the cluster's Tekton installation — which components run (Pipelines, Triggers, Dashboard, Chains), where they install, the pipeline feature flags and execution defaults, and the cleanup policy — as a `TektonConfig` custom resource that the Tekton Operator reconciles into running components and keeps converged.
 
-This component shapes the **engine**, never your pipelines: Tasks, Pipelines, and their runs are plain custom resources once this converges — declare them via Kubernetes Manifest resources, your platform, or the Tekton CLI. Exactly one KubernetesTekton per cluster is allowed (the operator's own admission rule), and the operator (declared with **Tekton Operator on Kubernetes**) must be installed first.
+This component shapes the **engine**, never your pipelines: Tasks, Pipelines, and their runs are plain custom resources once this converges — declare them via Kubernetes Manifest resources, your platform, or the Tekton CLI. Exactly one KubernetesTekton per cluster is allowed (the operator's own admission rule), and the operator (declared with **Tekton Operator**) must be installed first.
 
 ## What Gets Created
 
@@ -20,22 +20,24 @@ When you deploy this Cloud Resource, the IaC module renders the TektonConfig and
 
 - **Kubernetes Provider Connection** — an active connection in the Connect module with credentials for the target cluster.
 
-### Cluster Side
+### Kubernetes Cluster
 
-- **The Tekton Operator** — a HARD prerequisite: declare a **Tekton Operator on Kubernetes** resource first; without it, nothing reconciles this declaration.
+- **The Tekton Operator** — a HARD prerequisite: declare a **Tekton Operator** resource first; without it, nothing reconciles this declaration.
 - **No existing TektonConfig** — the operator's admission webhook allows exactly one per cluster.
-- **A dedicated target namespace name** — the operator creates it, owns it, and DELETES it on teardown. Never point `target_namespace` at a namespace carrying anything else.
+- **A dedicated target namespace name** — the operator creates it, owns it, and DELETES it on teardown. Never point `targetNamespace` at a namespace carrying anything else.
 
 ## Deploy
 
 ### Console
 
-Open the deployment store, find **Tekton on Kubernetes**, and click **Deploy**. The creation wizard walks you through the singleton contract, the profile ladder, the immutable target namespace, placement, the pipeline surface (execution defaults, feature flags, resolvers, metrics, performance), the per-component steps (Triggers, Dashboard, Chains — shown only on profiles that install them), the pruner, and the additional-params escape surface. Start from the **CI Standard** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Tekton**, and click **Deploy**. The creation wizard walks you through the singleton contract, the profile ladder, the immutable target namespace, placement, the pipeline surface (execution defaults, feature flags, resolvers, metrics, performance), the per-component steps (Triggers, Dashboard, Chains — shown only on profiles that install them), the pruner, and the additional-params escape surface. Start from the **CI standard preset** in the [Presets](#presets) tab.
 
 ### CLI
 
+Create a manifest and apply it:
+
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesTekton
 metadata:
   name: tekton
@@ -54,25 +56,27 @@ spec:
 planton apply -f tekton.yaml
 ```
 
-This is the CI-standard shape: profile `all` by absence (Pipelines + Triggers + Dashboard, plus Chains), the upstream default `tekton-pipelines` namespace, and the one piece of configuration no production cluster should skip — a pruner.
+This is the CI-standard shape: profile `all` by absence (Pipelines + Triggers + Dashboard, plus Chains), the upstream default `tekton-pipelines` namespace, and the one piece of configuration no production cluster should skip — a pruner. A Stack Job tracks the provisioning in real time.
 
 ## Key Configuration
 
+These are the most important decisions when configuring a Tekton installation. Explore the full field reference in the [API Explorer](#api-explorer) tab.
+
 **The profile ladder** — `lite` = Pipelines only (the embedded-engine shape for platforms that create PipelineRuns programmatically); `basic` = + Triggers (webhook-driven execution); `all` = + Dashboard (the operator's own default when unset). Chains rides along on `basic`/`all` unless `chain.disabled`.
 
-**`target_namespace` is IMMUTABLE and operator-owned** — the operator's webhook rejects changing it on an existing installation (destroy and recreate to move), and teardown DELETES the namespace with the components (Tekton Results archival finalizers can hold it Terminating for a while). Empty = `tekton-pipelines`.
+**`targetNamespace` is IMMUTABLE and operator-owned** — the operator's webhook rejects changing it on an existing installation (destroy and recreate to move), and teardown DELETES the namespace with the components (Tekton Results archival finalizers can hold it Terminating for a while). Empty = `tekton-pipelines`.
 
-**One CloudEvents sink per cluster** — `pipeline.cloud_events_sink_url` is Tekton's single, cluster-global event destination: every run in every namespace reports there. Multi-tenant clusters put a fan-out service at that URL (each event carries its source namespace) rather than wishing for per-namespace sinks that do not exist. Must be an `http://` or `https://` URL.
+**One CloudEvents sink per cluster** — `pipeline.cloudEventsSinkUrl` is Tekton's single, cluster-global event destination: every run in every namespace reports there. Multi-tenant clusters put a fan-out service at that URL (each event carries its source namespace) rather than wishing for per-namespace sinks that do not exist. Must be an `http://` or `https://` URL.
 
-**Feature flags are tri-states** — every pipeline feature flag left unset keeps Tekton's own default for the pinned release; a pinned value holds even if a future release changes its default. `keep_pod_on_cancel` is alpha-gated (takes effect only with `enable_api_fields: alpha`); `results_from: sidecar-logs` pairs with `max_result_size`.
+**Feature flags are tri-states** — every pipeline feature flag left unset keeps Tekton's own default for the pinned release; a pinned value holds even if a future release changes its default. `keepPodOnCancel` is alpha-gated (takes effect only with `enableApiFields: alpha`); `resultsFrom: sidecar-logs` pairs with `maxResultSize`.
 
 **Resolvers default ON — including the internet-reaching ones** — all four remote resolvers (bundles, hub, git, cluster) are enabled by Tekton's default; `git` and `hub` reach the public internet from the resolvers deployment, so locked-down clusters disable exactly those.
 
-**Tekton HA is sharding** — `performance.replicas` and `performance.buckets` are one decision: extra replicas only take work when buckets shards it across them (upstream bucket maximum 10). The usual throughput ceiling is the controller's Kubernetes API budget — raise `kube_api_qps`/`kube_api_burst` together with run volume.
+**Tekton HA is sharding** — `performance.replicas` and `performance.buckets` are one decision: extra replicas only take work when buckets shards it across them (upstream bucket maximum 10). The usual throughput ceiling is the controller's Kubernetes API budget — raise `kubeApiQps`/`kubeApiBurst` together with run volume.
 
 **The dashboard has NO built-in authentication** — in its default writable mode, anyone who reaches it can run and delete pipelines. Set `dashboard.readonly`, and expose the ClusterIP Service only through first-class kinds (KubernetesIngress, Gateway API kinds) with an authenticating layer — or keep it unexposed and use the exported port-forward command.
 
-**No pruner = unbounded growth** — completed runs keep their pods until something deletes them. Declare the pruner with a required cron `schedule`, at least one of `pipelinerun`/`taskrun`, and EXACTLY one retention rule — `keep` (newest N) or `keep_since` (younger than N minutes), never both (the operator's webhook enforces it).
+**No pruner = unbounded growth** — completed runs keep their pods until something deletes them. Declare the pruner with a required cron `schedule`, at least one of `pipelinerun`/`taskrun`, and EXACTLY one retention rule — `keep` (newest N) or `keepSince` (younger than N minutes), never both (the operator's webhook enforces it).
 
 **Destroy while the operator lives** — deleting this resource makes the operator tear down every component, and the deletion BLOCKS until that finishes. Never destroy the KubernetesTektonOperator resource first — the teardown finalizers strand without a running operator.
 
@@ -98,12 +102,13 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**CI Standard** — the full control plane (profile `all` by absence) with a daily pruner keeping the newest 100 runs of each kind. Start from the **CI Standard** preset.
+**CI Standard** — the full control plane (profile `all` by absence) with a daily pruner keeping the newest 100 runs of each kind. Start from the **CI standard preset**.
 
-**Pipelines Engine** — Tekton as an embedded engine: profile `lite`, every run's lifecycle streaming to one CloudEvents receiver, the internet-reaching resolvers off, the controller sharded 2×2, and aggressive two-day retention. Start from the **Pipelines Engine** preset.
+**Pipelines Engine** — Tekton as an embedded engine: profile `lite`, every run's lifecycle streaming to one CloudEvents receiver, the internet-reaching resolvers off, the controller sharded 2×2, and aggressive two-day retention. Start from the **Pipelines engine preset**.
 
 ## Works With
 
-- **Tekton Operator on Kubernetes** — the hard prerequisite; deploy the operator FIRST, destroy this declaration FIRST.
-- **Kubernetes Ingress / Kubernetes Http Route** — expose the dashboard over the exported `dashboard_service` handle, always behind an authenticating layer.
-- **Kubernetes Manifest** — declare Tasks, Pipelines, EventListeners, and runs once the installation converges.
+- [**Tekton Operator**](/cloud-catalog/kubernetes-tekton-operator) — the hard prerequisite; deploy the operator FIRST, destroy this declaration FIRST.
+- [**Kubernetes Ingress**](/cloud-catalog/kubernetes-ingress) — exposes the dashboard over the exported `dashboard_service` handle, always behind an authenticating layer.
+- [**Kubernetes HTTPRoute**](/cloud-catalog/kubernetes-http-route) — the Gateway API alternative for dashboard exposure, same authenticating-layer caveat.
+- [**Kubernetes Manifest**](/cloud-catalog/kubernetes-manifest) — declares Tasks, Pipelines, EventListeners, and runs once the installation converges.

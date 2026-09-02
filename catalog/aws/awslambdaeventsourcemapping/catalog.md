@@ -27,14 +27,14 @@ Everything else is referenced, never modified: the Lambda function, the queue/st
 
 ### Console
 
-Open the deployment store, find **AWS Lambda Event Source Mapping**, and click **Create**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the source type you pick shapes every later step. Start from the **SQS Worker** or **Kinesis Consumer** preset in the [Presets](#presets) tab.
+Open the deployment store, find **AWS Lambda Event Source Mapping**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields — the source type you pick shapes every later step. Start from the **SQS Queue Worker** or **Kinesis Stream Consumer** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: aws.planton.dev/v1
+apiVersion: aws.planton.dev/v1alpha1
 kind: AwsLambdaEventSourceMapping
 metadata:
   name: orders-queue-consumer
@@ -130,9 +130,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**SQS worker** -- the everyday queue consumer: partial-batch failure reporting on, batching tuned for throughput, and optionally a per-mapping concurrency cap (`scalingMaxConcurrency`) to protect a downstream database. Start from the **SQS Worker** preset.
+**SQS worker** -- the everyday queue consumer: partial-batch failure reporting on, batching tuned for throughput, and optionally a per-mapping concurrency cap (`scalingMaxConcurrency`) to protect a downstream database. Start from the **SQS Queue Worker** preset.
 
-**Kinesis consumer** -- `TRIM_HORIZON` to process the backlog, `parallelizationFactor` to multiply per-shard throughput while preserving per-key ordering, bisect-on-error plus a failure destination for poison records. Start from the **Kinesis Consumer** preset.
+**Kinesis consumer** -- `TRIM_HORIZON` to process the backlog, `parallelizationFactor` to multiply per-shard throughput while preserving per-key ordering, bisect-on-error plus a failure destination for poison records. Start from the **Kinesis Stream Consumer** preset.
 
 **Kafka consumer** -- MSK by reference (or self-managed brokers with source-access credentials from Secrets Manager), topics and an optional pinned consumer group, provisioned pollers when throughput must be predictable -- and a `pollerGroupName` to share one provisioned fleet across many mappings (the cost lever for many low-traffic topics). Start from the **MSK Consumer with Shared Provisioned Pollers** preset.
 
@@ -140,7 +140,7 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
 - [**AWS Lambda**](/cloud-catalog/aws-lambda) -- the function every mapping invokes
 - [**AWS SQS Queue**](/cloud-catalog/aws-sqs-queue) -- the most common source, and the usual failure destination
-- [**AWS Kinesis Stream**](/cloud-catalog/aws-kinesis-stream) -- ordered, replayable stream consumption
+- [**AWS Kinesis Data Stream**](/cloud-catalog/aws-kinesis-stream) -- ordered, replayable stream consumption
 - [**AWS DynamoDB**](/cloud-catalog/aws-dynamodb) -- change-data capture from table streams
 - [**AWS MSK Cluster**](/cloud-catalog/aws-msk-cluster) -- managed Kafka topic consumption
 - [**AWS KMS Key**](/cloud-catalog/aws-kms-key) -- customer-managed encryption for filter criteria

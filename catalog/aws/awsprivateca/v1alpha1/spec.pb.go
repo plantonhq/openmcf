@@ -81,7 +81,12 @@ type AwsPrivateCaSpec struct {
 	// rotation).
 	Revocation *AwsPrivateCaRevocation `protobuf:"bytes,8,opt,name=revocation,proto3" json:"revocation,omitempty"`
 	// The validity of a ROOT CA's self-signed certificate. Unset means
-	// 10 years (the console's default posture). ROOT only.
+	// 10 years (the console's default posture). ROOT only. Read at
+	// activation time ONLY: the issue request is the certificate's
+	// birth certificate (AWS never returns it), so both engines ignore
+	// later edits - changing this after activation does nothing.
+	// Reissuing a CA certificate is an operational act via ACM PCA,
+	// never a manifest edit.
 	RootCaValidity *AwsPrivateCaValidity `protobuf:"bytes,9,opt,name=root_ca_validity,json=rootCaValidity,proto3" json:"root_ca_validity,omitempty"`
 	// Activate a SUBORDINATE CA from a parent AwsPrivateCa in this
 	// account: the modules issue this CA's certificate from the parent
@@ -107,7 +112,11 @@ type AwsPrivateCaSpec struct {
 	// Days the deleted CA stays restorable, 7-30. Unset means 30 (the
 	// provider default). Billing stops at delete either way; a shorter
 	// window frees the CA's name-and-subject slot sooner. E2E and
-	// ephemeral environments should use 7.
+	// ephemeral environments should use 7. FIXED AT CREATE: AWS stores
+	// nothing (only the delete call consumes it) and the provider
+	// cannot apply a window-only change (an empty update the API
+	// rejects), so both engines read this at create and ignore later
+	// edits - the delete uses the create-time window.
 	PermanentDeletionTimeInDays int64 `protobuf:"varint,14,opt,name=permanent_deletion_time_in_days,json=permanentDeletionTimeInDays,proto3" json:"permanent_deletion_time_in_days,omitempty"`
 	// Whether the CA accepts issue requests. Set false to PAUSE
 	// issuance without deleting (existing certificates stay valid and
@@ -631,7 +640,9 @@ type AwsPrivateCaSubordinateActivation struct {
 	// common case - means this CA signs only end-entity certificates.
 	PathLength int64 `protobuf:"varint,2,opt,name=path_length,json=pathLength,proto3" json:"path_length,omitempty"`
 	// The subordinate CA certificate's validity. Must end before the
-	// parent's own certificate expires.
+	// parent's own certificate expires. Read at activation time ONLY
+	// (the birth-certificate contract - see root_ca_validity): both
+	// engines ignore later edits.
 	Validity      *AwsPrivateCaValidity `protobuf:"bytes,3,opt,name=validity,proto3" json:"validity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -689,7 +700,14 @@ func (x *AwsPrivateCaSubordinateActivation) GetValidity() *AwsPrivateCaValidity 
 }
 
 // AwsPrivateCaIssuedCertificate is one certificate issued from this
-// CA at apply time.
+// CA at apply time. The request fields (csr, signing_algorithm,
+// validity, template_arn, api_passthrough) are the certificate's
+// BIRTH CERTIFICATE: AWS reads them once at issue and never returns
+// them, so both engines ignore later edits - changing them on an
+// existing entry deliberately does nothing. To reissue with different
+// parameters, add a NEW entry (the name keys the certificate; a new
+// name issues a new certificate) and drop the old one when its
+// consumers have moved.
 type AwsPrivateCaIssuedCertificate struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The certificate's name - the for_each key on both engines and

@@ -445,7 +445,7 @@ func (AzureVirtualHubRoutingPolicyDestination) EnumDescriptor() ([]byte, []int) 
 // route tables and route maps by ID -- this component surfaces them as
 // name-keyed output maps for exactly that wiring.
 //
-// **Cost and time**: a Standard hub bills (~$0.25/hr class) from
+// **Cost and time**: a Standard hub bills hourly from
 // creation, and ARM takes 15-30 minutes to bring the hub's router to a
 // Provisioned routing state. Deleting a hub requires its connections and
 // gateways to be gone first.

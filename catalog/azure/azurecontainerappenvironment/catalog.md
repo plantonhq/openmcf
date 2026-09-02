@@ -1,6 +1,6 @@
 # Azure Container App Environment
 
-Deploys a Container Apps Managed Environment that serves as the hosting boundary for Azure Container Apps, with configurable VNet injection, internal load balancing, zone redundancy, Log Analytics integration, and dedicated workload profiles for GPU or guaranteed compute. The environment integrates with Planton's Provider Connections for Azure credential management and ValueFromRef for dependency wiring to resource groups, subnets, and Log Analytics workspaces.
+Deploys a Container Apps Managed Environment that serves as the hosting boundary for Azure Container Apps, with configurable VNet injection, internal load balancing, zone redundancy, Log Analytics integration, and dedicated workload profiles for GPU or guaranteed compute. The network shape is the decision to get right first: the subnet, internal-load-balancer mode, and zone redundancy are all set at creation, and changing any of them destroys and recreates the environment -- along with every app running in it.
 
 ## What Gets Created
 
@@ -10,6 +10,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 - **VNet Integration** -- created only when `infrastructureSubnetId` is provided; injects the environment into a customer-managed VNet for private connectivity to databases, storage, and other VNet resources
 - **Log Analytics Integration** -- created only when `logAnalyticsWorkspaceId` is provided; configures log-analytics as the logging destination for container app logs, enabling KQL querying and alerting
 - **Workload Profiles** -- created only when `workloadProfiles` entries are configured; dedicated compute pools (D4, D8, E4, NC24-A100, etc.) alongside the default Consumption profile
+- **Custom DNS Suffix Binding** -- created only when `customDomain` is configured; replaces the environment's generated default domain with your own suffix, backed by the wildcard PFX certificate you provide
 - **Azure Tags** -- resource metadata tags (organization, environment, resource kind, resource ID) applied automatically for tracking and governance
 
 ## Before You Deploy
@@ -29,14 +30,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Azure Container App Environment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Consumption** preset in the [Presets](#presets) tab for a minimal serverless environment, or the **Workload Profiles with VNet** preset for production with dedicated compute and private networking.
+Open the deployment store, find **Azure Container App Environment**, and click **Deploy**. The creation wizard walks you through preset selection, environment and connection configuration, and spec fields. Start from the **Consumption Plan Environment** preset in the [Presets](#presets) tab for a minimal serverless environment, or the **Workload Profiles with VNet Integration** preset for production with dedicated compute and private networking.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: azure.planton.dev/v1
+apiVersion: azure.planton.dev/v1alpha1
 kind: AzureContainerAppEnvironment
 metadata:
   name: dev-env
@@ -53,7 +54,7 @@ spec:
 planton apply -f container-app-env.yaml
 ```
 
-This creates a Consumption-plan environment with Azure-managed networking, external access (apps can receive public internet traffic), and streaming-only logs. No VNet injection, no workload profiles, no Log Analytics.
+This creates a Consumption-plan environment with Azure-managed networking, external access (apps can receive public internet traffic), and streaming-only logs -- no VNet injection, no workload profiles, no Log Analytics. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -128,9 +129,9 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Consumption environment** -- Minimal serverless environment with Azure-managed networking, no VNet injection, and Log Analytics for log collection. Suitable for development, staging, and cost-sensitive workloads that benefit from scale-to-zero. Start from the **Consumption** preset.
+**Consumption environment** -- Minimal serverless environment with Azure-managed networking, no VNet injection, and Log Analytics for log collection. Suitable for development, staging, and cost-sensitive workloads that benefit from scale-to-zero. Start from the **Consumption Plan Environment** preset.
 
-**Production VNet environment** -- VNet-injected environment with internal load balancer, zone redundancy, dedicated D4 workload profiles, and Log Analytics. Apps have private connectivity to databases and storage with no public internet exposure. Start from the **Workload Profiles with VNet** preset.
+**Production VNet environment** -- VNet-injected environment with internal load balancer, zone redundancy, dedicated D4 workload profiles, and Log Analytics. Apps have private connectivity to databases and storage with no public internet exposure. Start from the **Workload Profiles with VNet Integration** preset.
 
 ## Works With
 

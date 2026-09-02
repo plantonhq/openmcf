@@ -17,6 +17,7 @@ SCOPE
 
 PREREQUISITES
 - The component's spec, IaC modules, README, e2e manifest, and presets exist (rules 001-018 complete)
+- The component's catalog page exists (rule 020 runs first in this phase -- the guide grounds its claims partly on `catalog.md`)
 - `_rules/docs/write-planton-component-guide.mdc` -- the authoring standard this rule follows
 
 GUIDE.MD IS THE DURABLE-JUDGMENT HOME

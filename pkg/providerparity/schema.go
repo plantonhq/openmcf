@@ -38,6 +38,12 @@ type Schema struct {
 	// Version is the exact resolved release the artifact was distilled from,
 	// e.g. "6.55.0" -- the named pin parity is declared against.
 	Version string `json:"version"`
+	// ProviderConfig is the provider's own configuration block: the arguments
+	// a `provider "<name>" {}` block accepts (assume_role, default_tags,
+	// endpoints, ...). The provider-config accounting reads it the same way
+	// depth accounting reads resource blocks. Named ProviderConfig because
+	// Provider (above) is the artifact's identity field.
+	ProviderConfig *Block `json:"providerConfig,omitempty"`
 	// Resources maps resource type (e.g. "google_storage_bucket") to its
 	// root configuration block.
 	Resources map[string]*Block `json:"resources"`

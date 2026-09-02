@@ -417,6 +417,7 @@ Now that you have the CLI installed:
 1. **[Getting Started Guide](/docs/getting-started)** - Deploy your first resource
 2. **[Platform Overview](/docs/platform)** - Understand how Planton works
 3. **[Infrastructure](/docs/infrastructure)** - Deploy cloud infrastructure via CLI
+4. **[Secrets](/docs/secrets)** - Manage secrets from the terminal (`planton secret set|get|describe|history|snippet|access`, `planton secret backend verify`)
 
 For CLI command reference:
 

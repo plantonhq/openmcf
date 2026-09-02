@@ -28,6 +28,11 @@ func Resources(ctx *pulumi.Context, stackInput *gcpcloudrunv1alpha1.GcpCloudRunS
 	ctx.Export(OpServiceName, createdService.Name)
 	ctx.Export(OpRevision, createdService.LatestReadyRevision)
 	ctx.Export(OpLocation, createdService.Location)
+	// The project is part of the service's provider-side identity (the
+	// projects/{project}/locations/{location}/services/{name} coordinate);
+	// exporting it lets readers of the record locate the service on the
+	// provider without re-deriving where the deploy resolved its project.
+	ctx.Export(OpProjectId, createdService.Project)
 	ctx.Export(OpUid, createdService.Uid)
 	ctx.Export(OpUrls, createdService.Urls)
 

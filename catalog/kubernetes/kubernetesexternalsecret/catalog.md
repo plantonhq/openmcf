@@ -25,14 +25,14 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **External Secret**, and click **Deploy**. The creation wizard walks you through the namespace, the store selector, the sync declarations (explicit entries and bulk pulls), the target Secret's policies and template, and the refresh lifecycle. Start from the **Explicit Keys** preset in the [Presets](#presets) tab.
+Open the deployment store, find **External Secret**, and click **Deploy**. The creation wizard walks you through the namespace, the store selector, the sync declarations (explicit entries and bulk pulls), the target Secret's policies and template, and the refresh lifecycle. Start from the **Explicit Keys (Application Credentials)** preset in the [Presets](#presets) tab.
 
 ### CLI
 
 Create a manifest and apply it:
 
 ```yaml
-apiVersion: kubernetes.planton.dev/v1
+apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesExternalSecret
 metadata:
   name: app-database
@@ -59,21 +59,42 @@ spec:
 planton apply -f external-secret.yaml
 ```
 
-This syncs two fields of one structured backend entry into a Kubernetes Secret named `app-database`, refreshed hourly (the upstream default).
+This syncs two fields of one structured backend entry into a Kubernetes Secret named `app-database`, refreshed hourly (the upstream default). A Stack Job tracks the provisioning in real time.
+
+### InfraChart
+
+When deploying as part of a multi-resource environment, wire the namespace and the store to resources managed by other Cloud Resources:
+
+```yaml
+spec:
+  namespace:
+    valueFrom:
+      kind: KubernetesNamespace
+      name: team-a-namespace
+      fieldPath: spec.name
+  storeRef:
+    name:
+      valueFrom:
+        kind: KubernetesSecretStore
+        name: team-a-vault
+        fieldPath: status.outputs.store_name
+```
+
+The InfraPipeline deploys the namespace and the store first, then declares the sync against the resolved store name.
 
 ## Key Configuration
 
 These are the most important decisions when configuring the sync. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Explicit entries vs bulk pulls** -- a `data` entry names exactly one backend key (or one property within it) and one Secret key: reviewable, impossible to over-sync — prefer it for application credentials. A `data_from` pull extracts ALL properties of one structured entry, or finds every entry matching a name pattern/tags: for JSON documents of related credentials and fleet patterns. When both produce the same key, the explicit entry wins.
+**Explicit entries vs bulk pulls** -- a `data` entry names exactly one backend key (or one property within it) and one Secret key: reviewable, impossible to over-sync — prefer it for application credentials. A `dataFrom` pull extracts ALL properties of one structured entry, or finds every entry matching a name pattern/tags: for JSON documents of related credentials and fleet patterns. When both produce the same key, the explicit entry wins.
 
-**The store kind must match** -- `store_ref.kind` is SecretStore (namespaced, the default) or ClusterSecretStore. Reference the store resource to inherit its `store_name` output and draw the dependency edge — a mismatched kind fails at reconcile with store-not-found.
+**The store kind must match** -- `storeRef.kind` is SecretStore (namespaced, the default) or ClusterSecretStore. Reference the store resource to inherit its `store_name` output and draw the dependency edge — a mismatched kind fails at reconcile with store-not-found.
 
 **Key rewrites** -- pulls can reshape their key names in order (`^prod/app/(.*)$` → `$1` strips the path prefix). Names only; values are never touched.
 
-**Deletion policy Delete prunes** -- with `target.deletion_policy: Delete`, a key removed from the backend disappears from the cluster on the next refresh — workloads reading it break in sync with the backend. Retain (the default) never surprises.
+**Deletion policy Delete prunes** -- with `target.deletionPolicy: Delete`, a key removed from the backend disappears from the cluster on the next refresh — workloads reading it break in sync with the backend. Retain (the default) never surprises.
 
-**Immutable pairs with CreatedOnce** -- an immutable target Secret cannot be updated, so every refresh that would change data FAILS. Pair `target.immutable` with `refresh_policy: CreatedOnce` (and `refresh_interval: 0s`) — the immutable-bootstrap-secret pattern.
+**Immutable pairs with CreatedOnce** -- an immutable target Secret cannot be updated, so every refresh that would change data FAILS. Pair `target.immutable` with `refreshPolicy: CreatedOnce` (and `refreshInterval: 0s`) — the immutable-bootstrap-secret pattern.
 
 **The template reshapes values** -- Go templates over the synced keys turn raw credentials into what workloads want: a connection string, a `kubernetes.io/dockerconfigjson`, a `kubernetes.io/tls` pair. With the default Replace policy, templated data REPLACES the synced keys — switch to Merge to keep both.
 
@@ -83,10 +104,10 @@ These are the most important decisions when configuring the sync. Explore the fu
 
 ### What This Component Consumes
 
-| Field | References | Purpose |
-|-------|-----------|---------|
-| `spec.namespace` | KubernetesNamespace (`spec.name`) | Where the sync and its materialized Secret live |
-| `spec.store_ref.name` | KubernetesSecretStore / KubernetesClusterSecretStore (`status.outputs.store_name`) | The store the sync reads through |
+| Dependency | Field | ValueFromRef Path |
+|------------|-------|-------------------|
+| **KubernetesNamespace** | `namespace` | `spec.name` |
+| **KubernetesSecretStore** (or KubernetesClusterSecretStore via `storeRef.kind`) | `storeRef.name` | `status.outputs.store_name` |
 
 ### What This Component Provides
 
@@ -102,14 +123,15 @@ After provisioning, `status.outputs` contains values that downstream Cloud Resou
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Application credentials** -- two named fields from one structured entry, refreshed hourly. Start from the **Explicit Keys** preset.
+**Application credentials** -- two named fields from one structured entry, refreshed hourly. Start from the **Explicit Keys (Application Credentials)** preset.
 
-**Whole JSON document** -- one `dataFrom.extract` pulls every property, with a rewrite stripping the path prefix. Start from the **Extract JSON Document** preset.
+**Whole JSON document** -- one `dataFrom.extract` pulls every property, with a rewrite stripping the path prefix. Start from the **Extract a JSON Document (Bulk Pull with Rewrite)** preset.
 
-**Registry pull secret** -- synced registry credentials templated into a `kubernetes.io/dockerconfigjson` Secret for `imagePullSecrets`. Start from the **Docker Registry Template** preset.
+**Registry pull secret** -- synced registry credentials templated into a `kubernetes.io/dockerconfigjson` Secret for `imagePullSecrets`. Start from the **Docker Registry Pull Secret (Template)** preset.
 
 ## Works With
 
-- **Kubernetes Secret Store / Kubernetes Cluster Secret Store** -- the connection this sync reads through; deploy one first.
-- **Kubernetes External Secrets Operator** -- the machinery that does the syncing.
-- **Workloads (Kubernetes Deployment, StatefulSet, CronJob, ...)** -- consume the materialized Secret; reference this resource's `secret_name` output instead of hardcoding.
+- [**Secret Store**](/cloud-catalog/kubernetes-secret-store) -- the namespaced connection this sync reads through; deploy one first
+- [**Cluster Secret Store**](/cloud-catalog/kubernetes-cluster-secret-store) -- the cluster-scoped alternative when many namespaces share one backend connection
+- [**External Secrets Operator**](/cloud-catalog/kubernetes-external-secrets-operator) -- the machinery that does the syncing
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- the typical consumer: wire env and volumes to this resource's `secret_name` output instead of hardcoding
