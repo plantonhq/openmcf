@@ -1,0 +1,28 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "tekton",
+    srcs = [
+        "content.go",
+        "images.go",
+    ],
+    embedsrcs = [
+        "pipelines/buildpacks.yaml",
+        "pipelines/cloudflare-worker.yaml",
+        "pipelines/dockerfile.yaml",
+        "tasks/buildkit.yaml",
+        "tasks/buildpacks.yaml",
+        "tasks/git-clone.yaml",
+        "tasks/kustomize-build.yaml",
+    ],
+    importpath = "github.com/plantonhq/planton/cicd/tekton",
+    visibility = ["//visibility:public"],
+    deps = ["@io_k8s_sigs_yaml//:yaml"],
+)
+
+go_test(
+    name = "tekton_test",
+    srcs = ["content_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":tekton"],
+)

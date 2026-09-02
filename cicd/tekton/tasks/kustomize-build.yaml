@@ -1,0 +1,115 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kustomize-build
+  annotations:
+    adr.example.com/reference: "KustomizeBasedTektonTask"
+spec:
+  params:
+    - name: config-map-name
+      type: string
+      description: The name of the ConfigMap to be created or updated.
+    - name: config-map-namespace
+      type: string
+      description: The namespace in which to create/update the ConfigMap.
+    - name: project-root
+      type: string
+      description: Relative path to the project's root inside the cloned repo.
+      default: "."
+    - name: kustomize-base-directory
+      type: string
+      description: Path to the kustomize base directory (relative to project root).
+      default: ""
+    # ────────────────────────────────────────────────────────────────
+    - name: owner-identifier-label-key
+      type: string
+      description: Optional owner identifier label key to apply to the ConfigMap.
+      default: ""
+    - name: owner-identifier-label-value
+      type: string
+      description: Optional owner identifier label value to apply to the ConfigMap.
+      default: ""
+  workspaces:
+    - name: source
+      description: Directory where application source is located.
+
+  steps:
+    - name: kustomize-build
+      image: bitnamilegacy/kubectl:latest@sha256:cd354d5b25562b195b277125439c23e4046902d7f1abc0dc3c75aad04d298c17
+      script: |
+        #!/usr/bin/env bash
+        set -euxo pipefail
+
+        # Path to overlays directory inside the workspace
+        overlays_dir="/workspace/source/$(params.project-root)/$(params.kustomize-base-directory)/overlays"
+
+        # Helper: label the ConfigMap if label params were provided
+        label_configmap() {
+          if [[ -n "$(params.owner-identifier-label-key)" && -n "$(params.owner-identifier-label-value)" ]]; then
+            "${KUBECTL_BIN:-kubectl}" label configmap "$(params.config-map-name)" \
+              --namespace "$(params.config-map-namespace)" \
+              "$(params.owner-identifier-label-key)=$(params.owner-identifier-label-value)" \
+              --overwrite
+          fi
+        }
+
+        # If overlays are missing, create (or update) an empty ConfigMap
+        if [[ ! -d "${overlays_dir}" ]]; then
+          echo "Directory '${overlays_dir}' does not exist; creating empty ConfigMap."
+          kubectl create configmap "$(params.config-map-name)" \
+            --namespace "$(params.config-map-namespace)" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          label_configmap
+          exit 0
+        fi
+
+        # Change into the kustomize base directory
+        cd "/workspace/source/$(params.project-root)/$(params.kustomize-base-directory)"
+
+        # Prepare kubectl create configmap arguments
+        KCM_ARGS=( "create" "configmap" "$(params.config-map-name)"
+                   "--namespace" "$(params.config-map-namespace)"
+                   "--dry-run=client" "-o" "yaml" )
+
+        # Iterate over each environment overlay
+        for env_dir in overlays/*; do
+          [[ -d "${env_dir}" ]] || continue
+          env="$(basename "${env_dir}")"
+          echo "Processing environment: ${env}"
+
+          # --load-restrictor allows overlays to reference files above their directory
+          # (e.g., a shared OpenAPI schema at ../../openmcf-schema.json)
+          if ! encoded_yaml=$(kubectl kustomize --load-restrictor LoadRestrictionsNone "overlays/${env}" | base64 -w 0); then
+            echo "Kustomize build failed for environment '${env}'."
+            exit 1
+          fi
+
+          # Add literal entry for this env
+          KCM_ARGS+=( "--from-literal=${env}=${encoded_yaml}" )
+        done
+
+        # Preview trees render BEST-EFFORT: previews/<env> authors the deltas
+        # a pull-request preview of that environment deploys with, stacking on
+        # overlays/<env>. Renders land under the "previews." key namespace
+        # (environment names can never contain a dot, so the namespace can
+        # never collide with an overlay key); a render failure is carried as a
+        # "previews.<env>.error" marker instead of failing the task — a broken
+        # previews tree must never fail a main-branch build, and only the
+        # pull-request run that needs the render surfaces the error, loudly.
+        for preview_dir in previews/*; do
+          [[ -d "${preview_dir}" ]] || continue
+          env="$(basename "${preview_dir}")"
+          echo "Processing preview tree: ${env}"
+
+          preview_err="/tmp/preview-${env}-error.txt"
+          if encoded_yaml=$(kubectl kustomize --load-restrictor LoadRestrictionsNone "previews/${env}" 2>"${preview_err}" | base64 -w 0); then
+            KCM_ARGS+=( "--from-literal=previews.${env}=${encoded_yaml}" )
+          else
+            echo "Kustomize build failed for preview tree '${env}' -- carried as an error marker, not a task failure."
+            KCM_ARGS+=( "--from-literal=previews.${env}.error=$(base64 -w 0 <"${preview_err}")" )
+          fi
+        done
+
+        # Create/update the ConfigMap
+        "${KUBECTL_BIN:-kubectl}" "${KCM_ARGS[@]}" | kubectl apply -f -
+        label_configmap

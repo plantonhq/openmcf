@@ -1,0 +1,52 @@
+# =============================================================================
+# Tekton Pipeline Catalog Guard
+# =============================================================================
+# Fails the PR when the platform's Tekton pipeline catalog (cicd/tekton) drifts
+# from its own discipline, documented in cicd/tekton/README.md:
+#
+#   - One content state, one pin: any change to the embedded YAML must bump
+#     the content Version and re-record the digest, so two content states can
+#     never share the pin stamped on run records.
+#   - Every container image the content can run is digest-pinned, so builds
+#     are reproducible and the derived air-gap mirror list is immutable.
+#   - The derived image set matches the recorded set, so an image can never
+#     enter or leave what build clusters pull without a reviewed diff.
+#
+# The platform compiles builds from this content through its pin of this
+# module, so a tree that passes here is a tree the platform can pin.
+# =============================================================================
+
+name: lint.cicd-tekton
+
+on:
+  pull_request:
+    paths:
+      - 'cicd/**'
+      - '.github/workflows/lint.cicd-tekton.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'cicd/**'
+      - '.github/workflows/lint.cicd-tekton.yaml'
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-discipline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Vet the catalog package
+        run: go vet ./cicd/...
+
+      - name: Content version, digest, and image discipline
+        run: go test ./cicd/...

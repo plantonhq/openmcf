@@ -1,0 +1,133 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: buildkit-daemonless
+spec:
+  description: >
+    Build and push OCI‑compatible images using BuildKit in daemon‑less mode.
+
+  # ------------------------------ parameters -----------------------------
+  params:
+    - name: image                  # registry/repo:tag
+      type: string
+    - name: contextDir             # build context directory
+      type: string
+      default: "."
+    - name: dockerfilePath         # Dockerfile relative to contextDir
+      type: string
+      default: "Dockerfile"
+    - name: platforms              # e.g. linux/amd64,linux/arm64
+      type: string
+      default: ""
+    - name: cache                  # "true" ➜ inline cache
+      type: string
+      default: "true"
+    - name: push                   # "true" ➜ push to registry
+      type: string
+      default: "true"
+    - name: buildArgs              # each line KEY=value
+      type: string
+      default: ""
+    - name: buildkitImage          # override only if needed
+      type: string
+      default: "moby/buildkit:v0.23.2-rootless@sha256:cab936745de5d673465948f1e93ff4d6e372bbe33f218afd3314eba45a6f85a9"
+    # --- new parameters ---
+    - name: dockerfile-config-map-name
+      type: string
+      description: Name of the ConfigMap that will store the Dockerfile content.
+    - name: dockerfile-config-map-namespace
+      type: string
+      description: Namespace in which to create/update the ConfigMap. Callers
+        pass the run's own namespace -- there is deliberately no default, so
+        a build can never write into a namespace it does not execute in.
+    - name: owner-identifier-label-key
+      type: string
+      description: Optional owner identifier label key to add to the ConfigMap
+      default: ""
+    - name: owner-identifier-label-value
+      type: string
+      description: Optional owner identifier label value
+      default: ""
+
+  # ------------------------------ workspaces -----------------------------
+  workspaces:
+    - name: source                 # mandatory source workspace
+      description: Source code
+    - name: dockerconfig           # optional registry creds
+      optional: true
+      description: Holds .docker/config.json
+
+  # ------------------------------ steps ---------------------------------
+  steps:
+    # ------------------- export Dockerfile ---------------------
+    - name: export-dockerfile
+      image: bitnamilegacy/kubectl:latest@sha256:cd354d5b25562b195b277125439c23e4046902d7f1abc0dc3c75aad04d298c17
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+
+        dockerfile_path="$(workspaces.source.path)/$(params.contextDir)/$(params.dockerfilePath)"
+        if [[ ! -f "$dockerfile_path" ]]; then
+          echo "Dockerfile not found at $dockerfile_path"
+          exit 1
+        fi
+
+        echo "Creating/updating ConfigMap '$(params.dockerfile-config-map-name)'..."
+        encoded="$(base64 -w 0 "$dockerfile_path")"
+
+        kubectl create configmap "$(params.dockerfile-config-map-name)" \
+          --namespace "$(params.dockerfile-config-map-namespace)" \
+          --from-literal=Dockerfile="$encoded" \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+        if [[ -n "$(params.owner-identifier-label-key)" && -n "$(params.owner-identifier-label-value)" ]]; then
+          kubectl label configmap "$(params.dockerfile-config-map-name)" \
+            --namespace "$(params.dockerfile-config-map-namespace)" \
+            "$(params.owner-identifier-label-key)=$(params.owner-identifier-label-value)" --overwrite
+        fi
+
+    # ------------------- build and push image ---------------------
+    - name: build-and-push
+      image: "$(params.buildkitImage)"
+      workingDir: "$(workspaces.source.path)/$(params.contextDir)"
+      securityContext:
+        privileged: true          # required even for rootless image
+      env:
+        - name: DOCKER_CONFIG
+          value: "$(workspaces.dockerconfig.path)"
+      script: |
+        #!/usr/bin/env sh
+        set -eux
+
+        extra_opts=""
+
+        [ -n "$(params.platforms)" ] && \
+          extra_opts="$extra_opts --opt platform=$(params.platforms)"
+
+        if [ "$(params.cache)" = "true" ]; then
+          extra_opts="$extra_opts --export-cache type=inline \
+            --import-cache type=registry,ref=$(params.image)"
+        fi
+
+        printf '%s\n' "$(params.buildArgs)" | while IFS= read -r arg; do
+          [ -z "$arg" ] || extra_opts="$extra_opts --opt build-arg:$arg"
+        done
+
+        # Use modern dockerfile frontend (v1) for proper ARG variable expansion
+        # The legacy dockerfile.v0 has known bugs with ARG expansion in COPY instructions
+        # See: https://github.com/moby/buildkit/issues/2374
+        buildctl-daemonless.sh build \
+          --frontend=gateway.v0 \
+          --opt source=docker/dockerfile:1 \
+          --opt filename=$(params.dockerfilePath) \
+          --local context=$(workspaces.source.path)/$(params.contextDir) \
+          --local dockerfile=$(workspaces.source.path)/$(params.contextDir) \
+          $extra_opts \
+          --output type=image,name=$(params.image),push=$(params.push) \
+          --progress=plain
+
+  volumes:
+    - name: empty-dir
+      emptyDir: {}
+    - name: layers-dir
+      emptyDir: {}
