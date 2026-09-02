@@ -49,8 +49,8 @@ func refuseMultiDocument(manifestYamlBytes []byte, sourceName string) error {
 		list.WriteString(fmt.Sprintf("  %d. %s\n", i+1, identity))
 	}
 	return errors.Errorf(
-		"%s contains %d YAML documents — this command applies exactly one manifest per run:\n%s"+
-			"apply each document separately (kustomize overlays that bundle several resources render as one multi-document stream)",
+		"%s contains %d YAML documents — this command takes exactly one manifest per run:\n%s"+
+			"`planton apply` deploys multi-document sets in dependency order; other commands target one document at a time",
 		sourceName, len(identities), list.String())
 }
 

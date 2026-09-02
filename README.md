@@ -28,9 +28,10 @@ You never start from a blank Terraform file. Planton runs **proven, pre-built
 infrastructure-as-code modules** — built for secure, well-architected,
 cost-efficient defaults — against your own cloud account, with real state and
 history. Create like a console: pick a stack, fill a short form. Manage like
-Kubernetes: `planton apply -f` deploys a single component, and
-`planton chart install` stands up a whole environment — the `kubectl apply` and
-`helm install` gestures, freed from Kubernetes and extended to every cloud.
+Kubernetes: `planton apply -f` deploys one component or a whole directory of
+them in dependency order, and `planton chart install` stands up a templated
+environment — the `kubectl apply` and `helm install` gestures, freed from
+Kubernetes and extended to every cloud.
 
 Whichever way you deploy, it's real infrastructure-as-code the whole way down —
 stored, versioned, every change a diff. On your own cloud. Nothing to lock you

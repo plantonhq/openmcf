@@ -31,31 +31,48 @@ func Validate(manifestPath string) error {
 // manifest. Callers that load manifests from memory use this directly;
 // Validate wraps it for the file-path flow.
 func ValidateLoaded(manifest proto.Message) error {
+	lines, err := ViolationLines(manifest)
+	if err != nil {
+		return err
+	}
+	if len(lines) == 0 {
+		return nil
+	}
+	return formatValidationError(strings.Join(lines, "\n   "))
+}
+
+// ViolationLines runs the same validation as ValidateLoaded and returns the
+// violations as plain per-field lines instead of the styled banner. A nil,
+// nil return means the manifest is valid. Callers that aggregate validation
+// across MANY documents into one report (deploying a manifest set verifies
+// every document before refusing) need the lines themselves — wrapping each
+// document's failures in a full-width banner would bury the reader.
+func ViolationLines(manifest proto.Message) ([]string, error) {
 	v, err := protovalidate.New(
 		protovalidate.WithDisableLazy(),
 		protovalidate.WithMessages(manifest),
 	)
 	if err != nil {
-		return errors.Wrap(err, "failed to initialize manifest validator")
+		return nil, errors.Wrap(err, "failed to initialize manifest validator")
 	}
 
 	validationErr := v.Validate(manifest)
 	if validationErr == nil {
-		return nil
+		return nil, nil
 	}
-	return formatValidationError(describeViolations(manifest, validationErr))
+	return describeViolationLines(manifest, validationErr), nil
 }
 
-// describeViolations turns a protovalidate error into user-facing lines.
+// describeViolationLines turns a protovalidate error into user-facing lines.
 // Envelope violations (apiVersion, kind) are rephrased into plain language
 // naming the provided value, the kind, and the exact fix — the raw rule text
 // ("value must equal ...") does not tell the user which line of their manifest
 // to change. All other violations keep protovalidate's field-path attribution.
-func describeViolations(manifest proto.Message, err error) string {
+func describeViolationLines(manifest proto.Message, err error) []string {
 	var valErr *protovalidate.ValidationError
 	if !errors.As(err, &valErr) {
 		msg := strings.TrimPrefix(err.Error(), "validation error:")
-		return strings.TrimSpace(msg)
+		return []string{strings.TrimSpace(msg)}
 	}
 
 	kindName := string(manifest.ProtoReflect().Descriptor().Name())
@@ -89,7 +106,7 @@ func describeViolations(manifest proto.Message, err error) string {
 			lines = append(lines, fmt.Sprintf("%s: %s", path, violation.Proto.GetMessage()))
 		}
 	}
-	return strings.Join(lines, "\n   ")
+	return lines
 }
 
 func formatValidationError(violationText string) error {

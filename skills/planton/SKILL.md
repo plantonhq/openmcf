@@ -87,15 +87,23 @@ postures:
   folder you were given before running it (see the shell-location rule
   below) so the subfolder is born inside the workspace, never beside it.
 
-  **A chart is for an architecture; a single one-off resource is a loose
-  manifest.** When the request names one thing ("an S3 bucket for our
-  assets") rather than an architecture, a chart is ceremony: write ONE
-  manifest at the workspace root, check it with `planton validate <file>`,
-  and offer the next step -- apply it now (`planton apply -f <file>`, a
-  mutation with the usual one confirmation) or grow it into a chart when
-  the request grows. Compose a chart when the request calls for several
-  resources wired together, parameterized reuse, or per-environment
-  deployment. On the platform-tools arm there is no offline validator for a
+  **A chart is for a parameterized architecture; loose manifests cover the
+  rest.** When the request names one thing ("an S3 bucket for our assets"),
+  write ONE manifest at the workspace root, check it with
+  `planton validate <file>`, and offer the next step -- apply it now
+  (`planton apply -f <file>`, a mutation with the usual one confirmation) or
+  grow it when the request grows. Several resources wired together deploy
+  WITHOUT chart ceremony too: a folder of manifests (or one multi-document
+  file) applies as a SET -- `planton apply -f <dir>` runs a preflight report
+  first (schema, cross-references, state backend, credentials, modules --
+  everything verifiable, one report, before any IaC handoff), then deploys
+  in dependency order derived from the manifests' own `valueFrom`
+  references, each resource's captured outputs resolving the next ones'
+  references. Exit codes tell CI the truth: 2 means refused at preflight
+  (nothing ran), 1 means a deploy failed (state advanced; re-running the
+  same command re-applies completed resources as no-ops and continues).
+  Reach for a chart when the architecture wants parameterized reuse or
+  per-environment templating. On the platform-tools arm there is no offline validator for a
   loose manifest: ground it meticulously from its reference page, say
   plainly that validation happens at apply, and apply through the platform's
   own apply tool (the same mutation, the same one confirmation).

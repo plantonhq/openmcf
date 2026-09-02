@@ -12,7 +12,7 @@ tags:
 
 Planton open source is the open-source foundation that Planton's Infrastructure is built on. It provides three things: Protocol Buffer API definitions for infrastructure components, Infrastructure-as-Code modules (Pulumi, Terraform, and OpenTofu) that provision those components, and a standalone CLI for deploying them. The project is developed in the open at [planton.dev](https://planton.dev).
 
-The relationship between Planton open source and the Planton platform is architectural: the open-source core defines **how** to deploy individual cloud resources. Planton adds **workflow and governance** — dependency orchestration via Infra Charts and Pipelines, credential management via Connections, team collaboration via the web console, and deployment policies via Flow Control. You can use Planton open source without the platform; the platform uses it under the hood.
+The relationship between Planton open source and the Planton platform is architectural: the open-source core defines **how** to deploy cloud resources — one at a time, or a whole set of manifests in dependency order with each resource's outputs resolving the next resources' references. Planton adds **workflow and governance** — parallelized orchestration with approval gates via Infra Charts and Pipelines, credential management via Connections, team collaboration via the web console, and deployment policies via Flow Control. You can use Planton open source without the platform; the platform uses it under the hood.
 
 ## Three Pillars
 
@@ -51,7 +51,7 @@ The Planton CLI (`planton`) provides standalone infrastructure deployment withou
 - **validate** — Validate a Cloud Resource manifest against its protobuf schema
 - **pulumi** — Run Pulumi operations (up, preview, destroy, refresh)
 - **tofu** — Run OpenTofu/Terraform operations (apply, plan, destroy, refresh)
-- **apply** — Deploy infrastructure from a manifest
+- **apply** — Deploy infrastructure from a manifest, a directory of manifests, or a kustomize overlay; multi-manifest sets deploy in dependency order behind a preflight report that verifies everything verifiable before the first IaC handoff
 - **destroy** — Tear down deployed infrastructure
 - **plan** — Preview changes before applying
 
@@ -63,9 +63,9 @@ The boundary between Planton open source and the Planton platform is clear:
 |---------|---------------------|------------------|
 | Resource definitions | Protobuf APIs for each cloud resource type | Imports the open-source APIs, adds platform metadata |
 | Provisioning | IaC modules (Pulumi/Terraform/OpenTofu) | Stack Jobs that execute IaC modules via Runner |
-| Dependencies | `ValueFromRef` for cross-resource references | Infra Charts and DAG-based Infra Pipelines |
+| Dependencies | `ValueFromRef` references, resolved across a manifest set from captured outputs | Infra Charts and DAG-based Infra Pipelines |
 | Credentials | Local environment variables or config files | Connect (managed credential storage and resolution) |
-| Orchestration | Single resource at a time | Multi-resource DAG orchestration with approval gates |
+| Orchestration | Multi-manifest sets in dependency order, sequential, preflight-verified | Parallelized DAG orchestration with approval gates, history, and drift detection |
 | Collaboration | CLI-only, single user | Web console, teams, audit trails, RBAC |
 | State management | Local or configured backend | Managed state backends with multi-tenant isolation |
 | Governance | None | Flow Control policies, deployment security tiers |

@@ -1,0 +1,9 @@
+✔ Manifests load and validate
+   ✔ 2 of 2 documents load as known kinds and pass schema validation
+✔ Dependencies form a deployable order
+   ✔ deploy order: GcpMemorystoreRedis/cache@prod -> GcpCloudRun/storefront@prod
+✔ Provider credentials authenticate
+   ✔ gcp credentials authenticate
+   ≈ kubernetes access is verified per kube context
+
+✔ preflight passed: 3 facts verified, 1 assumptions stated
