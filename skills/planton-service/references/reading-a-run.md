@@ -1,13 +1,13 @@
 ---
 title: Reading a Run — Status, Stages, Gates, and the Honest Skips
-description: How to read one run's record and report it in the user's words — the two run shapes (build runs vs delivery runs), the status vocabulary (queued/running/completed × succeeded/failed/cancelled/skipped and awaiting approval), the build task narrative and its per-task errors, the build logs and how to relay them, the per-environment deploy DAG with the deployment-record join, gate state and who can resolve it, and the deploy-stage skip explanations that must be relayed verbatim. Read when someone asks what a run is doing, why it failed, why it did not deploy, what is waiting on them, or when you are following a run and reporting progress.
+description: How to read one run's record and report it in the user's words — the two run shapes (build runs vs delivery runs), the status vocabulary (queued/running/completed × succeeded/failed/cancelled/skipped and awaiting approval), the build task narrative and its per-task errors, the build logs and how to relay them, the per-environment deploy DAG with the deployment-record join, gate state and who can resolve it, the deploy-stage skip explanations that must be relayed verbatim, and the run feed that renders the repository's own CI runs (mirrored from the provider, spoken in the provider's verbatim words) beside Planton's in one chronology. Read when someone asks what a run is doing, why it failed, why it did not deploy, whether the repo's own CI passed, what is waiting on them, or when you are following a run and reporting progress.
 ---
 
 # Reading a Run — Status, Stages, Gates, and the Honest Skips
 
 A run (the ServicePipeline record) is one automation run on a service, and its record is written to be READ: real diagnoses in `status_reason` fields, per-task errors on the build graph, per-resource reasons on the deploy graph, and explained skips instead of silent absences. This file is how to read one and answer in the user's words — "your push is building", "staging is waiting on Priya's approval", "it built but didn't deploy, and here is why".
 
-Get one run with `get_service_pipeline` (the FULL record, including the compiled pipeline YAML and the captured per-environment manifests); list a service's runs with `list_service_pipelines` (projections — everything except those two bulky captures). The record answers most questions without any other read.
+Get one run with `get_service_pipeline` (the FULL record, including the compiled pipeline YAML and the captured per-environment manifests). For "what ran for this service?", prefer `list_service_runs` (CLI: `planton service runs <service>`) — the ONE chronology across run origins: Planton-managed runs AND the repository's own CI runs, newest first (see the external-runs section below). `list_service_pipelines` (CLI: `planton service pipelines`) lists exactly the Planton-managed run records, as projections. The record answers most questions without any other read.
 
 ## The two run shapes
 
@@ -49,3 +49,15 @@ Resolution is a human act: `resolve_service_pipeline_env_gate` / `resolve_servic
 ## Following a live run
 
 `run`/`rerun`/`cancel` act; reading reports. A rerun re-executes the source run's stamped pipeline definition byte-identically and answers with the NEW run's id — follow that one. The status stream (the CLI's `follow`, the console's live page) carries status only; anything from the spec — the compiled definition, the captured manifests — comes from the one full get. The compiled definition (`spec.resolved_pipeline`: the exact YAML, its source, and its pin) is the forensic answer to "what actually executed", stamped at dispatch and immune to later changes in the repository or the platform.
+
+## The repository's own CI in the run feed
+
+A service bound to a repository that runs its own CI (GitHub Actions) sees those runs too — mirrored from the provider's webhooks into their own records and rendered in the same feed, with zero setup. `list_service_runs` returns one newest-first page of BOTH: each entry's populated arm names the origin (`planton_run` or `external_run`), so a failed Actions run sits directly above the deploy that followed it, in one chronology.
+
+Reading an external run entry, three rules:
+
+- **Speak the provider's words.** The record carries the provider's own vocabulary verbatim — `provider_status` and `provider_conclusion` are GitHub's words (`in_progress`, `success`, `failure`, `action_required`, `neutral`, ...) and are what you relay; the platform's mapped status exists for machinery, not for people. The spec's provider arm carries the workflow's name and file, the run number, the ATTEMPT (a re-run on GitHub is a new attempt and a NEW record — attempt 1's record stands as history), the trigger event's own name, the commit, the actor, and `html_url` — the deep link to GitHub's own page, always worth handing over.
+- **The feed strips the job tree; `get_external_ci_run` carries it.** When someone asks WHICH job or step failed, get the full record: `status.jobs[]` with per-job and per-step status, conclusions, and timings, each job with its own GitHub deep link.
+- **A non-empty `reconcile_note` is the record's honesty text.** It means the provider stopped answering for this run (deleted, or past the provider's retention) and the platform closed the record WITHOUT inventing a conclusion — relay the note as the answer, never guess what the run "probably" did.
+
+Capability honesty: Planton mirrors these runs, it does not execute them — there are no gates, no compiled definition, and no promotion walk on an external run; status is live from the provider's webhooks, with a background reconciliation healing any missed delivery within minutes. A service whose repository has no external CI simply never sees external entries — the feed is the same read either way.
