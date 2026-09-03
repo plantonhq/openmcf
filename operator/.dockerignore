@@ -1,18 +1,14 @@
 # More info: https://docs.docker.com/engine/reference/builder/#dockerignore-file
-# Ignore everything by default and re-include only needed files
-**
-
-# Re-include Go source files (but not *_test.go)
-!**/*.go
+#
+# A denylist, deliberately: the build only needs the Go module and the assets
+# its //go:embed directives name, but an allowlist ("ignore everything, then
+# re-include *.go") depends on how each Docker version expands `**` under an
+# excluded root and has silently dropped the sources on one engine while
+# including them on another. Excluding the few large or irrelevant trees is
+# stable everywhere and keeps the context small.
+bin/
+dist/
+cover.out
+Dockerfile.cross
+.git/
 **/*_test.go
-
-# Re-include Go module and workspace files
-!go.mod
-!go.sum
-!go.work
-
-# Re-include embedded assets referenced by //go:embed directives
-!internal/resources/manifests/**/*.tgz
-!internal/resources/manifests/**/*.yaml
-!internal/resources/manifests/**/*.json
-!internal/keycloaklogintheme/*.woff2
