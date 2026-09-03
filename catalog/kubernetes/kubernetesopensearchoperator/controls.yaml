@@ -66,11 +66,11 @@ spec:
       notes: The chart runs the manager as a single-replica controller Deployment and this spec models no replica count. A brief operator outage pauses reconciliation only -- managed search clusters keep serving; Kubernetes reschedules the pod.
     - control_id: deletion-protection
       status: not_applicable
-      notes: "Neither Kubernetes nor the chart offers a deletion-protection flag on the release. The blast radius of deletion is bounded BY THE MODULES -- the chart templates its ten CRDs release-owned with no keep-on-uninstall knob upstream, so the modules own the CRD lifecycle themselves (installCRDs pinned false, module-applied CRDs whose delete is a no-op): uninstalling the operator never cascade-deletes OpenSearchCluster resources and their data."
+      notes: "Neither Kubernetes nor the chart offers a deletion-protection flag on the release. The blast radius of deletion is bounded BY THE MODULES -- the chart templates its CRDs release-owned with no keep-on-uninstall knob upstream, so the modules own the CRD lifecycle themselves (installCRDs pinned false; CRDs derived from the pinned chart and applied outside the release, kept on destroy by default): uninstalling the operator never cascade-deletes OpenSearchCluster resources and their data unless crds.keep_on_uninstall is explicitly false."
     - control_id: managed-patching
       status: configurable
       field_path: chart_version
       evidence:
         type: spec_default
-        reference: Unset installs the pinned default chart (2.8.0 -- the newest STABLE chart/operator pairing; the served 2.8.3+/3.0.x charts default to a PRERELEASE manager image and migrate the CRDs from opensearch.opster.io to opensearch.org). Upgrades are deliberate chart_version changes; the module-staged CRD files travel with the module and are restaged together with the chart pin.
+        reference: Unset installs the pinned default chart (2.8.0 -- the newest STABLE chart/operator pairing; the served 2.8.3+/3.0.x charts default to a PRERELEASE manager image and migrate the CRDs from opensearch.opster.io to opensearch.org). Upgrades are deliberate chart_version changes; the module-owned CRDs are derived from the pinned chart, so a bump moves the schema with the operator, and a version below what the cluster carries is refused.
       notes: The 03-private-mirror preset pins the manager image from a private mirror for air-gapped installs.

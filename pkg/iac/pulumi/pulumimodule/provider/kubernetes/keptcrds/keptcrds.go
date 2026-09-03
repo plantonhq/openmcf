@@ -44,6 +44,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -55,6 +56,11 @@ type Args struct {
 	// other values (fullname, webhook trust, ports), and a render from a
 	// minimal set produces CRDs that point at the wrong release.
 	Source helmcrds.Source
+	// Policy says what the kind accepts: whether a chart without CRDs is a
+	// failure, and whether CRDs Helm would own are an acceptable choice. A
+	// typed kind expects CRDs and allows nothing Helm-managed; the generic
+	// Helm kind expects none and passes the user's spec.crds.allow_helm_managed.
+	Policy helmcrds.Policy
 	// ReleaseName and Namespace are the identity the render runs under.
 	ReleaseName string
 	Namespace   string
@@ -105,13 +111,38 @@ func Apply(ctx *pulumi.Context, args Args) ([]pulumi.Resource, error) {
 
 	// The read runs during preview too: a downgrade is refused at plan time
 	// in both engines, before anything is touched.
-	if err := refuseDowngrade(args); err != nil {
+	cluster, err := connect(args)
+	if err != nil {
+		return nil, err
+	}
+	if err := cluster.refuseDowngrade(args); err != nil {
 		return nil, err
 	}
 
-	crds, err := helmcrds.Derive(context.Background(), args.Source, args.ReleaseName, args.Namespace)
+	// The render sees exactly the Kubernetes the install will see: charts
+	// declare kubeVersion constraints and gate templates on the version,
+	// and a client-only render would otherwise assume Helm's built-in
+	// default and refuse charts the install would accept.
+	if args.Source.KubeVersion == "" {
+		version, err := cluster.serverVersion()
+		if err != nil {
+			return nil, err
+		}
+		args.Source.KubeVersion = version
+	}
+
+	derived, err := helmcrds.Derive(context.Background(), args.Source, args.Policy, args.ReleaseName, args.Namespace)
 	if err != nil {
 		return nil, err
+	}
+	for _, name := range derived.HelmManaged {
+		// Accepted by the kind's policy: say so once, where the deploy log is
+		// read, so nobody later wonders why this CRD carries no stamp.
+		_ = ctx.Log.Warn("CRD "+name+" is templated by the chart without "+helmcrds.HelmKeepAnnotation+": keep; Helm owns it and will delete it with the release", nil)
+	}
+	crds := derived.Owned
+	if len(crds) == 0 {
+		return nil, nil
 	}
 
 	upsertProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert(ctx,
@@ -147,11 +178,36 @@ func Apply(ctx *pulumi.Context, args Args) ([]pulumi.Resource, error) {
 	return resources, nil
 }
 
+// clusterReads is the module's own connection to the cluster for the two
+// reads the primitive makes before anything registers: the CRDs it has
+// stamped (the never-downgrade check) and the server version (the render's
+// capabilities). It uses the same kubeconfig the provider uses.
+type clusterReads struct {
+	dynamic   dynamic.Interface
+	discovery discovery.DiscoveryInterface
+}
+
+func connect(args Args) (*clusterReads, error) {
+	restConfig, err := kubeconfig.RESTConfig(args.ProviderConfig, os.Getenv(execcredential.CommandPathEnvVar))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to resolve the cluster connection for the CRD lifecycle reads")
+	}
+	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create the cluster client for the CRD version check")
+	}
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create the cluster client for the server version read")
+	}
+	return &clusterReads{dynamic: dynamicClient, discovery: discoveryClient}, nil
+}
+
 // refuseDowngrade lists the CRDs this source has ever stamped on the cluster
 // and refuses when any carries a higher source version than the one about to
 // be applied. A cluster with none of them (first install) passes trivially.
-func refuseDowngrade(args Args) error {
-	existing, err := listStampedCRDs(args)
+func (c *clusterReads) refuseDowngrade(args Args) error {
+	existing, err := c.listStampedCRDs(args)
 	if err != nil {
 		return err
 	}
@@ -162,25 +218,26 @@ var crdGVR = schema.GroupVersionResource{
 	Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions",
 }
 
-func listStampedCRDs(args Args) ([]helmcrds.ExistingCRD, error) {
-	restConfig, err := kubeconfig.RESTConfig(args.ProviderConfig, os.Getenv(execcredential.CommandPathEnvVar))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to resolve the cluster connection for the CRD version check")
-	}
-	client, err := dynamic.NewForConfig(restConfig)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to create the cluster client for the CRD version check")
-	}
-
+func (c *clusterReads) listStampedCRDs(args Args) ([]helmcrds.ExistingCRD, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), liveReadTimeout)
 	defer cancel()
-	list, err := client.Resource(crdGVR).List(ctx, metav1.ListOptions{
+	list, err := c.dynamic.Resource(crdGVR).List(ctx, metav1.ListOptions{
 		LabelSelector: helmcrds.LabelSelector(args.Source),
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to list the CRDs stamped by %s for the version check", args.Source.SourceDescription())
 	}
 	return toExisting(list.Items), nil
+}
+
+// serverVersion is the cluster's Kubernetes version as the API server
+// reports it (for example "v1.31.0").
+func (c *clusterReads) serverVersion() (string, error) {
+	info, err := c.discovery.ServerVersion()
+	if err != nil {
+		return "", errors.Wrap(err, "failed to read the cluster's Kubernetes version for the CRD render")
+	}
+	return info.GitVersion, nil
 }
 
 func toExisting(items []unstructured.Unstructured) []helmcrds.ExistingCRD {

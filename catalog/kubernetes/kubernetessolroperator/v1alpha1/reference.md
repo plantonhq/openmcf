@@ -27,12 +27,15 @@ ensemble and the operator provisions it. Disable the bundled
 zookeeper-operator only when one already runs in the cluster or
 every Solr cluster will connect to an EXTERNAL ensemble.
 
-CRD LIFECYCLE: the modules apply the operator's CRDs (SolrCloud,
+CRD LIFECYCLE: the modules OWN the operator's CRDs (SolrCloud,
 SolrBackup, SolrPrometheusExporter, and ZookeeperCluster for the
-bundled dependency) themselves, keyed by CRD name — the chart does
-not ship them. Uninstalling the operator never cascade-deletes
-SolrCloud resources; see the component README for the per-engine
-mechanism.
+bundled dependency). They are derived from the pinned chart at deploy
+time, applied keyed by CRD name ahead of the release, kept when the
+resource is destroyed (`crds.keep_on_uninstall`), re-adopted on
+reinstall, and moved with every `chart_version` bump; a `chart_version`
+lower than the CRDs already on the cluster is refused before anything
+changes. Uninstalling the operator never cascade-deletes SolrCloud
+resources unless the spec says so.
 
 WATCH SCOPE: by default the operator watches ALL namespaces. Set
 `watch_namespaces` to fence it to an explicit set.
@@ -139,6 +142,9 @@ spec:
 | `spec.image.repository` | `string` |  |  |  |
 | `spec.image.tag` | `string` |  |  |  |
 | `spec.helmValues` | `string` |  |  |  |
+| `spec.crds` | `KubernetesSolrOperatorCrds` |  |  |  |
+| `spec.crds.install` | `bool` |  | `true` |  |
+| `spec.crds.keepOnUninstall` | `bool` |  | `true` |  |
 
 ## Field Details
 
@@ -170,8 +176,8 @@ versions move together; the chart version has no `v` prefix while
 the operator/CRD artifacts carry one). Versions must exist as
 SERVED charts in the repository index
 (https://solr.apache.org/charts). The operator is pre-1.0: minor
-versions can change the CRD API — apply the matching CRDs when
-upgrading.
+versions can change the CRD API — the module-owned CRDs follow this
+pin on every change, so a bump upgrades the schema with the operator.
 
 - default: `0.9.1`
 
@@ -425,6 +431,37 @@ beyond the typed fields (annotations/labels, env vars, sidecar
 containers, priority class, service account, the bundled
 zookeeper-operator's own values, ...) — never the substitute for
 them. Do not put secrets here.
+
+### spec.crds
+
+`KubernetesSolrOperatorCrds`
+
+CRD installation lifecycle. Both default to true; unset means the
+module owns the CRDs and keeps them.
+
+### spec.crds.install
+
+`bool` · optional (explicit presence)
+
+Derive and apply the CRDs from the pinned chart ahead of the release.
+Default TRUE. Set false ONLY when the CRDs are owned elsewhere (a
+GitOps-managed bundle): the release still installs with CRDs skipped,
+and with the CRDs absent the operator cannot start, so this is a
+bring-your-own-CRDs arm, never a lighter install.
+
+- default: `true`
+
+### spec.crds.keepOnUninstall
+
+`bool` · optional (explicit presence)
+
+Keep the CRDs (and therefore every SolrCloud, SolrBackup,
+SolrPrometheusExporter and ZookeeperCluster in the cluster) when the
+resource is destroyed. Default TRUE: deleting the CRDs cascades to
+every Solr cluster, a destructive act that must be an explicit false.
+A later reinstall re-adopts kept CRDs.
+
+- default: `true`
 
 ## Outputs
 

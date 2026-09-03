@@ -1,11 +1,25 @@
 # The smallest declarable operator install: chart defaults, cluster-wide
-# watch. The verifier asserts the controller-manager Available and every
-# module-owned CRD Established.
+# watch, the module-owned CRDs derived from the pinned chart. The verifier
+# asserts the controller-manager Available and every CRD Established and
+# stamped with the chart version.
+#
+# THE KEEP-AND-READOPT PROOF: crds.keep_on_uninstall defaults true, so the
+# first destroy must leave the CRDs on the cluster (the verifier asserts
+# it), and the reinstall the annotation requests must re-adopt them
+# (server-side apply) rather than fail on their existence.
+#
+# The chart is pinned one step below the default: kept CRDs are
+# cluster-scoped and outlive this lane, so the lane that keeps them pins
+# the LOWEST version any lane installs -- a later lane's install can
+# never be refused as a downgrade by what this one left behind.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOpenSearchOperator
 metadata:
   name: e2e-osop-min
+  annotations:
+    planton.dev/e2e-reinstall: "true"
 spec:
   namespace:
     value: e2e-osop-min
   create_namespace: true
+  chart_version: 2.7.0

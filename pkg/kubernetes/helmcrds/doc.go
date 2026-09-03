@@ -24,6 +24,20 @@
 //     webhook service port); a render from a minimal value set produces CRDs
 //     that point at the wrong webhook or freeze a self-signed CA.
 //
+// One ownership rule decides what the module applies. Helm has two CRD
+// surfaces: the crds/ directory (installed once, never upgraded, skipped by
+// skip_crds) and the templates (ordinary release resources). A typed kind
+// supplies a CRDOverride that turns the chart's switch on for the render and
+// pins it off for the release, so every CRD the render produces is the
+// module's. A kind that supplies no override renders exactly what the release
+// renders: the crds/ surface is the module's, and templated CRDs stay Helm's.
+// Templated CRDs the chart marks with helm.sh/resource-policy: keep are the
+// chart owning its lifecycle correctly and need nothing; templated CRDs
+// without that mark would be deleted with the release along with every custom
+// resource built on them, so they are refused unless the kind's Policy accepts
+// them. Only the generic Helm kind, whose chart is arbitrary, ever meets the
+// second case.
+//
 // Every applied CRD is stamped with the source chart and version
 // (AnnotationSourceChart, AnnotationSourceVersion) and a selection label
 // (LabelSource). The stamps are how both engines re-adopt kept CRDs, how the

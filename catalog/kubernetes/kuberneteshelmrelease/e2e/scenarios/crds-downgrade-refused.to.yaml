@@ -1,0 +1,23 @@
+# The refused second act of crds-downgrade-refused.yaml: the same resource
+# asking for Flagger 1.44.0 while the cluster carries 1.45.0 CRDs. Not a
+# scenario of its own (the second-act annotation keeps discovery from
+# running it as a lane) -- the harness deploys it only through the
+# annotations on crds-downgrade-refused.yaml.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-crds-down
+  annotations:
+    planton.dev/e2e-second-act: crds-downgrade-refused.yaml
+    planton.dev/e2e-expect-crds: canaries.flagger.app,metrictemplates.flagger.app,alertproviders.flagger.app
+spec:
+  namespace:
+    value: e2e-helm-crds-down-ns
+  create_namespace: true
+  repo: https://flagger.app
+  chart: flagger
+  version: 1.44.0
+  values_yaml: |
+    meshProvider: kubernetes
+  crds:
+    keep_on_uninstall: false

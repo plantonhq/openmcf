@@ -22,6 +22,12 @@ const (
 	LabelSource = "planton.ai/crd-source"
 )
 
+// HelmKeepAnnotation is Helm's own instruction to leave a resource behind on
+// uninstall. A chart that templates its CRDs and marks them with it owns their
+// lifecycle correctly (the cert-manager shape); a chart that templates them
+// without it lets an uninstall cascade-delete every custom resource.
+const HelmKeepAnnotation = "helm.sh/resource-policy"
+
 // Source names where a kind's CRD set comes from at a pinned version. Exactly
 // one of the two branches is used: the render branch when Chart is set, the
 // bundle branch when BundleURL is set.
@@ -34,6 +40,10 @@ type Source struct {
 	// Version is the exact chart version to render. Both branches use it for
 	// the stamp; the bundle branch also substitutes it into BundleURL.
 	Version string
+	// Username and Password authenticate to a private repository or registry,
+	// exactly as the release install does. Empty for public charts.
+	Username string
+	Password string
 	// Values are the release's OWN values documents, in helm -f order (later
 	// documents override earlier ones), exactly as the release resource
 	// receives them. The render must see what the install will see.
@@ -42,6 +52,13 @@ type Source struct {
 	// chart's CRD switch turned on (for example "crds:\n  create: true\n").
 	// The release itself installs with the switch off and skip_crds set, so
 	// this override never reaches the cluster through Helm.
+	//
+	// The override also decides ownership of what the render produces. With
+	// one, the module has turned the chart's switch on for the render and off
+	// for the release, so EVERY CRD the render produces is module-owned.
+	// Without one, the render is the release's own render: CRDs on Helm's
+	// crds/ surface are module-owned (skip_crds keeps Helm off them), while
+	// CRDs the chart templates belong to Helm and are reported as such.
 	CRDOverride string
 	// APIVersions feeds .Capabilities.APIVersions for charts that gate
 	// templates on them (a chart that emits cert-manager annotations only when
@@ -76,6 +93,37 @@ func (s Source) SourceDescription() string {
 	return strings.TrimSuffix(s.Repository, "/") + "/" + s.Chart
 }
 
+// Policy says what a kind accepts from the derivation. Typed kinds know their
+// chart carries CRDs and pin its switches, so they expect CRDs and never meet
+// Helm-managed ones; the generic Helm kind installs an arbitrary chart, so a
+// chart without CRDs is ordinary and Helm-managed CRDs are a user's informed
+// choice.
+type Policy struct {
+	// ExpectCRDs makes a derivation that yields no module-owned CRD a failure
+	// (the chart's switch was renamed, or the chart stopped shipping CRDs).
+	// False for a kind whose chart may legitimately carry none.
+	ExpectCRDs bool
+	// AllowHelmManaged accepts CRDs the chart templates as ordinary release
+	// resources without Helm's keep annotation. Helm installs and upgrades
+	// them with the release and deletes them with it, along with every custom
+	// resource built on them. False refuses such a chart with the CRD names
+	// and the remedies.
+	AllowHelmManaged bool
+}
+
+// Derived is what one derivation yields.
+type Derived struct {
+	// Owned are the CRDs the module applies as kept, stamped resources ahead
+	// of the release, sorted by name.
+	Owned []CRD
+	// HelmManaged names the CRDs the chart templates as release resources
+	// without Helm's keep annotation (only possible without a CRDOverride).
+	// Empty when the policy refused them, since Derive returns the failure
+	// instead; populated when the policy allowed them, so a caller can say
+	// what Helm owns.
+	HelmManaged []string
+}
+
 // CRD is one derived CustomResourceDefinition, stamped and ready to apply.
 type CRD struct {
 	// Name is metadata.name (for example "opentelemetrycollectors.opentelemetry.io"),
@@ -86,38 +134,62 @@ type CRD struct {
 	YAML string
 }
 
-// Derive produces the stamped CRD set for a source: render or fetch, split on
-// document separators, keep only CustomResourceDefinitions, stamp each one.
-// The release name and namespace are the identity the render runs under, so
-// release-derived values inside a CRD (a conversion-webhook service, an
-// inject-ca-from annotation) come out pointing at the real release.
-func Derive(ctx context.Context, src Source, releaseName, namespace string) ([]CRD, error) {
-	var documents []string
+// Derive produces the stamped CRD set for a source under a policy: render or
+// fetch, split on document separators, keep only CustomResourceDefinitions,
+// decide ownership, apply the policy, stamp each owned CRD. The release name
+// and namespace are the identity the render runs under, so release-derived
+// values inside a CRD (a conversion-webhook service, an inject-ca-from
+// annotation) come out pointing at the real release.
+func Derive(ctx context.Context, src Source, policy Policy, releaseName, namespace string) (Derived, error) {
+	var candidates []crdDocument
 	var err error
 	if src.IsBundle() {
+		var documents []string
 		documents, err = fetchBundle(ctx, src)
-	} else {
-		documents, err = render(src, releaseName, namespace)
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	crds, err := filterCRDs(documents)
-	if err != nil {
-		return nil, err
-	}
-	if len(crds) == 0 {
-		return nil, zeroCRDsFailure(src)
-	}
-
-	stamped := make([]CRD, 0, len(crds))
-	for _, crd := range crds {
-		s, err := stamp(crd, src)
 		if err != nil {
-			return nil, err
+			return Derived{}, err
 		}
-		stamped = append(stamped, s)
+		candidates, err = filterCRDs(documents, nil)
+	} else {
+		var rendered renderResult
+		rendered, err = render(src, releaseName, namespace)
+		if err != nil {
+			return Derived{}, err
+		}
+		candidates, err = filterCRDs(rendered.documents, rendered.directoryNames)
 	}
-	return stamped, nil
+	if err != nil {
+		return Derived{}, err
+	}
+
+	var result Derived
+	owned := make([]CRD, 0, len(candidates))
+	for _, candidate := range candidates {
+		switch {
+		case src.CRDOverride != "" || candidate.onDirectorySurface || src.IsBundle():
+			owned = append(owned, candidate.CRD)
+		case candidate.keptByChart:
+			// The chart owns this CRD's lifecycle itself (templated with
+			// Helm's keep annotation); Helm keeps it on uninstall and
+			// upgrades it with the release. Nothing for the module to do.
+		default:
+			result.HelmManaged = append(result.HelmManaged, candidate.Name)
+		}
+	}
+	if len(result.HelmManaged) > 0 && !policy.AllowHelmManaged {
+		return Derived{}, HelmManagedCRDsFailure(src, result.HelmManaged)
+	}
+	if len(owned) == 0 && policy.ExpectCRDs {
+		return Derived{}, zeroCRDsFailure(src)
+	}
+
+	result.Owned = make([]CRD, 0, len(owned))
+	for _, crd := range owned {
+		stamped, err := stamp(crd, src)
+		if err != nil {
+			return Derived{}, err
+		}
+		result.Owned = append(result.Owned, stamped)
+	}
+	return result, nil
 }

@@ -13,8 +13,10 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//catalog/kubernetes/kuberneteshelmrelease/v1alpha1",
+        "//pkg/iac/pulumi/pulumimodule/provider/kubernetes/keptcrds",
         "//pkg/iac/pulumi/pulumimodule/provider/kubernetes/kuberneteslabelkeys",
         "//pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider",
+        "//pkg/kubernetes/helmcrds",
         "//shared/cloudresourcekind",
         "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/core/v1:core",

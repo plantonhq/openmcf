@@ -36,16 +36,26 @@ upgrades, and OpenSearch Dashboards.
 
 **Key design points:**
 
-- **The module owns the CRD lifecycle.** The chart templates its ten
+- **The module owns the CRD lifecycle.** The chart templates its
   OpenSearch CRDs as release-owned resources with NO keep-on-uninstall
   knob upstream — a Helm-owned install would cascade-delete every
   OpenSearchCluster (and its data) on uninstall. The modules therefore
-  pin `installCRDs: false` unconditionally and apply the staged CRD
-  files themselves: the Terraform module with `kubectl_manifest`
-  `apply_only = true` (the provider's Delete is a no-op), the Pulumi
-  module with a `retainOnDelete` transformation on each CRD. Destroying
-  this resource removes the operator but NEVER the CRDs — an operator
-  uninstall never cascade-deletes clusters.
+  DERIVE the CRD set from the pinned chart at deploy time (rendered with
+  the release's own values and `installCRDs: true`), apply each CRD
+  outside the release as a kept resource, and install the release with
+  CRDs skipped and `installCRDs: false` pinned. The schema always
+  matches `chart_version`: a bump re-applies the CRDs at the new pin
+  (and adds the ones a newer chart brings); destroy keeps them (unless
+  `crds.keep_on_uninstall` is false), so removing the operator never
+  cascade-deletes clusters; a reinstall re-adopts them; a
+  `chart_version` below what the cluster's CRDs carry is refused before
+  anything is touched, with the remedy. Every CRD carries
+  `planton.ai/crd-source-chart` and `planton.ai/crd-source-version`
+  annotations, so `kubectl` shows where it came from.
+- **Every CRD failure explains itself.** A chart version that is not
+  published, a repository that cannot be reached, a render that
+  produces no CRDs, a schema downgrade: each stops with what was
+  observed, what it most likely means, and the exact next step.
 - **Chart/image pairing is deliberate.** The chart's default manager
   image tag is its appVersion; chart 2.8.0 pairs with the stable
   operator 2.8.0 image. A `chart_version` bump is a license and
@@ -81,7 +91,10 @@ upgrades, and OpenSearch Dashboards.
 
 - **`spec.chart_version`**: chart pin (default `2.8.0` — the newest
   served chart whose default manager image is a stable operator
-  release)
+  release); a bump moves the module-owned CRDs with it
+- **`spec.crds`**: the CRD lifecycle — `install` (default true; false is
+  the bring-your-own-CRDs arm) and `keep_on_uninstall` (default true;
+  false lets a destroy take every OpenSearchCluster with the CRDs)
 - **`spec.watch_namespace`**: restrict the operator to one namespace;
   empty = watch all namespaces (the chart default)
 - **`spec.use_role_bindings`**: namespace-scoped RoleBindings instead

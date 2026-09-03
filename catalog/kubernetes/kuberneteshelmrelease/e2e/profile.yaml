@@ -4,8 +4,16 @@ metadata:
   name: kuberneteshelmrelease
 spec:
   tier: 1
+  # The catalog's sole intentional passthrough. Beside the three podinfo
+  # lanes (HTTPS repository, OCI registry, the values-merge layers), the
+  # CRD lifecycle the module promises for a chart's crds/ directory runs on
+  # Flagger (three CRDs): keep and re-adopt on reinstall, cleanup when keep
+  # is off, a chart bump re-applying the CRDs (1.44.0 to 1.45.0), a schema
+  # downgrade refused; plus the two deploy refusals (a version that is not
+  # published; a chart that templates Helm-managed CRDs without the keep
+  # mark, refused with their names and the remedies).
   status: green
   validated_provisioners:
     - pulumi
     - terraform
-  timeout_minutes: 15
+  timeout_minutes: 45

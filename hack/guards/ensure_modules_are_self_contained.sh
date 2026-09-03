@@ -42,12 +42,8 @@ repo_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root_dir"
 
 known_violations=(
-  "catalog/kubernetes/kubernetesopensearchoperator/iac/pulumi"
-  "catalog/kubernetes/kubernetesopensearchoperator/iac/tf"
   "catalog/kubernetes/kubernetesplantonoperator/iac/pulumi"
   "catalog/kubernetes/kubernetesplantonoperator/iac/tf"
-  "catalog/kubernetes/kubernetessolroperator/iac/pulumi"
-  "catalog/kubernetes/kubernetessolroperator/iac/tf"
 )
 if [[ "${SELF_CONTAINED_GUARD_IGNORE_KNOWN:-0}" == "1" ]]; then
   known_violations=()

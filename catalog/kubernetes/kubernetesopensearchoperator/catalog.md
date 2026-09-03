@@ -10,7 +10,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Kubernetes Namespace** — created only when `createNamespace` is `true`; otherwise installs into an existing namespace
 - **Helm release** — the operator controller-manager Deployment, its RBAC (cluster-wide by default, namespace-scoped with `useRoleBindings`), ServiceAccount, and metrics Service
-- **The ten OpenSearch CRDs** — pinned by the module itself, NOT release-owned: the chart templates them as release resources with no keep-on-uninstall knob, so the module owns the CRD lifecycle to guarantee uninstalling the operator never cascade-deletes OpenSearchCluster resources and their data
+- **The OpenSearch CRDs** — derived from the pinned chart and applied by the module itself outside the release, NOT release-owned: the chart templates them as release resources with no keep-on-uninstall knob, so the module owns the CRD lifecycle. A chart bump moves the CRDs with it, uninstalling the operator never cascade-deletes OpenSearchCluster resources and their data (unless `crds.keepOnUninstall` is false), a reinstall re-adopts them, and a version below what the cluster's CRDs carry is refused before anything changes
 - **kube-rbac-proxy sidecar** (default on) — shields the metrics endpoint behind Kubernetes RBAC. The chart's own default sidecar image was deleted upstream and can never be pulled; the module re-points it at the maintainer's quay.io repository at the chart's pinned tag, so the default posture actually installs
 
 ## Before You Deploy
@@ -77,7 +77,7 @@ These are the most important decisions when configuring an OpenSearch Operator i
 
 **Watch scope** — by default the operator watches ALL namespaces (cluster-wide RBAC): one install serves every OpenSearch cluster on the Kubernetes cluster. Set `watchNamespace` to fence it to one namespace; pair with `useRoleBindings` to swap ClusterRoleBindings for namespace-scoped RoleBindings — the shared-cluster posture needing no cluster-admin sign-off. The pairing is enforced: namespace-scoped RBAC cannot serve a cluster-wide operator. The fence is silent on the outside — a cluster declared beyond it is never reconciled, with no event pointing at the fence.
 
-**CRD lifecycle is module-owned** — uninstalling the operator never cascade-deletes OpenSearchCluster resources. In Helm values, `installCRDs` is re-pinned by the module after the merge, and `nameOverride`/`fullnameOverride` are off limits (they break the exported `deployment_name` output).
+**CRD lifecycle is module-owned** — the CRDs are derived from the pinned chart, so a version bump moves the schema with the operator; uninstalling the operator never cascade-deletes OpenSearchCluster resources unless `crds.keepOnUninstall` is false; a version that is not published, or one below what the cluster's CRDs carry, is refused with the remedy before anything changes. In Helm values, `installCRDs` is re-pinned by the module after the merge, and `nameOverride`/`fullnameOverride` are off limits (they break the exported `deployment_name` output).
 
 **DNS domain** — `dnsBase` is baked into the TLS certificates the operator generates; set it only on clusters with a non-default DNS domain, or every generated certificate's SANs mismatch the service names nodes advertise.
 

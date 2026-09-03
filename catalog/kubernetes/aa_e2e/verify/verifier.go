@@ -633,10 +633,7 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	// The OpenSearch Kubernetes Operator: controller-manager Available +
 	// the module-owned CRDs Established (kept on destroy by design).
 	case "kubernetesopensearchoperator":
-		return &OpenSearchOperatorInstallVerifier{
-			Namespace:   info.Namespace,
-			ReleaseName: info.Name,
-		}, nil
+		return newOpenSearchOperatorInstallVerifier(manifestPath, info.Name, info.Namespace), nil
 
 	// An operator-managed OpenSearch cluster: phase RUNNING with every
 	// declared node available, plus a LIVE index/search round-trip on
@@ -659,12 +656,7 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	// CRDs (incl. the bundled zookeeper-operator's ZookeeperCluster)
 	// Established; kept on destroy by design.
 	case "kubernetessolroperator":
-		spec := manifestSpecMap(manifestPath)
-		return &SolrOperatorInstallVerifier{
-			Namespace:         info.Namespace,
-			ReleaseName:       info.Name,
-			ZookeeperOperator: solrZookeeperOperatorInstalled(spec),
-		}, nil
+		return newSolrOperatorInstallVerifier(manifestPath, info.Name, info.Namespace), nil
 
 	// An operator-managed SolrCloud: every node ready + the common
 	// Service. The behavioral-collection scenario (recognized by name)
@@ -1292,12 +1284,10 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	// A real Helm release of an arbitrary chart: the Helm verifier's
 	// namespace + running-pods + service assertions hold for any chart that
 	// deploys a workload (the e2e chart, podinfo, deploys one pod and one
-	// service).
+	// service), plus the CRD lifecycle the module promises for the CRDs the
+	// scenario declares it expects.
 	case "kuberneteshelmrelease":
-		return &HelmComponentVerifier{
-			Namespace:     info.Namespace,
-			ComponentName: info.Name,
-		}, nil
+		return newHelmReleaseVerifier(manifestPath, info.Name, info.Namespace), nil
 
 	// The Tekton Operator: operator + webhook rolled out in the fixed
 	// tekton-operator namespace, the operator.tekton.dev CRDs

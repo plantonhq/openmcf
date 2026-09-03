@@ -1,0 +1,22 @@
+# THE UPGRADE PROOF for a CRD-bearing chart: install Flagger 1.44.0, then
+# re-deploy the same resource from crds-upgrade.to.yaml at 1.45.0. Helm
+# alone would leave the crds/-directory CRDs at 1.44.0 forever; the
+# verifier reads their source stamp after the upgrade and it must have
+# moved to 1.45.0. The upgrade manifest turns keep_on_uninstall off so the
+# destroy leaves the shared cluster clean.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-crds-upg
+  annotations:
+    planton.dev/e2e-upgrade-manifest: crds-upgrade.to.yaml
+    planton.dev/e2e-expect-crds: canaries.flagger.app,metrictemplates.flagger.app,alertproviders.flagger.app
+spec:
+  namespace:
+    value: e2e-helm-crds-upg-ns
+  create_namespace: true
+  repo: https://flagger.app
+  chart: flagger
+  version: 1.44.0
+  values_yaml: |
+    meshProvider: kubernetes

@@ -39,12 +39,16 @@ over-long name fails at the API server mid-install. The modules pin
 the fullname to the resource name, which is what makes the 27-char
 budget hold.
 
-CRD LIFECYCLE: the chart TEMPLATES the ten OpenSearch CRDs as
-release-owned resources (no keep-on-uninstall knob upstream).
-The modules therefore own the CRD lifecycle themselves so that
-uninstalling the operator never cascade-deletes OpenSearchCluster
-resources and their data — see the component README for the exact
-mechanism per engine.
+CRD LIFECYCLE: the chart TEMPLATES the OpenSearch CRDs as
+release-owned resources (no keep-on-uninstall knob upstream). The
+modules therefore OWN the CRDs: derived from the pinned chart at
+deploy time, applied keyed by CRD name ahead of the release, kept
+when the resource is destroyed (`crds.keep_on_uninstall`), re-adopted
+on reinstall, and moved with every `chart_version` bump; a
+`chart_version` lower than the CRDs already on the cluster is refused
+before anything changes. Uninstalling the operator never
+cascade-deletes OpenSearchCluster resources and their data unless the
+spec says so.
 
 WATCH SCOPE: by default the operator watches ALL namespaces
 (cluster-wide RBAC). Set `watch_namespace` to restrict it to one
@@ -138,6 +142,9 @@ spec:
 | `spec.image.repository` | `string` |  |  |  |
 | `spec.image.tag` | `string` |  |  |  |
 | `spec.helmValues` | `string` |  |  |  |
+| `spec.crds` | `KubernetesOpenSearchOperatorCrds` |  |  |  |
+| `spec.crds.install` | `bool` |  | `true` |  |
+| `spec.crds.keepOnUninstall` | `bool` |  | `true` |  |
 
 ## Field Details
 
@@ -382,6 +389,37 @@ by the modules after this merge (the module owns the CRD lifecycle
 on uninstall), and `nameOverride`/`fullnameOverride` break the
 exported deployment_name output, which derives from the chart's
 default naming.
+
+### spec.crds
+
+`KubernetesOpenSearchOperatorCrds`
+
+CRD installation lifecycle. Both default to true; unset means the
+module owns the CRDs and keeps them.
+
+### spec.crds.install
+
+`bool` · optional (explicit presence)
+
+Derive and apply the CRDs from the pinned chart ahead of the release.
+Default TRUE. Set false ONLY when the CRDs are owned elsewhere (a
+GitOps-managed bundle): the release still installs with CRDs skipped,
+and with the CRDs absent the operator cannot start, so this is a
+bring-your-own-CRDs arm, never a lighter install.
+
+- default: `true`
+
+### spec.crds.keepOnUninstall
+
+`bool` · optional (explicit presence)
+
+Keep the CRDs (and therefore every OpenSearchCluster and every
+OpenSearch user, role, tenant, template and policy object in the
+cluster) when the resource is destroyed. Default TRUE: deleting the
+CRDs cascades to every search cluster and its data, a destructive act
+that must be an explicit false. A later reinstall re-adopts kept CRDs.
+
+- default: `true`
 
 ## Validation Rules
 

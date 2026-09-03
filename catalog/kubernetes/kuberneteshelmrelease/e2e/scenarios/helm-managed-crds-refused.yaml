@@ -1,0 +1,25 @@
+# THE HELM-MANAGED-CRDS REFUSAL: the OpenSearch operator chart templates its
+# CRDs as ordinary release resources with no keep mark when installCRDs is
+# on. Installed through the generic kind, Helm would own them and delete
+# them with the release, taking every OpenSearchCluster along. The deploy
+# must be refused before anything is created, naming the CRDs and the
+# remedies (the typed KubernetesOpenSearchOperator kind; the chart's own
+# keep switch, which this chart lacks; or crds.allow_helm_managed) -- the
+# verifier asserts the three parts and the CRD names below.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-managed
+  annotations:
+    planton.dev/e2e-expect-deploy-failure: helm-managed-crds
+    planton.dev/e2e-expect-crds: opensearchclusters.opensearch.opster.io,opensearchusers.opensearch.opster.io
+spec:
+  namespace:
+    value: e2e-helm-managed-ns
+  create_namespace: true
+  repo: https://opensearch-project.github.io/opensearch-k8s-operator/
+  chart: opensearch-operator
+  version: 2.8.0
+  values_yaml: |
+    installCRDs: true
+    fullnameOverride: e2e-helm-managed

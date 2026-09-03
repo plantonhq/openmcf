@@ -5,9 +5,12 @@ import (
 
 	"github.com/pkg/errors"
 	kuberneteshelmreleasev1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kuberneteshelmrelease/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/keptcrds"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
+	"github.com/plantonhq/planton/pkg/kubernetes/helmcrds"
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"sigs.k8s.io/yaml"
 )
 
 // Resources is the main entry point for the Pulumi module.
@@ -17,6 +20,20 @@ import (
 // (The render-only helm.v3.Chart resource is deliberately NOT used: it
 // template-renders client-side without creating a release, which silently
 // skips hooks and leaves nothing for Helm tooling to manage.)
+//
+// CRD LIFECYCLE: Helm installs a chart's crds/ directory once and never
+// upgrades or removes it. The module owns that surface through the
+// catalog's derive-branch primitive (keptcrds): the pinned chart is
+// rendered with exactly the values the release installs with, each
+// CustomResourceDefinition from the crds/ directory is applied keyed by its
+// own name as a kept resource (retained on destroy unless
+// crds.keep_on_uninstall is false; re-adopted on reinstall; refused when
+// the manifest lowers version below what the cluster carries), and the
+// release installs with SkipCrds so Helm never touches them. The chart is
+// arbitrary, so the module supplies no render override: CRDs the chart
+// templates stay Helm's, refused unless the chart keeps them itself or
+// crds.allow_helm_managed accepts them. A chart without CRDs (most charts)
+// is ordinary: nothing is applied.
 func Resources(ctx *pulumi.Context, stackInput *kuberneteshelmreleasev1alpha1.KubernetesHelmReleaseStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
@@ -33,14 +50,66 @@ func Resources(ctx *pulumi.Context, stackInput *kuberneteshelmreleasev1alpha1.Ku
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// Build conditional namespace dependency (Pulumi equivalent of Terraform depends_on).
-	var namespaceDeps []pulumi.ResourceOption
+	spec := locals.Spec
+
+	// ------------------------------ release values ------------------------
+	// Built once and used twice: the release installs with them, and the
+	// CRD render runs with them, so the derived CRDs can never see
+	// different values than the install.
+	mergedValues, err := buildHelmValues(spec)
+	if err != nil {
+		return errors.Wrap(err, "failed to build helm values")
+	}
+	releaseValuesDocument, err := yaml.Marshal(mergedValues)
+	if err != nil {
+		return errors.Wrap(err, "failed to encode the release values for the CRD render")
+	}
+
+	// ------------------------------ CRDs ----------------------------------
+	// Derived from the pinned chart and applied kept, ahead of the release
+	// (see keptcrds for the mechanics and the failure vocabulary).
+	// crds.install false means someone else owns the chart's crds/
+	// directory: nothing is derived and the release still skips it.
+	crds := spec.GetCrds()
+	createdCrds, err := keptcrds.Apply(ctx, keptcrds.Args{
+		Source: helmcrds.Source{
+			Repository: spec.GetRepo(),
+			Chart:      spec.GetChart(),
+			Version:    spec.GetVersion(),
+			Username:   spec.GetRepositoryUsername(),
+			Password:   spec.GetRepositoryPassword(),
+			Values:     []string{string(releaseValuesDocument)},
+		},
+		// The chart is the user's: it may carry no CRDs at all, and CRDs it
+		// templates are Helm's unless the spec accepts that.
+		Policy: helmcrds.Policy{
+			ExpectCRDs:       false,
+			AllowHelmManaged: crds != nil && crds.GetAllowHelmManaged(),
+		},
+		ReleaseName:     locals.ReleaseName,
+		Namespace:       locals.Namespace,
+		Install:         crds == nil || crds.Install == nil || crds.GetInstall(),
+		KeepOnUninstall: crds == nil || crds.KeepOnUninstall == nil || crds.GetKeepOnUninstall(),
+		ProviderConfig:  stackInput.ProviderConfig,
+		ProviderName:    "kubernetes-crd-upsert",
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to apply the chart's CRDs")
+	}
+
+	// The release depends on the namespace and on the module-owned CRDs
+	// (Pulumi equivalent of Terraform depends_on).
+	releaseDeps := append([]pulumi.Resource{}, createdCrds...)
 	if createdNamespace != nil {
-		namespaceDeps = append(namespaceDeps, pulumi.DependsOn([]pulumi.Resource{createdNamespace}))
+		releaseDeps = append(releaseDeps, createdNamespace)
+	}
+	var releaseDepOptions []pulumi.ResourceOption
+	if len(releaseDeps) > 0 {
+		releaseDepOptions = append(releaseDepOptions, pulumi.DependsOn(releaseDeps))
 	}
 
 	// ------------------------------ helm release --------------------------
-	createdRelease, err := helmRelease(ctx, locals, kubernetesProvider, namespaceDeps)
+	createdRelease, err := helmRelease(ctx, locals, mergedValues, kubernetesProvider, releaseDepOptions)
 	if err != nil {
 		return errors.Wrap(err, "failed to create helm release")
 	}
@@ -52,9 +121,9 @@ func Resources(ctx *pulumi.Context, stackInput *kuberneteshelmreleasev1alpha1.Ku
 // helmRelease installs the chart with the merged values and the spec's
 // lifecycle knobs. Every knob maps 1:1 onto a helm_release argument in the
 // Terraform module — keep the two in lockstep.
-func helmRelease(ctx *pulumi.Context, locals *Locals,
+func helmRelease(ctx *pulumi.Context, locals *Locals, mergedValues map[string]interface{},
 	kubernetesProvider pulumi.ProviderResource,
-	namespaceDeps []pulumi.ResourceOption) (*helmv3.Release, error) {
+	releaseDeps []pulumi.ResourceOption) (*helmv3.Release, error) {
 
 	spec := locals.Spec
 
@@ -67,11 +136,6 @@ func helmRelease(ctx *pulumi.Context, locals *Locals,
 	if spec.GetTakeOwnership() {
 		return nil, errors.New("take_ownership is not supported by the pulumi engine at the current pulumi-kubernetes SDK version; " +
 			"deploy this release with the terraform provisioner, or drop take_ownership")
-	}
-
-	mergedValues, err := buildHelmValues(spec)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build helm values")
 	}
 
 	valuesInput := pulumi.MapInput(pulumi.ToMap(mergedValues))
@@ -113,12 +177,14 @@ func helmRelease(ctx *pulumi.Context, locals *Locals,
 		// Lifecycle knobs — 1:1 with the Terraform module's helm_release
 		// arguments. SkipAwait inverts the TF `wait` flag: both engines
 		// default to awaiting readiness.
-		Atomic:                   pulumi.Bool(spec.GetAtomic()),
-		CleanupOnFail:            pulumi.Bool(spec.GetCleanupOnFail()),
-		SkipAwait:                pulumi.Bool(spec.GetSkipAwait()),
-		WaitForJobs:              pulumi.Bool(spec.GetWaitForJobs()),
-		Timeout:                  pulumi.Int(locals.TimeoutSeconds),
-		SkipCrds:                 pulumi.Bool(spec.GetSkipCrds()),
+		Atomic:        pulumi.Bool(spec.GetAtomic()),
+		CleanupOnFail: pulumi.Bool(spec.GetCleanupOnFail()),
+		SkipAwait:     pulumi.Bool(spec.GetSkipAwait()),
+		WaitForJobs:   pulumi.Bool(spec.GetWaitForJobs()),
+		Timeout:       pulumi.Int(locals.TimeoutSeconds),
+		// The module owns the chart's crds/ directory (keptcrds above);
+		// Helm never installs its own once-only copy.
+		SkipCrds:                 pulumi.Bool(true),
 		DependencyUpdate:         pulumi.Bool(spec.GetDependencyUpdate()),
 		MaxHistory:               pulumi.Int(locals.MaxHistory),
 		Replace:                  pulumi.Bool(spec.GetReplace()),
@@ -132,7 +198,7 @@ func helmRelease(ctx *pulumi.Context, locals *Locals,
 		releaseArgs.Description = pulumi.String(spec.GetDescription())
 	}
 
-	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, namespaceDeps...)
+	opts := append([]pulumi.ResourceOption{pulumi.Provider(kubernetesProvider)}, releaseDeps...)
 
 	createdRelease, err := helmv3.NewRelease(ctx, locals.ReleaseName, releaseArgs, opts...)
 	if err != nil {

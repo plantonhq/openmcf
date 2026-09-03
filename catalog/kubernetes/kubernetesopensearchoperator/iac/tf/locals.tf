@@ -50,13 +50,38 @@ locals {
     var.metadata.env != null && var.metadata.env != "" ? { "planton.ai/environment" = var.metadata.env } : {}
   )
 
-  # ---- module-owned CRDs (twin of the Pulumi module's crds.go) --------------
-  # One entry per staged CRD file, keyed by the CRD's OWN metadata.name
-  # (parsed from the file — never a positional index), so state addresses
-  # stay stable across file renames and reorderings.
-  crd_manifests = {
-    for f in fileset("${path.module}/../crds", "*.yaml") :
-    yamldecode(file("${path.module}/../crds/${f}")).metadata.name => file("${path.module}/../crds/${f}")
+  # ---- module-owned CRDs (the derive-branch contract for helm_crds.tf) ----
+  # The CRDs are DERIVED from the pinned chart at plan time by the
+  # generated helm_crds.tf: it renders the chart with the release's own
+  # values (helm_release_values, the same list the release consumes) plus
+  # the CRD switch turned on, keeps the CustomResourceDefinition
+  # documents, stamps them, and applies each one kept. This object is its
+  # input; the twin of the Pulumi module's keptcrds.Args, every key present.
+  helm_crds_args = {
+    # crds.install false is the bring-your-own-CRDs arm (the CRDs are owned
+    # elsewhere, a GitOps-managed bundle); the release still skips CRDs.
+    # crds.keep_on_uninstall false lets a destroy take the CRDs with it.
+    install           = try(var.spec.crds.install, null) == null ? true : var.spec.crds.install
+    keep_on_uninstall = try(var.spec.crds.keep_on_uninstall, null) == null ? true : var.spec.crds.keep_on_uninstall
+
+    # A typed kind knows its chart carries CRDs and pins the switch: a render
+    # that yields none is a failure, and nothing is ever left to Helm.
+    expect_crds        = true
+    allow_helm_managed = false
+
+    # The chart's CRD switch, turned on for the render only. The release
+    # pins it off (see helm_release_values).
+    render_override = yamlencode({ installCRDs = true })
+
+    # No CRD template gates on a served API version.
+    api_versions = []
+
+    # Public repository, no set-style overrides, no upstream bundle.
+    bundle_url          = ""
+    repository_username = ""
+    repository_password = ""
+    set                 = []
+    set_sensitive       = []
   }
 
   # ---- deployment name (twin of the Pulumi module's deploymentName) ---------
@@ -137,11 +162,12 @@ locals {
   typed_values = {
     for k, v in {
       # installCRDs: false ALWAYS — never conditional, never a spec knob.
-      # The chart templates its ten CRDs release-owned with NO
+      # The chart templates its CRDs release-owned with NO
       # keep-on-uninstall knob, so a Helm-owned install would
       # cascade-delete every OpenSearchCluster (and its data) on
-      # uninstall. The module owns the CRDs instead
-      # (kubectl_manifest.crds in main.tf).
+      # uninstall. The module owns the CRDs instead (derived and applied
+      # kept by helm_crds.tf); the same key is re-pinned after the escape
+      # hatch in helm_release_values.
       installCRDs = false
 
       # fullnameOverride pins the chart's fullname to the resource name
@@ -186,4 +212,17 @@ locals {
       ] : null
     } : k => v if v != null
   }
+
+  # ---- the release's values, in helm -f order --------------------------------
+  # The typed rendering, the user's escape hatch, then installCRDs
+  # re-pinned false AFTER the escape hatch so no helm_values override can
+  # hand the CRDs to Helm and re-arm the cascade-delete this design
+  # exists to prevent. ONE list, consumed by both the release (main.tf)
+  # and the CRD render (helm_crds.tf), so the derived CRDs can never see
+  # different values than the install.
+  helm_release_values = concat(
+    [yamlencode(local.typed_values)],
+    try(var.spec.helm_values, "") != "" ? [var.spec.helm_values] : [],
+    [yamlencode({ installCRDs = false })]
+  )
 }

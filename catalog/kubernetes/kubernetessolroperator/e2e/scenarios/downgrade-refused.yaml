@@ -1,0 +1,20 @@
+# THE SCHEMA-DOWNGRADE REFUSAL: install at chart 0.9.1, then attempt to
+# re-deploy from downgrade-refused.to.yaml at 0.9.0. The second deploy
+# must be refused before any CRD changes (the verifier reads the stamps
+# afterwards: still 0.9.1), with the three-part message naming both
+# versions and the deliberate remedy. keep_on_uninstall is off so the
+# destroy that follows the refusal leaves no CRDs behind.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSolrOperator
+metadata:
+  name: e2e-slrop-down
+  annotations:
+    planton.dev/e2e-upgrade-manifest: downgrade-refused.to.yaml
+    planton.dev/e2e-expect-upgrade-failure: crd-schema-downgrade
+spec:
+  namespace:
+    value: e2e-slrop-down
+  create_namespace: true
+  chart_version: 0.9.1
+  crds:
+    keep_on_uninstall: false

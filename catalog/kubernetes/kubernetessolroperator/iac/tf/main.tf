@@ -6,20 +6,25 @@
 # into running Solr clusters, plus SolrBackup and SolrPrometheusExporter
 # resources.
 #
-# CRD LIFECYCLE: unlike most operator charts, the solr-operator chart
-# ships NO CRDs — they are separate release artifacts. The module OWNS
-# them: the four staged files at ../crds (the three solr.apache.org CRDs
-# plus the ZookeeperCluster CRD of the bundled zookeeper-operator
-# dependency) are applied before the release with apply_only, so a
-# destroy removes the operator but NEVER the CRDs and SolrCloud resources
-# are never cascade-deleted. The bundled subchart's own CRD switch is
-# pinned off (zookeeper-operator.crd.create = false) so the
-# ZookeeperCluster CRD never falls under Helm's delete-on-uninstall
-# lifecycle.
+# CRD LIFECYCLE: the chart carries its CRDs on both of Helm's surfaces (the
+# three solr.apache.org CRDs in its crds/ directory, installed once and
+# never upgraded by Helm; the ZookeeperCluster CRD templated by the bundled
+# zookeeper-operator subchart, release-owned and deleted with the release).
+# The module therefore OWNS the CRDs through the catalog's derive-branch
+# primitive (the generated helm_crds.tf): the pinned chart is rendered at
+# plan time with the release's own values plus the subchart's CRD switch
+# turned on, each CustomResourceDefinition is applied keyed by its own name
+# as a kept resource (retained on destroy unless crds.keep_on_uninstall is
+# false; re-adopted on reinstall; refused when the manifest lowers
+# chart_version below what the cluster carries), and the release below
+# installs with skip_crds = true and zookeeper-operator.crd.create pinned
+# false so Helm never touches them. The release depends on the CRDs so the
+# operator (and the bundled zookeeper-operator, which refuses to start
+# without its CRD) never starts against an unregistered API group.
 #
 # The typed spec renders into chart values (locals.typed_values); the
-# helm_values escape hatch is passed as a SECOND values document, which
-# the provider merges over the first with Helm -f semantics — the exact
+# helm_values escape hatch is the SECOND values document and the
+# load-bearing re-pin the THIRD (locals.helm_release_values) — the exact
 # semantic twin of the Pulumi module's buildHelmValues + mergeMaps.
 
 # The optional installation namespace. Created before the release; deleted
@@ -32,35 +37,6 @@ resource "kubernetes_namespace_v1" "solr_operator" {
     name   = local.namespace
     labels = local.labels
   }
-}
-
-# The module-owned CRDs, one resource per CRD keyed by the CRD's OWN
-# metadata.name (locals.crd_documents does the per-file document
-# splitting and comment-header filtering).
-#
-# KEEP-ON-UNINSTALL: apply_only = true makes the provider's Delete a
-# NO-OP (verified in the alekc/kubectl provider source) — `terraform
-# destroy` removes the operator release but leaves these CRDs (and
-# therefore every SolrCloud/SolrBackup/ZookeeperCluster resource
-# cluster-wide) untouched. This is the exact twin of the Pulumi module's
-# retainOnDelete on each CRD.
-#
-# server_side_apply matters twice over: the SolrCloud CRD's schema blows
-# past the client-side last-applied-configuration annotation size limit,
-# and SSA field ownership lets a restaged (upgraded) CRD file apply as an
-# in-place update.
-resource "kubectl_manifest" "solr_operator_crds" {
-  for_each = local.crd_documents
-
-  yaml_body = each.value
-
-  server_side_apply = true
-  # Retained CRDs from a previous install were last applied by a
-  # DIFFERENT field manager (that run's SSA identity); without forcing
-  # conflicts, re-adopting them on reinstall fails on field-manager
-  # ownership. Twin of the Pulumi upsert provider's EnablePatchForce.
-  force_conflicts = true
-  apply_only      = true
 }
 
 # The operator release.
@@ -84,37 +60,16 @@ resource "helm_release" "solr_operator" {
   cleanup_on_fail = true
   timeout         = 600
 
-  # Two documents, merged in order by the provider (helm -f semantics):
-  # the typed rendering first, the user's escape hatch last.
-  values = concat(
-    [yamlencode(local.typed_values)],
-    try(var.spec.helm_values, "") != "" ? [var.spec.helm_values] : []
-  )
+  # The same values list the CRD render consumed (see locals.tf for the
+  # merge order and the re-pin).
+  values = local.helm_release_values
 
-  # The CRDs must exist before the operator starts (its controllers
-  # watch these types immediately, and the bundled zookeeper-operator
-  # refuses to start without the ZookeeperCluster CRD present).
+  # The module owns the CRDs (helm_crds.tf); Helm must never install its
+  # own copy of the crds/ directory.
+  skip_crds = true
+
   depends_on = [
     kubernetes_namespace_v1.solr_operator,
-    kubectl_manifest.solr_operator_crds,
+    kubectl_manifest.helm_crds,
   ]
-
-  lifecycle {
-    precondition {
-      # FAIL LOUDLY when the staged CRD files did not travel with the
-      # module: fileset() over a missing ../crds directory returns
-      # EMPTY and for_each would silently plan ZERO CRDs — the operator
-      # then runs against whatever CRDs happen to exist (the class was
-      # caught live elsewhere: a lane "passed" riding a previous
-      # install's retained CRDs). Four is the staged document count at
-      # chart 0.9.1 (three solr.apache.org CRDs + the ZookeeperCluster
-      # CRD) — restage ../crds and update this count together with
-      # chart_version. Twin of the Pulumi module's fail-loud guard.
-      # The guard sits on the release (not the kubectl_manifest): a
-      # for_each resource with an empty map evaluates ZERO
-      # preconditions, which is exactly the failure being guarded.
-      condition     = length(local.crd_documents) == 4
-      error_message = "The staged CRD files under ../crds did not travel with the module (expected 4 CRD documents, found a different count) — the module owns the CRD lifecycle and cannot install without them. Deploy the module with its full iac/ directory tree."
-    }
-  }
 }

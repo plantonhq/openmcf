@@ -2,6 +2,10 @@
 # and leader election declared, an escape-hatch value — every typed
 # field class exercised live (the mTLS arm rides the offline plan
 # proofs; it needs certificate fixtures).
+#
+# THE CLEANUP PROOF: crds.keep_on_uninstall: false, so this destroy must
+# take the four CRDs with it (the verifier asserts their absence) — the
+# arm a lane uses to leave a shared cluster as it found it.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSolrOperator
 metadata:
@@ -27,3 +31,5 @@ spec:
   helm_values: |
     labels:
       e2e.planton.dev/lane: tuned-full
+  crds:
+    keep_on_uninstall: false

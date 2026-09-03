@@ -4,16 +4,16 @@ metadata:
   name: kubernetesopensearchoperator
 spec:
   tier: 3
-  status: deferred
-  deferred_reason: >-
-    Both engines read the CRD set from ../crds, a sibling directory no
-    published form of the module carries (module.zip, source.zip, and the
-    Pulumi binary workspace hold only the engine directory), so no fresh
-    install from a release has ever converged, and a lane that passes from
-    the source tree proves nothing about what ships. Lifts when the module
-    derives its CRDs from the pinned version and leaves the known_violations
-    table of hack/guards/ensure_modules_are_self_contained.sh.
+  # Forged on the official opensearch-operator chart 2.8.0 with MODULE-OWNED
+  # CRDs derived from the pinned chart at apply time (the chart templates
+  # them release-owned with no keep knob — an uninstall would cascade-delete
+  # every OpenSearchCluster and its data). The scenarios cover the whole CRD
+  # lifecycle: keep and re-adopt on reinstall (minimal), cleanup when keep
+  # is off (tuned-full), a chart bump that re-applies the CRDs AND adds one
+  # (upgrade, 2.7.0 to 2.8.0 brings OpenSearchSnapshotPolicy), and the two
+  # refusals (a version that is not published; a schema downgrade).
+  status: green
   validated_provisioners:
     - pulumi
     - terraform
-  timeout_minutes: 20
+  timeout_minutes: 25

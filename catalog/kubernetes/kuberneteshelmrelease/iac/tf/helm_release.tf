@@ -40,24 +40,23 @@ resource "helm_release" "helm_release" {
   # --set coercion), then `set_string` entries (literal strings) — list
   # order IS the merge order, and the map comprehensions iterate keys
   # lexically, matching the Pulumi module's sorted-key application.
-  values = try(var.spec.values_yaml, "") != "" ? [var.spec.values_yaml] : []
-
-  set = concat(
-    [for k, v in try(var.spec.set, {}) : { name = k, value = v, type = "auto" }],
-    [for k, v in try(var.spec.set_string, {}) : { name = k, value = v, type = "string" }],
-  )
-
-  set_sensitive = [
-    for k, v in try(var.spec.set_sensitive, {}) : { name = k, value = v, type = "string" }
-  ]
+  # The same three inputs the CRD render consumed (locals.tf), so the
+  # derived CRDs can never see different values than the install.
+  values        = local.helm_release_values
+  set           = local.helm_set
+  set_sensitive = local.helm_set_sensitive
 
   # ---- lifecycle knobs -----------------------------------------------------
+  # skip_crds is pinned: the module owns the chart's crds/ directory
+  # (helm_crds.tf derives and applies it kept, ahead of this release, when
+  # crds.install is true; crds.install false means someone else owns it).
+  # Helm never installs its own once-only copy either way.
   atomic                     = try(var.spec.atomic, false)
   cleanup_on_fail            = try(var.spec.cleanup_on_fail, false)
   wait                       = local.wait
   wait_for_jobs              = try(var.spec.wait_for_jobs, false)
   timeout                    = local.timeout_seconds
-  skip_crds                  = try(var.spec.skip_crds, false)
+  skip_crds                  = true
   dependency_update          = try(var.spec.dependency_update, false)
   max_history                = local.max_history
   replace                    = try(var.spec.replace, false)
@@ -69,6 +68,11 @@ resource "helm_release" "helm_release" {
   take_ownership             = try(var.spec.take_ownership, false)
   description                = try(var.spec.description, "") != "" ? var.spec.description : null
 
-  # Ensure the namespace is created before the Helm release is installed.
-  depends_on = [kubernetes_namespace_v1.helm_release_namespace]
+  # The namespace exists and the module-owned CRDs are registered before
+  # the release installs (a chart's custom resources would otherwise be
+  # rejected by an API server that does not serve their kind yet).
+  depends_on = [
+    kubernetes_namespace_v1.helm_release_namespace,
+    kubectl_manifest.helm_crds,
+  ]
 }

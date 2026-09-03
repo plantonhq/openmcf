@@ -13,43 +13,54 @@ replace) — the exact semantic twin of the Terraform module's
 1. **Namespace** (optional) — created with the standard governance
    labels when `create_namespace` is true; otherwise the namespace must
    already exist
-2. **The four operator CRDs** — see CRD ownership below
+2. **The operator CRDs** — derived from the pinned chart; see CRD ownership below
 3. **Helm Release `<metadata.name>`** — the `solr-operator` chart
    (pinned default 0.9.1; chart versions carry NO `v` prefix while the
-   operator image/CRD artifacts do — chart 0.9.1 ships operator v0.9.1)
+   operator image does — chart 0.9.1 ships operator v0.9.1)
 
 ## CRD Ownership and the Keep-on-Uninstall Mechanism
 
-Unlike most operator charts, the `solr-operator` chart ships NO CRDs —
-upstream publishes them as separate release artifacts. The module OWNS
-them: the four files staged at `../crds` are applied before the release,
-one `yaml.ConfigGroup` per CRD keyed by the CRD's own `metadata.name`:
+The chart carries its CRDs on both of Helm's surfaces: the three
+solr.apache.org CRDs in its `crds/` directory (Helm installs those once
+and never upgrades them) and the ZookeeperCluster CRD templated by the
+bundled zookeeper-operator subchart behind `zookeeper-operator.crd.create`
+(Helm would delete it with the release). The module OWNS all four through
+the catalog's shared package for charts that carry CRDs, `keptcrds`: the
+pinned chart is rendered in-process (Helm SDK, client-only) with the
+release's own values plus the subchart's CRD switch turned on, the
+CustomResourceDefinition documents are kept, stamped with
+`planton.ai/crd-source-chart` and `planton.ai/crd-source-version`, and
+applied one `yaml.ConfigGroup` per CRD keyed by the CRD's own
+`metadata.name`:
 
 - `solrclouds.solr.apache.org`
 - `solrbackups.solr.apache.org`
 - `solrprometheusexporters.solr.apache.org`
-- `zookeeperclusters.zookeeper.pravega.io` (the bundled
-  zookeeper-operator dependency's CRD)
+- `zookeeperclusters.zookeeper.pravega.io` (rendered only when the
+  bundled zookeeper-operator is installed, the chart default)
 
-**Keep mechanism (Pulumi):** every applied CRD carries `retainOnDelete`,
-so `pulumi destroy` removes the operator but NEVER the CRDs — SolrCloud
-/ SolrBackup / ZookeeperCluster resources are never cascade-deleted
-cluster-wide. Because the yaml SDK forwards only version/pluginDownloadURL
-to a ConfigGroup's children, the option is delivered through a resource
-TRANSFORMATION (inherited parent→child) — see `module/crds.go`. The
-Terraform twin is `apply_only = true` on `kubectl_manifest` (the
-provider's Delete is a no-op).
+The release installs with `SkipCrds` and `zookeeper-operator.crd.create:
+false` re-pinned AFTER the `helm_values` merge, so Helm never touches the
+CRDs whichever way a user override points. `crds.install: false` is the
+bring-your-own-CRDs arm (the CRDs are owned elsewhere, e.g. a
+GitOps-managed bundle).
 
-Because the module owns the ZookeeperCluster CRD, the bundled subchart's
-own CRD switch is pinned off — `zookeeper-operator.crd.create: false` is
-the ONE value rendered unconditionally (it must never fall under Helm's
-delete-on-uninstall lifecycle).
+**Keep mechanism (Pulumi):** every applied CRD carries `retainOnDelete`
+(delivered through a resource transformation, the one option the yaml
+SDK propagates to a ConfigGroup's children), so `pulumi destroy` removes
+the operator but NEVER the CRDs — SolrCloud / SolrBackup /
+ZookeeperCluster resources are never cascade-deleted cluster-wide.
+`crds.keep_on_uninstall: false` turns it off. The CRDs ride a dedicated
+upsert provider (server-side apply with force) so a reinstall re-adopts
+the kept CRDs instead of failing on their existence. The Terraform twin
+is `apply_only = true` on `kubectl_manifest`.
 
-**Version note:** the staged CRD files match the pinned default chart
-version (0.9.1). The operator is pre-1.0 — when upgrading
-`chart_version` across a minor version, restage the matching CRD files
-(the module applies with server-side apply semantics, so a restage is an
-in-place update).
+**A schema downgrade is refused:** before anything registers, the
+module lists the CRDs it has stamped on the cluster; a `chart_version`
+below the version they carry fails the preview with what was observed,
+what it means, and the next step (pin the higher version, or delete the
+CRDs deliberately). A version that is not published in the repository
+index is refused the same way, before anything is created.
 
 ## Values Mapping
 
@@ -105,17 +116,15 @@ reflected in the output.
 ## Module Structure
 
 - `main.go`: entrypoint that calls the module
-- `module/main.go`: namespace → CRDs → operator release → output exports
-- `module/crds.go`: staged-CRD application keyed by CRD name, with the
-  retain-on-delete transformation and the comment-header/document-
-  separator handling
+- `module/main.go`: namespace → release values → derived CRDs
+  (`keptcrds.Apply`) → operator release → output exports
 - `module/values.go`: typed-spec → chart values rendering and the
   escape-hatch merge
 - `module/locals.go`: resolved namespace, release name
   (`metadata.name`), chart version, deployment name (the chart fullname
   replay) — kept in lockstep with the Terraform module's `locals.tf`
 - `module/vars.go`: chart identity (repository, `solr-operator`), the
-  pinned default version (0.9.1), the 600s timeout, the staged CRDs
-  directory
+  pinned default version (0.9.1), the CRD render override, the 600s
+  timeout
 - `module/helpers.go`: shared shape renderers (resources, tolerations,
   the Helm `-f` merge)

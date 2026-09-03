@@ -57,12 +57,16 @@ const (
 // the fullname to the resource name, which is what makes the 27-char
 // budget hold.
 //
-// CRD LIFECYCLE: the chart TEMPLATES the ten OpenSearch CRDs as
-// release-owned resources (no keep-on-uninstall knob upstream).
-// The modules therefore own the CRD lifecycle themselves so that
-// uninstalling the operator never cascade-deletes OpenSearchCluster
-// resources and their data — see the component README for the exact
-// mechanism per engine.
+// CRD LIFECYCLE: the chart TEMPLATES the OpenSearch CRDs as
+// release-owned resources (no keep-on-uninstall knob upstream). The
+// modules therefore OWN the CRDs: derived from the pinned chart at
+// deploy time, applied keyed by CRD name ahead of the release, kept
+// when the resource is destroyed (`crds.keep_on_uninstall`), re-adopted
+// on reinstall, and moved with every `chart_version` bump; a
+// `chart_version` lower than the CRDs already on the cluster is refused
+// before anything changes. Uninstalling the operator never
+// cascade-deletes OpenSearchCluster resources and their data unless the
+// spec says so.
 //
 // WATCH SCOPE: by default the operator watches ALL namespaces
 // (cluster-wide RBAC). Set `watch_namespace` to restrict it to one
@@ -171,7 +175,11 @@ type KubernetesOpenSearchOperatorSpec struct {
 	// on uninstall), and `nameOverride`/`fullnameOverride` break the
 	// exported deployment_name output, which derives from the chart's
 	// default naming.
-	HelmValues    string `protobuf:"bytes,16,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	HelmValues string `protobuf:"bytes,16,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	// *
+	// CRD installation lifecycle. Both default to true; unset means the
+	// module owns the CRDs and keeps them.
+	Crds          *KubernetesOpenSearchOperatorCrds `protobuf:"bytes,17,opt,name=crds,proto3" json:"crds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -318,6 +326,79 @@ func (x *KubernetesOpenSearchOperatorSpec) GetHelmValues() string {
 	return ""
 }
 
+func (x *KubernetesOpenSearchOperatorSpec) GetCrds() *KubernetesOpenSearchOperatorCrds {
+	if x != nil {
+		return x.Crds
+	}
+	return nil
+}
+
+// *
+// CRD installation lifecycle for the module-owned opensearch.opster.io CRDs.
+type KubernetesOpenSearchOperatorCrds struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Derive and apply the CRDs from the pinned chart ahead of the release.
+	// Default TRUE. Set false ONLY when the CRDs are owned elsewhere (a
+	// GitOps-managed bundle): the release still installs with CRDs skipped,
+	// and with the CRDs absent the operator cannot start, so this is a
+	// bring-your-own-CRDs arm, never a lighter install.
+	Install *bool `protobuf:"varint,1,opt,name=install,proto3,oneof" json:"install,omitempty"`
+	// *
+	// Keep the CRDs (and therefore every OpenSearchCluster and every
+	// OpenSearch user, role, tenant, template and policy object in the
+	// cluster) when the resource is destroyed. Default TRUE: deleting the
+	// CRDs cascades to every search cluster and its data, a destructive act
+	// that must be an explicit false. A later reinstall re-adopts kept CRDs.
+	KeepOnUninstall *bool `protobuf:"varint,2,opt,name=keep_on_uninstall,json=keepOnUninstall,proto3,oneof" json:"keep_on_uninstall,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesOpenSearchOperatorCrds) Reset() {
+	*x = KubernetesOpenSearchOperatorCrds{}
+	mi := &file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOpenSearchOperatorCrds) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOpenSearchOperatorCrds) ProtoMessage() {}
+
+func (x *KubernetesOpenSearchOperatorCrds) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOpenSearchOperatorCrds.ProtoReflect.Descriptor instead.
+func (*KubernetesOpenSearchOperatorCrds) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesOpenSearchOperatorCrds) GetInstall() bool {
+	if x != nil && x.Install != nil {
+		return *x.Install
+	}
+	return false
+}
+
+func (x *KubernetesOpenSearchOperatorCrds) GetKeepOnUninstall() bool {
+	if x != nil && x.KeepOnUninstall != nil {
+		return *x.KeepOnUninstall
+	}
+	return false
+}
+
 // *
 // Operator manager image override.
 type KubernetesOpenSearchOperatorImage struct {
@@ -337,7 +418,7 @@ type KubernetesOpenSearchOperatorImage struct {
 
 func (x *KubernetesOpenSearchOperatorImage) Reset() {
 	*x = KubernetesOpenSearchOperatorImage{}
-	mi := &file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -349,7 +430,7 @@ func (x *KubernetesOpenSearchOperatorImage) String() string {
 func (*KubernetesOpenSearchOperatorImage) ProtoMessage() {}
 
 func (x *KubernetesOpenSearchOperatorImage) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -362,7 +443,7 @@ func (x *KubernetesOpenSearchOperatorImage) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use KubernetesOpenSearchOperatorImage.ProtoReflect.Descriptor instead.
 func (*KubernetesOpenSearchOperatorImage) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesOpenSearchOperatorImage) GetRepository() string {
@@ -383,7 +464,7 @@ var File_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto pro
 
 const file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"Ccatalog/kubernetes/kubernetesopensearchoperator/v1alpha1/spec.proto\x12<dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb4\r\n" +
+	"Ccatalog/kubernetes/kubernetesopensearchoperator/v1alpha1/spec.proto\x12<dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa8\x0e\n" +
 	" KubernetesOpenSearchOperatorSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x123\n" +
@@ -403,7 +484,8 @@ const file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_r
 	"\x12image_pull_secrets\x18\x0e \x03(\tBJ\xaa\xa6\x1dFNames of existing Kubernetes Secrets (references), not secret materialR\x10imagePullSecrets\x12u\n" +
 	"\x05image\x18\x0f \x01(\v2_.dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorImageR\x05image\x12\x1f\n" +
 	"\vhelm_values\x18\x10 \x01(\tR\n" +
-	"helmValues\x1a?\n" +
+	"helmValues\x12r\n" +
+	"\x04crds\x18\x11 \x01(\v2^.dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorCrdsR\x04crds\x1a?\n" +
 	"\x11NodeSelectorEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01:\xd5\x01\xbaH\xd1\x01\x1a\xce\x01\n" +
@@ -413,7 +495,13 @@ const file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_r
 	"_log_levelB\v\n" +
 	"\t_dns_baseB\x1c\n" +
 	"\x1a_parallel_recovery_enabledB\x1a\n" +
-	"\x18_kube_rbac_proxy_enabled\"U\n" +
+	"\x18_kube_rbac_proxy_enabled\"\xa8\x01\n" +
+	" KubernetesOpenSearchOperatorCrds\x12'\n" +
+	"\ainstall\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\ainstall\x88\x01\x01\x129\n" +
+	"\x11keep_on_uninstall\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0fkeepOnUninstall\x88\x01\x01B\n" +
+	"\n" +
+	"\b_installB\x14\n" +
+	"\x12_keep_on_uninstall\"U\n" +
 	"!KubernetesOpenSearchOperatorImage\x12\x1e\n" +
 	"\n" +
 	"repository\x18\x01 \x01(\tR\n" +
@@ -433,26 +521,28 @@ func file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_ra
 	return file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_goTypes = []any{
 	(*KubernetesOpenSearchOperatorSpec)(nil),  // 0: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec
-	(*KubernetesOpenSearchOperatorImage)(nil), // 1: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorImage
-	nil,                                   // 2: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.NodeSelectorEntry
-	(*v1.StringValueOrRef)(nil),           // 3: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil), // 4: dev.planton.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil), // 5: dev.planton.kubernetes.WorkloadToleration
+	(*KubernetesOpenSearchOperatorCrds)(nil),  // 1: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorCrds
+	(*KubernetesOpenSearchOperatorImage)(nil), // 2: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorImage
+	nil,                                   // 3: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),           // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil), // 5: dev.planton.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil), // 6: dev.planton.kubernetes.WorkloadToleration
 }
 var file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_depIdxs = []int32{
-	3, // 0: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	4, // 1: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	2, // 2: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.node_selector:type_name -> dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.NodeSelectorEntry
-	5, // 3: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
-	1, // 4: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.image:type_name -> dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorImage
-	5, // [5:5] is the sub-list for method output_type
-	5, // [5:5] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	4, // 0: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	5, // 1: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	3, // 2: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.node_selector:type_name -> dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.NodeSelectorEntry
+	6, // 3: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
+	2, // 4: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.image:type_name -> dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorImage
+	1, // 5: dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorSpec.crds:type_name -> dev.planton.kubernetes.kubernetesopensearchoperator.v1alpha1.KubernetesOpenSearchOperatorCrds
+	6, // [6:6] is the sub-list for method output_type
+	6, // [6:6] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_init() }
@@ -461,13 +551,14 @@ func file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_in
 		return
 	}
 	file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_rawDesc), len(file_catalog_kubernetes_kubernetesopensearchoperator_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

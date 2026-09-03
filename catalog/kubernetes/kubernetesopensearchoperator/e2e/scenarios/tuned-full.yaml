@@ -2,6 +2,10 @@
 # (the shared-cluster posture), explicit sizing, debug logging, the
 # kube-rbac-proxy sidecar disabled, and an escape-hatch value — every
 # typed field class exercised live.
+#
+# THE CLEANUP PROOF: crds.keep_on_uninstall: false, so this destroy must
+# take the CRDs with it (the verifier asserts their absence) — the arm a
+# lane uses to leave a shared cluster as it found it.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOpenSearchOperator
 metadata:
@@ -26,3 +30,5 @@ spec:
   helm_values: |
     podLabels:
       e2e.planton.dev/lane: tuned-full
+  crds:
+    keep_on_uninstall: false

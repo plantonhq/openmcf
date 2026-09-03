@@ -86,9 +86,11 @@ spec:
           - customresourcedefinitions
         verbs:
           - get
+          - list
           - create
           - update
           - patch
+          - delete
         cluster_scoped: true
         provenance: derived
-        notes: Covers kubectl_manifest.crds -- the ten MODULE-OWNED OpenSearch CRDs (opensearch.opster.io at chart 2.8.0), server-side-applied from the staged files on every apply. No delete -- apply_only makes the provider's Delete a no-op (verified in the provider source), so destroy leaves the CRDs (and every OpenSearchCluster) on the cluster; the chart's own CRD templating is disarmed by the unconditionally re-pinned installCRDs false.
+        notes: Covers kubectl_manifest.helm_crds (Terraform, the generated helm_crds.tf) and the Pulumi twin (keptcrds) -- the MODULE-OWNED OpenSearch CRDs (opensearch.opster.io), derived from the pinned chart at apply time and applied via server-side apply OUTSIDE the Helm release, re-applied in place on chart bumps. The list verb also serves the never-downgrade read (CRDs selected by the planton.ai/crd-source label). Delete is exercised only when spec.crds.keep_on_uninstall is false; the default keep posture makes destroy a no-op so an operator uninstall never cascade-deletes OpenSearchCluster resources; the chart's own CRD templating is disarmed by the unconditionally re-pinned installCRDs false. Skipped entirely when spec.crds.install is false.

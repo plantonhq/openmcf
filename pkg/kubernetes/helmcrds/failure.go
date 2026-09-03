@@ -117,6 +117,20 @@ func bundleFetchFailure(src Source, status int, err error) error {
 	}
 }
 
+// HelmManagedCRDsFailure is the refusal when a chart templates CRDs as ordinary
+// release resources without Helm's keep annotation and the kind's policy has
+// not accepted that. Helm would install and upgrade them with the release and
+// delete them with it, taking every custom resource built on them; nothing the
+// module applies can protect a resource Helm owns. The remedies are ordered
+// from most to least protective.
+func HelmManagedCRDsFailure(src Source, names []string) error {
+	return &Failure{
+		Observed: fmt.Sprintf("chart %s %s templates %d CustomResourceDefinition(s) as release resources without the %s: keep annotation (%s)", src.Chart, src.Version, len(names), HelmKeepAnnotation, strings.Join(names, ", ")),
+		Meaning:  "Helm owns these CRDs: it installs and upgrades them with the release and deletes them when the release is uninstalled, along with every custom resource built on them; keep_on_uninstall cannot reach resources Helm owns",
+		NextStep: "use the catalog's typed kind for this chart if one exists; otherwise turn on the chart's own keep switch in its values (cert-manager-style `crds.keep: true`) so the chart protects them itself; or set spec.crds.allow_helm_managed to true to accept that these CRDs live and die with the release",
+	}
+}
+
 // DowngradeFailure is the refusal when the cluster already carries a CRD at a
 // higher source version than the manifest asks for. Lowering a schema can
 // strip fields from existing custom resources on their next write, so the

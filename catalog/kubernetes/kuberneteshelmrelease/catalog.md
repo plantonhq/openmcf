@@ -7,7 +7,8 @@ Installs an upstream Helm chart as a REAL Helm release — the catalog's sole in
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Helm Release** -- the chart fetched from `repo` (an HTTPS repository index or an `oci://` registry pull), installed at the PINNED `version` into `namespace`, named `releaseName` when set (otherwise `metadata.name`)
-- **Everything the chart renders** -- workloads, Services, ConfigMaps, and (unless `skipCrds`) the CRDs shipped in the chart's `crds/` directory; Helm installs chart CRDs only when absent and never upgrades or deletes them
+- **Everything the chart renders** -- workloads, Services, ConfigMaps, and any CRDs the chart templates as release resources (Helm-owned; a chart that templates them without `helm.sh/resource-policy: keep` is refused unless `crds.allowHelmManaged` accepts it)
+- **The CRDs in the chart's `crds/` directory** -- derived from the pinned chart and applied by the module itself outside the release, keyed by CRD name: a `version` bump moves them with it, destroy keeps them (unless `crds.keepOnUninstall` is false), a reinstall re-adopts them, and a version below what the cluster's CRDs carry is refused before anything changes
 - **Namespace** (optional) -- created with standard governance labels when `createNamespace` is true, and deleted with the resource
 
 ## Before You Deploy
@@ -27,7 +28,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Console
 
-Open the deployment store, find **Helm Release**, and click **Deploy**. The creation wizard walks you through placement, the pinned chart coordinates (with OCI-vs-HTTPS teaching), private-source access, the values file, the three `--set` override layers (with reference-only pickers for sensitive values), install behavior (atomic vs skip-await), CRDs and dependencies, upgrade behavior (reuse vs reset, rollback history), and the advanced escape dials. Start from the **HTTPS Repo Chart** preset in the [Presets](#presets) tab.
+Open the deployment store, find **Helm Release**, and click **Deploy**. The creation wizard walks you through placement, the pinned chart coordinates (with OCI-vs-HTTPS teaching), private-source access, the values file, the three `--set` override layers (with reference-only pickers for sensitive values), install behavior (atomic vs skip-await), the CRD lifecycle and dependencies, upgrade behavior (reuse vs reset, rollback history), and the advanced escape dials. Start from the **HTTPS Repo Chart** preset in the [Presets](#presets) tab.
 
 ### CLI
 

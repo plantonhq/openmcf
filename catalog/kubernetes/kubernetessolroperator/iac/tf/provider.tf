@@ -1,14 +1,16 @@
 # Provider requirements for the KubernetesSolrOperator module.
 #
-# kubectl (alekc/kubectl) applies the module-owned CRDs: it supports
-# server-side apply (the SolrCloud CRD's schema exceeds the client-side
-# last-applied-configuration annotation size limit) and apply_only (the
-# keep-on-uninstall mechanism — Delete is a no-op in the provider
-# source). The hashicorp kubernetes provider materializes the optional
-# namespace; helm installs the operator release.
+# helm installs the operator release and renders the pinned chart to
+# derive its CRDs; kubernetes creates the optional installation namespace
+# and reads the CRDs already on the cluster for the never-downgrade check;
+# kubectl (alekc/kubectl) applies the module-owned CRDs (server-side
+# apply — the SolrCloud CRD's schema exceeds the client-side last-applied
+# annotation cap — plus apply_only, the keep-on-uninstall mechanism); http
+# is the index read and the bundle-fetch branch of the shared helm_crds.tf,
+# declared because init resolves every data source in that file.
 #
-# All three providers are configured by the calling workspace/environment
-# (the same kubeconfig environment contract).
+# Providers are configured by the calling workspace/environment (the same
+# kubeconfig environment contract).
 
 terraform {
   required_providers {
@@ -23,6 +25,10 @@ terraform {
     kubectl = {
       source  = "alekc/kubectl"
       version = ">= 2.0"
+    }
+    http = {
+      source  = "hashicorp/http"
+      version = "~> 3.4"
     }
   }
 }

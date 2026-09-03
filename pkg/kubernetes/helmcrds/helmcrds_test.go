@@ -10,6 +10,9 @@ import (
 	"strings"
 	"testing"
 
+	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
+	"helm.sh/helm/v3/pkg/repo"
 	"sigs.k8s.io/yaml"
 )
 
@@ -58,7 +61,8 @@ func TestDeriveTemplatedCRDsUsesReleaseValuesAndIdentity(t *testing.T) {
 		CRDOverride: "crds:\n  create: true\n",
 		APIVersions: []string{"cert-manager.io/v1"},
 	}
-	crds, err := Derive(context.Background(), src, "my-op", "ops")
+	derived, err := Derive(context.Background(), src, Policy{ExpectCRDs: true}, "my-op", "ops")
+	crds := derived.Owned
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,11 +113,11 @@ func TestDeriveTemplatedCRDsDropsCapabilityGatedContentWithoutAPIVersion(t *test
 		CRDOverride: "crds:\n  create: true\n",
 		// No cert-manager.io/v1 declared: the chart omits the annotation.
 	}
-	crds, err := Derive(context.Background(), src, "op", "ns")
+	derived, err := Derive(context.Background(), src, Policy{ExpectCRDs: true}, "op", "ns")
 	if err != nil {
 		t.Fatal(err)
 	}
-	widgets := decode(t, crds[1].YAML)
+	widgets := decode(t, derived.Owned[1].YAML)
 	annotations := metadataMap(t, widgets, "annotations")
 	if _, present := annotations["cert-manager.io/inject-ca-from"]; present {
 		t.Fatal("capability-gated annotation rendered without the API version declared")
@@ -122,10 +126,11 @@ func TestDeriveTemplatedCRDsDropsCapabilityGatedContentWithoutAPIVersion(t *test
 
 func TestDeriveCRDsDirectoryChart(t *testing.T) {
 	src := Source{Chart: fixtureChart(t, "crds-dir"), Version: "0.7.1"}
-	crds, err := Derive(context.Background(), src, "op", "ns")
+	derived, err := Derive(context.Background(), src, Policy{ExpectCRDs: true}, "op", "ns")
 	if err != nil {
 		t.Fatal(err)
 	}
+	crds := derived.Owned
 	if len(crds) != 1 || crds[0].Name != "platforms.fixture.planton.ai" {
 		t.Fatalf("expected the one crds/-directory CRD, got %+v", crds)
 	}
@@ -133,7 +138,7 @@ func TestDeriveCRDsDirectoryChart(t *testing.T) {
 
 func TestDeriveNoCRDsExplainsItself(t *testing.T) {
 	src := Source{Chart: fixtureChart(t, "no-crds"), Version: "0.1.0", CRDOverride: "crds:\n  create: true\n"}
-	_, err := Derive(context.Background(), src, "op", "ns")
+	_, err := Derive(context.Background(), src, Policy{ExpectCRDs: true}, "op", "ns")
 	assertFailure(t, err, "produced no CustomResourceDefinition documents", "CRD switch", "helm show values")
 }
 
@@ -141,9 +146,116 @@ func TestDeriveCRDSwitchOffYieldsNothing(t *testing.T) {
 	// Without the override the templated chart renders no CRDs: the
 	// override is load-bearing, and forgetting it is reported, not silent.
 	src := Source{Chart: fixtureChart(t, "templated-crds"), Version: "1.2.3"}
-	_, err := Derive(context.Background(), src, "op", "ns")
+	_, err := Derive(context.Background(), src, Policy{ExpectCRDs: true}, "op", "ns")
 	if err == nil {
 		t.Fatal("expected the zero-CRD failure")
+	}
+}
+
+// The generic Helm kind renders whatever chart the user named, with no CRD
+// override, so ownership follows Helm's two surfaces: the crds/ directory is
+// the module's; templated CRDs are Helm's, refused unless the chart keeps them
+// itself or the user accepted Helm-managed CRDs.
+func TestDeriveWithoutOverrideSplitsTheTwoSurfaces(t *testing.T) {
+	chart := fixtureChart(t, "mixed-surfaces")
+
+	t.Run("templated CRD without keep is refused with its name", func(t *testing.T) {
+		_, err := Derive(context.Background(), Source{Chart: chart, Version: "2.0.0"}, Policy{}, "rel", "ns")
+		assertFailure(t, err, "gizmos.fixture.planton.ai", "deletes them when the release is uninstalled", "allow_helm_managed")
+		if !strings.Contains(err.Error(), "1 CustomResourceDefinition(s)") || strings.Contains(err.Error(), "things.fixture") {
+			t.Fatalf("the refusal must name only the templated CRD: %s", err)
+		}
+	})
+
+	t.Run("accepted Helm-managed CRDs are reported, the directory CRD is owned", func(t *testing.T) {
+		derived, err := Derive(context.Background(), Source{Chart: chart, Version: "2.0.0"}, Policy{AllowHelmManaged: true}, "rel", "ns")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(derived.Owned) != 1 || derived.Owned[0].Name != "things.fixture.planton.ai" {
+			t.Fatalf("expected only the crds/-directory CRD to be owned, got %+v", derived.Owned)
+		}
+		if len(derived.HelmManaged) != 1 || derived.HelmManaged[0] != "gizmos.fixture.planton.ai" {
+			t.Fatalf("expected the templated CRD reported as Helm-managed, got %v", derived.HelmManaged)
+		}
+	})
+
+	t.Run("a templated CRD the chart keeps itself is neither refused nor owned", func(t *testing.T) {
+		src := Source{Chart: chart, Version: "2.0.0", Values: []string{"crds:\n  keep: true\n"}}
+		derived, err := Derive(context.Background(), src, Policy{}, "rel", "ns")
+		if err != nil {
+			t.Fatalf("a chart that owns its CRD lifecycle must not be refused: %v", err)
+		}
+		if len(derived.Owned) != 1 || len(derived.HelmManaged) != 0 {
+			t.Fatalf("expected one owned, none Helm-managed, got %+v", derived)
+		}
+	})
+
+	t.Run("with an override the module owns both surfaces", func(t *testing.T) {
+		src := Source{Chart: chart, Version: "2.0.0", CRDOverride: "crds:\n  keep: false\n"}
+		derived, err := Derive(context.Background(), src, Policy{ExpectCRDs: true}, "rel", "ns")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(derived.Owned) != 2 || len(derived.HelmManaged) != 0 {
+			t.Fatalf("expected both CRDs owned, got %+v", derived)
+		}
+	})
+
+	t.Run("a chart without CRDs is ordinary when none are expected", func(t *testing.T) {
+		derived, err := Derive(context.Background(), Source{Chart: fixtureChart(t, "no-crds"), Version: "0.1.0"}, Policy{}, "rel", "ns")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(derived.Owned) != 0 {
+			t.Fatalf("expected nothing owned, got %+v", derived.Owned)
+		}
+	})
+}
+
+// A private repository must be read with the same credentials the install
+// uses; the render carries them through Helm's own chart locator.
+func TestDeriveFromPrivateRepositoryUsesCredentials(t *testing.T) {
+	repoDir := t.TempDir()
+	chrt, err := loader.Load(fixtureChart(t, "crds-dir"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := chartutil.Save(chrt, repoDir); err != nil {
+		t.Fatal(err)
+	}
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if user, pass, ok := r.BasicAuth(); !ok || user != "reader" || pass != "s3cret" {
+			w.Header().Set("WWW-Authenticate", `Basic realm="charts"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if r.URL.Path == "/index.yaml" {
+			index, err := repo.IndexDirectory(repoDir, server.URL)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			index.SortEntries()
+			body, _ := yaml.Marshal(index)
+			_, _ = w.Write(body)
+			return
+		}
+		http.ServeFile(w, r, filepath.Join(repoDir, filepath.Base(r.URL.Path)))
+	}))
+	defer server.Close()
+
+	src := Source{Repository: server.URL, Chart: "crds-dir", Version: "0.7.1", Username: "reader", Password: "s3cret"}
+	derived, err := Derive(context.Background(), src, Policy{ExpectCRDs: true}, "op", "ns")
+	if err != nil {
+		t.Fatalf("credentials must reach the repository: %v", err)
+	}
+	if len(derived.Owned) != 1 {
+		t.Fatalf("expected the chart's one CRD, got %+v", derived.Owned)
+	}
+	if _, err := Derive(context.Background(), Source{Repository: server.URL, Chart: "crds-dir", Version: "0.7.1"}, Policy{ExpectCRDs: true}, "op", "ns"); err == nil {
+		t.Fatal("without credentials the private repository must refuse the render")
 	}
 }
 
@@ -166,10 +278,11 @@ func TestDeriveBundle(t *testing.T) {
 		Version:   "0.9.1",
 		BundleURL: server.URL + "/solr-operator/v{{version}}/crds/all.yaml",
 	}
-	crds, err := Derive(context.Background(), src, "solr", "ns")
+	derived, err := Derive(context.Background(), src, Policy{ExpectCRDs: true}, "solr", "ns")
 	if err != nil {
 		t.Fatal(err)
 	}
+	crds := derived.Owned
 	if len(crds) != 2 {
 		t.Fatalf("expected 2 CRDs (the Namespace document filtered out), got %d", len(crds))
 	}
@@ -185,7 +298,7 @@ func TestDeriveBundle(t *testing.T) {
 
 	// 404 at a version that was never published.
 	missing := Source{Version: "0.9.0", BundleURL: src.BundleURL}
-	_, err = Derive(context.Background(), missing, "solr", "ns")
+	_, err = Derive(context.Background(), missing, Policy{ExpectCRDs: true}, "solr", "ns")
 	assertFailure(t, err, "answered HTTP 404", "no bundle is published at this version", "0.9.0")
 }
 

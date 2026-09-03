@@ -27,6 +27,19 @@ on top. Both engines merge these layers with identical precedence
 one final values map — the same manifest installs byte-identical releases
 on either engine.
 
+CRD LIFECYCLE: Helm installs the CRDs in a chart's `crds/` directory once
+and never upgrades or removes them. The modules OWN that surface instead:
+the CRDs are derived from the pinned chart at deploy time (rendered with
+the release's own values), applied keyed by CRD name ahead of the
+release, kept when the resource is destroyed (`crds.keep_on_uninstall`),
+re-adopted on reinstall, and moved with every `version` bump; a `version`
+lower than the CRDs already on the cluster is refused before anything
+changes. CRDs a chart templates as ordinary release resources stay
+Helm's: a chart that marks them `helm.sh/resource-policy: keep` protects
+them itself and installs as is; a chart that templates them without that
+mark would delete them with the release, so it is refused with the CRD
+names and the remedies unless `crds.allow_helm_managed` accepts it.
+
 ## Example
 
 ```yaml
@@ -64,7 +77,10 @@ spec:
   cleanup_on_fail: true
   wait_for_jobs: true
   timeout_seconds: 600
-  skip_crds: false
+  crds:
+    install: true
+    keep_on_uninstall: true
+    allow_helm_managed: false
   max_history: 5
   description: offline plan proof
 ```
@@ -90,7 +106,6 @@ spec:
 | `spec.skipAwait` | `bool` |  |  |  |
 | `spec.waitForJobs` | `bool` |  |  |  |
 | `spec.timeoutSeconds` | `int32` |  | `300` |  |
-| `spec.skipCrds` | `bool` |  |  |  |
 | `spec.dependencyUpdate` | `bool` |  |  |  |
 | `spec.maxHistory` | `int32` |  | `10` |  |
 | `spec.replace` | `bool` |  |  |  |
@@ -101,6 +116,10 @@ spec:
 | `spec.disableOpenapiValidation` | `bool` |  |  |  |
 | `spec.takeOwnership` | `bool` |  |  |  |
 | `spec.description` | `string` |  |  |  |
+| `spec.crds` | `KubernetesHelmReleaseCrds` |  |  |  |
+| `spec.crds.install` | `bool` |  | `true` |  |
+| `spec.crds.keepOnUninstall` | `bool` |  | `true` |  |
+| `spec.crds.allowHelmManaged` | `bool` |  | `false` |  |
 
 ## Field Details
 
@@ -264,13 +283,6 @@ when awaiting). Helm's default is 300.
 - default: `300`
 - rule: {"int32":{"gt":0}}
 
-### spec.skipCrds
-
-`bool`
-
-When true, CRDs shipped in the chart's `crds/` directory are NOT
-installed. By default Helm installs chart CRDs when they are absent.
-
 ### spec.dependencyUpdate
 
 `bool`
@@ -350,6 +362,53 @@ rather than silently ignoring it.
 `string`
 
 Free-form note stored with the release (visible in `helm status`).
+
+### spec.crds
+
+`KubernetesHelmReleaseCrds`
+
+CRD lifecycle for the chart's `crds/` directory, and the posture toward
+CRDs the chart templates itself. Unset means the module owns the
+directory's CRDs and keeps them, and refuses Helm-managed ones.
+
+### spec.crds.install
+
+`bool` · optional (explicit presence)
+
+Derive the chart's `crds/` directory at the pinned version and apply
+each CRD ahead of the release, keyed by its name. Default TRUE. Set
+false ONLY when those CRDs are owned elsewhere (another release, a
+GitOps-managed bundle): the release still installs with the directory
+skipped, and nothing is derived or checked.
+
+- default: `true`
+
+### spec.crds.keepOnUninstall
+
+`bool` · optional (explicit presence)
+
+Keep the module-owned CRDs (and therefore every custom resource built
+on them, cluster-wide) when the resource is destroyed. Default TRUE:
+deleting a CRD deletes every object of that type, a destructive act
+that must be an explicit false. A later reinstall re-adopts kept CRDs.
+
+- default: `true`
+
+### spec.crds.allowHelmManaged
+
+`bool` · optional (explicit presence)
+
+Accept CRDs the chart templates as release resources WITHOUT
+`helm.sh/resource-policy: keep`. Helm installs and upgrades them with
+the release and deletes them when the release is uninstalled, along
+with every custom resource built on them; nothing the module applies
+can protect a resource Helm owns. Default FALSE: such a chart is
+refused at plan time with the CRD names and the remedies (the typed
+catalog kind for the chart if one exists; the chart's own keep switch
+in its values; or this dial). CRDs the chart already marks keep are
+never refused: the chart protects them itself.
+
+- default: `false`
 
 ## Validation Rules
 

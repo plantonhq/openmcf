@@ -9,6 +9,7 @@
 #   1. build-check: compile E2E code + go vet (fast gate, every trigger)
 #   2. discover: read E2E profiles, output GitHub Actions matrix JSON
 #   3. e2e: matrix of (tier × provisioner) cells, each with its own kind cluster
+#      (on the host runner: a kind cluster is unreachable from a container job)
 #   4. summary: aggregate JUnit results into GitHub Step Summary
 #
 # Triggers:
@@ -54,6 +55,9 @@ permissions:
 
 env:
   PULUMI_CONFIG_PASSPHRASE: ''
+  # kind's version is coupled to the Kubernetes node image it pulls; keep in
+  # lockstep with the toolchain image (tools/ci/docker/Dockerfile).
+  KIND_VERSION: v0.27.0
   # CI runners are ephemeral: delete the kind cluster at teardown. Local runs keep
   # the cluster alive across back-to-back sessions (the harness's persistent lane).
   PLANTON_E2E_DESTROY_CLUSTER: '1'
@@ -114,12 +118,15 @@ jobs:
   e2e:
     needs: discover
     if: github.event_name != 'pull_request'
+    # On the HOST runner, not in the toolchain container: kind publishes the
+    # cluster's API server on the Docker host's loopback, and inside a
+    # container job 127.0.0.1 is the job container, so kubectl could create
+    # the cluster (kind drives the node over the Docker socket) yet never
+    # reach it. The tools the toolchain image carries are installed here at
+    # the same pins (kind's version is coupled to the node image; the rest
+    # track latest, as the image does). kubectl, helm and Docker are
+    # preinstalled on ubuntu-latest.
     runs-on: ubuntu-latest
-    # kind creates clusters as Docker containers. A container job has no daemon
-    # of its own, so we mount the host runner's Docker socket and run as root.
-    container:
-      image: ghcr.io/plantonhq/planton/ci-toolchain:latest
-      options: --user root -v /var/run/docker.sock:/var/run/docker.sock
     timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
@@ -127,6 +134,26 @@ jobs:
       matrix: ${{ fromJson(needs.discover.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Install kind and gotestsum
+        run: |
+          go install "sigs.k8s.io/kind@${KIND_VERSION}"
+          go install gotest.tools/gotestsum@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_wrapper: false
+
+      - name: Install Pulumi
+        run: |
+          curl -fsSL https://get.pulumi.com | sh
+          echo "$HOME/.pulumi/bin" >> "$GITHUB_PATH"
 
       - name: Run E2E tests
         run: |

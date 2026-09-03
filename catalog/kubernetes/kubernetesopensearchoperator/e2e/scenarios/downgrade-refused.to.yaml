@@ -1,0 +1,18 @@
+# The refused second act of downgrade-refused.yaml: the same resource
+# asking for chart 2.7.0 while the cluster carries 2.8.0 CRDs. Not a
+# scenario of its own (the second-act annotation keeps discovery from
+# running it as a lane) -- the harness deploys it only through the
+# annotations on downgrade-refused.yaml.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenSearchOperator
+metadata:
+  name: e2e-osop-down
+  annotations:
+    planton.dev/e2e-second-act: downgrade-refused.yaml
+spec:
+  namespace:
+    value: e2e-osop-down
+  create_namespace: true
+  chart_version: 2.7.0
+  crds:
+    keep_on_uninstall: false

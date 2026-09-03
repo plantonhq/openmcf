@@ -1,0 +1,18 @@
+# The second act of upgrade.yaml: the same resource, chart 0.9.1, and the
+# CRDs released at destroy so the lane cleans up after itself. Not a
+# scenario of its own (the second-act annotation keeps discovery from
+# running it as a lane) -- the harness deploys it only through the upgrade
+# annotation on upgrade.yaml.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSolrOperator
+metadata:
+  name: e2e-slrop-upg
+  annotations:
+    planton.dev/e2e-second-act: upgrade.yaml
+spec:
+  namespace:
+    value: e2e-slrop-upg
+  create_namespace: true
+  chart_version: 0.9.1
+  crds:
+    keep_on_uninstall: false

@@ -20,6 +20,38 @@ spec:
         - from_spec_field: namespace.value
       where_to_find: >-
         `helm list -A` (NAMESPACE column).
+    # ── the module-owned CRDs (for_each resource "helm_crds") ───────────
+    # The chart's crds/ directory, derived from the pinned chart at plan
+    # time (the generated helm_crds.tf) and keyed by each CRD's own
+    # metadata.name, so the name derives blind from the state address
+    # key; CustomResourceDefinitions are cluster-scoped (no namespace
+    # segment). Empty for a chart without a crds/ directory (most charts),
+    # and absent entirely when crds.install is false.
+    - name: api_version
+      tofu_resource_name: helm_crds
+      derivations:
+        - literal: apiextensions.k8s.io/v1
+      where_to_find: Always "apiextensions.k8s.io/v1" — the CRD group/version.
+    - name: kind
+      tofu_resource_name: helm_crds
+      derivations:
+        - literal: CustomResourceDefinition
+      where_to_find: Always "CustomResourceDefinition".
+    - name: name
+      tofu_resource_name: helm_crds
+      derivations:
+        - from_address_key: true
+      where_to_find: >-
+        Each CRD's metadata.name (the for_each key) —
+        `kubectl get crd -l planton.ai/crd-source=<spec.chart>` (NAME
+        column; the set is whatever the pinned chart's crds/ directory
+        carries).
+    - name: namespace
+      where_to_find: >-
+        Not applicable — CustomResourceDefinitions are cluster-scoped,
+        so the composed import ID has no namespace segment (the
+        optional [//{namespace}] group drops).
+    # ── the optional anchor namespace ────────────────────────────────────
     - name: namespace_name
       derivations:
         - from_stack_output: namespace

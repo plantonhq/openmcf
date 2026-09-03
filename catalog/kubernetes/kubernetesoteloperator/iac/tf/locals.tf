@@ -53,26 +53,37 @@ locals {
   # generated helm_crds.tf: it renders the chart with the release's own
   # values (helm_release_values, the same list the release consumes) plus
   # the CRD switch turned on, keeps the CustomResourceDefinition
-  # documents, stamps them, and applies each one kept. These locals are
-  # its input; the twin of the Pulumi module's keptcrds.Args.
-  #
-  # crds.install false is the bring-your-own-CRDs arm (the CRDs are owned
-  # elsewhere, a GitOps-managed bundle); the release still skips CRDs.
-  # crds.keep_on_uninstall false lets a destroy take the CRDs with it.
-  helm_crds_enabled = try(var.spec.crds.install, null) == null ? true : var.spec.crds.install
-  helm_crds_keep    = try(var.spec.crds.keep_on_uninstall, null) == null ? true : var.spec.crds.keep_on_uninstall
+  # documents, stamps them, and applies each one kept. This object is its
+  # input; the twin of the Pulumi module's keptcrds.Args, every key present.
+  helm_crds_args = {
+    # crds.install false is the bring-your-own-CRDs arm (the CRDs are owned
+    # elsewhere, a GitOps-managed bundle); the release still skips CRDs.
+    # crds.keep_on_uninstall false lets a destroy take the CRDs with it.
+    install           = try(var.spec.crds.install, null) == null ? true : var.spec.crds.install
+    keep_on_uninstall = try(var.spec.crds.keep_on_uninstall, null) == null ? true : var.spec.crds.keep_on_uninstall
 
-  # The chart's CRD switch, turned on for the render only. The release
-  # pins it off (see helm_release_values).
-  helm_crds_render_override = yamlencode({ crds = { create = true } })
+    # A typed kind knows its chart carries CRDs and pins the switch: a render
+    # that yields none is a failure, and nothing is ever left to Helm.
+    expect_crds        = true
+    allow_helm_managed = false
 
-  # The collector CRD's cert-manager.io/inject-ca-from annotation renders
-  # only when the chart sees cert-manager.io/v1 served; the render must
-  # declare it or the kept CRD loses its conversion trust.
-  helm_crds_api_versions = ["cert-manager.io/v1"]
+    # The chart's CRD switch, turned on for the render only. The release
+    # pins it off (see helm_release_values).
+    render_override = yamlencode({ crds = { create = true } })
 
-  # This chart templates its CRDs; no upstream bundle.
-  helm_crds_bundle_url = ""
+    # The collector CRD's cert-manager.io/inject-ca-from annotation renders
+    # only when the chart sees cert-manager.io/v1 served; the render must
+    # declare it or the kept CRD loses its conversion trust.
+    api_versions = ["cert-manager.io/v1"]
+
+    # This chart templates its CRDs from a public repository, with no
+    # set-style overrides; no upstream bundle.
+    bundle_url          = ""
+    repository_username = ""
+    repository_password = ""
+    set                 = []
+    set_sensitive       = []
+  }
 
   # ---- webhook artifact names (twins of the Pulumi module's locals) ---------
   # The module pins the chart's fullnameOverride to the resource name

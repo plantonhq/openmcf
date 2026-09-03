@@ -9,7 +9,7 @@ This component installs and configures the **engine**. Solr clusters themselves 
 When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Helm release (solr-operator)** — the operator Deployment (with leader election between replicas), its RBAC, and ServiceAccount
-- **The operator CRDs** — SolrCloud, SolrBackup, SolrPrometheusExporter, and ZookeeperCluster (for the bundled dependency), applied by the module itself and keyed by CRD name — the chart does not ship them. Because the module owns the CRD lifecycle, uninstalling the operator never cascade-deletes SolrCloud resources and their data
+- **The operator CRDs** — SolrCloud, SolrBackup, SolrPrometheusExporter, and ZookeeperCluster (for the bundled dependency), derived from the pinned chart and applied by the module itself outside the release, keyed by CRD name. Because the module owns the CRD lifecycle, a chart bump moves the CRDs with it, uninstalling the operator never cascade-deletes SolrCloud resources and their data (unless `crds.keepOnUninstall` is false), a reinstall re-adopts them, and a version below what the cluster's CRDs carry is refused before anything changes
 - **The bundled zookeeper-operator** (default on) — the chart dependency that provisions PROVIDED ZooKeeper ensembles, so an **Apache Solr** resource works out of the box. Disable it only when a zookeeper-operator already runs in the cluster (its fixed-name cluster-scoped RBAC conflicts on a second install) or when every Solr cluster connects to an EXTERNAL ensemble
 - **Kubernetes Namespace** — created only when `createNamespace` is `true`; otherwise the operator installs into an existing namespace
 
@@ -72,7 +72,7 @@ The InfraPipeline deploys the namespace first, then installs the operator into i
 
 These are the most important decisions when configuring an Apache Solr Operator install. Explore the full field reference in the [API Explorer](#api-explorer) tab.
 
-**Chart pinning** — `chartVersion` defaults to **0.9.1**. Chart and operator versions move together (the operator image tag is `v<chart_version>`), and the chart version has **no `v` prefix** while the operator/CRD artifacts carry one. The operator is **pre-1.0**: minor versions can change the CRD API, so a version bump means applying the matching CRDs — which the deploy does, because the CRD lifecycle is module-owned. Versions must exist as SERVED charts in the repository index.
+**Chart pinning** — `chartVersion` defaults to **0.9.1**. Chart and operator versions move together (the operator image tag is `v<chart_version>`), and the chart version has **no `v` prefix** while the operator/CRD artifacts carry one. The operator is **pre-1.0**: minor versions can change the CRD API, so a version bump means applying the matching CRDs — which the deploy does, because the CRDs are derived from the pinned chart. Versions must exist as SERVED charts in the repository index; a version that is not published is refused with the remedy before anything is created.
 
 **The bundled zookeeper-operator** — `zookeeperOperator.install` defaults true: the path that makes provided ZooKeeper ensembles work out of the box. Set `install: false` together with `useExisting: true` when the cluster already runs a zookeeper-operator (fixed-name cluster-scoped RBAC conflicts on a second install); plain `install: false` alone is the external-ensemble-only posture — a provided ensemble would then hang silently waiting on ZooKeeper.
 

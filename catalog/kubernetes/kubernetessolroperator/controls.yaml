@@ -73,10 +73,10 @@ spec:
       notes: An operator outage pauses reconciliation only -- managed Solr clusters keep serving. The 03-namespace-fenced preset runs two replicas.
     - control_id: deletion-protection
       status: not_applicable
-      notes: "Neither Kubernetes nor the chart offers a deletion-protection flag on the release. The blast radius of deletion is bounded BY THE MODULES -- the chart does not ship CRDs, so the modules own the CRD lifecycle themselves (module-applied CRDs whose delete is a no-op): uninstalling the operator never cascade-deletes SolrCloud, SolrBackup, or ZookeeperCluster resources and their data."
+      notes: "Neither Kubernetes nor the chart offers a deletion-protection flag on the release. The blast radius of deletion is bounded BY THE MODULES -- they own the CRD lifecycle (CRDs derived from the pinned chart and applied outside the release, kept on destroy by default): uninstalling the operator never cascade-deletes SolrCloud, SolrBackup, or ZookeeperCluster resources and their data unless crds.keep_on_uninstall is explicitly false."
     - control_id: managed-patching
       status: configurable
       field_path: chart_version
       evidence:
         type: spec_default
-        reference: Unset installs the pinned default chart (0.9.1 -- chart and operator versions move together). The operator is pre-1.0 and minor versions can change the CRD API -- a version bump is a CRD re-check, and the module-staged CRD files are restaged together with the chart pin.
+        reference: Unset installs the pinned default chart (0.9.1 -- chart and operator versions move together). The operator is pre-1.0 and minor versions can change the CRD API -- the module-owned CRDs are derived from the pinned chart, so a version bump moves the schema with the operator, and a version below what the cluster carries is refused.

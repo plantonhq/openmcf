@@ -95,6 +95,9 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetesoteloperatorv1alpha1.K
 			CRDOverride: vars.CrdRenderOverride,
 			APIVersions: vars.CrdRenderApiVersions,
 		},
+		// A typed kind knows its chart carries CRDs and pins the switch, so a
+		// render that yields none is a failure and nothing is left to Helm.
+		Policy:          helmcrds.Policy{ExpectCRDs: true},
 		ReleaseName:     locals.ReleaseName,
 		Namespace:       locals.Namespace,
 		Install:         crds == nil || crds.Install == nil || crds.GetInstall(),

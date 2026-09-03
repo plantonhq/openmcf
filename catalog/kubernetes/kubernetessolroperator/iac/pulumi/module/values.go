@@ -21,9 +21,11 @@ import (
 // scope, the true-defaulted toggles, the image source), so the rendered
 // values stay minimal on both engines. The ONE always-rendered value is
 // `zookeeper-operator.crd.create: false` — the module owns the
-// ZookeeperCluster CRD (applied with the keep-on-uninstall posture), so
-// the bundled subchart must NEVER install its own copy and put it under
-// Helm's delete-on-uninstall lifecycle.
+// ZookeeperCluster CRD (derived from the pinned chart and applied kept),
+// so the bundled subchart must NEVER install its own copy and put it under
+// Helm's delete-on-uninstall lifecycle. The same map is what the CRD
+// render sees (plus the switch turned on), so the derived CRDs can never
+// see different values than the install.
 func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 	spec := locals.Spec
 
@@ -147,6 +149,19 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		}
 		values = mergeMaps(values, overrides)
 	}
+
+	// ---- the load-bearing re-pin, AFTER the escape hatch ------------------------
+	// zookeeper-operator.crd.create=false: the module owns the
+	// ZookeeperCluster CRD; letting the subchart install its own copy
+	// would arm the uninstall cascade-delete this design exists to
+	// prevent, and a helm_values override must never re-arm it. Twin of
+	// the Terraform module's third values document.
+	zk, ok := values["zookeeper-operator"].(map[string]interface{})
+	if !ok {
+		zk = map[string]interface{}{}
+		values["zookeeper-operator"] = zk
+	}
+	zk["crd"] = map[string]interface{}{"create": false}
 
 	return values, nil
 }

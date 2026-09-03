@@ -87,9 +87,11 @@ spec:
           - customresourcedefinitions
         verbs:
           - get
+          - list
           - create
           - update
           - patch
+          - delete
         cluster_scoped: true
         provenance: derived
-        notes: Covers kubectl_manifest.solr_operator_crds -- the four MODULE-OWNED CRDs (SolrCloud, SolrBackup, SolrPrometheusExporter on solr.apache.org, plus ZookeeperCluster for the bundled dependency; the chart ships none), server-side-applied from the staged files on every apply (SSA is load-bearing -- the SolrCloud schema exceeds the client-side annotation size limit). No delete -- apply_only makes the provider's Delete a no-op, so destroy leaves the CRDs and every SolrCloud resource on the cluster.
+        notes: Covers kubectl_manifest.helm_crds (Terraform, the generated helm_crds.tf) and the Pulumi twin (keptcrds) -- the MODULE-OWNED CRDs (SolrCloud, SolrBackup, SolrPrometheusExporter on solr.apache.org, plus ZookeeperCluster for the bundled dependency), derived from the pinned chart at apply time and applied via server-side apply OUTSIDE the Helm release (SSA is load-bearing -- the SolrCloud schema exceeds the client-side annotation size limit), re-applied in place on chart bumps. The list verb also serves the never-downgrade read (CRDs selected by the planton.ai/crd-source label). Delete is exercised only when spec.crds.keep_on_uninstall is false; the default keep posture makes destroy a no-op so an operator uninstall never cascade-deletes SolrCloud resources. Skipped entirely when spec.crds.install is false.

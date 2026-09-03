@@ -1,0 +1,18 @@
+# THE UPGRADE PROOF: install at chart 0.9.0, then re-deploy the same
+# resource from upgrade.to.yaml with chart_version bumped to 0.9.1 (the
+# same operator, a newer chart). The verifier reads the CRDs' source
+# stamp after the upgrade: it must have moved to 0.9.1, which is the
+# fact "a chart bump re-applies the derived CRDs". The upgrade manifest
+# turns keep_on_uninstall off so the destroy leaves the shared cluster
+# clean of CRDs a later lane would otherwise inherit.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesSolrOperator
+metadata:
+  name: e2e-slrop-upg
+  annotations:
+    planton.dev/e2e-upgrade-manifest: upgrade.to.yaml
+spec:
+  namespace:
+    value: e2e-slrop-upg
+  create_namespace: true
+  chart_version: 0.9.0

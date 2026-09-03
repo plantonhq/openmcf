@@ -485,20 +485,31 @@ regenerated tfvars in the same working directory for Terraform):
 
 The second-act manifest carries **`planton.dev/e2e-second-act: <first-act
 file>`** so discovery never runs it as a lane of its own; it is reachable
-only through the first act's annotation. The OpenTelemetry operator's
-scenarios are the worked example: `minimal` keeps its CRDs and reinstalls
-onto them, `full-surface` turns keep off so the shared cluster is left
-clean, `upgrade` bumps the chart and checks the CRDs' source-version stamp
-moved, `version-not-published` is refused at deploy, `downgrade-refused` is
-refused at upgrade -- and the refusal verifier asserts the three-part
+only through the first act's annotation. Every kind on the catalog's CRD
+primitive runs the same five shapes (the OpenTelemetry, Solr and OpenSearch
+operators, and the generic Helm release on a CRD-bearing chart): `minimal`
+keeps its CRDs and reinstalls onto them, the cleanup lane turns keep off so
+the shared cluster is left clean, `upgrade` bumps the chart and checks the
+CRDs' source-version stamp moved, `version-not-published` is refused at
+deploy, `downgrade-refused` is refused at upgrade -- and the shared
+refusal verifier (`verify.helmCRDLifecycle`) asserts the three-part
 message (what was observed, what it means, the next step) on both engines.
+The failure classes a scenario may name are `chart-version-not-published`,
+`crd-schema-downgrade`, and `helm-managed-crds` (a chart that templates
+CRDs without Helm's keep mark, refused by the generic Helm kind unless the
+spec accepts it). The generic Helm kind's chart is arbitrary, so its
+scenarios declare the CRDs they expect the module to own (or a refusal to
+name) with **`planton.dev/e2e-expect-crds: <comma-separated CRD names>`**;
+a scenario on a chart without CRDs omits it.
 
 Two cluster facts the lanes must respect. Kept CRDs are cluster-scoped and
 outlive their lane, so a lane that leaves CRDs at a HIGHER version than a
-later lane pins would make that later lane's install a refused downgrade:
-every lane that raises the version turns `keepOnUninstall` off so it leaves
-the cluster as it found it, and a lane that keeps its CRDs leaves them at
-the default pin. And the Kubernetes `TestMain` isolates Helm's repository
+later lane pins would make that later lane's install a refused downgrade,
+in whatever order the lanes happen to run: every lane that raises the
+version turns `keepOnUninstall` off so it leaves the cluster as it found
+it, and the one lane that keeps its CRDs pins the LOWEST version any lane
+of that kind installs (one step below the default when the upgrade lane
+starts there). And the Kubernetes `TestMain` isolates Helm's repository
 configuration and cache per run (`runner.IsolateHelmEnvironment`): Helm
 consults the machine's repository list even for a URL-addressed chart, and a
 stale entry there fails every render and install with "no cached repo

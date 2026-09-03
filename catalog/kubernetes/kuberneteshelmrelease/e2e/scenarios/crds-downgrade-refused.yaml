@@ -1,0 +1,24 @@
+# THE SCHEMA-DOWNGRADE REFUSAL for a CRD-bearing chart: install Flagger
+# 1.45.0, then attempt to re-deploy from crds-downgrade-refused.to.yaml at
+# 1.44.0. The second deploy must be refused before any CRD changes (the
+# verifier reads the stamps afterwards: still 1.45.0), with the three-part
+# message naming both versions and the deliberate remedy.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-crds-down
+  annotations:
+    planton.dev/e2e-upgrade-manifest: crds-downgrade-refused.to.yaml
+    planton.dev/e2e-expect-upgrade-failure: crd-schema-downgrade
+    planton.dev/e2e-expect-crds: canaries.flagger.app,metrictemplates.flagger.app,alertproviders.flagger.app
+spec:
+  namespace:
+    value: e2e-helm-crds-down-ns
+  create_namespace: true
+  repo: https://flagger.app
+  chart: flagger
+  version: 1.45.0
+  values_yaml: |
+    meshProvider: kubernetes
+  crds:
+    keep_on_uninstall: false

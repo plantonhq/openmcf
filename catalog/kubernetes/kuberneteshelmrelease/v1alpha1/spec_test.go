@@ -40,6 +40,13 @@ var _ = ginkgo.Describe("KubernetesHelmReleaseSpec validations", func() {
 			gomega.Expect(protovalidate.Validate(minimalSpec())).To(gomega.BeNil())
 		})
 
+		ginkgo.It("accepts every CRD lifecycle position, including accepting Helm-managed CRDs", func() {
+			spec := minimalSpec()
+			install, keep, allow := true, false, true
+			spec.Crds = &KubernetesHelmReleaseCrds{Install: &install, KeepOnUninstall: &keep, AllowHelmManaged: &allow}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
 		ginkgo.It("accepts an OCI repository", func() {
 			spec := minimalSpec()
 			spec.Repo = "oci://ghcr.io/stefanprodan/charts"
@@ -69,7 +76,6 @@ var _ = ginkgo.Describe("KubernetesHelmReleaseSpec validations", func() {
 			spec.CleanupOnFail = true
 			spec.WaitForJobs = true
 			spec.TimeoutSeconds = i32(600)
-			spec.SkipCrds = true
 			spec.DependencyUpdate = true
 			spec.MaxHistory = i32(0)
 			spec.TakeOwnership = true

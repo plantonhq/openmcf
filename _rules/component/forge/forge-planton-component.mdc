@@ -1080,11 +1080,40 @@ directory, `templates/`, and the values file) and choose:
    and installs the release with `skip_crds = true` and the chart's own
    CRD switch pinned OFF after the `helm_values` merge (a user override
    must never re-arm the cascade). The mechanics are shared, never
-   hand-rolled per kind: one Go package for Pulumi, one canonical
-   Terraform block that every module carries byte-identically under a
-   guard. Per-kind code supplies only the chart identity, the render
-   values that turn the chart's CRDs on, and the bundle URL when one
-   exists.
+   hand-rolled per kind: one Go package for Pulumi
+   (`pkg/iac/pulumi/pulumimodule/provider/kubernetes/keptcrds`, over the
+   engine-neutral `pkg/kubernetes/helmcrds`), one canonical Terraform
+   block (`helm_crds.tf`, written by `planton tofu generate-helm-crds`)
+   that every module carries byte-identically under a drift test.
+   Per-kind code supplies one contract, the twin of the other engine's:
+   `keptcrds.Args` on Pulumi and the `local.helm_crds_args` object on
+   Terraform — the chart identity, the release's own values, the render
+   override that turns the chart's CRDs on, the API versions the chart
+   gates on, the bundle URL when one exists, and the kind's policy.
+
+**Which rendered CRDs the module owns follows ONE rule, stated in the
+primitive and repeated nowhere else.** Helm has two CRD surfaces: the
+`crds/` directory (install-once; `skip_crds` governs it) and the
+templates (ordinary release resources). A module that supplies a render
+override has turned the chart's switch on for the render and pinned it
+off for the release, so EVERY CRD the render produces is the module's — a
+typed kind's case. A module that supplies no override renders exactly
+what the release renders: the `crds/` surface is the module's, and CRDs
+the chart templates stay Helm's. Templated CRDs the chart marks
+`helm.sh/resource-policy: keep` are the chart owning its lifecycle (branch
+1) and need nothing; templated CRDs WITHOUT that mark would be deleted
+with the release along with every custom resource built on them, so the
+plan refuses them with their names and the remedies unless the spec
+accepts Helm-managed CRDs. Only the generic Helm kind, whose chart is the
+user's, supplies no override and carries that acceptance dial
+(`crds.allow_helm_managed`); a typed kind always pins the switch. A
+post-render hook that would strip or keep-mark templated CRDs generically
+is not available where the engines run (the Pulumi SDK's post-render
+takes a bare command and the runner ships no helper binary), so the
+refusal, not a hook, is the design. A typed kind sets `expect_crds` so a
+render that yields no module-owned CRD is a failure (the chart's switch
+was renamed, or the chart stopped shipping CRDs); the generic kind does
+not, because most charts carry none.
 
 **Two invariants, both machine-enforced.** (1) **A module is its
 directory.** Nothing outside `iac/tf/` or `iac/pulumi/` is ever read:
@@ -1151,10 +1180,12 @@ act without a human. The anticipated set, each with a negative e2e lane
 asserting on the three parts: chart repository unreachable at plan time;
 pinned version not published (HTTP and OCI); CRD already exists owned by
 another release or tool; CRD schema downgrade attempted; render produced
-zero CRDs for a chart expected to carry them; CRD apply denied by RBAC;
-bundle URL 404; stale local repository configuration. A change that adds
-a branch to the shared mechanics adds that branch's failures and lanes in
-the same change.
+zero CRDs for a chart expected to carry them; the chart templates CRDs
+as Helm-managed resources without the keep mark and the spec has not
+accepted that; CRD apply denied by RBAC; bundle URL 404; stale local
+repository configuration; a private repository refusing the credentials.
+A change that adds a branch to the shared mechanics adds that branch's
+failures and lanes in the same change.
 
 **An operator's DESTROY contract is read from its controller source,
 never assumed from a sibling kind's posture.** Operators split into two

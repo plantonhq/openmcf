@@ -38,24 +38,49 @@ func isBlankOrComments(doc string) bool {
 	return true
 }
 
-// objectIdentity is the minimum a document must carry to be a CRD candidate.
+// objectIdentity is the minimum a document must carry to be a CRD candidate,
+// plus the one annotation that decides who keeps it.
 type objectIdentity struct {
 	Kind     string `json:"kind"`
 	Metadata struct {
-		Name string `json:"name"`
+		Name        string            `json:"name"`
+		Annotations map[string]string `json:"annotations"`
 	} `json:"metadata"`
+}
+
+// crdName returns metadata.name when the document is a CustomResourceDefinition,
+// "" otherwise. Not every rendered fragment is an object (NOTES, empty maps).
+func crdName(doc string) string {
+	var id objectIdentity
+	if err := yaml.Unmarshal([]byte(doc), &id); err != nil || id.Kind != "CustomResourceDefinition" {
+		return ""
+	}
+	return id.Metadata.Name
+}
+
+// crdDocument is a CRD as the render produced it, with the two facts ownership
+// turns on: which Helm surface it came from and whether the chart marked it to
+// be kept.
+type crdDocument struct {
+	CRD
+	// onDirectorySurface: the document came from the chart's crds/ directory
+	// (Helm's install-once surface, which skip_crds governs).
+	onDirectorySurface bool
+	// keptByChart: a templated CRD carrying helm.sh/resource-policy: keep, so
+	// the chart itself protects it from a cascading uninstall.
+	keptByChart bool
 }
 
 // filterCRDs keeps only CustomResourceDefinition documents, keyed and sorted
 // by metadata.name so callers register resources in a deterministic order.
-// A chart that ships the same CRD on both of Helm's surfaces yields it once.
-func filterCRDs(documents []string) ([]CRD, error) {
-	byName := map[string]string{}
+// A chart that ships the same CRD on both of Helm's surfaces yields it once,
+// attributed to the directory. directoryNames is nil for a bundle, whose
+// documents have no Helm surface at all.
+func filterCRDs(documents []string, directoryNames map[string]bool) ([]crdDocument, error) {
+	byName := map[string]crdDocument{}
 	for _, doc := range documents {
 		var id objectIdentity
 		if err := yaml.Unmarshal([]byte(doc), &id); err != nil {
-			// Not every rendered fragment is an object (NOTES, empty maps);
-			// only CRD-shaped documents matter here.
 			continue
 		}
 		if id.Kind != "CustomResourceDefinition" {
@@ -64,16 +89,20 @@ func filterCRDs(documents []string) ([]CRD, error) {
 		if id.Metadata.Name == "" {
 			return nil, errors.New("a rendered CustomResourceDefinition carries no metadata.name")
 		}
-		byName[id.Metadata.Name] = doc
+		byName[id.Metadata.Name] = crdDocument{
+			CRD:                CRD{Name: id.Metadata.Name, YAML: doc},
+			onDirectorySurface: directoryNames[id.Metadata.Name],
+			keptByChart:        id.Metadata.Annotations[HelmKeepAnnotation] == "keep",
+		}
 	}
 	names := make([]string, 0, len(byName))
 	for name := range byName {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	crds := make([]CRD, 0, len(names))
+	crds := make([]crdDocument, 0, len(names))
 	for _, name := range names {
-		crds = append(crds, CRD{Name: name, YAML: byName[name]})
+		crds = append(crds, byName[name])
 	}
 	return crds, nil
 }

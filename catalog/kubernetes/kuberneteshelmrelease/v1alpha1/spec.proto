@@ -25,6 +25,19 @@ import "shared/options/options.proto";
  * (values_yaml, then set, then set_string, then set_sensitive) and hand Helm
  * one final values map — the same manifest installs byte-identical releases
  * on either engine.
+ *
+ * CRD LIFECYCLE: Helm installs the CRDs in a chart's `crds/` directory once
+ * and never upgrades or removes them. The modules OWN that surface instead:
+ * the CRDs are derived from the pinned chart at deploy time (rendered with
+ * the release's own values), applied keyed by CRD name ahead of the
+ * release, kept when the resource is destroyed (`crds.keep_on_uninstall`),
+ * re-adopted on reinstall, and moved with every `version` bump; a `version`
+ * lower than the CRDs already on the cluster is refused before anything
+ * changes. CRDs a chart templates as ordinary release resources stay
+ * Helm's: a chart that marks them `helm.sh/resource-policy: keep` protects
+ * them itself and installs as is; a chart that templates them without that
+ * mark would delete them with the release, so it is refused with the CRD
+ * names and the remedies unless `crds.allow_helm_managed` accepts it.
  */
 message KubernetesHelmReleaseSpec {
   /**
@@ -172,11 +185,9 @@ message KubernetesHelmReleaseSpec {
     (buf.validate.field).int32.gt = 0
   ];
 
-  /**
-   * When true, CRDs shipped in the chart's `crds/` directory are NOT
-   * installed. By default Helm installs chart CRDs when they are absent.
-   */
-  bool skip_crds = 18;
+  // Field 18 carried the retired skip-chart-CRDs boolean; `crds.install`
+  // is its home now.
+  reserved 18;
 
   /**
    * When true, run `helm dependency update` before installing — fetches the
@@ -248,6 +259,13 @@ message KubernetesHelmReleaseSpec {
    */
   string description = 28;
 
+  /**
+   * CRD lifecycle for the chart's `crds/` directory, and the posture toward
+   * CRDs the chart templates itself. Unset means the module owns the
+   * directory's CRDs and keeps them, and refuses Helm-managed ones.
+   */
+  KubernetesHelmReleaseCrds crds = 29;
+
   option (buf.validate.message).cel = {
     id: "spec.atomic_vs_skip_await"
     message: "atomic and skip_await cannot both be set: atomic must wait for readiness to know whether to roll back. Drop one of the two."
@@ -265,4 +283,43 @@ message KubernetesHelmReleaseSpec {
     message: "repository_username and repository_password must be set together (both or neither) for private chart repositories."
     expression: "(this.repository_username == '') == (this.repository_password == '')"
   };
+}
+
+/**
+ * CRD lifecycle for a Helm release of an arbitrary chart. Helm has two CRD
+ * surfaces: the chart's `crds/` directory (installed once, never upgraded or
+ * removed by Helm) and CRDs the chart templates as ordinary release
+ * resources (installed, upgraded and DELETED with the release). The first
+ * surface is the module's; the second stays Helm's.
+ */
+message KubernetesHelmReleaseCrds {
+  /**
+   * Derive the chart's `crds/` directory at the pinned version and apply
+   * each CRD ahead of the release, keyed by its name. Default TRUE. Set
+   * false ONLY when those CRDs are owned elsewhere (another release, a
+   * GitOps-managed bundle): the release still installs with the directory
+   * skipped, and nothing is derived or checked.
+   */
+  optional bool install = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Keep the module-owned CRDs (and therefore every custom resource built
+   * on them, cluster-wide) when the resource is destroyed. Default TRUE:
+   * deleting a CRD deletes every object of that type, a destructive act
+   * that must be an explicit false. A later reinstall re-adopts kept CRDs.
+   */
+  optional bool keep_on_uninstall = 2 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Accept CRDs the chart templates as release resources WITHOUT
+   * `helm.sh/resource-policy: keep`. Helm installs and upgrades them with
+   * the release and deletes them when the release is uninstalled, along
+   * with every custom resource built on them; nothing the module applies
+   * can protect a resource Helm owns. Default FALSE: such a chart is
+   * refused at plan time with the CRD names and the remedies (the typed
+   * catalog kind for the chart if one exists; the chart's own keep switch
+   * in its values; or this dial). CRDs the chart already marks keep are
+   * never refused: the chart protects them itself.
+   */
+  optional bool allow_helm_managed = 3 [(dev.planton.shared.options.default) = "false"];
 }

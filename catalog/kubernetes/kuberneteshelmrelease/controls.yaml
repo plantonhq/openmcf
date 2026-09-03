@@ -66,7 +66,7 @@ spec:
       evidence:
         type: spec_default
         reference: "Off by default. atomic protects against HALF-DEPLOYED states -- a failed install or upgrade rolls everything back and purges new resources -- and cleanup_on_fail is its lighter sibling for failed upgrades. Neither guards deletion itself: destroying the resource uninstalls the release."
-      notes: CRDs shipped in the chart's crds/ directory follow Helm's contract -- installed when absent (unless skip_crds), NOT removed on uninstall. Whatever data the chart's workloads hold survives or dies by the chart's own uninstall behavior.
+      notes: CRDs shipped in the chart's crds/ directory are module-owned (derived from the pinned chart, applied outside the release, kept on destroy unless crds.keep_on_uninstall is false), so destroying the release never cascade-deletes the custom resources built on them; CRDs a chart templates as release resources are Helm's and are refused unless the chart keeps them itself or crds.allow_helm_managed accepts them. Whatever data the chart's workloads hold survives or dies by the chart's own uninstall behavior.
     - control_id: managed-patching
       status: configurable
       field_path: version

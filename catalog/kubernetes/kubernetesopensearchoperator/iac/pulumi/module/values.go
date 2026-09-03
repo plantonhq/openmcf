@@ -23,11 +23,13 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 	spec := locals.Spec
 
 	// installCRDs: false ALWAYS — never conditional, never overridable by
-	// design. The chart templates its ten CRDs as release-owned resources
-	// with NO keep-on-uninstall knob, so a Helm-owned install would
+	// design. The chart templates its CRDs as release-owned resources with
+	// NO keep-on-uninstall knob, so a Helm-owned install would
 	// cascade-delete every OpenSearchCluster (and its data) on uninstall.
-	// The module owns the CRD lifecycle instead (crds.go applies the
-	// staged files with retainOnDelete).
+	// The module owns the CRD lifecycle instead (derived from the pinned
+	// chart and applied kept through keptcrds). The same map is what the
+	// CRD render sees (plus the switch turned on), so the derived CRDs can
+	// never see different values than the install.
 	values := map[string]interface{}{
 		"installCRDs": false,
 		// fullnameOverride pins the chart's fullname to the resource name

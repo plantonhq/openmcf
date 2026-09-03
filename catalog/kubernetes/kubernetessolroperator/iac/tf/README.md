@@ -5,47 +5,52 @@ chart (`https://solr.apache.org/charts`) as a single Helm release named
 after `metadata.name`. The typed spec renders into chart values in
 `locals.tf` (`local.typed_values`); the `helm_values` escape hatch is
 passed as a SECOND values document the provider merges over the first
-with Helm `-f` semantics — the exact semantic twin of the Pulumi
-module's `buildHelmValues` + `mergeMaps`.
+with Helm `-f` semantics, and a THIRD document re-pins the
+load-bearing key LAST — the exact semantic twin of the Pulumi module's
+`buildHelmValues` + `mergeMaps`.
 
 ## CRD Ownership and the Keep-on-Uninstall Mechanism
 
-Unlike most operator charts, the `solr-operator` chart ships NO CRDs —
-upstream publishes them as separate release artifacts. The module OWNS
-them: the four files staged at `../crds` are applied before the release,
-one `kubectl_manifest` per CRD keyed by the CRD's own `metadata.name`:
+The chart carries its CRDs on both of Helm's surfaces: the three
+solr.apache.org CRDs in its `crds/` directory (Helm installs those once
+and never upgrades them) and the ZookeeperCluster CRD templated by the
+bundled zookeeper-operator subchart behind `zookeeper-operator.crd.create`
+(Helm would delete it with the release). The module OWNS all four through
+the catalog's shared block for charts that carry CRDs, the generated
+`helm_crds.tf`: `data "helm_template"` renders the pinned chart at plan
+time with the release's own values plus the subchart's CRD switch turned
+on, the CustomResourceDefinition documents are kept, stamped with
+`planton.ai/crd-source-chart` and `planton.ai/crd-source-version`, and
+applied one `kubectl_manifest` per CRD keyed by the CRD's own
+`metadata.name`:
 
 - `solrclouds.solr.apache.org`
 - `solrbackups.solr.apache.org`
 - `solrprometheusexporters.solr.apache.org`
-- `zookeeperclusters.zookeeper.pravega.io` (the bundled
-  zookeeper-operator dependency's CRD)
+- `zookeeperclusters.zookeeper.pravega.io` (rendered only when the
+  bundled zookeeper-operator is installed, the chart default)
 
-**Keep mechanism (Terraform):** `apply_only = true` makes the
-alekc/kubectl provider's Delete a NO-OP (verified in the provider
-source), so `terraform destroy` removes the operator release but leaves
-the CRDs — and therefore every SolrCloud / SolrBackup /
-ZookeeperCluster resource cluster-wide — untouched. The Pulumi twin is
-`retainOnDelete` on each CRD. `server_side_apply = true` matters twice
-over: the SolrCloud CRD's schema exceeds the client-side
-last-applied-configuration annotation size limit, and SSA lets a
-restaged (upgraded) CRD file apply as an in-place update.
+The release installs with `skip_crds = true` and
+`zookeeper-operator.crd.create: false` re-pinned AFTER the `helm_values`
+merge, so Helm never touches the CRDs whichever way a user override
+points. `crds.install: false` is the bring-your-own-CRDs arm (the CRDs
+are owned elsewhere, e.g. a GitOps-managed bundle).
 
-The staged files carry upstream license-comment headers and the
-ZookeeperCluster file a doubled leading `---`; `locals.crd_documents`
-splits on separator LINES (`"\n---"` — never a bare `"---"` substring
-split, which would corrupt the `rw-rw----` / `--- TODO` text the CRD
-schemas embed in descriptions) and drops the comment-only fragments
-with a `can(yamldecode)` filter.
+**Keep mechanism (Terraform):** `apply_only` makes the alekc/kubectl
+provider's Delete a NO-OP, so `terraform destroy` removes the operator
+release but leaves the CRDs — and therefore every SolrCloud / SolrBackup
+/ ZookeeperCluster resource cluster-wide — untouched.
+`crds.keep_on_uninstall: false` turns it off. Server-side apply is
+required (the SolrCloud CRD's schema exceeds the client-side
+last-applied-configuration annotation cap) and re-adopts kept CRDs on
+reinstall. The Pulumi twin is `retainOnDelete` on each CRD.
 
-Because the module owns the ZookeeperCluster CRD, the bundled
-subchart's own CRD switch is pinned off —
-`zookeeper-operator.crd.create: false` is the ONE value rendered
-unconditionally.
-
-**Version note:** the staged CRD files match the pinned default chart
-version (0.9.1). The operator is pre-1.0 — when upgrading
-`chart_version` across a minor version, restage the matching CRD files.
+**A schema downgrade is refused:** `data "kubernetes_resources"` reads
+the CRDs this module has stamped on the cluster; a `chart_version` below
+the version they carry fails the plan with what was observed, what it
+means, and the next step (pin the higher version, or delete the CRDs
+deliberately). A version that is not published in the repository index
+is refused the same way, before anything is created.
 
 ## Module Behavior
 
@@ -104,7 +109,8 @@ addressed as a quoted map key in `locals.tf` — never dot-path syntax.
 | Resource | Condition |
 |---|---|
 | `kubernetes_namespace_v1.solr_operator` | `spec.create_namespace` |
-| `kubectl_manifest.solr_operator_crds` (×4, keyed by CRD name) | always |
+| `data.helm_template.helm_crds`, `data.http.helm_crds_index`, `data.kubernetes_resources.helm_crds_existing` (`helm_crds.tf`) | `crds.install` (default true) |
+| `kubectl_manifest.helm_crds` (one per derived CRD, keyed by CRD name) | `crds.install` (default true) |
 | `helm_release.solr_operator` | always |
 
 ## Usage
@@ -145,7 +151,7 @@ reflected in the output.
 
 Kept in lockstep with the Pulumi module (`../pulumi/module/`): same
 chart identity and pinned default version (0.9.1), same `metadata.name`
-release name, same CRD ownership keyed by CRD name (apply_only here,
-retainOnDelete there), same values rendering (the comma-joined watch
+release name, same derived CRD ownership keyed by CRD name (the shared
+`helm_crds.tf` here, `keptcrds` there), same values rendering (the comma-joined watch
 scope, the always-rendered `zookeeper-operator.crd.create: false`, the
 singular image pull secret), same atomic/wait posture, same outputs.

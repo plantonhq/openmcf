@@ -1,0 +1,21 @@
+# THE CLEANUP PROOF for a CRD-bearing chart: crds.keep_on_uninstall: false,
+# so this destroy must take Flagger's three CRDs with it (the verifier
+# asserts their absence) — the arm a lane uses to leave a shared cluster
+# as it found it.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-crds-cleanup
+  annotations:
+    planton.dev/e2e-expect-crds: canaries.flagger.app,metrictemplates.flagger.app,alertproviders.flagger.app
+spec:
+  namespace:
+    value: e2e-helm-crds-cleanup-ns
+  create_namespace: true
+  repo: https://flagger.app
+  chart: flagger
+  version: 1.45.0
+  values_yaml: |
+    meshProvider: kubernetes
+  crds:
+    keep_on_uninstall: false

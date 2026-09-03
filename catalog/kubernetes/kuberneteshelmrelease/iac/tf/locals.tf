@@ -49,4 +49,56 @@ locals {
   # skip_await inverts helm_release's wait flag (the Pulumi module passes
   # SkipAwait directly). Both engines default to awaiting readiness.
   wait = !try(var.spec.skip_await, false)
+
+  # ---- chart identity, in the names the shared helm_crds.tf reads ----------
+  # Every Helm kind carries these locals; here they come from the spec
+  # rather than module constants, because the chart is the user's.
+  helm_chart_repo = var.spec.repo
+  helm_chart_name = var.spec.chart
+  chart_version   = var.spec.version
+  namespace       = local.namespace_name
+
+  # ---- the release's values, in helm -f order --------------------------------
+  # values_yaml is the one values document; the set-style layers ride the
+  # release's set/set_sensitive attributes and are handed to the CRD render
+  # the same way (helm_crds_args below), so the render can never see
+  # different values than the install.
+  helm_release_values = try(var.spec.values_yaml, "") != "" ? [var.spec.values_yaml] : []
+
+  helm_set = concat(
+    [for k, v in try(var.spec.set, {}) : { name = k, value = v, type = "auto" }],
+    [for k, v in try(var.spec.set_string, {}) : { name = k, value = v, type = "string" }],
+  )
+  helm_set_sensitive = [
+    for k, v in try(var.spec.set_sensitive, {}) : { name = k, value = v, type = "string" }
+  ]
+
+  # ---- module-owned CRDs (the derive-branch contract for helm_crds.tf) ----
+  # The CRDs are DERIVED from the pinned chart at plan time by the
+  # generated helm_crds.tf, rendered with exactly the values the release
+  # installs with. This object is its input; the twin of the Pulumi
+  # module's keptcrds.Args, every key present.
+  #
+  # The chart is arbitrary, so the module supplies no render override and
+  # ownership follows Helm's two surfaces: the chart's crds/ directory is
+  # the module's (derived, kept, moved with the version, re-adopted,
+  # never downgraded); CRDs the chart templates stay Helm's, refused
+  # unless the chart keeps them itself or allow_helm_managed accepts them.
+  # A chart without CRDs (most charts) is ordinary: nothing is applied.
+  helm_crds_args = {
+    install            = try(var.spec.crds.install, null) == null ? true : var.spec.crds.install
+    keep_on_uninstall  = try(var.spec.crds.keep_on_uninstall, null) == null ? true : var.spec.crds.keep_on_uninstall
+    expect_crds        = false
+    allow_helm_managed = try(var.spec.crds.allow_helm_managed, null) == null ? false : var.spec.crds.allow_helm_managed
+
+    render_override = ""
+    api_versions    = []
+    bundle_url      = ""
+
+    # The same credentials and set layers the release uses.
+    repository_username = try(var.spec.repository_username, "")
+    repository_password = try(var.spec.repository_password, "")
+    set                 = local.helm_set
+    set_sensitive       = local.helm_set_sensitive
+  }
 }

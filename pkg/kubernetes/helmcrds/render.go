@@ -11,22 +11,32 @@ import (
 	"helm.sh/helm/v3/pkg/registry"
 )
 
+// renderResult is one client-side render: every document Helm produced, and
+// the names of the CRDs that came from the chart's crds/ directory rather than
+// its templates. Helm exposes the two surfaces differently at install time
+// (skip_crds governs only the directory), so ownership depends on knowing
+// which is which.
+type renderResult struct {
+	documents      []string
+	directoryNames map[string]bool
+}
+
 // render templates the pinned chart client-side with CRDs included and
 // returns every rendered document: the templated body AND the chart's crds/
-// directory (Helm exposes the two on different surfaces; a kind may ship its
-// CRDs on either). Nothing touches a cluster; the render only needs the chart
-// repository, which the release install needs anyway.
+// directory (a kind may ship its CRDs on either surface). Nothing touches a
+// cluster; the render only needs the chart repository, which the release
+// install needs anyway.
 //
 // The Helm environment (repository config and cache) is deliberately the
 // process's own, not an isolated one: the release install runs in the same
 // environment, so a stale local repository entry must fail the render exactly
 // as it would fail the install, and the Failure text carries the remedy.
-func render(src Source, releaseName, namespace string) ([]string, error) {
+func render(src Source, releaseName, namespace string) (renderResult, error) {
 	settings := cli.New()
 	cfg := new(action.Configuration)
 	registryClient, err := registry.NewClient()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create the Helm registry client")
+		return renderResult{}, errors.Wrap(err, "failed to create the Helm registry client")
 	}
 	cfg.RegistryClient = registryClient
 
@@ -37,13 +47,15 @@ func render(src Source, releaseName, namespace string) ([]string, error) {
 	install.ReleaseName = releaseName
 	install.Namespace = namespace
 	install.ChartPathOptions.Version = src.Version
+	install.ChartPathOptions.Username = src.Username
+	install.ChartPathOptions.Password = src.Password
 	if len(src.APIVersions) > 0 {
 		install.APIVersions = chartutil.VersionSet(src.APIVersions)
 	}
 	if src.KubeVersion != "" {
 		kubeVersion, err := chartutil.ParseKubeVersion(src.KubeVersion)
 		if err != nil {
-			return nil, errors.Wrapf(err, "invalid KubeVersion %q", src.KubeVersion)
+			return renderResult{}, errors.Wrapf(err, "invalid KubeVersion %q", src.KubeVersion)
 		}
 		install.KubeVersion = kubeVersion
 	}
@@ -59,28 +71,37 @@ func render(src Source, releaseName, namespace string) ([]string, error) {
 
 	chartPath, err := install.ChartPathOptions.LocateChart(chartRef, settings)
 	if err != nil {
-		return nil, classifyLocateError(src, err)
+		return renderResult{}, classifyLocateError(src, err)
 	}
 	chrt, err := loader.Load(chartPath)
 	if err != nil {
-		return nil, renderFailure(src, err)
+		return renderResult{}, renderFailure(src, err)
 	}
 
 	values, err := mergeValueDocuments(append(append([]string{}, src.Values...), src.CRDOverride))
 	if err != nil {
-		return nil, renderFailure(src, err)
+		return renderResult{}, renderFailure(src, err)
 	}
 
 	release, err := install.Run(chrt, values)
 	if err != nil {
-		return nil, renderFailure(src, err)
+		return renderResult{}, renderFailure(src, err)
 	}
 
 	// With IncludeCRDs the SDK prepends the chart's crds/ directory to the
 	// rendered manifest (verified against v3.20.2 with a crds/-directory
 	// chart), so one manifest carries both surfaces; templated CRDs are in
-	// it by construction.
-	return splitDocuments(release.Manifest), nil
+	// it by construction. The directory's own object list (subcharts
+	// included) says which names came from that surface.
+	directoryNames := map[string]bool{}
+	for _, object := range chrt.CRDObjects() {
+		for _, doc := range splitDocuments(string(object.File.Data)) {
+			if name := crdName(doc); name != "" {
+				directoryNames[name] = true
+			}
+		}
+	}
+	return renderResult{documents: splitDocuments(release.Manifest), directoryNames: directoryNames}, nil
 }
 
 // mergeValueDocuments applies helm -f semantics: later documents override

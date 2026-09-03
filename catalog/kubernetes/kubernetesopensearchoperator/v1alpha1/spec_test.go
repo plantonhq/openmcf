@@ -59,6 +59,11 @@ var _ = ginkgo.Describe("KubernetesOpenSearchOperator Validation Tests", func() 
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
 		})
 
+		ginkgo.It("every CRD lifecycle position (bring-your-own CRDs, delete on uninstall) should be valid", func() {
+			input.Spec.Crds = &KubernetesOpenSearchOperatorCrds{Install: boolPtr(false), KeepOnUninstall: boolPtr(false)}
+			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+		})
+
 		ginkgo.It("namespace as a reference should be valid", func() {
 			input.Spec.Namespace = valueFrom(cloudresourcekind.CloudResourceKind_KubernetesNamespace, "opensearch-operator", "spec.name")
 			gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())

@@ -1,0 +1,4 @@
+crds:
+  # Whether the templated CRD carries helm.sh/resource-policy: keep (the
+  # cert-manager-style keep switch a well-behaved chart offers).
+  keep: false

@@ -39,23 +39,33 @@ updates, scaling with replica movement, and backup repositories — plus
   bundled install only when a zookeeper-operator already runs in the
   cluster (pair `install: false` with `use_existing: true`) or every
   Solr cluster will connect to an EXTERNAL ensemble.
-- **The module owns the CRDs.** Unlike most operator charts, the
-  solr-operator chart ships NO CRDs — they are separate release
-  artifacts. The modules apply all four themselves (SolrCloud,
-  SolrBackup, SolrPrometheusExporter, and the ZookeeperCluster CRD of
-  the bundled dependency), keyed by CRD name, with a keep-on-uninstall
-  posture: Terraform's `kubectl_manifest` `apply_only = true` (the
-  provider's Delete is a no-op) and Pulumi's `retainOnDelete`
-  transformation. Destroying the operator never cascade-deletes
-  SolrCloud resources. The bundled subchart's own CRD switch is pinned
-  off (`zookeeper-operator.crd.create: false`) so the ZookeeperCluster
-  CRD never falls under Helm's delete-on-uninstall lifecycle.
-- **Chart and CRD versions pair.** Chart and operator versions move
-  together (chart 0.9.1 ships operator v0.9.1 — the chart version has
-  no `v` prefix, the operator/CRD artifacts carry one), and the
-  operator is pre-1.0: minor versions can change the CRD API. Restage
-  the matching CRD files when upgrading — server-side apply lets a
-  restaged CRD apply as an in-place update.
+- **The module owns the CRD lifecycle.** The chart carries its CRDs on
+  both of Helm's surfaces: the three solr.apache.org CRDs (SolrCloud,
+  SolrBackup, SolrPrometheusExporter) in its `crds/` directory, which
+  Helm would install once and never upgrade, and the ZookeeperCluster
+  CRD templated by the bundled zookeeper-operator subchart, which Helm
+  would delete with the release. The modules therefore DERIVE the CRD
+  set from the pinned chart at deploy time (rendered with the release's
+  own values and the subchart's CRD switch on), apply each CRD outside
+  the release as a kept resource, and install the release with CRDs
+  skipped and `zookeeper-operator.crd.create: false` pinned. The schema
+  always matches `chart_version`: a bump re-applies the CRDs at the new
+  pin; destroy keeps them (unless `crds.keep_on_uninstall` is false), so
+  removing the operator never cascade-deletes SolrCloud resources; a
+  reinstall re-adopts them; a `chart_version` below what the cluster's
+  CRDs carry is refused before anything is touched, with the remedy.
+  Every CRD carries `planton.ai/crd-source-chart` and
+  `planton.ai/crd-source-version` annotations, so `kubectl` shows where
+  it came from. When the bundled subchart is not installed, its CRD is
+  not derived either: the set follows the chart's own behaviour.
+- **Every CRD failure explains itself.** A chart version that is not
+  published, a repository that cannot be reached, a render that
+  produces no CRDs, a schema downgrade: each stops with what was
+  observed, what it most likely means, and the exact next step.
+- **Chart and operator versions pair.** Chart 0.9.1 ships operator
+  v0.9.1 (the chart version has no `v` prefix, the operator image tag
+  carries one), and the operator is pre-1.0: minor versions can change
+  the CRD API, which is exactly what the derived CRDs follow on a bump.
 - **mTLS client identity is modeled.** When KubernetesSolr clusters
   enforce client certificates on their TLS listeners
   (`client_auth: Need`), the operator needs its own certificate to
@@ -80,8 +90,11 @@ updates, scaling with replica movement, and backup repositories — plus
 
 ### Common
 
-- **`spec.chart_version`**: chart pin (default `0.9.1`); a bump means
-  restaging the matching CRDs
+- **`spec.chart_version`**: chart pin (default `0.9.1`); a bump moves
+  the module-owned CRDs with it
+- **`spec.crds`**: the CRD lifecycle — `install` (default true; false is
+  the bring-your-own-CRDs arm) and `keep_on_uninstall` (default true;
+  false lets a destroy take every SolrCloud with the CRDs)
 - **`spec.zookeeper_operator`**: the bundled dependency — `install`
   (default true) and `use_existing` (tell the Solr operator a
   zookeeper-operator is present even though this release does not

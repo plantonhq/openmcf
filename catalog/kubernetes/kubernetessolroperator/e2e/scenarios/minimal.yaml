@@ -1,12 +1,25 @@
 # The smallest declarable operator install: chart defaults — the bundled
-# zookeeper-operator installs alongside (its default). The verifier
-# asserts both operators Available and every module-owned CRD
-# Established.
+# zookeeper-operator installs alongside (its default), the module-owned
+# CRDs derived from the pinned chart. The verifier asserts both operators
+# Available and every CRD Established and stamped with the chart version.
+#
+# THE KEEP-AND-READOPT PROOF: crds.keep_on_uninstall defaults true, so the
+# first destroy must leave the four CRDs on the cluster (the verifier
+# asserts it), and the reinstall the annotation requests must re-adopt
+# them (server-side apply) rather than fail on their existence.
+#
+# The chart is pinned one step below the default: kept CRDs are
+# cluster-scoped and outlive this lane, so the lane that keeps them pins
+# the LOWEST version any lane installs -- a later lane's install can
+# never be refused as a downgrade by what this one left behind.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesSolrOperator
 metadata:
   name: e2e-slrop-min
+  annotations:
+    planton.dev/e2e-reinstall: "true"
 spec:
   namespace:
     value: e2e-slrop-min
   create_namespace: true
+  chart_version: 0.9.0

@@ -1,0 +1,18 @@
+# THE UPGRADE PROOF: install at chart 2.7.0, then re-deploy the same
+# resource from upgrade.to.yaml with chart_version bumped to 2.8.0. The
+# verifier reads the CRDs' source stamp after the upgrade: it must have
+# moved to 2.8.0, and the OpenSearchSnapshotPolicy CRD that 2.8.0 adds
+# must be Established — a chart bump that ADDS a CRD, not only re-applies
+# the existing ones. The upgrade manifest turns keep_on_uninstall off so
+# the destroy leaves the shared cluster clean.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenSearchOperator
+metadata:
+  name: e2e-osop-upg
+  annotations:
+    planton.dev/e2e-upgrade-manifest: upgrade.to.yaml
+spec:
+  namespace:
+    value: e2e-osop-upg
+  create_namespace: true
+  chart_version: 2.7.0

@@ -10,7 +10,7 @@
 
 **KubernetesHelmRelease** installs an upstream Helm chart as a *real* Helm release: on both engines, hooks run, the release secret is written, history is recorded, and `helm list` shows the release exactly as if the Helm CLI had installed it. This is not a client-side template render — charts that rely on hooks (migrations, certificate bootstrapping, pre-delete cleanup) behave exactly as Helm intends.
 
-The spec covers chart identity (HTTP(S) repositories and OCI registries, private-repo credentials, a required pinned version), Helm's full values model (a values file plus three `--set`-style override layers with fixed precedence), and the release lifecycle surface (`atomic`, `cleanup_on_fail`, awaiting, timeouts, history, CRD handling, upgrade values behavior, resource adoption).
+The spec covers chart identity (HTTP(S) repositories and OCI registries, private-repo credentials, a required pinned version), Helm's full values model (a values file plus three `--set`-style override layers with fixed precedence), and the release lifecycle surface (`atomic`, `cleanup_on_fail`, awaiting, timeouts, history, the CRD lifecycle, upgrade values behavior, resource adoption).
 
 **Key value over raw `helm install`:**
 
@@ -19,6 +19,7 @@ The spec covers chart identity (HTTP(S) repositories and OCI registries, private
 - **Contradictions rejected before deploy**: `atomic` + `skip_await` and `reuse_values` + `reset_values` fail validation with messages that say which flag to drop
 - **Secrets marked at the source**: `set_sensitive` and `repository_password` are sensitive fields, kept out of rendered plans and state where each engine supports it
 - **Dual IaC support**: Pulumi and Terraform modules that merge values identically and install byte-identical releases (one documented exception, below)
+- **The chart's CRDs are owned, not installed once**: Helm installs the CRDs in a chart's `crds/` directory when absent and never upgrades or removes them. The modules derive that surface from the pinned chart at deploy time, apply each CRD outside the release as a kept resource, and install the release with CRDs skipped: a `version` bump moves the schema with it, destroy keeps the CRDs (unless `crds.keep_on_uninstall` is false) so removing a release never cascade-deletes the custom resources built on them, a reinstall re-adopts them, and a `version` below what the cluster's CRDs carry is refused before anything is touched. CRDs a chart templates as ordinary release resources stay Helm's: a chart that marks them `helm.sh/resource-policy: keep` (cert-manager, KEDA, Kyverno with their keep switch on) protects them itself and installs as is; a chart that templates them without that mark would delete them with the release, so it is refused with the CRD names and the remedies unless `crds.allow_helm_managed` accepts it. Every failure on this path says what was observed, what it means, and the next step
 
 ## The Values Model
 
@@ -54,7 +55,9 @@ Both engines run Helm's own `--set` parser on the override entries and hand Helm
 - **`spec.skip_await`**: Return as soon as Helm records the release, without waiting for resource readiness. Both engines default to waiting
 - **`spec.wait_for_jobs`**: When awaiting, also wait for chart-created Jobs to complete
 - **`spec.timeout_seconds`**: Per-operation timeout (Helm's default 300)
-- **`spec.skip_crds`**: Skip installing CRDs from the chart's `crds/` directory
+- **`spec.crds.install`**: Derive and own the chart's `crds/` directory (default true); false when those CRDs are owned elsewhere
+- **`spec.crds.keep_on_uninstall`**: Keep the module-owned CRDs, and every custom resource built on them, when the resource is destroyed (default true)
+- **`spec.crds.allow_helm_managed`**: Accept CRDs the chart templates without Helm's keep mark, which live and die with the release (default false: such a chart is refused with the CRD names and the remedies)
 - **`spec.dependency_update`**: Run `helm dependency update` before installing (rarely needed — most published charts bundle dependencies)
 - **`spec.max_history`**: Release revisions kept for rollback (Helm's default 10; 0 = unlimited)
 - **`spec.replace`**: Re-use a release name left behind by a failed/uninstalled release — Helm marks this unsafe in production

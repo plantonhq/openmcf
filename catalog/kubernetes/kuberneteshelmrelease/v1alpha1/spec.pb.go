@@ -43,6 +43,19 @@ const (
 // (values_yaml, then set, then set_string, then set_sensitive) and hand Helm
 // one final values map — the same manifest installs byte-identical releases
 // on either engine.
+//
+// CRD LIFECYCLE: Helm installs the CRDs in a chart's `crds/` directory once
+// and never upgrades or removes them. The modules OWN that surface instead:
+// the CRDs are derived from the pinned chart at deploy time (rendered with
+// the release's own values), applied keyed by CRD name ahead of the
+// release, kept when the resource is destroyed (`crds.keep_on_uninstall`),
+// re-adopted on reinstall, and moved with every `version` bump; a `version`
+// lower than the CRDs already on the cluster is refused before anything
+// changes. CRDs a chart templates as ordinary release resources stay
+// Helm's: a chart that marks them `helm.sh/resource-policy: keep` protects
+// them itself and installs as is; a chart that templates them without that
+// mark would delete them with the release, so it is refused with the CRD
+// names and the remedies unless `crds.allow_helm_managed` accepts it.
 type KubernetesHelmReleaseSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
@@ -141,10 +154,6 @@ type KubernetesHelmReleaseSpec struct {
 	// when awaiting). Helm's default is 300.
 	TimeoutSeconds *int32 `protobuf:"varint,17,opt,name=timeout_seconds,json=timeoutSeconds,proto3,oneof" json:"timeout_seconds,omitempty"`
 	// *
-	// When true, CRDs shipped in the chart's `crds/` directory are NOT
-	// installed. By default Helm installs chart CRDs when they are absent.
-	SkipCrds bool `protobuf:"varint,18,opt,name=skip_crds,json=skipCrds,proto3" json:"skip_crds,omitempty"`
-	// *
 	// When true, run `helm dependency update` before installing — fetches the
 	// chart's declared subchart dependencies. Charts published with bundled
 	// dependencies (the common case) do not need this.
@@ -190,7 +199,12 @@ type KubernetesHelmReleaseSpec struct {
 	TakeOwnership bool `protobuf:"varint,27,opt,name=take_ownership,json=takeOwnership,proto3" json:"take_ownership,omitempty"`
 	// *
 	// Free-form note stored with the release (visible in `helm status`).
-	Description   string `protobuf:"bytes,28,opt,name=description,proto3" json:"description,omitempty"`
+	Description string `protobuf:"bytes,28,opt,name=description,proto3" json:"description,omitempty"`
+	// *
+	// CRD lifecycle for the chart's `crds/` directory, and the posture toward
+	// CRDs the chart templates itself. Unset means the module owns the
+	// directory's CRDs and keeps them, and refuses Helm-managed ones.
+	Crds          *KubernetesHelmReleaseCrds `protobuf:"bytes,29,opt,name=crds,proto3" json:"crds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -344,13 +358,6 @@ func (x *KubernetesHelmReleaseSpec) GetTimeoutSeconds() int32 {
 	return 0
 }
 
-func (x *KubernetesHelmReleaseSpec) GetSkipCrds() bool {
-	if x != nil {
-		return x.SkipCrds
-	}
-	return false
-}
-
 func (x *KubernetesHelmReleaseSpec) GetDependencyUpdate() bool {
 	if x != nil {
 		return x.DependencyUpdate
@@ -421,11 +428,105 @@ func (x *KubernetesHelmReleaseSpec) GetDescription() string {
 	return ""
 }
 
+func (x *KubernetesHelmReleaseSpec) GetCrds() *KubernetesHelmReleaseCrds {
+	if x != nil {
+		return x.Crds
+	}
+	return nil
+}
+
+// *
+// CRD lifecycle for a Helm release of an arbitrary chart. Helm has two CRD
+// surfaces: the chart's `crds/` directory (installed once, never upgraded or
+// removed by Helm) and CRDs the chart templates as ordinary release
+// resources (installed, upgraded and DELETED with the release). The first
+// surface is the module's; the second stays Helm's.
+type KubernetesHelmReleaseCrds struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Derive the chart's `crds/` directory at the pinned version and apply
+	// each CRD ahead of the release, keyed by its name. Default TRUE. Set
+	// false ONLY when those CRDs are owned elsewhere (another release, a
+	// GitOps-managed bundle): the release still installs with the directory
+	// skipped, and nothing is derived or checked.
+	Install *bool `protobuf:"varint,1,opt,name=install,proto3,oneof" json:"install,omitempty"`
+	// *
+	// Keep the module-owned CRDs (and therefore every custom resource built
+	// on them, cluster-wide) when the resource is destroyed. Default TRUE:
+	// deleting a CRD deletes every object of that type, a destructive act
+	// that must be an explicit false. A later reinstall re-adopts kept CRDs.
+	KeepOnUninstall *bool `protobuf:"varint,2,opt,name=keep_on_uninstall,json=keepOnUninstall,proto3,oneof" json:"keep_on_uninstall,omitempty"`
+	// *
+	// Accept CRDs the chart templates as release resources WITHOUT
+	// `helm.sh/resource-policy: keep`. Helm installs and upgrades them with
+	// the release and deletes them when the release is uninstalled, along
+	// with every custom resource built on them; nothing the module applies
+	// can protect a resource Helm owns. Default FALSE: such a chart is
+	// refused at plan time with the CRD names and the remedies (the typed
+	// catalog kind for the chart if one exists; the chart's own keep switch
+	// in its values; or this dial). CRDs the chart already marks keep are
+	// never refused: the chart protects them itself.
+	AllowHelmManaged *bool `protobuf:"varint,3,opt,name=allow_helm_managed,json=allowHelmManaged,proto3,oneof" json:"allow_helm_managed,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *KubernetesHelmReleaseCrds) Reset() {
+	*x = KubernetesHelmReleaseCrds{}
+	mi := &file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesHelmReleaseCrds) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesHelmReleaseCrds) ProtoMessage() {}
+
+func (x *KubernetesHelmReleaseCrds) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesHelmReleaseCrds.ProtoReflect.Descriptor instead.
+func (*KubernetesHelmReleaseCrds) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesHelmReleaseCrds) GetInstall() bool {
+	if x != nil && x.Install != nil {
+		return *x.Install
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseCrds) GetKeepOnUninstall() bool {
+	if x != nil && x.KeepOnUninstall != nil {
+		return *x.KeepOnUninstall
+	}
+	return false
+}
+
+func (x *KubernetesHelmReleaseCrds) GetAllowHelmManaged() bool {
+	if x != nil && x.AllowHelmManaged != nil {
+		return *x.AllowHelmManaged
+	}
+	return false
+}
+
 var File_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto protoreflect.FileDescriptor
 
 const file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"<catalog/kubernetes/kuberneteshelmrelease/v1alpha1/spec.proto\x125dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd7\x14\n" +
+	"<catalog/kubernetes/kuberneteshelmrelease/v1alpha1/spec.proto\x125dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xa6\x15\n" +
 	"\x19KubernetesHelmReleaseSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xab\x01\n" +
@@ -449,8 +550,7 @@ const file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_rawDesc 
 	"\n" +
 	"skip_await\x18\x0f \x01(\bR\tskipAwait\x12\"\n" +
 	"\rwait_for_jobs\x18\x10 \x01(\bR\vwaitForJobs\x12<\n" +
-	"\x0ftimeout_seconds\x18\x11 \x01(\x05B\x0e\xbaH\x04\x1a\x02 \x00\x8a\xa6\x1d\x03300H\x00R\x0etimeoutSeconds\x88\x01\x01\x12\x1b\n" +
-	"\tskip_crds\x18\x12 \x01(\bR\bskipCrds\x12+\n" +
+	"\x0ftimeout_seconds\x18\x11 \x01(\x05B\x0e\xbaH\x04\x1a\x02 \x00\x8a\xa6\x1d\x03300H\x00R\x0etimeoutSeconds\x88\x01\x01\x12+\n" +
 	"\x11dependency_update\x18\x13 \x01(\bR\x10dependencyUpdate\x123\n" +
 	"\vmax_history\x18\x14 \x01(\x05B\r\xbaH\x04\x1a\x02(\x00\x8a\xa6\x1d\x0210H\x01R\n" +
 	"maxHistory\x88\x01\x01\x12\x18\n" +
@@ -461,7 +561,8 @@ const file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_rawDesc 
 	"\x10disable_webhooks\x18\x19 \x01(\bR\x0fdisableWebhooks\x12<\n" +
 	"\x1adisable_openapi_validation\x18\x1a \x01(\bR\x18disableOpenapiValidation\x12%\n" +
 	"\x0etake_ownership\x18\x1b \x01(\bR\rtakeOwnership\x12 \n" +
-	"\vdescription\x18\x1c \x01(\tR\vdescription\x1a6\n" +
+	"\vdescription\x18\x1c \x01(\tR\vdescription\x12d\n" +
+	"\x04crds\x18\x1d \x01(\v2P.dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseCrdsR\x04crds\x1a6\n" +
 	"\bSetEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a<\n" +
@@ -475,7 +576,15 @@ const file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_rawDesc 
 	"\x1aspec.reuse_vs_reset_values\x12\x88\x01reuse_values and reset_values are mutually exclusive: one keeps the previous release's values, the other discards them. Set at most one.\x1a)!(this.reuse_values && this.reset_values)\x1a\xcf\x01\n" +
 	"\x13spec.repo_auth_pair\x12rrepository_username and repository_password must be set together (both or neither) for private chart repositories.\x1aD(this.repository_username == '') == (this.repository_password == '')B\x12\n" +
 	"\x10_timeout_secondsB\x0e\n" +
-	"\f_max_historyB\xad\x03\n" +
+	"\f_max_historyJ\x04\b\x12\x10\x13\"\xf6\x01\n" +
+	"\x19KubernetesHelmReleaseCrds\x12'\n" +
+	"\ainstall\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\ainstall\x88\x01\x01\x129\n" +
+	"\x11keep_on_uninstall\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0fkeepOnUninstall\x88\x01\x01\x12<\n" +
+	"\x12allow_helm_managed\x18\x03 \x01(\bB\t\x8a\xa6\x1d\x05falseH\x02R\x10allowHelmManaged\x88\x01\x01B\n" +
+	"\n" +
+	"\b_installB\x14\n" +
+	"\x12_keep_on_uninstallB\x15\n" +
+	"\x13_allow_helm_managedB\xad\x03\n" +
 	"9com.dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1B\tSpecProtoP\x01Zlgithub.com/plantonhq/planton/catalog/kubernetes/kuberneteshelmrelease/v1alpha1;kuberneteshelmreleasev1alpha1\xa2\x02\x04DPKK\xaa\x025Dev.Planton.Kubernetes.Kuberneteshelmrelease.V1alpha1\xca\x025Dev\\Planton\\Kubernetes\\Kuberneteshelmrelease\\V1alpha1\xe2\x02ADev\\Planton\\Kubernetes\\Kuberneteshelmrelease\\V1alpha1\\GPBMetadata\xea\x029Dev::Planton::Kubernetes::Kuberneteshelmrelease::V1alpha1b\x06proto3"
 
 var (
@@ -490,24 +599,26 @@ func file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_rawDescGZ
 	return file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_goTypes = []any{
 	(*KubernetesHelmReleaseSpec)(nil), // 0: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec
-	nil,                               // 1: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetEntry
-	nil,                               // 2: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetStringEntry
-	nil,                               // 3: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetSensitiveEntry
-	(*v1.StringValueOrRef)(nil),       // 4: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*KubernetesHelmReleaseCrds)(nil), // 1: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseCrds
+	nil,                               // 2: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetEntry
+	nil,                               // 3: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetStringEntry
+	nil,                               // 4: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetSensitiveEntry
+	(*v1.StringValueOrRef)(nil),       // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
 }
 var file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_depIdxs = []int32{
-	4, // 0: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.set:type_name -> dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetEntry
-	2, // 2: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.set_string:type_name -> dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetStringEntry
-	3, // 3: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.set_sensitive:type_name -> dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetSensitiveEntry
-	4, // [4:4] is the sub-list for method output_type
-	4, // [4:4] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 0: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.set:type_name -> dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetEntry
+	3, // 2: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.set_string:type_name -> dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetStringEntry
+	4, // 3: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.set_sensitive:type_name -> dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.SetSensitiveEntry
+	1, // 4: dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseSpec.crds:type_name -> dev.planton.kubernetes.kuberneteshelmrelease.v1alpha1.KubernetesHelmReleaseCrds
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_init() }
@@ -516,13 +627,14 @@ func file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_init() {
 		return
 	}
 	file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_rawDesc), len(file_catalog_kubernetes_kuberneteshelmrelease_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

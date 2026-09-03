@@ -4,16 +4,17 @@ metadata:
   name: kubernetessolroperator
 spec:
   tier: 3
-  status: deferred
-  deferred_reason: >-
-    Both engines read the CRD set from ../crds, a sibling directory no
-    published form of the module carries (module.zip, source.zip, and the
-    Pulumi binary workspace hold only the engine directory), so no fresh
-    install from a release has ever converged, and a lane that passes from
-    the source tree proves nothing about what ships. Lifts when the module
-    derives its CRDs from the pinned version and leaves the known_violations
-    table of hack/guards/ensure_modules_are_self_contained.sh.
+  # Forged on the official solr-operator chart 0.9.1 with MODULE-OWNED CRDs
+  # derived from the pinned chart at apply time: the three solr.apache.org
+  # CRDs from the chart's crds/ directory (Helm would install them once and
+  # never upgrade them) and the ZookeeperCluster CRD the bundled
+  # zookeeper-operator subchart templates (Helm would delete it with the
+  # release). The scenarios cover the whole CRD lifecycle: keep and
+  # re-adopt on reinstall (minimal), cleanup when keep is off (tuned-full),
+  # a chart bump re-applying the CRDs (upgrade, 0.9.0 to 0.9.1), and the
+  # two refusals (a version that is not published; a schema downgrade).
+  status: green
   validated_provisioners:
     - pulumi
     - terraform
-  timeout_minutes: 20
+  timeout_minutes: 25

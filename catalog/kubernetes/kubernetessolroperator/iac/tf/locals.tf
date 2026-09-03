@@ -49,27 +49,46 @@ locals {
     var.metadata.env != null && var.metadata.env != "" ? { "planton.ai/environment" = var.metadata.env } : {}
   )
 
-  # ---- module-owned CRDs ------------------------------------------------------
-  # The solr-operator chart ships NO CRDs (they are separate release
-  # artifacts) — the module owns the four files staged at ../crds: the
-  # three solr.apache.org CRDs plus the ZookeeperCluster CRD of the
-  # bundled zookeeper-operator dependency.
+  # ---- module-owned CRDs (the derive-branch contract for helm_crds.tf) ----
+  # The CRDs are DERIVED from the pinned chart at plan time by the
+  # generated helm_crds.tf: it renders the chart with the release's own
+  # values (helm_release_values, the same list the release consumes) plus
+  # the CRD switch turned on, keeps the CustomResourceDefinition
+  # documents, stamps them, and applies each one kept. This object is its
+  # input; the twin of the Pulumi module's keptcrds.Args, every key present.
   #
-  # Each file is split into YAML documents on SEPARATOR LINES ("---" at
-  # column 0 — "\n---" never matches the "---" substrings the CRD
-  # schemas embed in description text, which all sit mid-line or
-  # indented). The upstream files open with license-comment headers and
-  # the ZookeeperCluster file carries a doubled leading "---"; the
-  # can(yamldecode) filter drops the comment-only and empty fragments.
-  # Keyed by each CRD's OWN metadata.name (never a file name or split
-  # index) so state addresses stay stable.
-  crd_documents = {
-    for doc in flatten([
-      for f in fileset("${path.module}/../crds", "*.yaml") :
-      split("\n---", file("${path.module}/../crds/${f}"))
-    ]) :
-    yamldecode(doc).metadata.name => doc
-    if trimspace(doc) != "" && can(yamldecode(doc).metadata.name)
+  # The chart carries its CRDs on both of Helm's surfaces: the three
+  # solr.apache.org CRDs in its crds/ directory, and the ZookeeperCluster
+  # CRD templated by the bundled zookeeper-operator subchart behind
+  # zookeeper-operator.crd.create. The render turns that switch on so the
+  # module owns all four; the release pins it off (see
+  # zookeeper_operator_values). When the subchart is not installed
+  # (zookeeper_operator.install = false) its CRD is not rendered either:
+  # the set follows the chart's own behaviour at the pin.
+  helm_crds_args = {
+    # crds.install false is the bring-your-own-CRDs arm (the CRDs are owned
+    # elsewhere, a GitOps-managed bundle); the release still skips CRDs.
+    # crds.keep_on_uninstall false lets a destroy take the CRDs with it.
+    install           = try(var.spec.crds.install, null) == null ? true : var.spec.crds.install
+    keep_on_uninstall = try(var.spec.crds.keep_on_uninstall, null) == null ? true : var.spec.crds.keep_on_uninstall
+
+    # A typed kind knows its chart carries CRDs and pins the switch: a render
+    # that yields none is a failure, and nothing is ever left to Helm.
+    expect_crds        = true
+    allow_helm_managed = false
+
+    # The subchart's CRD switch, turned on for the render only.
+    render_override = yamlencode({ "zookeeper-operator" = { crd = { create = true } } })
+
+    # No template in either chart gates on a served API version.
+    api_versions = []
+
+    # Public repository, no set-style overrides, no upstream bundle.
+    bundle_url          = ""
+    repository_username = ""
+    repository_password = ""
+    set                 = []
+    set_sensitive       = []
   }
 
   # ---- operator container resources (shared ContainerResources shape) -------
@@ -97,11 +116,12 @@ locals {
   # NOTE the dash in the chart's values key: "zookeeper-operator" is the
   # SUBCHART name, quoted wherever it appears as a map key. crd.create
   # is pinned false UNCONDITIONALLY — the module owns the
-  # ZookeeperCluster CRD (applied apply_only below), so the subchart
-  # must never install its own copy and put it under Helm's
-  # delete-on-uninstall lifecycle. install renders on presence (chart
-  # default true); use renders only on divergence (chart default false,
-  # and it is ignored whenever install is true).
+  # ZookeeperCluster CRD (derived and applied kept by helm_crds.tf), so
+  # the subchart must never install its own copy and put it under Helm's
+  # delete-on-uninstall lifecycle; the same key is re-pinned after the
+  # escape hatch in helm_release_values. install renders on presence
+  # (chart default true); use renders only on divergence (chart default
+  # false, and it is ignored whenever install is true).
   zookeeper_operator_values = {
     for k, v in {
       crd     = { create = false }
@@ -194,4 +214,18 @@ locals {
       0, 63
     ),
   "-")
+
+  # ---- the release's values, in helm -f order --------------------------------
+  # The typed rendering, the user's escape hatch, then the load-bearing
+  # re-pin AFTER the escape hatch so no helm_values override can re-arm
+  # it: zookeeper-operator.crd.create=false keeps the subchart's CRD out
+  # of Helm's delete-on-uninstall lifecycle (the module owns it). ONE
+  # list, consumed by both the release (main.tf) and the CRD render
+  # (helm_crds.tf), so the derived CRDs can never see different values
+  # than the install.
+  helm_release_values = concat(
+    [yamlencode(local.typed_values)],
+    try(var.spec.helm_values, "") != "" ? [var.spec.helm_values] : [],
+    [yamlencode({ "zookeeper-operator" = { crd = { create = false } } })]
+  )
 }

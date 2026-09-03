@@ -6,34 +6,47 @@ Installs the OpenSearch Kubernetes Operator from the official
 single Helm release named after `metadata.name`. The typed spec renders
 into chart values in `locals.tf` (`local.typed_values`); the
 `helm_values` escape hatch is passed as a SECOND values document the
-provider merges over the first with Helm `-f` semantics — the exact
-semantic twin of the Pulumi module's `buildHelmValues` + `mergeMaps`.
+provider merges over the first with Helm `-f` semantics, and a THIRD
+document re-pins `installCRDs: false` LAST — the exact semantic twin of
+the Pulumi module's `buildHelmValues` + `mergeMaps`.
 
 ## Module Behavior
 
 - **The module (not the chart) owns the CRDs** — the chart templates
-  its ten CRDs as release-owned resources with NO keep-on-uninstall
-  knob upstream, so a Helm-owned install would cascade-delete every
-  `OpenSearchCluster` (and its data) on uninstall. The module pins
-  `installCRDs: false` UNCONDITIONALLY in the rendered values and
-  applies the CRD files staged at `../crds/` itself, one
-  `kubectl_manifest` per CRD keyed by the CRD's own `metadata.name`.
-- **CRD keep-on-uninstall: `apply_only = true`** — the provider's
-  Delete becomes a NO-OP (verified in the provider source: "When true,
-  Delete is a no-op"), so destroying this module removes the CRDs from
-  state WITHOUT deleting them from the cluster; OpenSearch clusters
-  and their data survive an operator uninstall. Server-side apply
-  keeps the megabyte-scale CRDs co-ownable without client-side
-  annotation bloat. The exact semantic twin of the Pulumi module's
+  its CRDs as release-owned resources with NO keep-on-uninstall knob
+  upstream, so a Helm-owned install would cascade-delete every
+  `OpenSearchCluster` (and its data) on uninstall. The module DERIVES
+  the CRD set from the pinned chart at plan time through the generated
+  `helm_crds.tf` (the catalog's shared block for charts that carry
+  CRDs): `data "helm_template"` renders the chart with the release's
+  own values plus `installCRDs: true`, the CustomResourceDefinition
+  documents are kept, stamped with `planton.ai/crd-source-chart` and
+  `planton.ai/crd-source-version`, and applied one `kubectl_manifest`
+  per CRD keyed by the CRD's own `metadata.name`. The release installs
+  with `skip_crds = true` and `installCRDs: false` pinned.
+  `crds.install: false` is the bring-your-own-CRDs arm (the CRDs are
+  owned elsewhere, e.g. a GitOps-managed bundle).
+- **CRD keep-on-uninstall: `apply_only`** — the provider's Delete
+  becomes a NO-OP, so destroying this module removes the CRDs from
+  state WITHOUT deleting them from the cluster; OpenSearch clusters and
+  their data survive an operator uninstall. `crds.keep_on_uninstall:
+  false` turns it off. Server-side apply keeps the megabyte-scale CRDs
+  co-ownable without client-side annotation bloat and re-adopts kept
+  CRDs on reinstall. The exact semantic twin of the Pulumi module's
   `retainOnDelete` on each CRD.
+- **A schema downgrade is refused** — `data "kubernetes_resources"`
+  reads the CRDs this module has stamped on the cluster; a
+  `chart_version` below the version they carry fails the plan with what
+  was observed, what it means, and the next step (pin the higher
+  version, or delete the CRDs deliberately). A version that is not
+  published in the repository index is refused the same way.
 - **The release depends on the CRDs** (and the optional namespace), so
   the operator never starts against an unregistered API group.
 - **The pinned default chart version is 2.8.0** — the newest SERVED
   chart whose default manager image is a STABLE operator release; the
   2.8.3+/3.0.x served charts default to a prerelease image and the
-  3.x line migrates the CRDs to the `opensearch.org` API group. A
-  `chart_version` bump must upgrade the staged `../crds/` files
-  together with it.
+  3.x line migrates the CRDs to the `opensearch.org` API group. The
+  derived CRDs follow whatever `chart_version` pins.
 - **Readiness is verified at install time** — `wait` + `atomic` +
   `cleanup_on_fail` with a 600s timeout. An operator that never
   becomes ready (an unpullable image from a private mirror is the
@@ -97,7 +110,8 @@ semantic twin of the Pulumi module's `buildHelmValues` + `mergeMaps`.
 | Resource | Condition |
 |---|---|
 | `kubernetes_namespace_v1.opensearch_operator` | `spec.create_namespace` |
-| `kubectl_manifest.crds` (one per staged CRD, keyed by CRD name) | always |
+| `data.helm_template.helm_crds`, `data.http.helm_crds_index`, `data.kubernetes_resources.helm_crds_existing` (`helm_crds.tf`) | `crds.install` (default true) |
+| `kubectl_manifest.helm_crds` (one per derived CRD, keyed by CRD name) | `crds.install` (default true) |
 | `helm_release.opensearch_operator` | always |
 
 ## Usage
@@ -137,5 +151,6 @@ chart identity and pinned default version (2.8.0), same
 `metadata.name` release name, same values rendering (the pinned
 `installCRDs: false`, the divergence-only manager block, the
 render-only-when-set resources key, the per-half image override), same
-module-owned CRD posture (`apply_only` here, `retainOnDelete` there),
+module-owned derived CRD posture (the shared `helm_crds.tf` here,
+`keptcrds` there),
 same atomic/wait posture, same outputs.

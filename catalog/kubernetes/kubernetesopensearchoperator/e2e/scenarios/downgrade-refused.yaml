@@ -1,0 +1,20 @@
+# THE SCHEMA-DOWNGRADE REFUSAL: install at chart 2.8.0, then attempt to
+# re-deploy from downgrade-refused.to.yaml at 2.7.0. The second deploy
+# must be refused before any CRD changes (the verifier reads the stamps
+# afterwards: still 2.8.0), with the three-part message naming both
+# versions and the deliberate remedy. keep_on_uninstall is off so the
+# destroy that follows the refusal leaves no CRDs behind.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenSearchOperator
+metadata:
+  name: e2e-osop-down
+  annotations:
+    planton.dev/e2e-upgrade-manifest: downgrade-refused.to.yaml
+    planton.dev/e2e-expect-upgrade-failure: crd-schema-downgrade
+spec:
+  namespace:
+    value: e2e-osop-down
+  create_namespace: true
+  chart_version: 2.8.0
+  crds:
+    keep_on_uninstall: false

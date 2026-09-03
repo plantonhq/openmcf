@@ -1,0 +1,6 @@
+apiVersion: v2
+name: mixed-surfaces
+description: Test fixture. A chart with one CRD in Helm's crds/ directory and one templated as a release resource, whose keep annotation is a values switch (the generic Helm kind meets every combination of these).
+type: application
+version: 2.0.0
+appVersion: "2.0.0"

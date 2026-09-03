@@ -23,26 +23,29 @@ spec:
         `helm list -A` (NAMESPACE column); conventionally
         "opensearch-operator-system".
     # ── the module-owned CRDs (for_each resource "crds") ────────────────
-    # Keyed by the CRD's own metadata.name, so the name derives blind
-    # from the state address key; CustomResourceDefinitions are
-    # cluster-scoped (no namespace segment).
+    # Derived from the pinned chart at plan time (the generated
+    # helm_crds.tf) and keyed by the CRD's own metadata.name, so the name
+    # derives blind from the state address key; CustomResourceDefinitions
+    # are cluster-scoped (no namespace segment). Absent entirely when
+    # crds.install is false (the bring-your-own-CRDs arm).
     - name: api_version
-      tofu_resource_name: crds
+      tofu_resource_name: helm_crds
       derivations:
         - literal: apiextensions.k8s.io/v1
       where_to_find: Always "apiextensions.k8s.io/v1" — the CRD group/version.
     - name: kind
-      tofu_resource_name: crds
+      tofu_resource_name: helm_crds
       derivations:
         - literal: CustomResourceDefinition
       where_to_find: Always "CustomResourceDefinition".
     - name: name
-      tofu_resource_name: crds
+      tofu_resource_name: helm_crds
       derivations:
         - from_address_key: true
       where_to_find: >-
         Each CRD's metadata.name (the for_each key) —
-        `kubectl get crd | grep opensearch.opster.io` (NAME column).
+        `kubectl get crd -l planton.ai/crd-source=opensearch-operator`
+        (NAME column; the set follows whatever the pinned chart templates).
     - name: namespace
       where_to_find: >-
         Not applicable — CustomResourceDefinitions are cluster-scoped,

@@ -1,0 +1,29 @@
+# A chart that carries CRDs in Helm's crds/ directory: Flagger ships three
+# (canaries, metrictemplates, alertproviders). Helm would install them once
+# and never upgrade or remove them; the module owns that surface instead.
+# meshProvider: kubernetes lets the controller run on a bare cluster.
+#
+# THE KEEP-AND-READOPT PROOF: crds.keep_on_uninstall defaults true, so the
+# first destroy must leave the three CRDs on the cluster (the verifier
+# asserts it, against the names this scenario declares), and the reinstall
+# the annotation requests must re-adopt them rather than fail on their
+# existence. Kept CRDs are cluster-scoped and outlive this lane, so the lane
+# that keeps them pins the LOWEST version any lane installs (1.44.0; the
+# others start at 1.45.0) -- a later lane's install can never be refused as
+# a downgrade by what this one left behind.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-crds
+  annotations:
+    planton.dev/e2e-reinstall: "true"
+    planton.dev/e2e-expect-crds: canaries.flagger.app,metrictemplates.flagger.app,alertproviders.flagger.app
+spec:
+  namespace:
+    value: e2e-helm-crds-ns
+  create_namespace: true
+  repo: https://flagger.app
+  chart: flagger
+  version: 1.44.0
+  values_yaml: |
+    meshProvider: kubernetes

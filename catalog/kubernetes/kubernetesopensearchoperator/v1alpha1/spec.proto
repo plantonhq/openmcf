@@ -40,12 +40,16 @@ import "shared/options/options.proto";
  * the fullname to the resource name, which is what makes the 27-char
  * budget hold.
  *
- * CRD LIFECYCLE: the chart TEMPLATES the ten OpenSearch CRDs as
- * release-owned resources (no keep-on-uninstall knob upstream).
- * The modules therefore own the CRD lifecycle themselves so that
- * uninstalling the operator never cascade-deletes OpenSearchCluster
- * resources and their data — see the component README for the exact
- * mechanism per engine.
+ * CRD LIFECYCLE: the chart TEMPLATES the OpenSearch CRDs as
+ * release-owned resources (no keep-on-uninstall knob upstream). The
+ * modules therefore OWN the CRDs: derived from the pinned chart at
+ * deploy time, applied keyed by CRD name ahead of the release, kept
+ * when the resource is destroyed (`crds.keep_on_uninstall`), re-adopted
+ * on reinstall, and moved with every `chart_version` bump; a
+ * `chart_version` lower than the CRDs already on the cluster is refused
+ * before anything changes. Uninstalling the operator never
+ * cascade-deletes OpenSearchCluster resources and their data unless the
+ * spec says so.
  *
  * WATCH SCOPE: by default the operator watches ALL namespaces
  * (cluster-wide RBAC). Set `watch_namespace` to restrict it to one
@@ -198,11 +202,40 @@ message KubernetesOpenSearchOperatorSpec {
    */
   string helm_values = 16;
 
+  /**
+   * CRD installation lifecycle. Both default to true; unset means the
+   * module owns the CRDs and keeps them.
+   */
+  KubernetesOpenSearchOperatorCrds crds = 17;
+
   option (buf.validate.message).cel = {
     id: "spec.role_bindings_require_watch_namespace"
     message: "use_role_bindings requires watch_namespace — namespace-scoped RBAC cannot serve a cluster-wide operator"
     expression: "!this.use_role_bindings || this.watch_namespace != ''"
   };
+}
+
+/**
+ * CRD installation lifecycle for the module-owned opensearch.opster.io CRDs.
+ */
+message KubernetesOpenSearchOperatorCrds {
+  /**
+   * Derive and apply the CRDs from the pinned chart ahead of the release.
+   * Default TRUE. Set false ONLY when the CRDs are owned elsewhere (a
+   * GitOps-managed bundle): the release still installs with CRDs skipped,
+   * and with the CRDs absent the operator cannot start, so this is a
+   * bring-your-own-CRDs arm, never a lighter install.
+   */
+  optional bool install = 1 [(dev.planton.shared.options.default) = "true"];
+
+  /**
+   * Keep the CRDs (and therefore every OpenSearchCluster and every
+   * OpenSearch user, role, tenant, template and policy object in the
+   * cluster) when the resource is destroyed. Default TRUE: deleting the
+   * CRDs cascades to every search cluster and its data, a destructive act
+   * that must be an explicit false. A later reinstall re-adopts kept CRDs.
+   */
+  optional bool keep_on_uninstall = 2 [(dev.planton.shared.options.default) = "true"];
 }
 
 /**

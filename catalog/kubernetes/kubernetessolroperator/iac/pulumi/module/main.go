@@ -3,9 +3,12 @@ package module
 import (
 	"github.com/pkg/errors"
 	kubernetessolroperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetessolroperator/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/keptcrds"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
+	"github.com/plantonhq/planton/pkg/kubernetes/helmcrds"
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"sigs.k8s.io/yaml"
 )
 
 // Resources installs the Apache Solr Operator from the official
@@ -14,21 +17,25 @@ import (
 // (declared through KubernetesSolr) into running Solr clusters, plus
 // SolrBackup and SolrPrometheusExporter resources.
 //
-// CRD LIFECYCLE: unlike most operator charts, the solr-operator chart
-// ships NO CRDs — they are separate release artifacts. The module OWNS
-// them: the four staged files at ../crds (the three solr.apache.org CRDs
-// plus the ZookeeperCluster CRD of the bundled zookeeper-operator
-// dependency) are applied before the release, each keyed by its own
-// metadata.name and carrying retainOnDelete — destroying the stack
-// removes the operator but NEVER the CRDs, so SolrCloud resources are
-// never cascade-deleted. The bundled subchart's own CRD switch is pinned
-// off (`zookeeper-operator.crd.create: false`) so the ZookeeperCluster
-// CRD never falls under Helm's delete-on-uninstall lifecycle.
+// CRD LIFECYCLE: the chart carries its CRDs on both of Helm's surfaces (the
+// three solr.apache.org CRDs in its crds/ directory, installed once and
+// never upgraded by Helm; the ZookeeperCluster CRD templated by the bundled
+// zookeeper-operator subchart, release-owned and deleted with the release).
+// The module therefore OWNS the CRDs through the catalog's derive-branch
+// primitive (keptcrds): the pinned chart is rendered with the release's own
+// values plus the subchart's CRD switch turned on, each
+// CustomResourceDefinition is applied keyed by its own name as a kept
+// resource (retained on destroy unless crds.keep_on_uninstall is false;
+// re-adopted on reinstall; refused when the manifest lowers chart_version
+// below what the cluster carries), and the release installs with skip_crds
+// and zookeeper-operator.crd.create pinned false so Helm never touches
+// them. The release depends on the CRDs so the operator (and the bundled
+// zookeeper-operator, which refuses to start without its CRD) never starts
+// against an unregistered API group.
 //
 // The typed spec renders into chart values (values.go); the helm_values
 // escape hatch merges last with Helm -f semantics — the exact semantic
-// twin of the Terraform module's helm_release with
-// values = [typed, helm_values].
+// twin of the Terraform module's helm_release values documents.
 func Resources(ctx *pulumi.Context, stackInput *kubernetessolroperatorv1alpha1.KubernetesSolrOperatorStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
@@ -44,40 +51,52 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetessolroperatorv1alpha1.K
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	var operatorDeps []pulumi.Resource
-	if createdNamespace != nil {
-		operatorDeps = append(operatorDeps, createdNamespace)
-	}
-
-	// ------------------------------ CRDs ----------------------------------
-	// Applied before the release: the operator's controllers start
-	// watching these types immediately, and the bundled
-	// zookeeper-operator refuses to start without the ZookeeperCluster
-	// CRD present.
-	//
-	// The CRDs ride a DEDICATED upsert provider: retained-on-destroy
-	// resources are, by design, already on the cluster the next time
-	// this module installs, and a plain create fails AlreadyExists (the
-	// provider adopts only with upsertExistingObjects — verified in the
-	// pinned provider source). The upsert scope stays CRD-only; the
-	// release keeps the plain provider's create-conflict semantics.
-	upsertProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert(ctx,
-		stackInput.ProviderConfig, "kubernetes-crd-upsert")
-	if err != nil {
-		return errors.Wrap(err, "failed to create the CRD upsert kubernetes provider")
-	}
-	createdCrds, err := applyCrds(ctx, upsertProvider)
-	if err != nil {
-		return errors.Wrap(err, "failed to apply solr-operator crds")
-	}
-	operatorDeps = append(operatorDeps, createdCrds...)
-
-	// ------------------------------ operator release ----------------------
+	// ------------------------------ release values ------------------------
+	// Built once and used twice: the release installs with them, and the
+	// CRD render runs with them (plus the CRD switch), so the derived CRDs
+	// can never see different values than the install.
 	mergedValues, err := buildHelmValues(locals)
 	if err != nil {
 		return errors.Wrap(err, "failed to build helm values")
 	}
+	releaseValuesDocument, err := yaml.Marshal(mergedValues)
+	if err != nil {
+		return errors.Wrap(err, "failed to encode the release values for the CRD render")
+	}
 
+	// ------------------------------ CRDs ----------------------------------
+	// Derived from the pinned chart and applied kept, ahead of the release
+	// (see keptcrds for the mechanics and the failure vocabulary).
+	// crds.install false is the bring-your-own-CRDs arm: nothing is
+	// applied and the release still skips CRDs.
+	crds := stackInput.Target.Spec.GetCrds()
+	createdCrds, err := keptcrds.Apply(ctx, keptcrds.Args{
+		Source: helmcrds.Source{
+			Repository:  vars.HelmChartRepo,
+			Chart:       vars.HelmChartName,
+			Version:     locals.ChartVersion,
+			Values:      []string{string(releaseValuesDocument)},
+			CRDOverride: vars.CrdRenderOverride,
+		},
+		// A typed kind knows its chart carries CRDs and pins the switch, so a
+		// render that yields none is a failure and nothing is left to Helm.
+		Policy:          helmcrds.Policy{ExpectCRDs: true},
+		ReleaseName:     locals.ReleaseName,
+		Namespace:       locals.Namespace,
+		Install:         crds == nil || crds.Install == nil || crds.GetInstall(),
+		KeepOnUninstall: crds == nil || crds.KeepOnUninstall == nil || crds.GetKeepOnUninstall(),
+		ProviderConfig:  stackInput.ProviderConfig,
+		ProviderName:    "kubernetes-crd-upsert",
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to apply the solr operator CRDs")
+	}
+	operatorDeps := append([]pulumi.Resource{}, createdCrds...)
+	if createdNamespace != nil {
+		operatorDeps = append(operatorDeps, createdNamespace)
+	}
+
+	// ------------------------------ operator release ----------------------
 	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, &helmv3.ReleaseArgs{
 		Name:      pulumi.String(locals.ReleaseName),
 		Namespace: pulumi.String(locals.Namespace),
@@ -87,6 +106,9 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetessolroperatorv1alpha1.K
 			Repo: pulumi.String(vars.HelmChartRepo),
 		},
 		Values: pulumi.ToMap(mergedValues),
+		// The module owns the CRDs (above); Helm must never install its
+		// own copy of the crds/ directory.
+		SkipCrds: pulumi.Bool(true),
 		// The module owns namespace creation (create_namespace flag).
 		CreateNamespace: pulumi.Bool(false),
 		// Wait for the operator to become Available — an operator that

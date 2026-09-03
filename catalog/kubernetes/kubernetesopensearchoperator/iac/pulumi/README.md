@@ -14,9 +14,9 @@ Terraform module's `helm_release` with `values = [typed, helm_values]`.
 1. **Namespace** (optional) — created with the standard governance
    labels when `create_namespace` is true; otherwise the namespace must
    already exist
-2. **The ten OpenSearch CRDs** (module-owned) — applied from the files
-   staged at `../crds/`, one resource per CRD keyed by the CRD's own
-   `metadata.name`, with `retainOnDelete`
+2. **The OpenSearch CRDs** (module-owned) — derived from the pinned
+   chart, one resource per CRD keyed by the CRD's own `metadata.name`,
+   with `retainOnDelete`
 3. **Helm Release `<metadata.name>`** — the `opensearch-operator`
    chart (pinned default 2.8.0 — the newest SERVED chart whose default
    manager image is a STABLE operator release; the 2.8.3+/3.0.x served
@@ -29,19 +29,33 @@ Terraform module's `helm_release` with `values = [typed, helm_values]`.
 The chart templates its CRDs as release-owned resources with NO
 keep-on-uninstall knob upstream — a Helm-owned install would
 cascade-delete every `OpenSearchCluster` (and its data) on uninstall.
-The module therefore owns the CRD lifecycle itself:
+The module therefore owns the CRD lifecycle itself through the catalog's
+shared package for charts that carry CRDs, `keptcrds`:
 
-- `installCRDs: false` is pinned UNCONDITIONALLY in the rendered
-  values (never overridable — it renders before the escape-hatch merge
-  but is not a knob the spec models)
-- `module/crds.go` applies each staged CRD file as its own resource
-  with the `retainOnDelete` option: on `pulumi destroy` the CRDs are
-  dropped from state WITHOUT being deleted from the cluster, so
-  destroying the operator never touches `OpenSearchCluster` resources
-  or their data. This is the exact semantic twin of the Terraform
-  module's `kubectl_manifest` with `apply_only = true`.
-- A `chart_version` upgrade re-applies the staged CRD files — upgrade
-  the staged set together with the pinned default version.
+- The pinned chart is rendered in-process (Helm SDK, client-only, against
+  the cluster's own Kubernetes version) with the release's own values
+  plus `installCRDs: true`; the CustomResourceDefinition documents are
+  kept, stamped with `planton.ai/crd-source-chart` and
+  `planton.ai/crd-source-version`, and applied one `yaml.ConfigGroup`
+  per CRD keyed by the CRD's own `metadata.name`, ahead of the release.
+- `installCRDs: false` is re-pinned AFTER the escape-hatch merge and the
+  release installs with `SkipCrds`, so Helm never touches the CRDs
+  whichever way a user override points. `crds.install: false` is the
+  bring-your-own-CRDs arm (the CRDs are owned elsewhere).
+- Every applied CRD carries `retainOnDelete` (delivered through a
+  resource transformation, the one option the yaml SDK propagates to a
+  ConfigGroup's children): on `pulumi destroy` the CRDs are dropped from
+  state WITHOUT being deleted from the cluster, so destroying the
+  operator never touches `OpenSearchCluster` resources or their data.
+  `crds.keep_on_uninstall: false` turns it off. The CRDs ride a
+  dedicated upsert provider (server-side apply with force) so a
+  reinstall re-adopts the kept CRDs. This is the exact semantic twin of
+  the Terraform module's `kubectl_manifest` with `apply_only`.
+- A `chart_version` bump re-applies the derived CRDs at the new pin (and
+  adds the ones a newer chart brings); a `chart_version` below the
+  version the cluster's CRDs carry is refused before anything registers,
+  with what was observed, what it means, and the next step. A version
+  that is not published in the repository index is refused the same way.
 
 ## Rendering Notes
 
@@ -112,9 +126,8 @@ planton pulumi up --manifest e2e/manifest.yaml --module-dir <path-to-this-module
 ## Module Structure
 
 - `main.go`: entrypoint that calls the module
-- `module/main.go`: namespace → CRDs → operator release → output exports
-- `module/crds.go`: the module-owned CRD apply (per-CRD resources keyed
-  by CRD name, `retainOnDelete`)
+- `module/main.go`: namespace → release values → derived CRDs
+  (`keptcrds.Apply`) → operator release → output exports
 - `module/values.go`: typed-spec → chart values rendering (the pinned
   `installCRDs: false`, the manager block, kube-rbac-proxy, RBAC scope,
   scheduling, image) and the escape-hatch merge
@@ -122,7 +135,7 @@ planton pulumi up --manifest e2e/manifest.yaml --module-dir <path-to-this-module
   (`metadata.name`), chart version, the chart-derived deployment name —
   kept in lockstep with the Terraform module's `locals.tf`
 - `module/vars.go`: chart identity (repository, `opensearch-operator`),
-  the pinned default version (2.8.0), the staged-CRD directory, the
+  the pinned default version (2.8.0), the CRD render override, the
   600s timeout
 - `module/helpers.go`: shared shape renderers (resources, tolerations,
   the Helm `-f` merge)

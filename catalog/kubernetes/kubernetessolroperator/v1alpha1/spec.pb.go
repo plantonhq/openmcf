@@ -45,12 +45,15 @@ const (
 // zookeeper-operator only when one already runs in the cluster or
 // every Solr cluster will connect to an EXTERNAL ensemble.
 //
-// CRD LIFECYCLE: the modules apply the operator's CRDs (SolrCloud,
+// CRD LIFECYCLE: the modules OWN the operator's CRDs (SolrCloud,
 // SolrBackup, SolrPrometheusExporter, and ZookeeperCluster for the
-// bundled dependency) themselves, keyed by CRD name — the chart does
-// not ship them. Uninstalling the operator never cascade-deletes
-// SolrCloud resources; see the component README for the per-engine
-// mechanism.
+// bundled dependency). They are derived from the pinned chart at deploy
+// time, applied keyed by CRD name ahead of the release, kept when the
+// resource is destroyed (`crds.keep_on_uninstall`), re-adopted on
+// reinstall, and moved with every `chart_version` bump; a `chart_version`
+// lower than the CRDs already on the cluster is refused before anything
+// changes. Uninstalling the operator never cascade-deletes SolrCloud
+// resources unless the spec says so.
 //
 // WATCH SCOPE: by default the operator watches ALL namespaces. Set
 // `watch_namespaces` to fence it to an explicit set.
@@ -76,8 +79,8 @@ type KubernetesSolrOperatorSpec struct {
 	// the operator/CRD artifacts carry one). Versions must exist as
 	// SERVED charts in the repository index
 	// (https://solr.apache.org/charts). The operator is pre-1.0: minor
-	// versions can change the CRD API — apply the matching CRDs when
-	// upgrading.
+	// versions can change the CRD API — the module-owned CRDs follow this
+	// pin on every change, so a bump upgrades the schema with the operator.
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// Operator replica count. Chart default: 1. Extra replicas are
@@ -135,7 +138,11 @@ type KubernetesSolrOperatorSpec struct {
 	// containers, priority class, service account, the bundled
 	// zookeeper-operator's own values, ...) — never the substitute for
 	// them. Do not put secrets here.
-	HelmValues    string `protobuf:"bytes,15,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	HelmValues string `protobuf:"bytes,15,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	// *
+	// CRD installation lifecycle. Both default to true; unset means the
+	// module owns the CRDs and keeps them.
+	Crds          *KubernetesSolrOperatorCrds `protobuf:"bytes,16,opt,name=crds,proto3" json:"crds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -275,6 +282,80 @@ func (x *KubernetesSolrOperatorSpec) GetHelmValues() string {
 	return ""
 }
 
+func (x *KubernetesSolrOperatorSpec) GetCrds() *KubernetesSolrOperatorCrds {
+	if x != nil {
+		return x.Crds
+	}
+	return nil
+}
+
+// *
+// CRD installation lifecycle for the module-owned solr.apache.org CRDs and
+// the bundled zookeeper-operator's ZookeeperCluster CRD.
+type KubernetesSolrOperatorCrds struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Derive and apply the CRDs from the pinned chart ahead of the release.
+	// Default TRUE. Set false ONLY when the CRDs are owned elsewhere (a
+	// GitOps-managed bundle): the release still installs with CRDs skipped,
+	// and with the CRDs absent the operator cannot start, so this is a
+	// bring-your-own-CRDs arm, never a lighter install.
+	Install *bool `protobuf:"varint,1,opt,name=install,proto3,oneof" json:"install,omitempty"`
+	// *
+	// Keep the CRDs (and therefore every SolrCloud, SolrBackup,
+	// SolrPrometheusExporter and ZookeeperCluster in the cluster) when the
+	// resource is destroyed. Default TRUE: deleting the CRDs cascades to
+	// every Solr cluster, a destructive act that must be an explicit false.
+	// A later reinstall re-adopts kept CRDs.
+	KeepOnUninstall *bool `protobuf:"varint,2,opt,name=keep_on_uninstall,json=keepOnUninstall,proto3,oneof" json:"keep_on_uninstall,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesSolrOperatorCrds) Reset() {
+	*x = KubernetesSolrOperatorCrds{}
+	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesSolrOperatorCrds) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesSolrOperatorCrds) ProtoMessage() {}
+
+func (x *KubernetesSolrOperatorCrds) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesSolrOperatorCrds.ProtoReflect.Descriptor instead.
+func (*KubernetesSolrOperatorCrds) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesSolrOperatorCrds) GetInstall() bool {
+	if x != nil && x.Install != nil {
+		return *x.Install
+	}
+	return false
+}
+
+func (x *KubernetesSolrOperatorCrds) GetKeepOnUninstall() bool {
+	if x != nil && x.KeepOnUninstall != nil {
+		return *x.KeepOnUninstall
+	}
+	return false
+}
+
 // *
 // The bundled zookeeper-operator dependency.
 type KubernetesSolrOperatorZookeeperOperator struct {
@@ -297,7 +378,7 @@ type KubernetesSolrOperatorZookeeperOperator struct {
 
 func (x *KubernetesSolrOperatorZookeeperOperator) Reset() {
 	*x = KubernetesSolrOperatorZookeeperOperator{}
-	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -309,7 +390,7 @@ func (x *KubernetesSolrOperatorZookeeperOperator) String() string {
 func (*KubernetesSolrOperatorZookeeperOperator) ProtoMessage() {}
 
 func (x *KubernetesSolrOperatorZookeeperOperator) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -322,7 +403,7 @@ func (x *KubernetesSolrOperatorZookeeperOperator) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use KubernetesSolrOperatorZookeeperOperator.ProtoReflect.Descriptor instead.
 func (*KubernetesSolrOperatorZookeeperOperator) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesSolrOperatorZookeeperOperator) GetInstall() bool {
@@ -370,7 +451,7 @@ type KubernetesSolrOperatorMtls struct {
 
 func (x *KubernetesSolrOperatorMtls) Reset() {
 	*x = KubernetesSolrOperatorMtls{}
-	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -382,7 +463,7 @@ func (x *KubernetesSolrOperatorMtls) String() string {
 func (*KubernetesSolrOperatorMtls) ProtoMessage() {}
 
 func (x *KubernetesSolrOperatorMtls) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -395,7 +476,7 @@ func (x *KubernetesSolrOperatorMtls) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesSolrOperatorMtls.ProtoReflect.Descriptor instead.
 func (*KubernetesSolrOperatorMtls) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KubernetesSolrOperatorMtls) GetClientCertSecret() *v1.StringValueOrRef {
@@ -452,7 +533,7 @@ type KubernetesSolrOperatorImage struct {
 
 func (x *KubernetesSolrOperatorImage) Reset() {
 	*x = KubernetesSolrOperatorImage{}
-	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -464,7 +545,7 @@ func (x *KubernetesSolrOperatorImage) String() string {
 func (*KubernetesSolrOperatorImage) ProtoMessage() {}
 
 func (x *KubernetesSolrOperatorImage) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -477,7 +558,7 @@ func (x *KubernetesSolrOperatorImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesSolrOperatorImage.ProtoReflect.Descriptor instead.
 func (*KubernetesSolrOperatorImage) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *KubernetesSolrOperatorImage) GetRepository() string {
@@ -498,8 +579,7 @@ var File_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto protorefl
 
 const file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/kubernetes/kubernetessolroperator/v1alpha1/spec.proto\x126dev.planton.kubernetes.kubernetessolroperator.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xf2\n" +
-	"\n" +
+	"=catalog/kubernetes/kubernetessolroperator/v1alpha1/spec.proto\x126dev.planton.kubernetes.kubernetessolroperator.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xda\v\n" +
 	"\x1aKubernetesSolrOperatorSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x123\n" +
@@ -517,14 +597,21 @@ const file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDesc
 	"\x11image_pull_secret\x18\r \x01(\tBJ\xaa\xa6\x1dFName of an existing Kubernetes Secret (reference), not secret materialR\x0fimagePullSecret\x12i\n" +
 	"\x05image\x18\x0e \x01(\v2S.dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorImageR\x05image\x12\x1f\n" +
 	"\vhelm_values\x18\x0f \x01(\tR\n" +
-	"helmValues\x1a?\n" +
+	"helmValues\x12f\n" +
+	"\x04crds\x18\x10 \x01(\v2R.dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorCrdsR\x04crds\x1a?\n" +
 	"\x11NodeSelectorEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
 	"\x0e_chart_versionB\v\n" +
 	"\t_replicasB\x1a\n" +
 	"\x18_leader_election_enabledB\x12\n" +
-	"\x10_metrics_enabled\"\x81\x01\n" +
+	"\x10_metrics_enabled\"\xa2\x01\n" +
+	"\x1aKubernetesSolrOperatorCrds\x12'\n" +
+	"\ainstall\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\ainstall\x88\x01\x01\x129\n" +
+	"\x11keep_on_uninstall\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0fkeepOnUninstall\x88\x01\x01B\n" +
+	"\n" +
+	"\b_installB\x14\n" +
+	"\x12_keep_on_uninstall\"\x81\x01\n" +
 	"'KubernetesSolrOperatorZookeeperOperator\x12'\n" +
 	"\ainstall\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\ainstall\x88\x01\x01\x12!\n" +
 	"\fuse_existing\x18\x02 \x01(\bR\vuseExistingB\n" +
@@ -558,32 +645,34 @@ func file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDescG
 	return file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_goTypes = []any{
 	(*KubernetesSolrOperatorSpec)(nil),              // 0: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec
-	(*KubernetesSolrOperatorZookeeperOperator)(nil), // 1: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorZookeeperOperator
-	(*KubernetesSolrOperatorMtls)(nil),              // 2: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorMtls
-	(*KubernetesSolrOperatorImage)(nil),             // 3: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorImage
-	nil,                                             // 4: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.NodeSelectorEntry
-	(*v1.StringValueOrRef)(nil),                     // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),           // 6: dev.planton.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil),           // 7: dev.planton.kubernetes.WorkloadToleration
+	(*KubernetesSolrOperatorCrds)(nil),              // 1: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorCrds
+	(*KubernetesSolrOperatorZookeeperOperator)(nil), // 2: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorZookeeperOperator
+	(*KubernetesSolrOperatorMtls)(nil),              // 3: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorMtls
+	(*KubernetesSolrOperatorImage)(nil),             // 4: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorImage
+	nil,                                             // 5: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),                     // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),           // 7: dev.planton.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),           // 8: dev.planton.kubernetes.WorkloadToleration
 }
 var file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_depIdxs = []int32{
-	5, // 0: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.zookeeper_operator:type_name -> dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorZookeeperOperator
-	2, // 2: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.mtls:type_name -> dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorMtls
-	6, // 3: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	4, // 4: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.node_selector:type_name -> dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.NodeSelectorEntry
-	7, // 5: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
-	3, // 6: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.image:type_name -> dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorImage
-	5, // 7: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorMtls.client_cert_secret:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	5, // 8: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorMtls.ca_cert_secret:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	6,  // 0: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2,  // 1: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.zookeeper_operator:type_name -> dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorZookeeperOperator
+	3,  // 2: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.mtls:type_name -> dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorMtls
+	7,  // 3: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	5,  // 4: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.node_selector:type_name -> dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.NodeSelectorEntry
+	8,  // 5: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
+	4,  // 6: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.image:type_name -> dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorImage
+	1,  // 7: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorSpec.crds:type_name -> dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorCrds
+	6,  // 8: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorMtls.client_cert_secret:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	6,  // 9: dev.planton.kubernetes.kubernetessolroperator.v1alpha1.KubernetesSolrOperatorMtls.ca_cert_secret:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_init() }
@@ -594,13 +683,14 @@ func file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_init() {
 	file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
+	file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_msgTypes[3].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDesc), len(file_catalog_kubernetes_kubernetessolroperator_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

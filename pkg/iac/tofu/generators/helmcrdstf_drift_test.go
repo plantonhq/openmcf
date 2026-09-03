@@ -45,14 +45,15 @@ func TestHelmCRDsTFStampKeysMatchGo(t *testing.T) {
 		helmCRDsAnnotationSourceChart:   helmcrds.AnnotationSourceChart,
 		helmCRDsAnnotationSourceVersion: helmcrds.AnnotationSourceVersion,
 		helmCRDsLabelSource:             helmcrds.LabelSource,
+		helmCRDsHelmKeepAnnotation:      helmcrds.HelmKeepAnnotation,
 	}
 	block := HelmCRDsTF()
 	for literal, constant := range pairs {
 		if literal != constant {
 			t.Errorf("generator literal %q differs from helmcrds constant %q", literal, constant)
 		}
-		if !strings.Contains(block, `"`+literal+`"`) {
-			t.Errorf("the generated block does not carry the stamp key %q", literal)
+		if !strings.Contains(block, `"`+literal+`"`) && !strings.Contains(block, `["`+literal+`"]`) {
+			t.Errorf("the generated block does not carry the key %q", literal)
 		}
 	}
 }

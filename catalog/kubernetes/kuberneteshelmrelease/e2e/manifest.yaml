@@ -32,6 +32,9 @@ spec:
   cleanup_on_fail: true
   wait_for_jobs: true
   timeout_seconds: 600
-  skip_crds: false
+  crds:
+    install: true
+    keep_on_uninstall: true
+    allow_helm_managed: false
   max_history: 5
   description: offline plan proof
