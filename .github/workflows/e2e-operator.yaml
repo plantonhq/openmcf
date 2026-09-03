@@ -7,10 +7,12 @@
 # the manager runs and serves metrics. Zero cloud cost; the suite creates and
 # deletes its own cluster (KIND_CLUSTER=planton-operator-test-e2e).
 #
-# Runs in the CI toolchain container (Go, kind, kubectl, docker CLI) with the
-# host runner's Docker socket mounted -- the same shape as e2e-kubernetes.yaml,
-# because kind creates clusters as Docker containers and a container job has no
-# daemon of its own.
+# Runs directly on the runner host, not in the CI toolchain container. Kind
+# publishes the cluster's API server on the Docker host's loopback; inside a
+# container job 127.0.0.1 is the job container, so kubectl can create the
+# cluster (kind drives the node over the Docker socket) yet never reach it.
+# The host runner has Docker and kubectl; kind is installed at the same pin the
+# toolchain image carries (tools/ci/docker/Dockerfile).
 #
 # Triggers: pull requests and pushes touching operator/**, a weekly schedule as
 # the drift net, and manual dispatch.
@@ -41,6 +43,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  KIND_VERSION: v0.27.0
   # The operator serves no webhooks, so the kubebuilder suite's optional
   # cert-manager install is a minute of irrelevant network work per run.
   CERT_MANAGER_INSTALL_SKIP: 'true'
@@ -48,11 +51,16 @@ env:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/plantonhq/planton/ci-toolchain:latest
-      options: --user root -v /var/run/docker.sock:/var/run/docker.sock
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: operator/go.mod
+          cache-dependency-path: operator/go.sum
+      - name: Install kind
+        run: |
+          go install "sigs.k8s.io/kind@${KIND_VERSION}"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Run the operator Kind e2e lane
         run: make -C operator test-e2e
