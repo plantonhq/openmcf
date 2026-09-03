@@ -24,4 +24,4 @@ The first shows no GCP hash shared by two kinds; the second is green with GCP ab
 ## What comes next
 
 - The logos publish to the CDN at their versionless keys with the next release tag; consoles pick them up after the cache turns over, with no platform change.
-- One issue per remaining provider carries its kind list from the baseline and the same acceptance check; each provider's logo set is judged glyph by glyph as its catalog work reaches it, and the baseline shrinks to zero.
+- The remaining providers' logo sets are judged glyph by glyph as their catalog work reaches them, each under the same law and the same 24 px / 48 px contact-sheet check; `pkg/cataloglogo/baseline.yaml` is the authoritative list of what each provider still owes, and it shrinks to zero.
