@@ -205,9 +205,8 @@ to refine.
    (400+ kinds, PascalCase like `AwsVpc`), its per-component pages answer
    what a kind requires and exports, its reference graph answers what can
    wire to what. `planton explain --list` is the offline fallback. Map to
-   the RIGHT kind even when the organization's catalog policy disables it
-   -- availability never truncates a design; the disclosure happens before
-   deploy, not here (`references/catalog.availability.md`).
+   the RIGHT kind even when the org's catalog policy disables it: availability
+   never truncates a design; disclose before deploy (`references/catalog.availability.md`).
 3. Ground every kind you are not certain about BEFORE writing YAML -- the
    component's reference page first, then `planton explain AwsVpc` for the
    drill-down (offline and instant: every spec field with the exact YAML
@@ -470,6 +469,7 @@ memory what a reference answers precisely.
 | `references/service.external-ci.md` | Keyless CI: workload identity bindings, the `planton iam federate` exchange, registering and deploying from a CI step, the Planton GitHub Action, walking a federation refusal |
 | `references/service.offline-deploy.md` | Deploying services with NO Planton backend: offline-clean kustomize authoring, the offline deploy verb and its exit codes, the GitHub Action's offline mode, the gh-driven CI/CD setup journey, verify-before-ready |
 | `references/service.reading-a-run.md` | Reading one run and reporting it in the user's words: build vs delivery shapes, status vocabulary, per-task errors, gates, mirrored external CI runs |
+| `references/service.briefing-a-service.md` | "Brief me" on a service the person is looking at (standing context says `Surface: a service's detail page`), or "how is my service doing": the room's facts and what they save, the read order, attention-first shape, calibration, when to leave the records for the repository, and what each surface can do with the files |
 | `references/service.build-failures.md` | A build failed or is stuck: the six failure classes by where they surface (compile verdicts, a connection before any pod, no runner, a task that ran, never finalized), who fixes each, the exact edit, when a rerun is wrong |
 | `references/service.reading-a-repository.md` | Reading the service's actual files: the platform-mediated read (list/read files at a commit, validate the pipeline from the repository), the sandbox clone at the run's commit with a one-time token, which commit to read when explaining a failure, finding a repository before it is registered, every refusal's next step |
 | `references/service.managed-pipelines.md` | What a Planton-managed build runs: the platform tracks, the catalog tasks a repository pipeline reuses by plain name, the param contract and bindable workspaces, the `platform-content` pin, the compile verdicts, the images a build cluster pulls |

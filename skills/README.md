@@ -94,7 +94,7 @@ skill's domains:
 |---|---|
 | `infra.*` | Chart craft and lifecycle: format, templating, dependencies, config references, environments, the build contract, deployed projects, machine deploys, state import |
 | `cloud.*` | Provider judgment: AWS architecture, Kubernetes architecture, read-only cloud exploration |
-| `service.*` | Service delivery: registration doors, reading a service's repository, delivery verbs, runs and build failures, managed pipelines and their authoring, organization publishing of pipelines and tasks, serving domains, previews, local env vars, kustomize authoring, the offline/GitHub-Actions lane, the delete cascade |
+| `service.*` | Service delivery: registration doors, briefing a service from its page, reading a service's repository, delivery verbs, runs and build failures, managed pipelines and their authoring, organization publishing of pipelines and tasks, serving domains, previews, local env vars, kustomize authoring, the offline/GitHub-Actions lane, the delete cascade |
 | `catalog.*` | The research layer's doors: component grounding, catalog availability |
 | `craft.*` | Working method and the person: discovery, personalization, the profile vocabulary, the CLI command map, cost transparency, gap filing |
 
