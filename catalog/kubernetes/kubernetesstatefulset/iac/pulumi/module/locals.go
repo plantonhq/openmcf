@@ -138,7 +138,12 @@ func formatSelector(labels map[string]string) string {
 	return strings.Join(pairs, ",")
 }
 
-// loadDockerConfigFromFile reads docker config JSON from the specified file path.
+// loadDockerConfigFromFile reads docker-config JSON from a path the OPERATOR
+// supplied through the docker-config-json-file annotation. Break-glass only:
+// an expert applying this module from their own laptop points it at a file
+// on their own disk. The read is of the operator's machine, never of the
+// module's directory, so it sits deliberately outside the module
+// self-containment invariant (a module reads nothing beside itself).
 func loadDockerConfigFromFile(filePath string) (string, error) {
 	if strings.HasPrefix(filePath, "~/") {
 		homeDir, err := os.UserHomeDir()

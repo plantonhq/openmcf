@@ -163,6 +163,9 @@ violations:
   - catalog/kubernetes/kubernetesopenbao/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesopenfga/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetesopenfga/iac/tf:missing-iac-readme
+  - catalog/kubernetes/kubernetesopensearchoperator/iac/crds:unexpected-entry
+  - catalog/kubernetes/kubernetesoteloperator/iac/crds:unexpected-entry
+  - catalog/kubernetes/kubernetesplantonoperator/iac/crds:unexpected-entry
   - catalog/kubernetes/kubernetesqdrant/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetesqdrant/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesrabbitmq/iac/pulumi:missing-iac-readme
@@ -175,6 +178,7 @@ violations:
   - catalog/kubernetes/kubernetesseaweedfs/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetessignoz/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetessignoz/iac/tf:missing-iac-readme
+  - catalog/kubernetes/kubernetessolroperator/iac/crds:unexpected-entry
   - catalog/kubernetes/kubernetessparkoperator/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetessparkoperator/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesstatefulset/iac/pulumi:missing-iac-readme

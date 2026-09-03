@@ -822,6 +822,21 @@ Based on scenario:
   release — exclude the chart's copies, e.g. istio base's
   `base.excludedCRDs`) so both kinds co-own the CRDs and the CRDs-only →
   full-install migration is a plain redeploy instead of a hard conflict.
+- **A chart that carries CRDs sits on exactly one branch of the CRD
+  decision tree, and an update never moves it to a fourth**: the chart
+  owns its lifecycle (map `crds { install, keep_on_uninstall }`), upstream
+  ships a separate CRD chart (a second kept release), or the module
+  DERIVES the CRD set from the pinned version and applies it kept ahead of
+  the release. Two invariants hold across every update: a module is its
+  directory and reads nothing outside it (no `iac/crds/`, no `../` reads —
+  the anatomy gate and `hack/guards/ensure_modules_are_self_contained.sh`
+  enforce both), and a module derives, never copies, what a pinned
+  artifact already carries. A chart-version bump therefore changes ONE
+  pin and nothing else; if an update finds itself re-staging a CRD file,
+  the kind is on the wrong branch. Every CRD-lifecycle failure text names
+  what was observed, what it means, and the next step — full tree, facts,
+  and failure set in the forge rule's Post-Forge Live E2E Validation
+  section.
 - **When an engine provider cannot express a spec field, fail the plan — never
   silently drop it**: alongside the `PARITY-EXCEPTION:` twin comments, add a
   Terraform `lifecycle { precondition }` on the resource that rejects a set

@@ -1017,9 +1017,10 @@ namespaces; scenarios for such kinds need a stable, dedicated namespace.
 (2) `crds/`-directory CRDs are created RAW by Helm on first install with
 NO ownership metadata at all (verified in the Helm source) — they pin
 nothing and collide with nothing, but Helm also never UPGRADES them:
-a chart-version upgrade runs new controller code against old CRDs, and
-the honest spec/docs story is "apply the new release's CRDs yourself when
-the upgrade calls for it", never a claimed auto-upgrade. One more
+a chart-version upgrade runs new controller code against old CRDs. That
+is why such charts land on the DERIVE branch of the decision tree below
+(the module re-applies the pinned version's CRDs on every bump) rather
+than on a spec/docs story of "apply the new CRDs yourself". One more
 corollary of surviving CRDs, either class: operators that AUTO-DETECT an
 integration by CRD presence (cert-manager is the classic) are fooled by
 controller-less remnants on a long-lived cluster — a dead-webhook dry-run
@@ -1033,67 +1034,115 @@ annotation, never by an API-group name grep — CRD bundles routinely span
 groups (Karpenter's fleet CRDs live in karpenter.sh, karpenter.k8s.aws AND
 autoscaling.x-k8s.io), and one missed CRD reproduces the collision.
 
-**A THIRD keep-CRD class: chart-TEMPLATED CRDs with NO keep knob at all.**
-When a chart templates its CRDs release-owned and offers neither a
-`crds/` directory nor a keep-annotation passthrough, uninstalling the
-release cascade-deletes every CR (and its data) — the module must OWN
-the CRD lifecycle instead: disable the chart's CRD install, apply the
-staged CRD files itself keyed by each CRD's own name, and carry keep
-semantics module-side (`apply_only = true` on `kubectl_manifest`;
-classic-yaml ConfigGroup + a retainOnDelete TRANSFORMATION on Pulumi —
-yaml/v2 children are provider-side and unreachable by SDK options).
-Re-pin the chart's CRD-install flag AFTER the helm_values merge — a
-user override would re-arm the cascade the design exists to prevent.
-The class carries THREE corollaries, all verified live:
+**Every chart that carries CRDs is placed on ONE decision tree before
+any module code is written — the catalog has exactly three shapes and no
+fourth.** Read the chart at the PIN (`helm pull --untar`; `crds/`
+directory, `templates/`, and the values file) and choose:
 
-1. **Retained resources must be RE-ADOPTED on the next install.** A
-   destroy leaves module-owned CRDs on the cluster by design, so the
-   next install of the same module finds them already there — and the
-   Pulumi provider's create fails AlreadyExists even in SSA mode
-   unless the provider sets `upsertExistingObjects` (verified in the
-   pinned provider source; its own error text names the knob). Route
-   ONLY the retained resources through the shared upsert seam
-   (`pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert`)
-   — ordinary resources keep create-conflict semantics. Terraform's
-   `kubectl_manifest` server-side apply adopts natively. A kind whose
-   Pulumi lanes were proven before this seam existed has the latent
-   break on its REINSTALL path — audit at the next touch.
-2. **Staged sibling files must be assumed NOT to travel with a bare
-   module-directory copy.** `fileset()` over a missing `../crds`
-   returns EMPTY and `for_each` silently plans ZERO resources — the
-   install then "works" against whatever CRDs happen to exist (caught
-   live: a lane passed riding a previous lane's retained CRDs, and
-   only a verifier asserting the CRDs point at THIS release exposed
-   it). Every staged-file read pairs with a fail-loud expected-count
-   guard in BOTH engines (a TF precondition and a Go count check),
-   updated together with the chart pin.
-3. **When the chart TEMPLATES its CRDs with release-derived values**
-   (a conversion-webhook clientConfig, a cert-manager
-   `inject-ca-from` annotation), stage the files RENDERED at the pin
-   with those values replaced by module tokens, and substitute the
-   release's own identity in BOTH engines at apply time — kept CRDs
-   must always point at the CURRENT release's webhook Service and
-   Certificate, and a runtime reconciler (cert-manager's CA injector)
-   is the only correct keeper of their conversion trust: an
-   install-time CA frozen into kept CRDs breaks CR conversion
-   silently on rotation, which is why such a kind models cert-manager
-   as a REQUIRED posture rather than offering a one-shot
-   self-signed arm.
+1. **The chart owns its CRD lifecycle** (CRDs templated behind an
+   install switch AND a keep switch that stamps
+   `helm.sh/resource-policy: keep` — the cert-manager shape). The spec
+   carries the shared `crds { install, keep_on_uninstall }` message
+   (both `optional bool`, both defaulting true) and the module maps
+   those two fields into the chart's own values. Nothing else: no
+   module-side CRD resources, no second copy of the schema.
+2. **Upstream publishes a SEPARATE CRD chart** (Karpenter's
+   `karpenter-crd`). The module installs it as a second, kept
+   `helm_release` ahead of the operator release, pinned to the same
+   version, and the operator release skips CRDs.
+3. **Everything else — the module DERIVES the CRD set from the pinned
+   version.** This branch covers charts that template CRDs release-owned
+   with no keep knob (an uninstall would cascade-delete every CR and its
+   data), charts that ship CRDs only in Helm's install-once `crds/`
+   directory, and operators whose CRDs are published only as a bundle
+   beside the chart. The module renders the pinned chart with its CRD
+   switch ON and CRDs included (`data "helm_template"` under the helm
+   provider 3.x; the Helm SDK's client-only dry-run install with CRDs
+   included on Pulumi — both return the same document set, verified),
+   or fetches the pinned upstream bundle by a URL derived from the
+   version; filters the documents to `kind: CustomResourceDefinition`;
+   applies each one keyed by its OWN `metadata.name` as a KEPT resource
+   (server-side apply with force; `apply_only` on `kubectl_manifest`;
+   the classic-yaml ConfigGroup with a retainOnDelete transformation
+   and the shared upsert provider seam on Pulumi) BEFORE the release;
+   and installs the release with `skip_crds = true` and the chart's own
+   CRD switch pinned OFF after the `helm_values` merge (a user override
+   must never re-arm the cascade). The mechanics are shared, never
+   hand-rolled per kind: one Go package for Pulumi, one canonical
+   Terraform block that every module carries byte-identically under a
+   guard. Per-kind code supplies only the chart identity, the render
+   values that turn the chart's CRDs on, and the bundle URL when one
+   exists.
 
-**A FIRST-PARTY chart's staged CRD comes from the PUBLISHED package at
-the pin, never from the source tree.** When the catalog models software
-this organization itself ships, the working tree's CRD routinely runs
-AHEAD of the last published chart (unreleased schema changes committed
-between cuts). A CRD staged from the tree then advertises fields the
-pinned chart's operator does not implement — the API server ACCEPTS what
-the controller silently ignores, the worst failure shape, behind every
-green offline gate. `helm pull <oci-ref> --version <pin> --untar` and
-stage from that package; re-stage from the NEW published package when
-the pin bumps. The same discipline decides which schema era the typed
-spec may claim LIVE proof for: diff the published CRD's field set
-against the spec, and keep any spec field the published schema would
-prune OUT of the live scenarios (offline hack manifests carry it) until
-a published line admits it.
+**Two invariants, both machine-enforced.** (1) **A module is its
+directory.** Nothing outside `iac/tf/` or `iac/pulumi/` is ever read:
+release packaging zips exactly that directory, and the Pulumi binary
+lane runs from a generated workspace that holds only `Pulumi.yaml` — a
+relative read of a sibling path returns nothing at best and plans zero
+resources at worst, behind a green e2e lane that copied a tree releases
+never ship. The anatomy gate forbids `iac/crds/`; the self-containment
+guard (`hack/guards/ensure_modules_are_self_contained.sh`) forbids
+parent-path reads in either engine. (2) **A module derives, never
+copies, what a pinned artifact already carries.** A vendored CRD is
+frozen at one version while `chart_version` moves with the user, so the
+schema silently stops matching the operator it serves — the API server
+accepts fields the controller ignores, or rejects fields the controller
+needs. There is no fail-loud count guard that fixes this; only
+derivation does.
+
+**Facts the derive branch rests on, all verified at the pin.** The
+render runs with the REAL release name and namespace, so release-derived
+values inside a CRD (a conversion-webhook `clientConfig`, a cert-manager
+`inject-ca-from` annotation) come out correct without token substitution
+— and a runtime reconciler (cert-manager's CA injector) is the only
+correct keeper of a conversion webhook's trust, which is why such a kind
+models cert-manager as a REQUIRED posture. Charts gate templates on
+`.Capabilities`: pass the API versions the chart checks
+(`api_versions`/`APIVersions`) or the render silently drops them.
+Templated CRDs arrive in the rendered manifests; `crds/`-directory CRDs
+arrive on the separate CRDs surface — read BOTH and filter by kind.
+Rendering needs the chart repository at PLAN time; the install needs it
+anyway, so nothing new is required of the network, but the failure now
+happens earlier and must say so. The render consults the local Helm
+repository configuration: a stale repository entry on the operator's
+machine fails every render and every install identically. Per-version
+bundle URLs must be the form that survives the next release (Apache's
+`dist` tree holds only the CURRENT release; `archive.apache.org` holds
+every release). Retained CRDs are RE-ADOPTED on the next install: the
+Pulumi provider's create fails AlreadyExists even under SSA unless the
+retained resources route through the upsert seam
+(`pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert`) —
+ordinary resources keep create-conflict semantics; `kubectl_manifest`
+server-side apply adopts natively.
+
+**A FIRST-PARTY chart is derived from the PUBLISHED package at the pin,
+exactly like any other chart — and the typed spec may only claim LIVE
+proof for what that published schema carries.** The working tree's CRD
+routinely runs AHEAD of the last published chart (unreleased schema
+changes between cuts); deriving from the published artifact makes the
+staged-from-tree mistake structurally impossible, but the discipline on
+the spec remains: diff the published CRD's field set against the spec,
+and keep any spec field the published schema would prune OUT of the live
+scenarios (offline hack manifests carry it) until a published line
+admits it.
+
+**Every failure explains itself — in the module, the guard, and the
+verifier.** A precondition, an error, a plan-time refusal, or a status
+text for the CRD lifecycle carries three parts in order: what was
+OBSERVED (with the value — the chart, the version, the CRD name, the
+owner found), what it most likely MEANS (one root cause per message,
+never a list of maybes), and the exact NEXT STEP (a field to change, a
+command to run, an upstream fact to check). Text that names only the
+mechanism ("count mismatch", "conflict", "not found", "precondition
+failed") is a defect. Wording is stable so an agent can match it and
+act without a human. The anticipated set, each with a negative e2e lane
+asserting on the three parts: chart repository unreachable at plan time;
+pinned version not published (HTTP and OCI); CRD already exists owned by
+another release or tool; CRD schema downgrade attempted; render produced
+zero CRDs for a chart expected to carry them; CRD apply denied by RBAC;
+bundle URL 404; stale local repository configuration. A change that adds
+a branch to the shared mechanics adds that branch's failures and lanes in
+the same change.
 
 **An operator's DESTROY contract is read from its controller source,
 never assumed from a sibling kind's posture.** Operators split into two

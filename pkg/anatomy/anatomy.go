@@ -271,12 +271,14 @@ func checkComponent(repoRoot, componentRel string, add func(rel, rule, detail st
 			case "permissions.yaml":
 				hasPermissions = true
 			case "pulumi", "tf", "import-map.yaml", "provider-parity.yaml":
-			case "crds":
-				// Operator kinds stage the CRD manifests their modules apply
-				// (both engines read them) -- declared-optional module payload.
 			default:
+				// A module is its engine directory and reads nothing beside it:
+				// releases zip exactly iac/tf or iac/pulumi, and the Pulumi
+				// binary lane runs from a generated workspace with no files at
+				// all. Anything a module applies (CRDs above all) is derived
+				// from the pinned artifact at apply time, never staged here.
 				add(filepath.Join(iacRel, e.Name()), RuleUnexpectedEntry,
-					"iac/ holds exactly pulumi/, tf/, permissions.yaml, optionally import-map.yaml, provider-parity.yaml, and staged crds/")
+					"iac/ holds exactly pulumi/, tf/, permissions.yaml, optionally import-map.yaml and provider-parity.yaml; a module derives what it applies and stages nothing beside itself")
 			}
 		}
 		if !hasPermissions {

@@ -1,7 +1,7 @@
 # =============================================================================
 # Release Packaging Guard
 # =============================================================================
-# Two invariants of the release content pipeline, enforced on every change
+# Three invariants of the release content pipeline, enforced on every change
 # that could break them:
 #
 #   1. Every content zip selector still matches the repository layout -- the
@@ -12,6 +12,11 @@
 #      and module auto-tagging both exclude it explicitly.
 #      See hack/guards/ensure_test_provider_stays_internal.sh for the
 #      contract.
+#   3. A module is its directory: every published form of a module (the
+#      Terraform module.zip, the Pulumi source.zip, the Pulumi binary run
+#      from a generated workspace) contains exactly the engine directory, so
+#      a module that reads a sibling path works in the working tree and in
+#      no release. See hack/guards/ensure_modules_are_self_contained.sh.
 # =============================================================================
 
 name: lint.release-packaging
@@ -23,6 +28,7 @@ on:
       - 'tools/ci/release/**'
       - '.github/workflows/auto-tag.yaml'
       - 'hack/guards/ensure_test_provider_stays_internal.sh'
+      - 'hack/guards/ensure_modules_are_self_contained.sh'
       - '.github/workflows/lint.release-packaging.yaml'
   push:
     branches:
@@ -32,6 +38,7 @@ on:
       - 'tools/ci/release/**'
       - '.github/workflows/auto-tag.yaml'
       - 'hack/guards/ensure_test_provider_stays_internal.sh'
+      - 'hack/guards/ensure_modules_are_self_contained.sh'
       - '.github/workflows/lint.release-packaging.yaml'
 
 permissions:
@@ -47,3 +54,6 @@ jobs:
 
       - name: Content selectors match the tree and _test stays internal
         run: bash ./hack/guards/ensure_test_provider_stays_internal.sh
+
+      - name: Modules read nothing outside their own directory
+        run: bash ./hack/guards/ensure_modules_are_self_contained.sh

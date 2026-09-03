@@ -10,7 +10,7 @@
 
 A component lives at `catalog/{provider}/{kind}/`:
 
-- **Component root (the living component):** `README.md` (GitHub-facing page), `catalog.md` (the catalog page), `logo.svg`, optional `GUIDE.md` (authored operational judgment), `iac/pulumi/` + `iac/tf/` (each with a README.md; optional `iac/import-map.yaml`, optional staged `iac/crds/`), `presets/` (`.yaml` + `.md` sidecar pairs), `e2e/` (manifest.yaml, profile, scenarios), optional `conversions/`.
+- **Component root (the living component):** `README.md` (GitHub-facing page), `catalog.md` (the catalog page), `logo.svg`, optional `GUIDE.md` (authored operational judgment), `iac/pulumi/` + `iac/tf/` (each with a README.md; optional `iac/import-map.yaml`; a module is its directory and reads nothing outside it), `presets/` (`.yaml` + `.md` sidecar pairs), `e2e/` (manifest.yaml, profile, scenarios), optional `conversions/`.
 - **Version dir `v1alpha1/` (the versioned contract ONLY):** `api.proto`, `spec.proto`, `input.proto`, `outputs.proto`, their `.pb.go` stubs, `BUILD.bazel`, `spec_test.go`, `reference.md`.
 
 The proto FILE names are `input.proto` / `outputs.proto`; the MESSAGE names are `{Kind}StackInput` / `{Kind}StackOutputs` — the message names are the identity every downstream consumer keys on.

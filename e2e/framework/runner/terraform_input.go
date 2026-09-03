@@ -97,35 +97,29 @@ func BuildTerraformInput(manifestPath, workDir string,
 // the working directory, so each test needs its own copy to avoid state
 // conflicts.
 //
-// THE SIBLING-DIRECTORY CONTRACT: modules may read staged files through
-// relative paths OUTSIDE the module directory — the module-owned-CRD class
-// stages its CRD files at iac/crds/ and both engines read `../crds`. A copy
-// of the module directory ALONE makes fileset() return empty and for_each
-// silently plan ZERO resources (caught live: a lane "passed" riding a
-// previous lane's retained CRDs). The copy therefore reproduces the
-// module's PARENT directory tree (iac/), excluding engine state and the
-// sibling Pulumi module, and returns the module subdirectory inside it.
+// The copy is the module directory and NOTHING beside it -- the same file
+// set release packaging zips into module.zip and the OpenTofu runtime
+// extracts into its cache. A module is its directory and reads nothing
+// outside it (the anatomy gate and
+// hack/guards/ensure_modules_are_self_contained.sh enforce this), so a
+// lane that passes here proves what a published release ships; copying
+// any wider tree would let a lane pass on a layout no release has.
 //
 // Returns the working directory path and a cleanup function.
 func PrepareWorkDir(sourceModuleDir string) (string, func(), error) {
-	tempRoot, err := os.MkdirTemp("", "planton-e2e-tf-*")
+	workDir, err := os.MkdirTemp("", "planton-e2e-tf-*")
 	if err != nil {
 		return "", nil, errors.Wrap(err, "failed to create temp directory for TF module")
 	}
 
 	cleanup := func() {
-		os.RemoveAll(tempRoot)
+		os.RemoveAll(workDir)
 	}
 
-	sourceModuleDir = filepath.Clean(sourceModuleDir)
-	parentDir := filepath.Dir(sourceModuleDir)
-
 	// Never copied: engine-local state (a shared checkout may carry a
-	// developer's .terraform plugin tree and state files) and the sibling
-	// Pulumi module (its own engine's world — irrelevant to a TF run).
+	// developer's .terraform plugin tree and state files).
 	skip := map[string]bool{
 		".terraform": true,
-		"pulumi":     true,
 	}
 
 	var copyTree func(src, dst string) error
@@ -161,10 +155,10 @@ func PrepareWorkDir(sourceModuleDir string) (string, func(), error) {
 		return nil
 	}
 
-	if err := copyTree(parentDir, tempRoot); err != nil {
+	if err := copyTree(filepath.Clean(sourceModuleDir), workDir); err != nil {
 		cleanup()
 		return "", nil, err
 	}
 
-	return filepath.Join(tempRoot, filepath.Base(sourceModuleDir)), cleanup, nil
+	return workDir, cleanup, nil
 }

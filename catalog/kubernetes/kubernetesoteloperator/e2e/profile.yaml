@@ -13,7 +13,15 @@ spec:
   # proves the two live-only seams: the fail-closed admission gate and
   # the v1alpha1↔v1beta1 CONVERSION round-trip through the CA-injected
   # kept CRD. cert-manager fixture rides the registry prerequisite.
-  status: green
+  status: deferred
+  deferred_reason: >-
+    Both engines read the CRD set from ../crds, a sibling directory no
+    published form of the module carries (module.zip, source.zip, and the
+    Pulumi binary workspace hold only the engine directory), so no fresh
+    install from a release has ever converged, and a lane that passes from
+    the source tree proves nothing about what ships. Lifts when the module
+    derives its CRDs from the pinned version and leaves the known_violations
+    table of hack/guards/ensure_modules_are_self_contained.sh.
   validated_provisioners:
     - pulumi
     - terraform
