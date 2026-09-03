@@ -180,6 +180,38 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		}
 	}
 
+	// IDENTITY: the identity the lane deploys as (see identity.go), created
+	// after the fixtures and SETUP, before VALIDATE because the binding reads
+	// it.
+	identityStart := time.Now()
+	identityCleanup, identityErr := provisionIdentity(ctx, tc, harness)
+	if identityErr != nil {
+		result.Passed = false
+		result.Phases = append(result.Phases, PhaseResult{
+			Phase:    PhaseIdentity,
+			Duration: time.Since(identityStart),
+			Passed:   false,
+			Error:    identityErr,
+		})
+		if tdErr := TeardownDependencies(dependencyStates); tdErr != nil {
+			result.Phases = append(result.Phases, PhaseResult{Phase: PhaseDepsDn, Passed: false, Error: tdErr})
+		}
+		result.Duration = time.Since(start)
+		return result
+	}
+	// The identity outlives every phase that deploys or destroys as it (the
+	// destroy must run as the same identity) and every early return below;
+	// its objects live in the harness's own namespace, apart from the fixture
+	// chain, so the order against DEPENDENCIES-DOWN does not matter.
+	defer identityCleanup()
+	if tc.IdentityProviderConfig != "" {
+		result.Phases = append(result.Phases, PhaseResult{
+			Phase:    PhaseIdentity,
+			Duration: time.Since(identityStart),
+			Passed:   true,
+		})
+	}
+
 	// Failure-mode annotations (see failuremode.go). Mutually exclusive: one
 	// says the deploy itself must fail, the other presupposes it succeeds.
 	expectDeployFailure, _ := ManifestAnnotation(tc.ManifestPath, ExpectDeployFailureAnnotation)

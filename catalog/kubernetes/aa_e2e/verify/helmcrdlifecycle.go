@@ -31,6 +31,17 @@ const (
 	// The chart templates CRDs as release resources without Helm's keep
 	// mark and the spec did not accept Helm-managed CRDs.
 	failureHelmManagedCrds = "helm-managed-crds"
+	// The chart repository host does not resolve or cannot be reached from
+	// where the plan runs (both engines: Helm's text in-process on Pulumi,
+	// the provider's raw text explained by the runner layer on Terraform).
+	failureChartRepositoryUnreachable = "chart-repository-unreachable"
+	// A CRD the module would apply already exists without the module's
+	// stamp: someone else owns it, and the refusal names that owner.
+	failureCrdOwnedElsewhere = "crd-owned-elsewhere"
+	// The identity the deploy runs as may not write CRDs (a namespace-admin
+	// identity); refused at preview on Pulumi, at the first apply on
+	// Terraform, in the same words.
+	failureCrdApplyDenied = "crd-apply-denied"
 )
 
 // helmCRDLifecycle is the part of a Helm-based kind's verification that the
@@ -240,6 +251,57 @@ func (l helmCRDLifecycle) verifyRefusal(ctx context.Context, kubeconfig, expecta
 			}
 		}
 		fmt.Printf("  [verify] REFUSED as expected: the chart's Helm-managed CRDs were named, with the remedies\n")
+	case failureChartRepositoryUnreachable:
+		if !strings.Contains(text, "could not be reached from where this plan runs") || !strings.Contains(text, "curl -I") {
+			return errors.Errorf("expected the unreachable-repository explanation with its runnable check; got: %s", firstLines(text, 12))
+		}
+		fmt.Printf("  [verify] REFUSED as expected: the chart repository could not be reached, and the message says how to check\n")
+	case failureCrdOwnedElsewhere:
+		if !strings.Contains(text, "already exists on the cluster and was not applied by this module") || !strings.Contains(text, "spec.crds.install to false") || !strings.Contains(text, "kubectl label crd") {
+			return errors.Errorf("expected the owned-elsewhere refusal with both remedies; got: %s", firstLines(text, 12))
+		}
+		for _, crd := range l.CRDs {
+			if !strings.Contains(text, crd) {
+				return errors.Errorf("the owned-elsewhere refusal must name CRD %q; got: %s", crd, firstLines(text, 12))
+			}
+			// The whole point: the module did not take the CRD over. The
+			// stamp is the ownership mark, so its absence is the proof (field
+			// managers prove nothing when the fixture and the module are the
+			// same engine).
+			out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig, "get", "crd", crd, "-o",
+				fmt.Sprintf("jsonpath={.metadata.labels.%s}", strings.ReplaceAll(crdSourceLabel, ".", "\\."))).CombinedOutput()
+			if err != nil {
+				return errors.Wrapf(err, "reading CRD %q after the refused deploy", crd)
+			}
+			if strings.TrimSpace(string(out)) != "" {
+				return errors.Errorf("CRD %q gained the module's stamp %q despite the refusal", crd, strings.TrimSpace(string(out)))
+			}
+		}
+		fmt.Printf("  [verify] REFUSED as expected: the CRD someone else owns was named with its owner and left untouched\n")
+	case failureCrdApplyDenied:
+		if !strings.Contains(text, "may not") || !strings.Contains(text, "customresourcedefinitions") || !strings.Contains(text, "iac/permissions.yaml") {
+			return errors.Errorf("expected the CRD-permission refusal naming the identity, the verb, and the permissions file; got: %s", firstLines(text, 12))
+		}
+		if !strings.Contains(text, "system:serviceaccount:") {
+			return errors.Errorf("the CRD-permission refusal must name the identity the deploy ran as; got: %s", firstLines(text, 12))
+		}
+		// Nothing of the module's reached the cluster: no CRD carries a stamp
+		// at the version this lane pins. A kept CRD from another lane may
+		// exist at ITS version, which is why a denied lane pins a version no
+		// other lane keeps (see the scenario).
+		for _, crd := range l.CRDs {
+			out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig, "get", "crd", crd, "-o",
+				fmt.Sprintf("jsonpath={.metadata.annotations.%s}", strings.ReplaceAll(crdSourceVersionAnnotation, ".", "\\."))).CombinedOutput()
+			if err != nil {
+				// Absent is the expected state on a cluster no other lane
+				// touched; kubectl's not-found is not a verifier failure.
+				continue
+			}
+			if strings.TrimSpace(string(out)) == l.ChartVersion {
+				return errors.Errorf("CRD %q was stamped with %s by a deploy that was supposed to be refused", crd, l.ChartVersion)
+			}
+		}
+		fmt.Printf("  [verify] REFUSED as expected: the identity's missing CRD right was named, with the rules to grant\n")
 	default:
 		return errors.Errorf("unknown expected failure class %q", expectation)
 	}

@@ -29,6 +29,7 @@ import (
 	tt "github.com/gruntwork-io/terratest/modules/terraform"
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/e2e/framework/provider"
+	"github.com/plantonhq/planton/pkg/failure"
 )
 
 const (
@@ -92,9 +93,9 @@ func readLifecycleAnnotations(manifestPath string) (lifecycleAnnotations, error)
 // restore the first afterwards, so destroy always runs against the inputs
 // that built what it destroys.
 func bindManifest(tc *provider.ComponentTestContext, manifestPath string) error {
-	providerConfig, err := LoadProviderConfigFixture(tc.ModuleDir, manifestPath)
+	providerConfig, err := laneProviderConfig(tc, manifestPath)
 	if err != nil {
-		return errors.Wrap(err, "provider-config fixture")
+		return errors.Wrap(err, "provider configuration for the lane")
 	}
 	switch tc.Engine {
 	case "pulumi":
@@ -146,7 +147,7 @@ func runUpgradeExpectFailure(ctx context.Context, tc *provider.ComponentTestCont
 	if bindErr := bindManifest(tc, upgradeManifest); bindErr != nil {
 		return errors.Wrap(bindErr, "binding the upgrade manifest")
 	}
-	deployErr := runDeploy(tc)
+	deployErr := failure.AnnotateError(runDeploy(tc))
 	if deployErr == nil {
 		return errors.Errorf("the scenario expects the upgrade to fail (%s), but it succeeded", expectation)
 	}

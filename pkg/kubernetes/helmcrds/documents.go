@@ -156,9 +156,3 @@ func labelSourceValue(src Source) string {
 	}
 	return host
 }
-
-// LabelSelector is the selector that finds every CRD this source has ever
-// applied, for re-adoption checks and the never-downgrade read.
-func LabelSelector(src Source) string {
-	return LabelSource + "=" + labelSourceValue(src)
-}

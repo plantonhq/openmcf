@@ -87,6 +87,13 @@ type ComponentTestContext struct {
 	// provider package; the runner package type-asserts to *terraform.Options.
 	TerraformOpts interface{}
 
+	// IdentityProviderConfig, when set, is the provider configuration file the
+	// lane deploys with in place of the component's fixture: the identity an
+	// IdentityProvisioner created for a scenario that declares
+	// planton.dev/e2e-identity. Bound by the runner on every manifest binding
+	// (the first deploy and the lifecycle lanes' second acts alike).
+	IdentityProviderConfig string
+
 	// TerraformWorkDir is the temp directory containing the TF module copy.
 	// Cleaned up after the test completes.
 	TerraformWorkDir string

@@ -24,6 +24,7 @@ go_library(
         "//internal/cli/workspace",
         "//internal/manifest",
         "//pkg/crkreflect",
+        "//pkg/failure",
         "//pkg/fileutil",
         "//pkg/iac/stackinput",
         "//pkg/iac/stackinput/providerenvvars",

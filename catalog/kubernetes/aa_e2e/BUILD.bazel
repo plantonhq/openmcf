@@ -1,13 +1,29 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "aa_e2e",
-    srcs = ["harness.go"],
+    srcs = [
+        "harness.go",
+        "identity.go",
+    ],
     importpath = "github.com/plantonhq/planton/catalog/kubernetes/aa_e2e",
     visibility = ["//visibility:public"],
     deps = [
         "//catalog/kubernetes/aa_e2e/verify",
         "//e2e/framework/provider",
+        "//iac/componentpermissions/v1:componentpermissions",
+        "//pkg/iac/permissions",
         "@com_github_pkg_errors//:errors",
+        "@io_k8s_sigs_yaml//:yaml",
+    ],
+)
+
+go_test(
+    name = "aa_e2e_test",
+    srcs = ["identity_test.go"],
+    embed = [":aa_e2e"],
+    deps = [
+        "//e2e/framework/provider",
+        "//iac/componentpermissions/v1:componentpermissions",
     ],
 )

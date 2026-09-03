@@ -75,7 +75,11 @@ func BuildTerraformInput(manifestPath, workDir string,
 	// loader's ambient kubernetes branch hands the Terraform providers that
 	// kubeconfig under the names they read. The harness adds nothing of its
 	// own, so a lane here proves what a laptop gets.
-	providerEnvVarMap, err := providerenvvars.GetEnvVarsWithOptions(stackInputYaml, providerenvvars.Options{})
+	// A provider configuration that carries a connection (a lane identity's
+	// kubeconfig) is written to a file the engine reads by path, so the file
+	// lives in the lane's own working directory: absolute for the providers,
+	// and gone with the directory when the lane ends.
+	providerEnvVarMap, err := providerenvvars.GetEnvVarsWithOptions(stackInputYaml, providerenvvars.Options{FileCacheLoc: workDir})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to extract provider environment variables")
 	}

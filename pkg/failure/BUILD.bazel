@@ -1,8 +1,19 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "failure",
-    srcs = ["failure.go"],
+    srcs = [
+        "explain.go",
+        "failure.go",
+        "helm.go",
+        "kubernetes.go",
+    ],
     importpath = "github.com/plantonhq/planton/pkg/failure",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "failure_test",
+    srcs = ["explain_test.go"],
+    embed = [":failure"],
 )

@@ -35,6 +35,7 @@ go_test(
         "flatten_test.go",
         "hclwrite_test.go",
         "helmcrdstf_drift_test.go",
+        "helmcrdstf_live_test.go",
         "manifest_tfvars_test.go",
         "tfvars_test.go",
         "typerules_test.go",

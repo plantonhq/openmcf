@@ -495,12 +495,71 @@ deploy, `downgrade-refused` is refused at upgrade -- and the shared
 refusal verifier (`verify.helmCRDLifecycle`) asserts the three-part
 message (what was observed, what it means, the next step) on both engines.
 The failure classes a scenario may name are `chart-version-not-published`,
-`crd-schema-downgrade`, and `helm-managed-crds` (a chart that templates
+`crd-schema-downgrade`, `helm-managed-crds` (a chart that templates
 CRDs without Helm's keep mark, refused by the generic Helm kind unless the
-spec accepts it). The generic Helm kind's chart is arbitrary, so its
-scenarios declare the CRDs they expect the module to own (or a refusal to
-name) with **`planton.dev/e2e-expect-crds: <comma-separated CRD names>`**;
-a scenario on a chart without CRDs omits it.
+spec accepts it), `chart-repository-unreachable` (the repository host does
+not resolve from where the plan runs), `crd-owned-elsewhere` (a CRD the
+module would apply already exists without the module's stamp; the refusal
+names its owner and the verifier checks the CRD gained no stamp), and
+`crd-apply-denied` (the deploy's identity may not write CRDs; the refusal
+names the identity, the verb, and the module's `iac/permissions.yaml`, and
+the verifier checks no CRD was stamped at the lane's version). The generic
+Helm kind's chart is arbitrary, so its scenarios declare the CRDs they
+expect the module to own (or a refusal to name) with
+**`planton.dev/e2e-expect-crds: <comma-separated CRD names>`**; a scenario
+on a chart without CRDs omits it.
+
+Two of those classes need something only a lane can stage. The
+owned-elsewhere lane plants its foreign CRD through a `KubernetesManifest`
+fixture declared in `e2e-prerequisites` (a stub definition with the real
+CRD's name and none of the module's stamps, standing in for a colleague's
+`kubectl apply`), so the fixture chain deletes it at teardown and no
+teardown script exists; it uses a chart no other lane keeps CRDs for on the
+shared cluster (metacontroller), because a kept CRD would be re-adopted,
+not refused. The denied lane runs as a different identity, below.
+
+Before the verifier sees a deploy error, the runner passes the engine's
+output through `pkg/failure.Explain` (the same step the CLI takes): a
+module refuses in place wherever HCL can see the fact, and a failure that
+kills the read itself (an unresolvable host, an API server answering
+Forbidden) arrives as the provider's raw text and is explained by the
+layer that runs the engine. Lanes therefore assert the exact text a CLI
+user reads, on both engines.
+
+### Deploying as a different identity: `planton.dev/e2e-identity`
+
+A scenario may deploy as an identity the harness creates for it instead of
+the harness's own administrative credentials:
+
+```yaml
+metadata:
+  annotations:
+    planton.dev/e2e-identity: "declared"
+    # or, withholding named verbs from one resource (the core group is ""):
+    planton.dev/e2e-identity: "declared-minus:apiextensions.k8s.io/customresourcedefinitions:create,update,patch,delete"
+```
+
+The value is provider-interpreted (`provider.IdentityProvisioner`). The
+Kubernetes harness builds a ServiceAccount bound, through one ClusterRole,
+to exactly the rules the component's `iac/permissions.yaml` declares
+(`declared`), or those rules with the named verbs withheld
+(`declared-minus`), mints a short-lived token, and hands the lane a
+`self_managed` provider configuration that authenticates as it. The
+configuration reaches both engines through the same stack-input path a
+console deploy uses (Pulumi through the stack input; Terraform as
+`KUBECONFIG`/`KUBE_CONFIG_PATH` written into the lane's working directory),
+so nothing about the process environment changes and the fixture chain
+keeps the harness's posture. The IDENTITY phase runs after SETUP and before
+VALIDATE; the identity's objects are removed after the lane, whatever its
+verdict. Rules bind cluster-wide whether the permissions file marks them
+cluster scoped or not (the lane's namespace does not exist before the
+deploy that creates it), so the identity is exact in verbs and resources
+and wider than production only in scope. A withhold that another declared
+rule grants anyway is refused up front: the generic Helm kind honestly
+declares a wildcard for the arbitrary chart it installs, so a denied lane
+must live on a typed kind whose rules are exact (the OpenSearch operator
+carries `crds-apply-denied`). `declared` alone is how a kind proves its
+least-privilege claim by running under it.
 
 Two cluster facts the lanes must respect. Kept CRDs are cluster-scoped and
 outlive their lane, so a lane that leaves CRDs at a HIGHER version than a

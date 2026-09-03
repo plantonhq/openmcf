@@ -1,7 +1,9 @@
 package pulumistack
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +13,7 @@ import (
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/crkreflect"
+	"github.com/plantonhq/planton/pkg/failure"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/backendconfig"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule"
 	pulumimodulestackinput "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/stackinput"
@@ -20,6 +23,7 @@ import (
 	"github.com/plantonhq/planton/pkg/kubernetes/kubeconfig"
 	"github.com/plantonhq/planton/shared/iac/pulumi"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/term"
 )
 
 func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi.PulumiOperationType,
@@ -186,11 +190,23 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 	// Set the working directory to the repository path
 	pulumiCmd.Dir = pulumiModuleRepoPath
 
-	// Set stdin, stdout, and stderr directly to the terminal for interactive output
-	// This allows Pulumi to detect TTY and use the interactive tree view
+	// Stdin stays the terminal so Pulumi can prompt. In a terminal, stdout and
+	// stderr are handed straight through: Pulumi checks whether ITS stdout is
+	// a TTY to choose the interactive tree view, and a pipe in between would
+	// silently downgrade every laptop run to the plain log. Anywhere else (a
+	// runner, CI, the e2e harness) the output is streamed AND kept, because a
+	// provider's raw text (the API server answering Forbidden, a chart
+	// repository that does not resolve) can be all that reaches the reader,
+	// and the layer that runs the engine adds what it means and what to do.
+	// Pulumi writes diagnostics to stdout, so both streams are kept.
+	var output bytes.Buffer
 	pulumiCmd.Stdin = os.Stdin
 	pulumiCmd.Stdout = os.Stdout
 	pulumiCmd.Stderr = os.Stderr
+	if !term.IsTerminal(int(os.Stdout.Fd())) {
+		pulumiCmd.Stdout = io.MultiWriter(os.Stdout, &output)
+		pulumiCmd.Stderr = io.MultiWriter(os.Stderr, &output)
+	}
 
 	// Log execution mode and directory info (debug level only)
 	if pathResult.UseBinary {
@@ -206,7 +222,7 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 	cliprint.PrintHandoff("Pulumi")
 
 	if err := pulumiCmd.Run(); err != nil {
-		return errors.Wrapf(err, "failed to execute pulumi command %s", op)
+		return failure.Annotate(errors.Wrapf(err, "failed to execute pulumi command %s", op), output.String())
 	}
 
 	// Capture must run here, before the deferred workspace cleanup fires:

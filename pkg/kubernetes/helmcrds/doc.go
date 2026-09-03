@@ -39,12 +39,20 @@
 // second case.
 //
 // Every applied CRD is stamped with the source chart and version
-// (AnnotationSourceChart, AnnotationSourceVersion) and a selection label
-// (LabelSource). The stamps are how both engines re-adopt kept CRDs, how the
-// never-downgrade check reads what a cluster already carries, and how an agent
-// with kubectl can see where a CRD came from.
+// (AnnotationSourceChart, AnnotationSourceVersion) and a source label
+// (LabelSource). The stamps are the ownership mark: before either engine
+// writes a CRD it reads the cluster's copy by name, and one read answers two
+// questions. Is it ours (the label)? If not, someone else owns it and the
+// module refuses with that owner named rather than take it over with
+// server-side apply, because a takeover could lower a schema the module never
+// stamped and cannot order. Is it newer (the version stamp)? If so, the module
+// refuses the downgrade. A CRD it stamped earlier is re-adopted, and the
+// deploy log says so. An agent with kubectl reads the same stamps.
 //
-// Failures are Failure values: what was observed (with the value), what it
-// most likely means (one root cause), and the exact next step. Text that names
-// only a mechanism is a defect here.
+// Failures are Failure values (pkg/failure, the repository-wide shape): what
+// was observed (with the value), what it most likely means (one root cause),
+// and the exact next step. Text that names only a mechanism is a defect here.
+// The Helm texts are classified through pkg/failure's constructors so the
+// Terraform twin, whose raw provider output the CLI and the harness explain
+// with pkg/failure.Explain, ends in the same words.
 package helmcrds

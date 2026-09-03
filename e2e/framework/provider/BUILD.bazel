@@ -4,6 +4,7 @@ go_library(
     name = "provider",
     srcs = [
         "failuremode.go",
+        "identity.go",
         "provider.go",
     ],
     importpath = "github.com/plantonhq/planton/e2e/framework/provider",

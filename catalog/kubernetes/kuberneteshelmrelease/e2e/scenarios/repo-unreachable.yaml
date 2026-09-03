@@ -1,0 +1,22 @@
+# THE UNREACHABLE-REPOSITORY REFUSAL: a chart repository whose host does not
+# resolve (an egress policy on the runner, a typo, a repository that moved).
+# The module renders every chart it installs, so the deploy must fail before
+# anything is created, and the message must say the repository could not be
+# reached from where the plan runs, that the install would fail the same
+# way, and how to check (a curl -I line). On Pulumi the module says so
+# in-process; on Terraform the read itself fails with the provider's raw
+# text, and the layer that runs the engine explains it in the same words --
+# the verifier asserts the three parts either way.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-unreachable
+  annotations:
+    planton.dev/e2e-expect-deploy-failure: chart-repository-unreachable
+spec:
+  namespace:
+    value: e2e-helm-unreachable-ns
+  create_namespace: true
+  repo: https://charts.does-not-resolve.invalid
+  chart: podinfo
+  version: 6.7.1

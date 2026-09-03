@@ -1194,6 +1194,30 @@ so a person or an agent reads one vocabulary in the module, the guard,
 and the command line. A change that adds a branch to the shared
 mechanics adds that branch's failures and lanes in the same change.
 
+**Where each explanation lives is layered, not either-or.** A module
+refuses IN PLACE wherever its own code can see the fact (a precondition
+or postcondition on a data source's result; a check in the Pulumi
+program), so an ejected module run with plain `tofu` still explains
+itself as far as HCL allows. A failure that kills the read itself (a
+repository host that does not resolve, an API server answering
+Forbidden at apply) reaches HCL only as the provider's raw text, and the
+layer that runs the engine — the CLI's engine runners, the e2e harness,
+the platform runner — recognizes those texts (`pkg/failure.Explain`)
+and appends the same three parts the Pulumi twin gives in-process, from
+one vocabulary, never repeating what the module already said. Two facts
+the CRD primitive verified the hard way: server-side apply with force
+adopts a kept CRD on reinstall AND silently takes over a CRD nobody
+stamped, so every CRD about to be written is read BY NAME first and one
+read answers both "is it ours" (the source label) and "is it newer" (the
+version stamp) — a CRD someone else owns is refused with that owner
+named (Helm's release annotations, another module's stamp, the field
+managers, or the honest absence of any mark) and two remedies (leave it
+with its owner through `crds.install = false`, or hand it over with the
+two printed `kubectl` commands); and a permission probe
+(SelfSubjectAccessReview) or a read runs only when the render produced
+something to write, so a chart with no CRDs is never refused for a CRD
+right it does not need.
+
 **An operator's DESTROY contract is read from its controller source,
 never assumed from a sibling kind's posture.** Operators split into two
 teardown classes: finalizer-processed (the controller holds the CR's

@@ -3,26 +3,23 @@ package helmcrds
 import (
 	"fmt"
 	"strings"
+
+	"github.com/plantonhq/planton/pkg/failure"
 )
 
 // Failure is the one shape every CRD-lifecycle error takes: what the platform
 // observed (with the value), what it most likely means (one root cause), and
-// the exact next step. The three lines are stable so an agent can match them;
-// the values inside them vary.
-type Failure struct {
-	Observed string
-	Meaning  string
-	NextStep string
-}
-
-func (f *Failure) Error() string {
-	return "observed: " + f.Observed + "\nmeaning: " + f.Meaning + "\nnext step: " + f.NextStep
-}
+// the exact next step. It is the repository-wide failure shape, so a CRD
+// refusal reads like every other explained refusal the engines and the CLI
+// produce.
+type Failure = failure.Failure
 
 // Raw substrings Helm produces for the failures the primitive anticipates. The
 // provider's helm_template data source and the SDK are the same code, so one
-// vocabulary classifies both; the Terraform block carries the same texts in
-// its preconditions where it can see the cause.
+// vocabulary classifies both. The words of each explanation live in
+// pkg/failure, where the layer that runs the Terraform engine reads the same
+// raw texts out of the provider's output; the Source here only supplies the
+// values Helm's text does not always carry.
 const (
 	helmVersionNotFound  = "not found in"
 	helmRepoUnreachable  = "is not a valid chart repository or cannot be reached"
@@ -32,38 +29,20 @@ const (
 	helmRepoIndexMissing = "index.yaml"
 )
 
-// classifyLocateError turns Helm's chart-location error into a Failure. The
-// raw Helm text is kept inside "observed" so nothing is hidden from a reader
-// who knows Helm; the meaning and next step are what Helm never says.
+// classifyLocateError turns Helm's chart-location error into a Failure.
 func classifyLocateError(src Source, err error) error {
 	raw := err.Error()
-	chart := src.Chart + " " + src.Version
 	switch {
 	case strings.Contains(raw, helmStaleRepoCache):
-		return &Failure{
-			Observed: fmt.Sprintf("Helm could not read a repository index on this machine while locating chart %s (%s)", chart, raw),
-			Meaning:  "the local Helm repository list has an entry whose index cache is missing; every render and every install on this machine fails the same way until it is repaired",
-			NextStep: "run `helm repo update`, or remove the stale entry with `helm repo remove <name>`; the runner starts from an empty repository list and does not have this failure",
-		}
+		return failure.HelmStaleRepositoryCache(src.Chart+" "+src.Version, raw)
 	case strings.HasPrefix(src.Repository, "oci://") && strings.Contains(raw, helmOCINotFound):
-		return &Failure{
-			Observed: fmt.Sprintf("the OCI registry has no chart %s at %s (%s)", chart, src.Repository, raw),
-			Meaning:  "the pinned chart_version was never pushed to that registry path, or the version string is misspelled",
-			NextStep: fmt.Sprintf("set spec.chart_version to a version the registry serves (`helm show chart %s/%s --version <v>` lists what exists), then re-run", strings.TrimSuffix(src.Repository, "/"), src.Chart),
-		}
+		return failure.HelmOCIVersionNotPublished(src.Repository, src.Chart, src.Version, raw)
 	case strings.Contains(raw, helmVersionNotFound) && strings.Contains(raw, helmChartNotInRepo):
-		return &Failure{
-			Observed: fmt.Sprintf("chart %s is not in the index of %s (%s)", chart, src.Repository, raw),
-			Meaning:  "the pinned chart_version has not been published to that repository, or the version string is misspelled",
-			NextStep: fmt.Sprintf("set spec.chart_version to a version listed at %s/index.yaml, then re-run", strings.TrimSuffix(src.Repository, "/")),
-		}
+		return failure.HelmVersionNotPublished(src.Repository, src.Chart, src.Version, raw)
 	case strings.Contains(raw, helmRepoUnreachable) || strings.Contains(raw, helmRepoIndexMissing):
-		return &Failure{
-			Observed: fmt.Sprintf("the chart repository %s could not be reached from where this plan runs (%s)", src.Repository, raw),
-			Meaning:  "the repository host does not resolve or egress to it is blocked; the release install needs the same path and would fail the same way, this check just fails first",
-			NextStep: fmt.Sprintf("confirm DNS and egress from the runner to %s (`curl -I %s/index.yaml`), then re-run", src.Repository, strings.TrimSuffix(src.Repository, "/")),
-		}
+		return failure.HelmRepositoryUnreachable(src.Repository, raw)
 	}
+	chart := src.Chart + " " + src.Version
 	return &Failure{
 		Observed: fmt.Sprintf("Helm could not locate chart %s in %s (%s)", chart, src.Repository, raw),
 		Meaning:  "the chart coordinates the module carries (repository, chart name, version) do not resolve from here",
@@ -141,6 +120,46 @@ func DowngradeFailure(crdName, existingVersion, requestedVersion string) error {
 		Meaning:  "applying an older CRD schema over a newer one can strip fields from existing custom resources the next time anything writes them",
 		NextStep: fmt.Sprintf("set spec.chart_version to %s or higher; if you accept the loss and want the older schema, delete the CRD first (`kubectl delete crd %s`) and re-run", existingVersion, crdName),
 	}
+}
+
+// OwnedElsewhereFailure is the refusal when a CRD the module is about to apply
+// already exists on the cluster without this source's stamp: a hand-run
+// `helm install`, a colleague's `kubectl apply`, another tool, or a Planton
+// module deriving the same CRD name from a different chart. Server-side apply
+// would take it over silently, and because the never-downgrade check can only
+// order versions it stamped, a newer schema could be lowered without a word.
+// So the module stops before writing, names the owner it found, and offers the
+// two honest ways forward: leave the definitions with their owner, or hand
+// them over explicitly once they are known to match the pinned version.
+//
+// owner is the sentence Existing.OwnerDescription composes; helmOwned says
+// whether Helm owns the CRD as a release resource, because handing over a
+// CRD Helm still owns is a trap (Helm deletes it with that release later), so
+// that remedy first tells the user to free it.
+func OwnedElsewhereFailure(crd ExistingCRD, src Source) error {
+	handOver := fmt.Sprintf("hand them to this module once you know they match chart version %s: `kubectl label crd %s %s=%s` and `kubectl annotate crd %s %s=%s %s=%s`, then re-run",
+		src.Version, crd.Name, LabelSource, labelSourceValue(src), crd.Name, AnnotationSourceChart, src.SourceDescription(), AnnotationSourceVersion, src.Version)
+	if crd.HelmReleaseName != "" {
+		handOver = fmt.Sprintf("or, to move ownership here, first uninstall Helm release %s (or mark the CRD helm.sh/resource-policy: keep in that release) so Helm will not delete it later, then %s",
+			crd.HelmReleaseName, handOver)
+	} else {
+		handOver = "or " + handOver
+	}
+	return &Failure{
+		Observed: fmt.Sprintf("CRD %s already exists on the cluster and was not applied by this module (%s)", crd.Name, crd.OwnerDescription()),
+		Meaning:  fmt.Sprintf("two owners would write one schema, and the module cannot tell whether the existing definition is newer or older than chart version %s, so it stops before changing it", src.Version),
+		NextStep: fmt.Sprintf("set spec.crds.install to false to leave the definitions with their current owner (the release still installs and uses them); %s", handOver),
+	}
+}
+
+// CRDApplyDeniedFailure is the refusal when the identity the deploy runs as
+// may not write CustomResourceDefinitions. The Pulumi twin learns this from a
+// SelfSubjectAccessReview before anything registers; the Terraform twin learns
+// it from the API server at apply, and the layer that runs the engine explains
+// the same words (pkg/failure.KubernetesForbidden). reason is what the review
+// answered, kept as the observation's raw text.
+func CRDApplyDeniedFailure(user, verb, reason string) error {
+	return failure.KubernetesForbidden(user, verb, failure.CustomResourceDefinitionsResource, "apiextensions.k8s.io", "at the cluster scope", reason)
 }
 
 // UnparseableVersionFailure covers a stamp or a manifest version that is not

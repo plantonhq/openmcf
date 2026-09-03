@@ -1,12 +1,15 @@
 package tofumodule
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/pkg/failure"
 	"github.com/plantonhq/planton/pkg/iac/tofu/generators"
 	"github.com/plantonhq/planton/shared/iac/terraform"
 	"google.golang.org/protobuf/proto"
@@ -65,15 +68,22 @@ func RunOperation(
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, providerConfigEnvVars...)
 
-	// Keep stdin/stderr for interactive prompt or error streaming
+	// Keep stdin for interactive prompts. Diagnostics stream to the terminal
+	// as the engine prints them AND are kept, because some failures reach the
+	// user only as a provider's raw text (a repository host that does not
+	// resolve, an API server answering Forbidden at apply): nothing inside a
+	// module can rephrase those, so the layer that runs the engine reads
+	// them afterwards and adds what they mean and what to do.
 	cmd.Stdin = os.Stdin
-	cmd.Stderr = os.Stderr
+	var diagnostics bytes.Buffer
+	cmd.Stderr = io.MultiWriter(os.Stderr, &diagnostics)
 
 	fmt.Printf("%s module directory: %s\n", binaryName, modulePath)
 	fmt.Printf("running command: %s\n", cmd.String())
 
 	// If JSON output, stream stdout line-by-line (see streamCommandJSONOutput for
 	// the read-before-Wait ordering that avoids a "file already closed" race).
+	// The JSON consumer owns its own diagnostics (each is an engine event).
 	if isJsonOutput {
 		return streamCommandJSONOutput(binaryName, cmd, jsonLogEventsChan)
 	}
@@ -81,7 +91,9 @@ func RunOperation(
 	// Otherwise stream stdout directly to the console.
 	cmd.Stdout = os.Stdout
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "failed to execute %s command %s", binaryName, cmd.String())
+		return failure.Annotate(
+			errors.Wrapf(err, "failed to execute %s command %s", binaryName, cmd.String()),
+			diagnostics.String())
 	}
 
 	return nil

@@ -5,10 +5,12 @@
 // A module on the derive branch does three things, and this package does the
 // first two for it: derive the CRD set from the pinned version (through
 // pkg/kubernetes/helmcrds, in-process), apply each CRD keyed by its own name
-// as a kept resource that re-adopts on reinstall and refuses a schema
-// downgrade, and then install the release with CRDs skipped and the chart's
-// own CRD switch pinned off (the module's release code). The Terraform twin is
-// the generated helm_crds.tf every module carries byte-identically.
+// as a kept resource that re-adopts on reinstall, refuses a schema downgrade,
+// refuses to take over a CRD someone else owns, and refuses before touching
+// anything when the deploy's identity may not write CRDs; and then install the
+// release with CRDs skipped and the chart's own CRD switch pinned off (the
+// module's release code). The Terraform twin is the generated helm_crds.tf
+// every module carries byte-identically.
 //
 // Why the mechanics look the way they do, each verified live:
 //
@@ -23,13 +25,25 @@
 //     cluster by design, so the next install finds them there and a plain
 //     create fails AlreadyExists. Only the CRDs use that provider; the release
 //     keeps create-conflict semantics.
-//   - The never-downgrade check reads the cluster in-process, before any
-//     resource registers, through the same kubeconfig the provider uses.
+//   - The same server-side apply would also take over a CRD the module never
+//     stamped (a hand-run helm install, a kubectl apply, another tool) without
+//     a word, and the version check can only order versions it stamped, so a
+//     newer schema could be lowered silently. Every CRD about to be written is
+//     therefore read BY NAME first, and one read answers both questions: is it
+//     ours (the stamp), and is it newer than what we would write (the version).
+//   - The permission probe asks the API server (SelfSubjectAccessReview)
+//     whether this identity may write CRDs, so a namespace-admin identity is
+//     refused at preview with the missing right named, instead of at the
+//     first apply with the server's bare "forbidden".
+//   - All reads run in-process during preview too, before any resource
+//     registers, through the same kubeconfig the provider uses.
 package keptcrds
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -41,6 +55,7 @@ import (
 	"github.com/plantonhq/planton/pkg/kubernetes/kubeconfig"
 	pulumiyaml "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -83,8 +98,8 @@ type Args struct {
 	ProviderName string
 }
 
-// liveReadTimeout bounds the never-downgrade read. A cluster that cannot
-// answer a list in this time will not take an apply either.
+// liveReadTimeout bounds each read the primitive makes before registering. A
+// cluster that cannot answer a get in this time will not take an apply either.
 const liveReadTimeout = 30 * time.Second
 
 // Apply derives, checks, and registers the CRD set, returning the resources
@@ -109,13 +124,8 @@ func Apply(ctx *pulumi.Context, args Args) ([]pulumi.Resource, error) {
 		return nil, nil
 	}
 
-	// The read runs during preview too: a downgrade is refused at plan time
-	// in both engines, before anything is touched.
 	cluster, err := connect(args)
 	if err != nil {
-		return nil, err
-	}
-	if err := cluster.refuseDowngrade(args); err != nil {
 		return nil, err
 	}
 
@@ -142,7 +152,33 @@ func Apply(ctx *pulumi.Context, args Args) ([]pulumi.Resource, error) {
 	}
 	crds := derived.Owned
 	if len(crds) == 0 {
+		// Nothing to write, so nothing to own and no right to hold: a chart
+		// without CRDs must never be refused for a CRD permission.
 		return nil, nil
+	}
+
+	// The checks run during preview too: a foreign owner, a downgrade, and a
+	// missing right are all refused at plan time in both engines, before
+	// anything is touched. Ownership goes first: a CRD another source stamped
+	// at a higher version is an ownership question, not a downgrade.
+	existing, err := cluster.readExisting(crds)
+	if err != nil {
+		return nil, err
+	}
+	if err := helmcrds.CheckOwnership(existing, args.Source); err != nil {
+		return nil, err
+	}
+	if err := helmcrds.CheckNoDowngrade(existing, args.Source.Version); err != nil {
+		return nil, err
+	}
+	if err := cluster.refuseIfDenied(args); err != nil {
+		return nil, err
+	}
+	for _, crd := range existing {
+		// The explained success: a kept CRD from an earlier install is about
+		// to be re-adopted, and the deploy log should say so rather than
+		// leave a reader to infer it from a "create" that changed nothing.
+		_ = ctx.Log.Info(fmt.Sprintf("re-adopting CRD %s the cluster already carries from %s at chart version %s", crd.Name, args.Source.SourceDescription(), crd.Version), nil)
 	}
 
 	upsertProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert(ctx,
@@ -178,10 +214,11 @@ func Apply(ctx *pulumi.Context, args Args) ([]pulumi.Resource, error) {
 	return resources, nil
 }
 
-// clusterReads is the module's own connection to the cluster for the two
-// reads the primitive makes before anything registers: the CRDs it has
-// stamped (the never-downgrade check) and the server version (the render's
-// capabilities). It uses the same kubeconfig the provider uses.
+// clusterReads is the module's own connection to the cluster for the reads
+// the primitive makes before anything registers: the server version (the
+// render's capabilities), each CRD about to be written (ownership and the
+// never-downgrade check), and the permission probe. It uses the same
+// kubeconfig the provider uses.
 type clusterReads struct {
 	dynamic   dynamic.Interface
 	discovery discovery.DiscoveryInterface
@@ -194,7 +231,7 @@ func connect(args Args) (*clusterReads, error) {
 	}
 	dynamicClient, err := dynamic.NewForConfig(restConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create the cluster client for the CRD version check")
+		return nil, errors.Wrap(err, "failed to create the cluster client for the CRD lifecycle reads")
 	}
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
 	if err != nil {
@@ -203,31 +240,46 @@ func connect(args Args) (*clusterReads, error) {
 	return &clusterReads{dynamic: dynamicClient, discovery: discoveryClient}, nil
 }
 
-// refuseDowngrade lists the CRDs this source has ever stamped on the cluster
-// and refuses when any carries a higher source version than the one about to
-// be applied. A cluster with none of them (first install) passes trivially.
-func (c *clusterReads) refuseDowngrade(args Args) error {
-	existing, err := c.listStampedCRDs(args)
-	if err != nil {
-		return err
+var (
+	crdGVR = schema.GroupVersionResource{
+		Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions",
 	}
-	return helmcrds.CheckNoDowngrade(existing, args.Source.Version)
+	selfSubjectAccessReviewGVR = schema.GroupVersionResource{
+		Group: "authorization.k8s.io", Version: "v1", Resource: "selfsubjectaccessreviews",
+	}
+	selfSubjectReviewGVR = schema.GroupVersionResource{
+		Group: "authentication.k8s.io", Version: "v1", Resource: "selfsubjectreviews",
+	}
+)
+
+// readExisting gets each CRD about to be written, by name. A name the cluster
+// does not have is simply absent from the result (a first install finds none);
+// any other error is the cluster's, and stops the deploy as itself.
+func (c *clusterReads) readExisting(crds []helmcrds.CRD) ([]helmcrds.ExistingCRD, error) {
+	existing := make([]helmcrds.ExistingCRD, 0, len(crds))
+	for _, crd := range crds {
+		ctx, cancel := context.WithTimeout(context.Background(), liveReadTimeout)
+		object, err := c.dynamic.Resource(crdGVR).Get(ctx, crd.Name, metav1.GetOptions{})
+		cancel()
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to read CRD %s before applying it", crd.Name)
+		}
+		existing = append(existing, toExisting(*object))
+	}
+	return existing, nil
 }
 
-var crdGVR = schema.GroupVersionResource{
-	Group: "apiextensions.k8s.io", Version: "v1", Resource: "customresourcedefinitions",
-}
-
-func (c *clusterReads) listStampedCRDs(args Args) ([]helmcrds.ExistingCRD, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), liveReadTimeout)
-	defer cancel()
-	list, err := c.dynamic.Resource(crdGVR).List(ctx, metav1.ListOptions{
-		LabelSelector: helmcrds.LabelSelector(args.Source),
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to list the CRDs stamped by %s for the version check", args.Source.SourceDescription())
+// toExisting maps an object as the API server returns it onto what the
+// ownership and version checks compare.
+func toExisting(object unstructured.Unstructured) helmcrds.ExistingCRD {
+	managers := make([]string, 0, len(object.GetManagedFields()))
+	for _, entry := range object.GetManagedFields() {
+		managers = append(managers, entry.Manager)
 	}
-	return toExisting(list.Items), nil
+	return helmcrds.ExistingFromObject(object.GetName(), object.GetLabels(), object.GetAnnotations(), managers)
 }
 
 // serverVersion is the cluster's Kubernetes version as the API server
@@ -240,13 +292,79 @@ func (c *clusterReads) serverVersion() (string, error) {
 	return info.GitVersion, nil
 }
 
-func toExisting(items []unstructured.Unstructured) []helmcrds.ExistingCRD {
-	existing := make([]helmcrds.ExistingCRD, 0, len(items))
-	for _, item := range items {
-		existing = append(existing, helmcrds.ExistingCRD{
-			Name:    item.GetName(),
-			Version: item.GetAnnotations()[helmcrds.AnnotationSourceVersion],
-		})
+// crdVerbs are the rights the apply needs on CustomResourceDefinitions:
+// server-side apply is a patch that creates when absent, and the provider
+// reads the object back; delete is exercised only when a destroy is meant
+// to take the CRDs with it.
+func crdVerbs(keepOnUninstall bool) []string {
+	verbs := []string{"get", "create", "patch"}
+	if !keepOnUninstall {
+		verbs = append(verbs, "delete")
 	}
-	return existing
+	return verbs
+}
+
+// refuseIfDenied asks the API server whether this identity may take each
+// verb the apply needs on CRDs at the cluster scope, and refuses with the
+// first one denied, named, before anything registers. The review APIs are
+// open to every authenticated identity (system:basic-user), so the probe
+// itself cannot be the thing that is forbidden.
+func (c *clusterReads) refuseIfDenied(args Args) error {
+	for _, verb := range crdVerbs(args.KeepOnUninstall) {
+		allowed, reason, err := c.canI(verb)
+		if err != nil {
+			return err
+		}
+		if !allowed {
+			return helmcrds.CRDApplyDeniedFailure(c.whoAmI(), verb, reason)
+		}
+	}
+	return nil
+}
+
+func (c *clusterReads) canI(verb string) (bool, string, error) {
+	review := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "authorization.k8s.io/v1",
+		"kind":       "SelfSubjectAccessReview",
+		"spec": map[string]interface{}{
+			"resourceAttributes": map[string]interface{}{
+				"group":    crdGVR.Group,
+				"resource": crdGVR.Resource,
+				"verb":     verb,
+			},
+		},
+	}}
+	ctx, cancel := context.WithTimeout(context.Background(), liveReadTimeout)
+	defer cancel()
+	answer, err := c.dynamic.Resource(selfSubjectAccessReviewGVR).Create(ctx, review, metav1.CreateOptions{})
+	if err != nil {
+		return false, "", errors.Wrapf(err, "failed to ask the cluster whether this identity may %s CustomResourceDefinitions", verb)
+	}
+	allowed, _, _ := unstructured.NestedBool(answer.Object, "status", "allowed")
+	reason, _, _ := unstructured.NestedString(answer.Object, "status", "reason")
+	if reason == "" {
+		reason = fmt.Sprintf("SelfSubjectAccessReview for %s on %s.%s answered denied", verb, crdGVR.Resource, crdGVR.Group)
+	}
+	return allowed, reason, nil
+}
+
+// whoAmI names the identity the deploy runs as, from the cluster's own
+// answer (SelfSubjectReview). Older clusters without the API get a plain
+// description rather than a guess.
+func (c *clusterReads) whoAmI() string {
+	review := &unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "authentication.k8s.io/v1",
+		"kind":       "SelfSubjectReview",
+	}}
+	ctx, cancel := context.WithTimeout(context.Background(), liveReadTimeout)
+	defer cancel()
+	answer, err := c.dynamic.Resource(selfSubjectReviewGVR).Create(ctx, review, metav1.CreateOptions{})
+	if err != nil {
+		return "the identity in the kubeconfig this deploy uses"
+	}
+	username, _, _ := unstructured.NestedString(answer.Object, "status", "userInfo", "username")
+	if strings.TrimSpace(username) == "" {
+		return "the identity in the kubeconfig this deploy uses"
+	}
+	return username
 }

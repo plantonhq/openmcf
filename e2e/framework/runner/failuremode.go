@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/e2e/framework/provider"
+	"github.com/plantonhq/planton/pkg/failure"
 )
 
 const (
@@ -53,7 +54,11 @@ func runExpectDeployFailure(ctx context.Context, tc *provider.ComponentTestConte
 			expectation, tc.Provider)
 	}
 
-	deployErr := runDeploy(tc)
+	// The engine's output is explained before the verifier sees it, so a lane
+	// asserts the exact text a CLI user reads: the module's own refusal where
+	// it could speak, and the runner layer's explanation of a provider's raw
+	// text where it could not.
+	deployErr := failure.AnnotateError(runDeploy(tc))
 	if deployErr == nil {
 		return errors.Errorf("the scenario expects the deploy to fail (%s), but it succeeded", expectation)
 	}

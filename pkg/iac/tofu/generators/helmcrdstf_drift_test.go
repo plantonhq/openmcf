@@ -10,12 +10,18 @@ import (
 	"github.com/plantonhq/planton/pkg/kubernetes/helmcrds"
 )
 
+// regenerateEnvVar, when set to "1", makes TestHelmCRDsTFDrift rewrite every
+// committed copy from the generator instead of failing on drift: the one
+// sanctioned way to roll a generator change out to every module (the same
+// convention as the anatomy baseline's PLANTON_REGEN_ANATOMY_BASELINE).
+const regenerateEnvVar = "PLANTON_REGEN_HELM_CRDS_TF"
+
 // TestHelmCRDsTFDrift holds every committed helm_crds.tf byte-identical to
 // the generator. Presence-driven: the file exists only where the generator
 // wrote it, so there is no allow-list to maintain. A red run means someone
 // hand-edited a module's copy (regenerate it) or changed the generator
-// without regenerating (run `planton tofu generate-helm-crds` into every
-// module that carries the file).
+// without regenerating (run the test with PLANTON_REGEN_HELM_CRDS_TF=1, or
+// `planton tofu generate-helm-crds` into every module that carries the file).
 func TestHelmCRDsTFDrift(t *testing.T) {
 	_, thisFile, _, _ := runtime.Caller(0)
 	repoRoot := filepath.Join(filepath.Dir(thisFile), "..", "..", "..", "..")
@@ -24,11 +30,19 @@ func TestHelmCRDsTFDrift(t *testing.T) {
 		t.Fatal(err)
 	}
 	canonical := HelmCRDsTF()
+	regenerate := os.Getenv(regenerateEnvVar) == "1"
 	for _, path := range matches {
 		rel, _ := filepath.Rel(repoRoot, path)
 		committed, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
+		}
+		if regenerate && string(committed) != canonical {
+			if err := os.WriteFile(path, []byte(canonical), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			t.Logf("regenerated %s", rel)
+			continue
 		}
 		if string(committed) != canonical {
 			t.Errorf("%s drifted from the generator: regenerate it with `planton tofu generate-helm-crds --output-file %s`", rel, rel)

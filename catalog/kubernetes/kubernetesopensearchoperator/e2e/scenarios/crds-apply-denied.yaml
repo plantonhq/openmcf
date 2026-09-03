@@ -1,0 +1,31 @@
+# THE CRD-PERMISSION REFUSAL: the deploy runs as an identity bound to exactly
+# the rules this module's iac/permissions.yaml declares, minus every write on
+# CustomResourceDefinitions -- the namespace-admin identity a platform team
+# hands out. The module applies the chart's CRDs itself, outside the Helm
+# release, so it needs cluster-scoped CRD rights that identity does not have.
+# Pulumi asks the API server first and refuses at preview; Terraform hears it
+# from the API server at the first apply; both must say which identity lacks
+# which verb, why the module needs it, and the two ways forward (grant the
+# rules in permissions.yaml, or crds.install = false and a cluster
+# administrator applies the CRDs). The verifier asserts the three parts, the
+# identity, the verb, the permissions file, and that no CRD was stamped at
+# this version.
+#
+# This lane lives on a typed kind because a typed kind's permissions are
+# exact; the generic Helm kind honestly declares a wildcard for the arbitrary
+# chart it installs, so nothing can be withheld from it. 2.8.0, not 2.7.0:
+# the minimal lane keeps this chart's CRDs at 2.7.0 on the shared cluster by
+# design, and "no CRD carries this lane's version" must be an exact proof
+# that this deploy wrote nothing.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOpenSearchOperator
+metadata:
+  name: e2e-osop-crd-denied
+  annotations:
+    planton.dev/e2e-identity: "declared-minus:apiextensions.k8s.io/customresourcedefinitions:create,update,patch,delete"
+    planton.dev/e2e-expect-deploy-failure: crd-apply-denied
+spec:
+  namespace:
+    value: e2e-osop-crd-denied
+  create_namespace: true
+  chart_version: 2.8.0

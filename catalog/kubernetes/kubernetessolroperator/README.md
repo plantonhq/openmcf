@@ -121,6 +121,20 @@ updates, scaling with replica movement, and backup repositories — plus
   accepts exactly ONE pull secret)
 - **`spec.helm_values`**: the escape hatch
 
+## When it fails
+
+Every refusal on the CRD path says three things, in this order and in stable words a person or an agent can act on: what was observed (with the value), what it most likely means (one root cause), and the exact next step. The set the module anticipates, and where each is refused:
+
+- **The pinned `chart_version` is not published.** Refused at plan, before anything is created: the version is not in the repository index. Next step: pin a version the index lists.
+- **The chart repository cannot be reached from where the plan runs.** Refused at plan: the host does not resolve or egress is blocked; the install would fail the same way. Next step: check DNS and egress with the `curl -I` line the message gives.
+- **A CRD schema downgrade.** The cluster's CRDs carry a higher chart version than the manifest asks for. Refused before anything is touched: an older schema over a newer one can strip fields from existing custom resources. Next step: pin the cluster's version or higher, or delete the CRD deliberately first.
+- **A CRD already exists and belongs to someone else.** One of the chart's CRDs is on the cluster without this module's stamp (a hand-run `helm install`, a `kubectl apply`, another tool, another Planton module deriving the same name). Refused before anything is written, naming the owner. Next step: `crds.install: false` to leave the definitions with their owner (the release still uses them), or the two printed `kubectl` commands to hand them to this module once you know they match the pinned version (for a Helm-owned CRD, after freeing it from that release).
+- **The deploy's identity may not write CRDs.** A namespace-admin identity cannot patch cluster-scoped CRDs; the module applies the chart's CRDs itself, outside the Helm release. Pulumi refuses at preview, Terraform at the first apply, in the same words: the identity, the verb, and the rules to grant from `iac/permissions.yaml`. Next step: grant them, or `crds.install: false` and have a cluster administrator apply the CRDs (`helm template --include-crds` renders them).
+- **The render produced no CRDs.** Upstream renamed the chart's CRD switch or stopped shipping CRDs at this version. Next step: read the chart's values at the version and update the module's override.
+- **A stale Helm repository entry on your own machine.** Helm consults the local repository list even for a URL-addressed chart; a missing index cache fails every render and install. Next step: `helm repo update` or remove the entry. The runner never meets this.
+
+Two things the messages say on purpose. A kept CRD the module re-adopts on reinstall shows as `create` in a Terraform plan, because the state has no record of it; the apply adopts it in place and the Pulumi log says so. And a chart with no CRDs is never refused for a CRD right it does not need: the ownership read and the permission probe run only over what the render produced.
+
 ## Stack Outputs
 
 | Output | Purpose |

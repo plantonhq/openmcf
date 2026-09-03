@@ -1,0 +1,29 @@
+# THE OWNED-ELSEWHERE REFUSAL: one of the chart's CRDs already exists on the
+# cluster and this module did not put it there (the fixture below applied it
+# by hand, as a colleague's kubectl or another tool would). Server-side apply
+# would take it over without a word, and the module cannot tell whether that
+# definition is newer or older than the version pinned here, so the deploy
+# must be refused before anything is written, naming the CRD and its owner
+# (the field manager that wrote it) and both remedies: leave it with its
+# owner through crds.install = false, or hand it over with the two printed
+# kubectl commands. The verifier asserts the three parts, the CRD name, and
+# that the CRD gained no stamp.
+#
+# metacontroller ships three CRDs in crds/ and templates none, and no other
+# lane keeps its CRDs on the shared cluster, so the fixture's stub cannot
+# collide with a kept definition from another scenario.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesHelmRelease
+metadata:
+  name: e2e-helm-owned-elsewhere
+  annotations:
+    planton.dev/e2e-prerequisites: "catalog/kubernetes/kuberneteshelmrelease/e2e/fixture-foreign-crd.yaml"
+    planton.dev/e2e-expect-deploy-failure: crd-owned-elsewhere
+    planton.dev/e2e-expect-crds: compositecontrollers.metacontroller.k8s.io
+spec:
+  namespace:
+    value: e2e-helm-owned-elsewhere-ns
+  create_namespace: true
+  repo: oci://ghcr.io/metacontroller
+  chart: metacontroller-helm
+  version: 4.17.2

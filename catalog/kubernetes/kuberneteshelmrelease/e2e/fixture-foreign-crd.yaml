@@ -1,0 +1,46 @@
+# THE OTHER OWNER for the crds-owned-elsewhere scenario: a definition someone
+# put on the cluster by hand before Planton arrived, standing in for a
+# colleague's kubectl apply or another tool. It carries the name of one CRD
+# the metacontroller chart ships in its crds/ directory and none of the
+# module's stamps, so the scenario's deploy must find it, refuse, and name
+# the field manager that wrote it. A KubernetesManifest is the fixture
+# because it is the catalog's way to apply a raw object and, being a kind,
+# its teardown deletes the CRD with the fixture chain: the cluster is left
+# clean without a teardown script. The schema is a stub on purpose; the
+# refusal is about ownership, and the module stops before it would compare
+# anything else.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesManifest
+metadata:
+  name: e2e-foreign-crd
+spec:
+  namespace:
+    value: e2e-foreign-crd-ns
+  create_namespace: true
+  skip_await: true
+  manifest_yaml: |
+    apiVersion: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    metadata:
+      name: compositecontrollers.metacontroller.k8s.io
+      # A *.k8s.io group is protected; the API server refuses a definition in
+      # it without this annotation, and the chart's own CRD carries the same
+      # "unapproved" value.
+      annotations:
+        api-approved.kubernetes.io: "unapproved, request not yet submitted"
+    spec:
+      group: metacontroller.k8s.io
+      scope: Cluster
+      names:
+        kind: CompositeController
+        listKind: CompositeControllerList
+        plural: compositecontrollers
+        singular: compositecontroller
+      versions:
+        - name: v1alpha1
+          served: true
+          storage: true
+          schema:
+            openAPIV3Schema:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true

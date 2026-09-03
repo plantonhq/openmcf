@@ -8,6 +8,7 @@ import (
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/iac/stackinput/providerdetect"
 	"github.com/plantonhq/planton/pkg/iac/stackinput/stackinputproviderconfig"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -39,23 +40,33 @@ func LoadProviderConfigFixture(moduleDir, manifestPath string) (*stackinputprovi
 		return nil, errors.Wrapf(err, "checking provider-config fixture %s", fixturePath)
 	}
 
-	manifestObject, err := manifest.LoadManifest(manifestPath)
-	if err != nil {
-		return nil, errors.Wrapf(err, "loading manifest %s to detect the fixture's provider", manifestPath)
-	}
-	manifestJson, err := protojson.Marshal(manifestObject)
-	if err != nil {
-		return nil, errors.Wrap(err, "marshaling manifest for provider detection")
-	}
-	detection, err := providerdetect.DetectFromManifest(manifestJson)
+	detected, err := detectProvider(manifestPath)
 	if err != nil {
 		return nil, errors.Wrapf(err, "detecting provider for fixture %s", fixturePath)
 	}
-	if err := providerdetect.ValidateProviderConfig(fixturePath, detection.Provider); err != nil {
+	if err := providerdetect.ValidateProviderConfig(fixturePath, detected); err != nil {
 		return nil, errors.Wrapf(err, "provider-config fixture %s is invalid", fixturePath)
 	}
 	return &stackinputproviderconfig.ProviderConfig{
 		Path:     fixturePath,
-		Provider: detection.Provider,
+		Provider: detected,
 	}, nil
+}
+
+// detectProvider reads the manifest and names the cloud provider its kind
+// belongs to, the way the CLI does before it reads a provider configuration.
+func detectProvider(manifestPath string) (cloudresourcekind.CloudResourceProvider, error) {
+	manifestObject, err := manifest.LoadManifest(manifestPath)
+	if err != nil {
+		return 0, errors.Wrapf(err, "loading manifest %s to detect its provider", manifestPath)
+	}
+	manifestJson, err := protojson.Marshal(manifestObject)
+	if err != nil {
+		return 0, errors.Wrap(err, "marshaling manifest for provider detection")
+	}
+	detection, err := providerdetect.DetectFromManifest(manifestJson)
+	if err != nil {
+		return 0, err
+	}
+	return detection.Provider, nil
 }

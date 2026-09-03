@@ -359,6 +359,54 @@ func TestCheckNoDowngrade(t *testing.T) {
 	assertFailure(t, CheckNoDowngrade(existing, "latest"), "not a semantic version", "", "0.120.0")
 }
 
+func TestCheckOwnership(t *testing.T) {
+	src := Source{Repository: "https://charts.example.com", Chart: "demo", Version: "1.2.0"}
+	ours := ExistingFromObject("a.example",
+		map[string]string{LabelSource: "demo"},
+		map[string]string{AnnotationSourceVersion: "1.1.0", AnnotationSourceChart: "https://charts.example.com/demo"},
+		[]string{"kubectl"})
+	if err := CheckOwnership([]ExistingCRD{ours}, src); err != nil {
+		t.Fatalf("a CRD this source stamped is ours to re-apply: %v", err)
+	}
+	if err := CheckOwnership(nil, src); err != nil {
+		t.Fatalf("a first install finds nothing: %v", err)
+	}
+
+	// Helm owns it as a release resource: the owner is the release, and the
+	// hand-over remedy first frees it from Helm.
+	helmOwned := ExistingFromObject("a.example", nil,
+		map[string]string{"meta.helm.sh/release-name": "demo-by-hand", "meta.helm.sh/release-namespace": "ops"},
+		[]string{"helm"})
+	err := CheckOwnership([]ExistingCRD{helmOwned}, src)
+	assertFailure(t, err, "owned by Helm release demo-by-hand in namespace ops", "two owners would write one schema", "spec.crds.install to false")
+	for _, want := range []string{"uninstall Helm release demo-by-hand", "kubectl label crd a.example planton.ai/crd-source=demo", "planton.ai/crd-source-version=1.2.0"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("remedy lacks %q: %s", want, err)
+		}
+	}
+
+	// Another Planton module derived the same CRD name from a different chart.
+	otherSource := ExistingFromObject("a.example", map[string]string{LabelSource: "other-chart"},
+		map[string]string{AnnotationSourceVersion: "9.0.0"}, nil)
+	assertFailure(t, CheckOwnership([]ExistingCRD{otherSource}, src), "derived from chart other-chart by another Planton module", "", "")
+
+	// Applied by hand: the field managers are the only mark.
+	byHand := ExistingFromObject("a.example", nil, nil, []string{"kubectl-client-side-apply", "kube-apiserver"})
+	err = CheckOwnership([]ExistingCRD{byHand}, src)
+	assertFailure(t, err, "last written by field manager(s) kubectl-client-side-apply, kube-apiserver", "", "")
+	if strings.Contains(err.Error(), "uninstall Helm release") {
+		t.Fatal("a CRD Helm does not own must not be sent to helm uninstall")
+	}
+
+	// No marks at all: say so rather than invent an owner.
+	assertFailure(t, CheckOwnership([]ExistingCRD{{Name: "a.example"}}, src), "it carries no ownership marks", "", "")
+}
+
+func TestCRDApplyDeniedFailure(t *testing.T) {
+	err := CRDApplyDeniedFailure("system:serviceaccount:ci:deployer", "patch", "SelfSubjectAccessReview answered denied")
+	assertFailure(t, err, "system:serviceaccount:ci:deployer) may not patch customresourcedefinitions.apiextensions.k8s.io at the cluster scope", "outside the Helm release", "iac/permissions.yaml")
+}
+
 func TestFailureRendersThreeStableLines(t *testing.T) {
 	f := &Failure{Observed: "o", Meaning: "m", NextStep: "n"}
 	if f.Error() != "observed: o\nmeaning: m\nnext step: n" {

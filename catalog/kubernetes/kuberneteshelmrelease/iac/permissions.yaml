@@ -19,13 +19,15 @@ spec:
           - namespaces
         verbs:
           - get
+          - list
+          - watch
           - create
           - update
           - patch
           - delete
         cluster_scoped: true
         provenance: derived
-        notes: Covers kubernetes_namespace_v1.helm_release_namespace -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces.
+        notes: Covers kubernetes_namespace_v1.helm_release_namespace -- created and owned only when spec.create_namespace is true; get is needed for refresh either way. delete applies only to module-owned namespaces. list and watch serve the Pulumi provider's deletion await -- it watches the namespace until it is gone, and without them a destroy under this exact identity hangs until the provider's timeout (found by running a lane as this identity).
       - api_groups:
           - ""
         resources:
@@ -55,4 +57,4 @@ spec:
           - delete
         cluster_scoped: true
         provenance: derived
-        notes: "THE PASS-THROUGH REALITY, stated plainly: helm_release.helm_release installs an ARBITRARY upstream chart (spec.repo + spec.chart + spec.version), so the runner's true requirement is the union of every object that chart renders -- workloads, RBAC, CRDs the chart templates as release resources, webhooks, cluster-scoped objects, anything. The CRDs in the chart's crds/ directory are the module's, not Helm's: kubectl_manifest.helm_crds (Terraform, the generated helm_crds.tf) and the Pulumi twin (keptcrds) derive them from the pinned chart and apply them via server-side apply outside the release, list them by the planton.ai/crd-source label for the never-downgrade read, and delete them only when spec.crds.keep_on_uninstall is false -- the wildcard covers those verbs too. No manifest-time enumeration exists; this wildcard is the honest statement, not a convenience. Operators who know WHICH chart a release deploys should scope the runner to that chart's actual object surface instead of granting this wildcard -- the typed catalog components' permission manifests show what such scoping looks like. Kubernetes escalation prevention still applies to any RBAC the chart contains: the runner must already hold what the chart's roles grant, or the escalate verb."
+        notes: "THE PASS-THROUGH REALITY, stated plainly: helm_release.helm_release installs an ARBITRARY upstream chart (spec.repo + spec.chart + spec.version), so the runner's true requirement is the union of every object that chart renders -- workloads, RBAC, CRDs the chart templates as release resources, webhooks, cluster-scoped objects, anything. The CRDs in the chart's crds/ directory are the module's, not Helm's: kubectl_manifest.helm_crds (Terraform, the generated helm_crds.tf) and the Pulumi twin (keptcrds) derive them from the pinned chart and apply them via server-side apply outside the release, read each one by name before writing it (the ownership check refuses a CRD another owner put there; the never-downgrade check refuses a lower version), and delete them only when spec.crds.keep_on_uninstall is false -- the wildcard covers those verbs too. No manifest-time enumeration exists; this wildcard is the honest statement, not a convenience. Operators who know WHICH chart a release deploys should scope the runner to that chart's actual object surface instead of granting this wildcard -- the typed catalog components' permission manifests show what such scoping looks like. Kubernetes escalation prevention still applies to any RBAC the chart contains: the runner must already hold what the chart's roles grant, or the escalate verb."
