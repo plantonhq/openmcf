@@ -54,7 +54,7 @@ A pipeline may require exactly one pipeline-level workspace: `source` (the clone
 
 ## Validate before you push
 
-`planton service pipeline validate <pipeline.yaml> [--param <key>=<value>]...` runs the very same compiler locally against the platform catalog and reports every verdict (`-o json` for the stable shape: `valid`, `source`, `pin`, `compiler_version`, `compiled_bytes`, `tasks_resolved`, `errors`; exit 1 on any error). The platform contract above counts as supplied — pass `--param` only for the pipeline's own params. `--track <name>` validates a platform track instead of a file, and `--task <ref>=<path>` supplies a task definition the way an organization-published record would. Fix every verdict, then push — a pipeline that validates clean compiles clean at dispatch.
+`planton service pipeline validate <pipeline.yaml> [--param <key>=<value>]...` runs the very same compiler locally against the platform catalog and reports every verdict (`-o json` for the stable shape: `valid`, `source`, `pin`, `compiler_version`, `compiled_bytes`, `tasks_resolved`, `errors`; exit 1 on any error). The platform contract above counts as supplied — pass `--param` only for the pipeline's own params. `--track <name>` validates a platform track instead of a file, and `--task <ref>=<path>` supplies a task definition the way an organization-published record would. On the platform-tools arm, `validate_service_pipeline` is the same compiler over submitted `files` (or a `track`), answering in the same JSON and resolving the organization's published tasks itself when `org` is given (`references/service.pipeline-authoring.md`). Fix every verdict, then push — a pipeline that validates clean compiles clean at dispatch.
 
 ## The images a build cluster pulls
 
