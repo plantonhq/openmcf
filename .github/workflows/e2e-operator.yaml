@@ -40,6 +40,11 @@ concurrency:
   group: e2e-operator-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # The operator serves no webhooks, so the kubebuilder suite's optional
+  # cert-manager install is a minute of irrelevant network work per run.
+  CERT_MANAGER_INSTALL_SKIP: 'true'
+
 jobs:
   e2e:
     runs-on: ubuntu-latest
