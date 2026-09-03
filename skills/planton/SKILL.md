@@ -413,9 +413,8 @@ Hold these invariants in every service answer:
 - **Environments are the organization's, ordered by promotion rank**;
   protection and approval are the ENVIRONMENT's properties, never the
   service's. The initiator of a delivery can never be its approver.
-- **Receipts are exact.** Promote re-applies a captured
-  artifact+configuration pair; rollback restores a receipt byte-for-byte.
-  Neither re-renders, neither needs the repository reachable.
+- **Receipts are exact.** Promote re-applies a captured artifact+configuration
+  pair; rollback restores a receipt byte-for-byte; neither re-renders nor needs the repository reachable.
 - **Refusals name their working paths**: relay them, never retry them.
 
 Registration has four doors: detection-first, the primary -- the platform
@@ -472,6 +471,7 @@ memory what a reference answers precisely.
 | `references/service.external-ci.md` | Keyless CI: workload identity bindings, the `planton iam federate` exchange, registering and deploying from a CI step, the Planton GitHub Action, walking a federation refusal |
 | `references/service.offline-deploy.md` | Deploying services with NO Planton backend: offline-clean kustomize authoring, the offline deploy verb and its exit codes, the GitHub Action's offline mode, the gh-driven CI/CD setup journey, verify-before-ready |
 | `references/service.reading-a-run.md` | Reading one run and reporting it in the user's words: build vs delivery shapes, status vocabulary, per-task errors, gates, mirrored external CI runs |
+| `references/service.build-failures.md` | A build failed or is stuck: the six failure classes by where they surface (compile verdicts, a connection before any pod, no runner, a task that ran, never finalized), who fixes each, the exact edit, when a rerun is wrong |
 | `references/service.managed-pipelines.md` | What a Planton-managed build runs: the platform tracks, the catalog tasks a repository pipeline reuses by plain name, the param contract and bindable workspaces, the `platform-content` pin, the compile verdicts, the images a build cluster pulls |
 | `references/service.pipeline-authoring.md` | Writing or changing a service's own pipeline: the files, Tasks beside the pipeline, name resolution, the param contract and the optional trigger facts with `when`, the validate loop, every compile verdict's fix, and what to edit when asked for a step, a release-only step, or a shared task |
 | `references/service.org-publishing.md` | Sharing a pipeline or a task across services: the `TektonPipeline`/`TektonTask` record shapes, the name law, publish order and the publish check, consuming by one line or a plain `taskRef`, what an update changes, the delete guards, listing what the organization published |

@@ -1,6 +1,6 @@
 ---
 title: "Monorepo Support"
-description: "Configure multiple services from a single Git repository with per-service project roots, trigger paths, and sparse checkout."
+description: "Configure multiple services from a single Git repository with per-service project roots, trigger paths, sparse checkout, and a build context that can reach shared code."
 icon: settings
 order: 65
 tags:
@@ -14,40 +14,44 @@ tags:
 
 Modern codebases increasingly use monorepos for code sharing and atomic changes. But traditional CI/CD struggles with them: ten services in one repository means a shared library change triggers builds for all ten, even when only two need rebuilding. Clone times balloon because every build fetches the entire repository. Configuring path-based triggers requires deep knowledge of each CI system's quirks.
 
-Service Hub provides built-in monorepo support. Each service is scoped to its own directory within the repository, triggers pipelines only when relevant files change, and clones only the directories it needs.
+Service Hub provides built-in monorepo support. Each service is scoped to its own directory within the repository, triggers builds only when relevant files change, clones only the directories it needs, and can still build an image that reaches shared code elsewhere in the repository.
 
 ## Core Settings
 
-Three settings in your service's Git repository configuration control monorepo behavior.
+Four settings control monorepo behavior. Two live on the service's Git repository binding (`spec.gitRepo`), one on its build triggers (`spec.build.triggers`), and one on the Dockerfile builder (`spec.build.dockerfile`).
 
 ### Project Root
 
-The directory within the repository where the service's code is located. This becomes the working directory for build operations.
+The directory within the repository where the service's code lives. Builds use it as the working directory, the kustomize tree is found under it, and it is the default scope for triggers.
 
 ```yaml
-git_repo:
-  project_root: "services/payment-api"
+spec:
+  gitRepo:
+    projectRoot: services/payment-api
 ```
 
-If empty, the service uses the repository root. The pipeline's build tasks (Buildpacks, Dockerfile, or self-managed) execute from this directory. The Dockerfile path in the pipeline configuration is relative to the project root.
+Empty means the repository root. Whatever builds the image — the platform's Buildpacks or Dockerfile track, or the service's own pipeline — starts here; a Dockerfile path is relative to the build context, which defaults to this directory.
 
 ### Trigger Paths
 
-Glob patterns that trigger pipelines when matched files change, **in addition to** the default rule that any change inside the project root triggers a build.
+Glob patterns that trigger builds when matched files change, **in addition to** the default rule that any change inside the project root triggers a build. Trigger rules live in one place, `spec.build.triggers`, beside the branch, pull-request, and tag rules.
 
 ```yaml
-git_repo:
-  project_root: "services/payment-api"
-  trigger_paths:
-    - "packages/shared-lib/**"
-    - "proto/**"
+spec:
+  gitRepo:
+    projectRoot: services/payment-api
+  build:
+    triggers:
+      paths:
+        - "packages/shared-lib/**"
+        - "proto/**"
 ```
 
 How trigger paths work:
 
 - Paths are matched against repository-root-relative file paths.
-- If no trigger paths are set, pipelines run only when files inside the project root change.
-- If trigger paths are set, pipelines run when files match **either** the project root **or** any trigger path.
+- If no trigger paths are set, builds run only when files inside the project root change.
+- If trigger paths are set, builds run when files match **either** the project root **or** any trigger path.
 - To trigger on every commit regardless of changed files, use `["**/*"]`.
 
 Common patterns:
@@ -61,54 +65,54 @@ Common patterns:
 
 ### Sparse Checkout
 
-Directories to clone during the pipeline's git-clone step. When set, only these directories are fetched instead of the entire repository.
+Directories to clone during the build's git-clone step. When set, only these directories are fetched instead of the entire repository.
 
 ```yaml
-git_repo:
-  project_root: "services/payment-api"
-  sparse_checkout_directories:
-    - "services/payment-api"
-    - "packages/shared-lib"
-    - "proto"
+spec:
+  gitRepo:
+    projectRoot: services/payment-api
+    sparseCheckoutDirectories:
+      - services/payment-api
+      - packages/shared-lib
+      - proto
 ```
 
 Benefits for large monorepos:
 
 - Faster clone times (fewer files to download)
-- Less disk space used in pipeline workers
+- Less disk space used on the build cluster
 - Only code the service needs is available during the build
 
-If empty, the entire repository is cloned.
+If empty, the entire repository is cloned. Every directory the build reads — the project root, every trigger path you expect the build to consume, and a wider Docker build context — must be in this list, or the build will not find it.
 
-## Additional Pipeline Settings for Monorepos
+### Docker Build Context
 
-Two additional settings provide flexibility for more complex monorepo layouts:
-
-### Kustomize Base Directory
-
-The path to the kustomize directory relative to the project root. Defaults to `_kustomize`.
-
-This is useful when the project root must be at the repository root (e.g., for Docker build context or yarn workspace resolution) but kustomize overlays are in a service-specific subdirectory:
+A Dockerfile that copies shared libraries from across the repository needs a build context wider than the service's own directory. `spec.build.dockerfile.context` is repository-root-relative and defaults to the project root; declare it only when the image needs MORE of the repository than the service's directory, and keep `projectRoot` truthful for triggers and kustomize.
 
 ```yaml
-git_repo:
-  project_root: ""  # repo root for Docker context
-pipeline_configuration:
-  kustomize_base_directory: "services/payment-api/_kustomize"
+spec:
+  gitRepo:
+    projectRoot: services/payment-api
+  build:
+    dockerfile:
+      dockerfilePath: services/payment-api/Dockerfile   # relative to the context
+      context: "."                                     # the whole repository
+    registry: my-registry
+    imageRepositoryPath: acme/payment-api
 ```
 
-### Package Manager Directory
+## Kustomize Base Directory
 
-The directory from which to run the package manager install step. Relevant for Cloudflare Worker builds in monorepos using yarn workspaces with `workspace:*` protocol dependencies.
+The kustomize tree is found under the project root at `_kustomize` by default. When the tree lives elsewhere — for example, a service whose project root must be the repository root for yarn workspace resolution, with its overlays in a service-specific subdirectory — point at it explicitly:
 
 ```yaml
-git_repo:
-  project_root: "workers/edge-router"  # worker code location
-pipeline_configuration:
-  package_manager_directory: "."  # run yarn install at repo root for workspace resolution
+spec:
+  gitRepo:
+    projectRoot: ""                                  # repository root
+  deploy:
+    kustomize:
+      baseDirectory: services/payment-api/_kustomize  # relative to the project root
 ```
-
-If empty, falls back to the project root for dependency installation.
 
 ## Practical Patterns
 
@@ -118,84 +122,75 @@ Multiple services, each in its own directory. Shared code triggers rebuilds for 
 
 ```yaml
 # Service 1: User API
-git_repo:
-  owner_name: acmecorp
-  name: backend-monorepo
-  project_root: "services/user-api"
-  trigger_paths:
-    - "packages/shared-lib/**"
-  sparse_checkout_directories:
-    - "services/user-api"
-    - "packages/shared-lib"
-pipeline_configuration:
-  image_build_method: buildpacks
-  image_repository_path: acmecorp/user-api
+spec:
+  gitRepo:
+    ownerName: acmecorp
+    name: backend-monorepo
+    projectRoot: services/user-api
+    sparseCheckoutDirectories:
+      - services/user-api
+      - packages/shared-lib
+  build:
+    buildpacks: {}
+    registry: my-registry
+    imageRepositoryPath: acmecorp/user-api
+    triggers:
+      paths:
+        - "packages/shared-lib/**"
 ```
 
 ```yaml
 # Service 2: Payment API (same repository, different service)
-git_repo:
-  owner_name: acmecorp
-  name: backend-monorepo
-  project_root: "services/payment-api"
-  trigger_paths:
-    - "packages/shared-lib/**"
-    - "proto/**"
-  sparse_checkout_directories:
-    - "services/payment-api"
-    - "packages/shared-lib"
-    - "proto"
-pipeline_configuration:
-  image_build_method: dockerfile
-  image_repository_path: acmecorp/payment-api
+spec:
+  gitRepo:
+    ownerName: acmecorp
+    name: backend-monorepo
+    projectRoot: services/payment-api
+    sparseCheckoutDirectories:
+      - services/payment-api
+      - packages/shared-lib
+      - proto
+  build:
+    dockerfile: {}
+    registry: my-registry
+    imageRepositoryPath: acmecorp/payment-api
+    triggers:
+      paths:
+        - "packages/shared-lib/**"
+        - "proto/**"
 ```
 
-A change to `services/user-api/` triggers only the User API pipeline. A change to `packages/shared-lib/` triggers both pipelines.
+A change to `services/user-api/` triggers only the User API build. A change to `packages/shared-lib/` triggers both.
 
-### Yarn Workspaces
+### A Dockerfile That Copies Shared Code
 
-A JavaScript/TypeScript monorepo where services share dependencies through yarn workspaces:
+A service whose image build needs the whole repository — a Dockerfile with `COPY packages/shared-lib ...` — keeps its own project root and widens only the build context:
 
 ```yaml
-git_repo:
-  project_root: "apps/web-worker"
-pipeline_configuration:
-  package_manager_directory: "."  # run yarn install at repo root
-  kustomize_base_directory: "apps/web-worker/_kustomize"
+spec:
+  gitRepo:
+    projectRoot: apps/web
+    sparseCheckoutDirectories:
+      - apps/web
+      - packages
+      - package.json
+      - yarn.lock
+  build:
+    dockerfile:
+      dockerfilePath: apps/web/Dockerfile
+      context: "."
+    registry: my-registry
+    imageRepositoryPath: acmecorp/web
 ```
 
-This ensures `yarn install` runs at the repository root (where `package.json` with workspace definitions lives), while the build targets the worker's subdirectory.
+Triggers and the kustomize tree still scope to `apps/web`; only the image build sees the whole repository.
 
-## Configuring in the Web Console
+## Editing These Settings
 
-Monorepo settings are available in two places:
-
-**During service creation**, the wizard provides these fields under **Advanced Git Settings**:
-- Project root
-- Trigger paths (add/remove controls)
-- Sparse checkout directories (add/remove controls)
-
-**After creation**, the service's **Settings** tab under **Advanced Settings** provides the same fields as editable controls.
-
-<!-- SCREENSHOT: Monorepo advanced settings
-  Page: /orgs/{org}/service/{serviceId} (Settings tab, Advanced Settings section)
-  Action: Show the advanced settings with project root, trigger paths, and sparse checkout configured
-  Focus: The three monorepo-related fields with example values
-  Alt: Service advanced settings showing project root, trigger paths array, and sparse checkout directories array with configured values
--->
-
-## Using the CLI
-
-```bash
-# Deploy from a specific project root
-planton service deploy --project services/payment-api
-
-# Build kustomize output for inspection
-planton service kustomize build
-```
+All four settings are fields on the Service record: edit the service's YAML and `planton apply -f service.yaml`, or ask the Planton Assistant ("also rebuild payment-api when proto/ changes") and it makes the same edit. Read the current values with `planton get Service <slug> -o yaml`.
 
 ## Related Documentation
 
 - [What is a Service?](/docs/ci-cd/what-is-a-service) — Service configuration overview
-- [Build Methods](/docs/ci-cd/build-methods) — How builds work within the project root
-- [Pipelines](/docs/ci-cd/pipelines) — How trigger paths and branches control pipeline execution
+- [Build Methods](/docs/ci-cd/build-methods) — The builders and how they use the project root and the build context
+- [Pipelines](/docs/ci-cd/pipelines) — How triggers control which pushes build

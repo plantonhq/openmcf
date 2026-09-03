@@ -87,11 +87,14 @@ For tag-triggered builds, the container image is tagged with the Git tag name (f
 You can trigger a pipeline at any time from the CLI or web console, regardless of whether a new commit exists:
 
 ```bash
-# Trigger a pipeline for a specific branch
-planton service run-pipeline --service my-service --branch main
+# Build the head of a branch
+planton service run my-service --branch main
 
-# Trigger for a specific commit
-planton service run-pipeline --service my-service --branch main --commit a3f4c2b
+# Build a specific commit
+planton service run my-service --branch main --commit a3f4c2b
+
+# Build and deploy into exactly one environment (no promotion walk)
+planton service run my-service --branch main --deploy-env dev
 ```
 
 In the web console, the **Trigger Pipeline** button on the Pipelines tab opens a dialog where you select the branch.
@@ -160,23 +163,25 @@ Click any pipeline run to see the detail view with build and deploy stage logs. 
 ### CLI
 
 ```bash
-# List pipelines for a service
-planton service pipelines --service my-service
+# Everything that ran for a service, newest first (Planton runs and the repo's own CI)
+planton service runs my-service
 
-# Filter by environment
-planton service pipelines --service my-service --filter-envs dev,staging
+# Planton-managed runs only; or the ones paused on your approval
+planton service pipelines my-service
+planton service pipelines --awaiting-my-approval
 
-# Stream real-time status updates
-planton service pipeline stream-status <pipeline-id>
+# Follow a run's build and deploy progress live
+planton service follow <run-id>
 
-# Stream build and deployment logs
-planton service pipeline stream-logs <pipeline-id>
+# The build's logs (every task's lines); a deploy node's engine logs
+planton service logs <run-id>
+planton service logs <run-id> --env dev --node KubernetesDeployment/my-service
 
-# Get the last pipeline for a service
-planton service last-pipeline --service my-service
+# The most recent run for a service
+planton service last-pipeline my-service
 
-# Re-run a pipeline with the same commit
-planton service rerun-pipeline <pipeline-id>
+# Re-run a run byte-identically (the same compiled pipeline, the same params)
+planton service rerun <run-id>
 ```
 
 ### GitHub Integration

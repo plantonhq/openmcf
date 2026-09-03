@@ -139,11 +139,11 @@ planton service register
 # Deploy a service using the _kustomize directory
 planton service deploy --project .
 
-# List pipelines for a service
-planton service pipelines --service my-service
+# Everything that ran for a service, newest first
+planton service runs my-service
 
-# Trigger a pipeline manually
-planton service run-pipeline --service my-service --branch main
+# Start a build by hand
+planton service run my-service --branch main
 
 # View deployment history
 planton service deployments my-service
