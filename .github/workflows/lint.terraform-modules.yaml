@@ -150,6 +150,11 @@ jobs:
           key: tofu-plugins-${{ runner.os }}
 
       - name: init + validate (all modules)
+        # bash, explicitly: inside the toolchain container a step's default
+        # shell is sh (dash), which has no arrays or process substitution,
+        # and this script uses both. The push-triggered jobs above never hit
+        # this because their steps declare bash.
+        shell: bash
         run: |
           mkdir -p "$TF_PLUGIN_CACHE_DIR"
           rc=0
