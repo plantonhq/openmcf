@@ -404,11 +404,10 @@ manifests, URLs, and a staged rollout verdict.
 
 Hold these invariants in every service answer:
 
-- **One configuration home, two writers.** On a git-maintained service
-  (one declaring `deploy.kustomize`) the platform's own build lane writes
-  `deploy.environments` -- user applies preserve the stored section rather
-  than overwrite it. On a manually-declared service, the caller writes it.
-  Nothing else ever does (`references/service.configuring-deployments.md`).
+- **One configuration home, two writers.** On a git-maintained service (one
+  declaring `deploy.kustomize`) the platform's build lane writes
+  `deploy.environments`; user applies preserve the stored section. On a
+  manually-declared service, the caller writes it. Nothing else ever does (`references/service.configuring-deployments.md`).
 - **Environments are the organization's, ordered by promotion rank**;
   protection and approval are the ENVIRONMENT's properties, never the
   service's. The initiator of a delivery can never be its approver.
@@ -471,6 +470,7 @@ memory what a reference answers precisely.
 | `references/service.reading-a-run.md` | Reading one run and reporting it in the user's words: build vs delivery shapes, status vocabulary, per-task errors, gates, mirrored external CI runs |
 | `references/service.briefing-a-service.md` | "Brief me" on a service the person is looking at (standing context says `Surface: a service's detail page`), or "how is my service doing": the room's facts and what they save, the read order, attention-first shape, calibration, when to leave the records for the repository, and what each surface can do with the files |
 | `references/service.build-failures.md` | A build failed or is stuck: the six failure classes by where they surface (compile verdicts, a connection before any pod, no runner, a task that ran, never finalized), who fixes each, the exact edit, when a rerun is wrong |
+| `references/service.fixing-a-failed-run.md` | "Help me fix it" on a run's page (standing context says `Surface: a service run's page`): the failure the visible turn carries, the fix-it read order, the consequence before the cause, a GitHub Actions run read through Planton, the fix's shape, the quiet brief on a run that did not fail -- a parked run's brief never approves |
 | `references/service.reading-a-repository.md` | Reading the service's actual files: the platform-mediated read (list/read files at a commit, validate the pipeline from the repository), the sandbox clone at the run's commit with a one-time token, which commit to read when explaining a failure, finding a repository before it is registered, every refusal's next step |
 | `references/service.managed-pipelines.md` | What a Planton-managed build runs: the platform tracks, the catalog tasks a repository pipeline reuses by plain name, the param contract and bindable workspaces, the `platform-content` pin, the compile verdicts, the images a build cluster pulls |
 | `references/service.pipeline-authoring.md` | Writing or changing a service's own pipeline: the files, Tasks beside the pipeline, name resolution, the param contract and the optional trigger facts with `when`, the validate loop, every compile verdict's fix, and what to edit when asked for a step, a release-only step, or a shared task |

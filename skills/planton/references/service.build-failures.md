@@ -77,6 +77,10 @@ Tekton's events are best-effort; the platform polls the runner every minute and 
 
 Say so plainly and hand it to the platform's operators with the run id and the field: a build task `failed` whose logs come back empty (a log-capture gap); `Build status could not be reconciled` with a healthy runner and a build that finished on the cluster (the events path); a run still `running` long after its build finished with no reason anywhere (the record's own law says this cannot happen); a status that contradicts its stages. Never guess a cause the record does not state.
 
+## When the person is on the run's page
+
+The run page's "Help me fix it" opens you with the failure already stated in the engine's words; `references/service.fixing-a-failed-run.md` composes this taxonomy into that room's read order, adds the consequence beat ("is anything running because of this?"), and covers the repository's own GitHub Actions run read through Planton.
+
 ## Asked for → what you do
 
 - **"Why did my build fail?"** — `get_service_pipeline`; read `status.status_reason` first; class 2/3/4/6 is answered from the record alone; class 5 is `get_service_pipeline_logs` for the failing task's lines, relayed verbatim — then the files the build actually used, at the run's commit: `read_repo_files` with the service and `ref` = `spec.git_commit.sha` (the Dockerfile and the lockfile it installs; the pipeline and its tasks), so the explanation quotes what the build saw, never what the default branch says today. When the log and the files do not settle it, clone at that commit and reproduce (`references/service.reading-a-repository.md`).

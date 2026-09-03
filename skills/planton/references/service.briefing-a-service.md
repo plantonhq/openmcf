@@ -54,6 +54,10 @@ Where each runs, by surface — the arm is your concern, never the person's:
 
 Nothing you clone or read is written back to the repository — propose the exact change and let the person apply it.
 
+## When the person opens a run from the briefing
+
+A briefing that names a failed run often ends with the person opening it. The run's own page is a room too: `references/service.fixing-a-failed-run.md` owns what happens there -- the fix-it read order, the consequence before the cause, and the quiet brief on a run parked at a gate.
+
 ## When the room is not a service's page
 
 The same read order and shape answer "how is `storefront` doing?" from any surface — you simply start from the name the person gave (`get_service` by organization and slug; CLI `planton get service <slug>`) instead of the room's facts.
