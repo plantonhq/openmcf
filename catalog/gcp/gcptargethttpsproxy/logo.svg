@@ -1,14 +1,1 @@
-<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Encrypted in from the VIP -->
-  <path d="M 1.6 8 L 4.6 8" stroke="#4285F4" stroke-width="1.3" stroke-linecap="round"/>
-  <!-- The proxy node with the TLS lock -->
-  <rect x="4.8" y="5.4" width="5.2" height="5.2" rx="1" stroke="#4285F4" stroke-width="1.2"/>
-  <rect x="6.3" y="7.5" width="2.2" height="1.9" rx="0.4" fill="#4285F4"/>
-  <path d="M 6.7 7.5 L 6.7 6.9 Q 6.7 6.1 7.4 6.1 Q 8.1 6.1 8.1 6.9 L 8.1 7.5"
-        stroke="#4285F4" stroke-width="0.9" fill="none"/>
-  <!-- Decrypted out to the URL map -->
-  <path d="M 10.4 8 L 12.6 8" stroke="#34A853" stroke-width="1.3" stroke-linecap="round"/>
-  <rect x="12.6" y="6.6" width="2.6" height="2.8" rx="0.6" fill="#34A853" opacity="0.85"/>
-  <!-- 443: the TLS port -->
-  <text x="7.4" y="13.9" font-family="monospace" font-size="3.4" fill="#5F6368" text-anchor="middle">:443</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><desc>Planton-drawn glyph: a target HTTPS proxy: traffic entering a proxy that terminates TLS (lock)</desc><rect x="8" y="6" width="8" height="12" rx="1.5" fill="#4285f4"/><path d="M1 12 H7 M4 9 l3 3 l-3 3" fill="none" stroke="#669df6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16.5 12 H22.5 M19.5 9 l3 3 l-3 3" fill="none" stroke="#669df6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="18.5" r="5.2" fill="#ffffff"/><circle cx="12" cy="18.5" r="4" fill="#4285f4"/><rect x="9.8" y="17.9" width="4.4" height="3.2" rx="0.6" fill="#ffffff"/><path d="M10.7 17.9 V16.9 a1.3 1.3 0 0 1 2.6 0 V17.9" fill="none" stroke="#ffffff" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>

@@ -1,18 +1,23 @@
 # =============================================================================
 # Catalog Logo Guard
 # =============================================================================
-# Fails the PR when any component's logo.svg is not a browser-renderable SVG
-# document. Browsers parse image/svg+xml strictly: a missing <svg> root, a
-# raw control byte (even inside a comment), an illegal "--" comment sequence,
-# or a duplicate attribute makes the ENTIRE image render as a broken glyph --
-# and every one of those defect classes has shipped in this tree. Nothing
-# else parses these files: pkg/anatomy checks the file EXISTS, the release
-# lane uploads whatever bytes are present, and the catalog bundle formats
-# the logo URL without ever reading the file.
+# Fails the PR when any component's logo.svg breaks one of three rules:
+#   - malformed-svg: not a browser-renderable SVG document (a missing <svg>
+#     root, a raw control byte, an illegal "--" comment sequence, a duplicate
+#     attribute -- every one of which has shipped in this tree and renders the
+#     ENTIRE image as a broken glyph). Never baselined.
+#   - missing-provenance: the file's <desc> does not say what it is (an official
+#     provider product icon, a Planton-drawn glyph, or the Planton brand mark).
+#   - shared-glyph: two kinds of one provider wear one glyph. One kind, one
+#     glyph -- the official mark only for the kind that IS the product, a drawn
+#     glyph for every other; only Planton's own kinds share Planton's mark.
 #
 # The gate lives in pkg/cataloglogo (registry-keyed walk, the anatomy
-# pattern). There is no baseline: the tree was brought to zero violations
-# when the gate was introduced, and it must stay there.
+# pattern). Provenance and sharing carry a burn-down baseline
+# (pkg/cataloglogo/baseline.yaml) for the providers whose logo sets predate
+# the law; it only shrinks. Nothing else parses these files: pkg/anatomy checks
+# the file EXISTS, the release lane uploads whatever bytes are present, and the
+# catalog bundle formats the logo URL without ever reading the file.
 # =============================================================================
 
 name: lint.catalog-logo

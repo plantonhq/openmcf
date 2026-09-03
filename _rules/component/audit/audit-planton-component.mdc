@@ -104,7 +104,11 @@ conformance gate (CI lane `lint.component-anatomy.yaml`) -- do NOT re-derive the
 inventory by hand. The gate owns: required root files (`README.md`, `catalog.md`,
 `logo.svg`), the `iac/` module set shape (both engines with READMEs, no Makefile, no
 .gitignore), `presets/` with `.md` sidecars, the version-dir contract file set, and the
-closed entry sets at both levels.
+closed entry sets at both levels. What the `logo.svg` IS -- a browser-renderable SVG
+that names its provenance and shares its glyph with no other kind of the provider (the
+logo law in rule 021) -- is the `pkg/cataloglogo` gate's (CI lane `lint.catalog-logo.yaml`);
+a kind listed in `pkg/cataloglogo/baseline.yaml` carries logo debt its provider wave has
+not paid yet, and that is a finding here.
 
 **Checks:**
 - [ ] Run the gate and confirm this component carries no violations:

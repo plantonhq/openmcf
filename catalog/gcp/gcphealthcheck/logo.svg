@@ -1,10 +1,1 @@
-<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Probe target: the backend being watched -->
-  <circle cx="8" cy="8" r="6.5" fill="#4285F4" opacity="0.15"/>
-  <circle cx="8" cy="8" r="6.5" stroke="#4285F4" stroke-width="1.2"/>
-  <!-- Heartbeat trace: the probe's verdict -->
-  <path d="M 2.5 8 L 5 8 L 6.2 5 L 7.8 11 L 9.2 6.5 L 10 8 L 13.5 8"
-        stroke="#34A853" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-  <!-- Healthy pulse dot -->
-  <circle cx="13.5" cy="8" r="1.1" fill="#34A853"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><desc>Planton-drawn glyph: a health check: a heartbeat pulse</desc><rect x="2" y="4" width="20" height="16" rx="2" fill="#4285f4"/><path d="M4.5 12 H8 L10 8 L13 16 L15.5 12 H19.5" fill="none" stroke="#ffffff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>

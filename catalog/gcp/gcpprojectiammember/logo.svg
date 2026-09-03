@@ -1,16 +1,1 @@
-<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Project frame: the scope receiving the grant -->
-  <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="#4285F4" opacity="0.9"/>
-  <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" stroke="#1967D2" stroke-width="0.5" fill="none"/>
-
-  <!-- Identity: who receives the role -->
-  <circle cx="6" cy="6.6" r="1.7" fill="#FFFFFF"/>
-  <path d="M 3.2 11.6 Q 3.2 9 6 9 Q 8.8 9 8.8 11.6 Z" fill="#FFFFFF"/>
-
-  <!-- Key: the role granted -->
-  <g stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" fill="none">
-    <circle cx="10.6" cy="9.4" r="1.1"/>
-    <line x1="11.4" y1="10.2" x2="13" y2="11.8"/>
-    <line x1="12.4" y1="11.2" x2="13.1" y2="10.5"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><desc>Planton-drawn glyph: a project IAM grant: a principal granted a role on the project</desc><rect x="2" y="4" width="14" height="16" rx="1.5" fill="#4285f4"/><rect x="5" y="7.5" width="8" height="2" rx="0.6" fill="#ffffff"/><rect x="5" y="11" width="5" height="2" rx="0.6" fill="#aecbfa"/><circle cx="18" cy="17.5" r="5.4" fill="#ffffff"/><circle cx="18" cy="17.5" r="4.2" fill="#4285f4"/><circle cx="18" cy="16.2" r="1.3" fill="#ffffff"/><path d="M15.6 20.1 a2.4 2.2 0 0 1 4.8 0 z" fill="#ffffff"/></svg>

@@ -1,0 +1,65 @@
+---
+alwaysApply: false
+---
+RULE NUMBER
+021
+
+TITLE
+Forge: Author the Component Logo (logo.svg)
+
+ROLE
+You are the Planton Code Partner working inside the developer's local workspace in Cursor. This rule authors the newly forged component's `logo.svg` -- the glyph every console card, catalog row, wizard header, and diagram node wears for this kind. On a diagram the icon is the one identity signal nothing else supplies: color says the family, shape says the nature, only the glyph says WHICH thing. A chart built from one product's family (an instance, its database, its user) must never read as a row of identical marks.
+
+SCOPE
+- Creates `catalog/<provider>/<kindfolder>/logo.svg` (the COMPONENT ROOT, beside `README.md` and `catalog.md`)
+- Does not modify any other existing files
+
+PREREQUISITES
+- The component's spec exists and its kind is registered (rules 001 and 014 complete), so the gate can see the kind
+- The provider's official icon library, when the provider publishes one (Google Cloud: `https://cloud.google.com/icons` -- the "legacy" set is the flat blue product-icon style the catalog uses; the 2025 "core products" set only for products absent from it)
+
+THE LAW
+One kind, one glyph.
+- A kind that IS a provider product wears the provider's official mark, unaltered. Copy the vector; drop only the fixed `width`/`height` so the `viewBox` scales; never recolor, badge, crop, or combine it. A child of a product (a database inside an instance, a job of a service, a record in a zone) is NOT the product and does not wear its mark.
+- Planton's own kinds (a Planton runner, the Planton platform, the Planton operator) wear the Planton brand mark: copy `logo.svg` byte-identical from any sibling Planton kind. Never redraw the P.
+- Every other kind wears a Planton-drawn glyph that says what THAT kind is.
+- Two kinds of one provider never share a glyph, except Planton's own kinds sharing Planton's mark.
+- Every file carries its provenance in a `<desc>` whose first words name its class (below). When the provider later publishes an official icon for a kind wearing a drawn glyph, the official one replaces it (the update rule carries this).
+
+SEQUENTIAL STEPS
+
+1) **Decide the class**
+   Is this kind the product the provider's library has an icon for (Cloud SQL, Cloud Run, Spanner)? Then `official`. Is it a Planton product? Then `brand`. Otherwise `drawn` -- including every child kind of a product, every configuration object, every grant.
+
+2) **Official: copy the mark**
+   Take the SVG from the provider's library, drop `width`/`height`, replace any editor `<title>` with
+   `<desc>Official <Provider> product icon: <library>/<file></desc>` as the first child of `<svg>`. Change nothing else.
+
+3) **Brand: copy the tile**
+   `cp catalog/kubernetes/kubernetesplantonrunner/logo.svg catalog/<provider>/<kindfolder>/logo.svg`. Its `<desc>` already reads `Planton brand mark`.
+
+4) **Drawn: draw the concept**
+   The style the catalog's drawn glyphs share:
+   - `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">`; content inside the 2..22 square; no `width`/`height`
+   - the provider's icon palette only (Google Cloud: `#4285f4`, `#669df6`, `#aecbfa`, with `#ffffff` for cut-outs); no gradients, no text, no embedded raster, no provider mark inside
+   - filled shapes or 2px round-capped strokes; one idea per glyph (a database is a cylinder, a user a person, a key a key, an alert a bell, a probe a pulse, a sink a funnel, a schedule a clock badge, a grant a small person badge on the thing granted)
+   - recognizable at 24px without its label, and distinct at 24px from every other glyph in the provider
+   - first child: `<desc>Planton-drawn glyph: <what it depicts, one line></desc>` -- the next reader learns the intent from the file
+   Render it at 24px and 48px beside its siblings before you keep it; a glyph that does not read at 24px is redrawn, not shipped.
+
+5) **Run the gate**
+   `go test ./pkg/cataloglogo/` -- three rules, each failure saying what to do:
+   | Failure | Meaning | Fix |
+   |---|---|---|
+   | `malformed-svg` | browsers will render a broken image | fix the XML (root `<svg>`, no control bytes, no `--` in comments, no duplicate attributes) |
+   | `missing-provenance` | the `<desc>` does not open with a class | add the `<desc>` per step 2, 3, or 4 |
+   | `shared-glyph` | another kind of this provider wears the same bytes | draw this kind's own glyph (or, if this kind IS the product and the other is its child, redraw the child) |
+   Never add a new kind to `pkg/cataloglogo/baseline.yaml`: the baseline is the debt of providers judged before the law, and it only shrinks.
+
+OUTPUT
+- `catalog/<provider>/<kindfolder>/logo.svg` carrying its provenance `<desc>`
+- The gate green with no new baseline entry
+
+VERIFICATION
+- `go test ./pkg/cataloglogo/ ./pkg/anatomy/` green
+- The file opens as an image in a browser and reads at 24px beside the provider's other logos

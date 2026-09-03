@@ -115,6 +115,9 @@ Use update when you need to:
 - Missing component guide → runs rule 019
 - Failed tests → fixes and re-runs rule 019
 - Missing presets → runs rule 018 to generate initial presets (2-3 common configurations)
+- A logo the catalog-logo gate rejects (`go test ./pkg/cataloglogo/`: `shared-glyph`, `missing-provenance`, `malformed-svg`) → runs rule 021 to author the kind's own glyph with its provenance `<desc>`; the fixed kind's entries leave `pkg/cataloglogo/baseline.yaml`
+
+**Logo replacement rule (any scenario):** when the provider has since published an official icon for a kind whose `logo.svg` opens its `<desc>` with `Planton-drawn glyph`, replace the drawing with the official mark per rule 021 step 2 -- an official mark always wins over a drawn one, and only for the kind that IS the product (its children keep their drawn glyphs). `grep -l "Planton-drawn glyph" catalog/<provider>/*/logo.svg` lists the candidates.
 
 #### Scenario 2: Proto Schema Changed
 
