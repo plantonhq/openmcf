@@ -14,10 +14,12 @@
 #                    RBAC markers fails here. See hack/guards/ensure_operator_manifests_fresh.sh.
 #   build-and-test  (PR + push, BLOCKING) -- go build, go vet, envtest, and the
 #                    chart's render assertions (operator/test/chart renders the
-#                    chart through the Helm SDK and holds its CRD contract).
-#   chart           (PR + push, BLOCKING) -- helm lint + helm template.
+#                    chart through the Helm SDK and holds its CRD contract and
+#                    its stamped-at-release version placeholder).
 #
-# The Kind e2e lane is e2e-operator.yaml; image publishing is release.operator.yaml.
+# helm lint/template/package of every chart is lint.helm.yaml; the Kind e2e lane
+# is e2e-operator.yaml; the release (image + chart from one tag) is
+# release.operator.yaml.
 # =============================================================================
 
 name: lint.operator
@@ -77,14 +79,3 @@ jobs:
         run: go vet ./...
       - name: Unit and envtest suites
         run: make test
-
-  chart:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
-      - name: Lint
-        run: helm lint helm/planton-operator
-      - name: Render
-        run: helm template lint-render helm/planton-operator > /dev/null

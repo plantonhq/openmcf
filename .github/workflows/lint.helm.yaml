@@ -1,0 +1,64 @@
+# =============================================================================
+# Helm Charts Static Gate
+# =============================================================================
+# Every chart under helm/ lints, renders, and packages on every change, with the
+# development placeholder its Chart.yaml carries in git. Publishing is a
+# separate act: a `helm/<chart>/vX.Y.Z` tag (or, for planton-operator, the
+# operator's own tag) runs release.helm.yaml, which stamps the version at
+# package time. This lane never pushes.
+#
+# The operator chart's deeper contract (it owns its CRDs; what it renders is
+# controller-gen's output byte for byte) is held by the render test inside
+# `make -C operator test` (lint.operator.yaml).
+# =============================================================================
+
+name: lint.helm
+
+on:
+  pull_request:
+    paths:
+      - 'helm/**'
+      - '.github/workflows/lint.helm.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'helm/**'
+      - '.github/workflows/lint.helm.yaml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-helm-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  charts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+      - name: Lint, render, and package every chart with its development placeholder
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/helm-pkg
+          for chart in helm/*/; do
+            name="$(basename "${chart}")"
+            echo "=== ${name}"
+            helm dependency build "${chart}"
+            # enrollment.existingSecret placeholder satisfies the runner chart's
+            # required-token guard during lint; the other charts ignore it.
+            helm lint "${chart}" --set enrollment.existingSecret=lint-placeholder
+            helm template lint-render "${chart}" --set enrollment.existingSecret=lint-placeholder > /dev/null
+            helm package "${chart}" --destination /tmp/helm-pkg > /dev/null
+            version="$(helm show chart "${chart}" | awk '/^version:/{print $2; exit}')"
+            if [ "${version}" != "0.0.0-dev" ]; then
+              echo "::error::helm/${name}/Chart.yaml carries version ${version}; a checkout must carry the development placeholder 0.0.0-dev -- releases are tags (make release-helm chart=${name}), never edits to this line" >&2
+              exit 1
+            fi
+          done

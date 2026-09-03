@@ -23,6 +23,10 @@ const (
 	crdBaseDir = "../../config/crd/bases"
 
 	keepAnnotationLine = "    helm.sh/resource-policy: keep\n"
+
+	// devPlaceholder is what a checkout's Chart.yaml carries for version and
+	// appVersion; the release lane replaces both from the operator's tag.
+	devPlaceholder = "0.0.0-dev"
 )
 
 var crdNames = []string{"plantonplatforms.planton.ai", "plantonidentityproviders.planton.ai"}
@@ -113,6 +117,20 @@ func annotation(d document, key string) (string, bool) {
 	annotations, _ := meta["annotations"].(map[string]any)
 	v, ok := annotations[key].(string)
 	return v, ok
+}
+
+// The chart's version and appVersion are stamped from the operator's release
+// tag when it is packaged; a checkout carries a development placeholder. A
+// hand-typed version here would silently re-create the old "edit the line to
+// release" path and let the chart and the operator drift apart.
+func TestChartVersionsAreStampedAtRelease(t *testing.T) {
+	meta := loadChart(t).Metadata
+	if meta.Version != devPlaceholder {
+		t.Fatalf("Chart.yaml version must be the development placeholder %q (the release tag stamps the real one), got %q", devPlaceholder, meta.Version)
+	}
+	if meta.AppVersion != devPlaceholder {
+		t.Fatalf("Chart.yaml appVersion must be the development placeholder %q (the release tag stamps the real one), got %q", devPlaceholder, meta.AppVersion)
+	}
 }
 
 // Helm's crds/ directory installs once, outside the release, and never

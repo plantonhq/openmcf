@@ -87,16 +87,33 @@ uncomment away.
 
 ## Versioning and publishing
 
-Each chart owns its semantic `version` in `Chart.yaml`; `appVersion` pins the
-image line the chart deploys. Two version lines meet here: the operator is
-built from this repository's `operator/` directory and released on its own
-line (`ghcr.io/plantonhq/planton/operator:<tag>`, pinned by
-`planton-operator`'s `appVersion`), while the platform images the operator
-runs (control plane, runner, console) are built in the platform repository at
-the version a `PlantonPlatform`'s `spec.version` names, which is what the
-`planton` chart's `appVersion` records. Charts publish
-automatically on every change pushed to `main`
-([`release.helm.yaml`](../.github/workflows/release.helm.yaml)): lint →
-package → push to the OCI registry. Published versions are immutable — bump
-the chart `version` to release a change — and new chart packages are made
-publicly pullable as part of the same workflow.
+Every release in this repository is a git tag named by the artifact's
+directory and its version, and a `make release-*` front door computes the
+next version and pushes the tag; CI derives every artifact's version from the
+tag and changes nothing in git.
+
+| Tag | Releases | Front door |
+|---|---|---|
+| `vX.Y.Z` | the catalog (Terraform and Pulumi modules, InfraCharts) | `make release` |
+| `operator/vX.Y.Z` | the operator image `ghcr.io/plantonhq/planton/operator:vX.Y.Z` **and** the `planton-operator` chart as `X.Y.Z` with `appVersion` `vX.Y.Z` — one version line, the chart publishes only after the image is verified | `make release-operator` |
+| `helm/<chart>/vX.Y.Z` | the `<chart>` chart as `X.Y.Z` (`planton`, `planton-runner`) | `make release-helm chart=<chart>` |
+
+Each front door bumps the patch version of its own namespace by default
+(`bump=minor` or `bump=major` to bump more; `version=vX.Y.Z` to name it). The
+chart `version` is stamped at package time
+([`release.helm.yaml`](../.github/workflows/release.helm.yaml), `helm package
+--version`), so `Chart.yaml` in git carries the development placeholder
+`0.0.0-dev` and a checkout is a dev build: install one with `--set
+image.tag=<published tag>` where the chart deploys an image. Published
+versions are immutable (a re-run of a tag skips what is already published) and
+new chart packages are made publicly pullable in the same workflow. Pin what
+you install: `helm install ... --version X.Y.Z`.
+
+Two version lines meet here. The operator's own line is the tag above. The
+platform images the operator runs (control plane, runner, console) are built
+in the platform repository at the version a `PlantonPlatform`'s
+`spec.version` names; the `planton` chart's `appVersion` records the platform
+version a zero-values install deploys, and the `planton-runner` chart's
+`appVersion` the runner image it deploys. Those two `appVersion`s are pins
+kept in `Chart.yaml`, moved deliberately when a new platform line publishes,
+never stamped from a tag.

@@ -30,8 +30,11 @@ helm install planton-operator oci://ghcr.io/plantonhq/charts/planton-operator \
   --create-namespace
 ```
 
-Pin a specific chart version with `--version <x.y.z>`. The operator image the chart
-deploys is set by the chart's `appVersion` (override with `--set image.tag=<tag>`).
+Pin a specific chart version with `--version <x.y.z>`. The chart and the operator share
+one version line: chart `x.y.z` deploys operator image `vx.y.z`, both published from the
+same release tag (override the image with `--set image.tag=<tag>`). A checkout of this
+directory is a development build whose version and image tag are placeholders; install
+it with `--set image.tag=<published tag>` or an image you built yourself.
 
 After the operator is running, create a `PlantonPlatform` resource to deploy the platform:
 

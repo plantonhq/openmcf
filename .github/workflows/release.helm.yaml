@@ -1,27 +1,40 @@
 # =============================================================================
-# Publish Helm Charts (OCI)
+# Publish a Helm Chart (OCI)
 # =============================================================================
-# Publishes the Helm charts under helm/ (planton, planton-operator,
-# planton-runner) to GitHub Container Registry as OCI artifacts:
+# Publishes one chart under helm/ to GitHub Container Registry as an OCI
+# artifact:
 #
 #   oci://ghcr.io/plantonhq/charts/<chart>
 #
 # These are real Helm charts that deploy Planton's Kubernetes artifacts (the
-# operator and the runner). They are distinct from the InfraChart catalog under
-# charts/, which is Planton's own blueprint format published via release.charts.yaml.
+# operator, the platform declaration, the runner). They are distinct from the
+# InfraChart catalog under charts/, which is Planton's own blueprint format
+# published via release.charts.yaml.
 #
-# Versioning model (chart-owns-its-version, publish-on-change):
-#   - Each chart carries its own semantic Chart.yaml `version`. `appVersion` pins
-#     the image the chart deploys (built in the platform repo). The chart version
-#     is NOT tied to this repo's release tag.
-#   - Bump a chart's Chart.yaml `version` when you change the chart; the next push
-#     to main publishes that version. Already-published versions are immutable and
-#     skipped, so re-runs are safe.
+# Versioning model (every release is a tag; the tag stamps the version):
+#   - A chart releases from a git tag named by its directory and version,
+#     `helm/<chart>/vX.Y.Z` (front door: make release-helm chart=<chart>). The
+#     chart publishes as X.Y.Z; Chart.yaml in git carries a development
+#     placeholder that `helm package --version` replaces here. Nothing in git
+#     changes because of a release.
+#   - planton-operator is the exception: it releases with the operator. The
+#     `operator/vX.Y.Z` tag builds the image and then calls this workflow with
+#     the chart, the version X.Y.Z, and appVersion vX.Y.Z (the image tag), so
+#     the chart and the operator share one version line.
+#   - appVersion for the other charts is a pin kept in Chart.yaml (the image
+#     line they deploy is built elsewhere); it is not touched here.
+#   - Published versions are immutable: an already-published version is skipped,
+#     so re-running a release is safe.
 #
-# Behavior (mirrors build.ci-image.yaml):
-#   - Pull request touching helm/**  -> lint + package only (verify; no push).
-#   - Push to main touching helm/**   -> lint + package + push new versions.
-#   - Manual dispatch                 -> same as push.
+# Triggers:
+#   - push of a tag matching helm/*/v*          -> publish that chart
+#   - workflow_call (from release.operator.yaml) -> publish the given chart
+#   - workflow_dispatch                          -> publish or rehearse (push=false
+#                                                   packages and verifies, pushes
+#                                                   nothing)
+#
+# Pull-request verification of the charts (lint + package with the placeholder)
+# is lint.helm.yaml.
 #
 # Newly created GHCR chart packages are born private; the ensure-public step
 # below flips them so anonymous `helm install` works from the first publish.
@@ -33,23 +46,53 @@
 name: release.helm
 
 on:
-  pull_request:
-    paths:
-      - 'helm/**'
   push:
-    branches:
-      - main
-    paths:
-      - 'helm/**'
-  workflow_dispatch: {}
+    tags:
+      - 'helm/*/v*'
+  workflow_call:
+    inputs:
+      chart:
+        description: 'Chart directory name under helm/'
+        required: true
+        type: string
+      version:
+        description: 'Chart version to publish (X.Y.Z, no v)'
+        required: true
+        type: string
+      app_version:
+        description: 'appVersion to stamp; empty keeps the pin in Chart.yaml'
+        required: false
+        type: string
+        default: ''
+      push:
+        description: 'Push to the registry; false packages and verifies only'
+        required: false
+        type: boolean
+        default: true
+  workflow_dispatch:
+    inputs:
+      chart:
+        description: 'Chart directory name under helm/'
+        required: true
+        type: string
+      version:
+        description: 'Chart version to publish (X.Y.Z, no v)'
+        required: true
+        type: string
+      app_version:
+        description: 'appVersion to stamp; empty keeps the pin in Chart.yaml'
+        required: false
+        type: string
+        default: ''
+      push:
+        description: 'Push to the registry; false packages and verifies only (a rehearsal)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
   packages: write
-
-concurrency:
-  group: release-helm-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   OCI_REPO: ghcr.io/plantonhq/charts
@@ -58,7 +101,44 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # One publish per chart version at a time; a re-run of the same version is
+    # skipped by the immutability check below, never cancelled mid-push.
+    concurrency:
+      group: release-helm-${{ inputs.chart || github.ref_name }}
+      cancel-in-progress: false
     steps:
+      - name: Resolve chart, version, and mode
+        id: resolve
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.chart }}" ]; then
+            chart="${{ inputs.chart }}"
+            version="${{ inputs.version }}"
+            app_version="${{ inputs.app_version }}"
+            push="${{ inputs.push }}"
+          else
+            # A tag helm/<chart>/vX.Y.Z names the chart directory and its version.
+            ref="${GITHUB_REF_NAME}"
+            chart="${ref#helm/}"; chart="${chart%%/*}"
+            version="${ref##*/}"; version="${version#v}"
+            app_version=""
+            push="true"
+          fi
+          case "$version" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::chart version must look like X.Y.Z (got '$version'); the tag must be helm/<chart>/vX.Y.Z" >&2; exit 1 ;;
+          esac
+          if [ ! -f "helm/${chart}/Chart.yaml" ]; then
+            echo "::error::no chart at helm/${chart}; the tag or input must name a directory under helm/" >&2; exit 1
+          fi
+          {
+            echo "chart=$chart"
+            echo "version=$version"
+            echo "app_version=$app_version"
+            echo "push=$push"
+          } >> "$GITHUB_OUTPUT"
+          echo "Chart: ${chart}  version: ${version}  appVersion: ${app_version:-(pinned in Chart.yaml)}  push: ${push}"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -67,58 +147,67 @@ jobs:
         with:
           version: v3.16.0
 
-      # Log in only when we intend to push (main / manual dispatch). PRs from
-      # forks can't access packages: write anyway, so PR runs stay verify-only.
       - name: Log in to GHCR
-        if: github.event_name != 'pull_request'
+        if: steps.resolve.outputs.push == 'true'
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      - name: Lint, package, and (on main/dispatch) publish charts
+      - name: Lint, package with the stamped version, and publish
         run: |
           set -euo pipefail
-          PUSH="true"
-          [ "${{ github.event_name }}" = "pull_request" ] && PUSH="false"
+          chart="${{ steps.resolve.outputs.chart }}"
+          version="${{ steps.resolve.outputs.version }}"
+          app_version="${{ steps.resolve.outputs.app_version }}"
+          push="${{ steps.resolve.outputs.push }}"
+          dir="helm/${chart}"
           mkdir -p /tmp/helm-pkg
 
-          for chart in helm/*/; do
-            name="$(basename "${chart}")"
-            version="$(helm show chart "${chart}" | awk '/^version:/{print $2; exit}')"
-            echo "===================================================="
-            echo "Chart: ${name}  version: ${version}  push: ${PUSH}"
-            echo "===================================================="
+          helm dependency build "${dir}"
+          # enrollment.existingSecret placeholder satisfies the runner chart's
+          # required-token guard during lint; the other charts ignore it.
+          helm lint "${dir}" --set enrollment.existingSecret=lint-placeholder
 
-            # Vendor declared dependencies (the planton umbrella depends on
-            # the sibling planton-operator chart via file://). A no-op for
-            # dependency-free charts.
-            helm dependency build "${chart}"
+          # The tag is the version. --version replaces Chart.yaml's development
+          # placeholder; --app-version is set only when the caller owns that line
+          # (the operator release), otherwise Chart.yaml's pin stands.
+          if [ -n "${app_version}" ]; then
+            helm package "${dir}" --version "${version}" --app-version "${app_version}" --destination /tmp/helm-pkg
+          else
+            helm package "${dir}" --version "${version}" --destination /tmp/helm-pkg
+          fi
+          pkg="/tmp/helm-pkg/${chart}-${version}.tgz"
+          test -f "$pkg" || { echo "::error::helm package did not produce ${pkg}" >&2; exit 1; }
 
-            # enrollment.existingSecret placeholder satisfies the runner chart's
-            # required-token guard during lint; the other charts ignore it.
-            helm lint "${chart}" --set enrollment.existingSecret=lint-placeholder
-            helm package "${chart}" --destination /tmp/helm-pkg
+          echo "Packaged ${pkg}:"
+          helm show chart "$pkg" | grep -E '^(name|version|appVersion):'
+          packaged_version="$(helm show chart "$pkg" | awk '/^version:/{print $2; exit}')"
+          if [ "$packaged_version" != "$version" ]; then
+            echo "::error::packaged chart carries version ${packaged_version}, expected ${version}" >&2; exit 1
+          fi
 
-            if [ "${PUSH}" = "true" ]; then
-              # Immutability: never overwrite an already-published version.
-              if helm show chart "oci://${OCI_REPO}/${name}" --version "${version}" >/dev/null 2>&1; then
-                echo "chart ${name} ${version} already published; skipping"
-              else
-                helm push "/tmp/helm-pkg/${name}-${version}.tgz" "oci://${OCI_REPO}"
-                echo "Pushed oci://${OCI_REPO}/${name}:${version}"
-              fi
+          if [ "${push}" != "true" ]; then
+            echo "Rehearsal: push=false, nothing published."
+            exit 0
+          fi
 
-              # Ensure the package is publicly pullable (new packages are born
-              # private). Best-effort: visibility changes need package-admin
-              # rights, which GITHUB_TOKEN may lack -- then this warns and the
-              # flip is a one-time manual action in org package settings.
-              encoded="charts%2F${name}"
-              visibility="$(gh api "orgs/${{ github.repository_owner }}/packages/container/${encoded}" --jq '.visibility' 2>/dev/null || echo "unknown")"
-              if [ "${visibility}" != "public" ]; then
-                gh api --method PATCH "orgs/${{ github.repository_owner }}/packages/container/${encoded}" \
-                  -f visibility=public >/dev/null 2>&1 \
-                  && echo "Package charts/${name} is now public" \
-                  || echo "::warning::Could not set charts/${name} visibility to public; flip it manually in org package settings"
-              fi
-            fi
-          done
+          # Immutability: never overwrite an already-published version.
+          if helm show chart "oci://${OCI_REPO}/${chart}" --version "${version}" >/dev/null 2>&1; then
+            echo "chart ${chart} ${version} already published; skipping"
+          else
+            helm push "$pkg" "oci://${OCI_REPO}"
+            echo "Pushed oci://${OCI_REPO}/${chart}:${version}"
+          fi
+
+          # Ensure the package is publicly pullable (new packages are born
+          # private). Best-effort: visibility changes need package-admin
+          # rights, which GITHUB_TOKEN may lack -- then this warns and the
+          # flip is a one-time manual action in org package settings.
+          encoded="charts%2F${chart}"
+          visibility="$(gh api "orgs/${{ github.repository_owner }}/packages/container/${encoded}" --jq '.visibility' 2>/dev/null || echo "unknown")"
+          if [ "${visibility}" != "public" ]; then
+            gh api --method PATCH "orgs/${{ github.repository_owner }}/packages/container/${encoded}" \
+              -f visibility=public >/dev/null 2>&1 \
+              && echo "Package charts/${chart} is now public" \
+              || echo "::warning::Could not set charts/${chart} visibility to public; flip it manually in org package settings"
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

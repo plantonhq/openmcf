@@ -2,12 +2,16 @@ apiVersion: v2
 name: planton-runner
 description: Deploy Planton Runner with a runner token -- the runner enrolls itself on first boot and receives its own identity from the control plane
 type: application
-version: 0.4.0
-# appVersion is the runner image tag this chart deploys. The runner image is built
-# in the platform repo and published to ghcr.io/plantonhq/planton/runner; keep this
-# pinned to a known-good published tag. NOTE: the runner deployment path is not yet
-# exercised end to end (it lands with the in-cluster runner work) -- validate before
-# relying on it.
+# version is stamped at release time from the chart's tag
+# (helm/planton-runner/vX.Y.Z); the value below marks a checkout as a
+# development build.
+version: 0.0.0-dev
+# appVersion is the runner image tag this chart deploys. It is a pin, not this
+# chart's own version: the runner image is built in the platform repo and
+# published to ghcr.io/plantonhq/planton/runner, so it moves deliberately when a
+# new runner line is published. NOTE: the runner deployment path is not yet
+# exercised end to end (it lands with the in-cluster runner work) -- validate
+# before relying on it.
 appVersion: "v0.0.32-selfhosted-preview"
 home: https://github.com/plantonhq/planton
 sources:

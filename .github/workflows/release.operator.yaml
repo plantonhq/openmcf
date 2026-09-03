@@ -1,20 +1,25 @@
 # =============================================================================
-# Operator Image Release
+# Operator Release: image + chart, one version line
 # =============================================================================
-# Publishes the Planton Kubernetes operator image on its own version line.
+# Publishes the Planton Kubernetes operator image and its Helm chart from one
+# tag, so the two always agree:
 #
-# Image: ghcr.io/plantonhq/planton/operator:<version>
+#   Image: ghcr.io/plantonhq/planton/operator:vX.Y.Z
+#   Chart: oci://ghcr.io/plantonhq/charts/planton-operator:X.Y.Z (appVersion vX.Y.Z)
 #
 # The operator (operator/) releases independently of the catalog (bare vX.Y.Z
 # tags) and of the platform images it runs. Its tags carry the Go nested-module
 # prefix -- `operator/vX.Y.Z` -- so `go get github.com/plantonhq/planton/operator@vX.Y.Z`
-# resolves, and the image tag is the version without the prefix. The
-# planton-operator Helm chart's appVersion pins which image tag a chart version
-# deploys.
+# resolves, and the image tag is the version without the prefix. The chart is
+# packaged by release.helm.yaml with the version stamped from this tag, after
+# the image it points at has been verified; Chart.yaml in git carries a
+# development placeholder, so nothing in git changes because of a release.
 #
 # Triggers:
-#   - push of a tag matching operator/v*  (front door: make release-operator version=vX.Y.Z)
-#   - workflow_dispatch with an explicit version (rebuild an existing tag)
+#   - push of a tag matching operator/v*  (front door: make release-operator)
+#   - workflow_dispatch with an explicit version: rebuild an existing tag, or
+#     with dry_run=true rehearse the whole release (build without pushing, then
+#     package the chart without pushing) against any ref.
 #
 # One multi-platform buildx job produces a single manifest list for
 # linux/amd64 and linux/arm64; the Dockerfile's builder stage cross-compiles,
@@ -34,9 +39,14 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Operator version to build and publish (vX.Y.Z); the tag operator/<version> must exist'
+        description: 'Operator version to build and publish (vX.Y.Z); the tag operator/<version> must exist unless dry_run'
         required: true
         type: string
+      dry_run:
+        description: 'Rehearse: build the image without pushing and package the chart without pushing, from the ref this dispatch runs on'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -51,15 +61,21 @@ env:
   PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
-  publish:
+  image:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      chart_version: ${{ steps.version.outputs.chart_version }}
+      dry_run: ${{ steps.version.outputs.dry_run }}
     steps:
-      - name: Resolve version
+      - name: Resolve version and mode
         id: version
         run: |
+          dry_run="false"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             version="${{ inputs.version }}"
+            dry_run="${{ inputs.dry_run }}"
           else
             version="${GITHUB_REF_NAME#operator/}"
           fi
@@ -67,10 +83,22 @@ jobs:
             v[0-9]*.[0-9]*.[0-9]*) ;;
             *) echo "version must look like vX.Y.Z (got '$version')" >&2; exit 1 ;;
           esac
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "ref=operator/$version" >> "$GITHUB_OUTPUT"
+          # A rehearsal builds whatever ref it was dispatched on; a release
+          # builds exactly the tagged commit.
+          if [ "$dry_run" = "true" ]; then
+            ref="${GITHUB_REF}"
+          else
+            ref="operator/$version"
+          fi
+          {
+            echo "version=$version"
+            echo "chart_version=${version#v}"
+            echo "dry_run=$dry_run"
+            echo "ref=$ref"
+          } >> "$GITHUB_OUTPUT"
+          echo "Operator ${version} (chart ${version#v}); dry_run=${dry_run}; ref=${ref}"
 
-      - name: Checkout the tagged operator
+      - name: Checkout the operator to release
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.version.outputs.ref }}
@@ -79,25 +107,27 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
+        if: steps.version.outputs.dry_run != 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push (multi-platform)
+      - name: Build (multi-platform) and push unless rehearsing
         uses: docker/build-push-action@v6
         with:
           context: operator
           file: operator/Dockerfile
           platforms: ${{ env.PLATFORMS }}
-          push: true
+          push: ${{ steps.version.outputs.dry_run != 'true' }}
           provenance: false
           tags: ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
           cache-from: type=gha,scope=operator
           cache-to: type=gha,mode=max,scope=operator
 
       - name: Verify the published manifest list
+        if: steps.version.outputs.dry_run != 'true'
         run: |
           docker manifest inspect "${IMAGE}:${{ steps.version.outputs.version }}" > manifest.json
           for platform in ${PLATFORMS//,/ }; do
@@ -110,3 +140,18 @@ jobs:
             fi
           done
           echo "Published ${IMAGE}:${{ steps.version.outputs.version }} for ${PLATFORMS}"
+
+  # The chart that installs this image publishes only after the image is
+  # verified, stamped with this tag's version: chart X.Y.Z deploys operator
+  # vX.Y.Z. A rehearsal packages and verifies the chart without pushing.
+  chart:
+    needs: image
+    uses: ./.github/workflows/release.helm.yaml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      chart: planton-operator
+      version: ${{ needs.image.outputs.chart_version }}
+      app_version: ${{ needs.image.outputs.version }}
+      push: ${{ needs.image.outputs.dry_run != 'true' }}

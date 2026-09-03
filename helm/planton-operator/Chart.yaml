@@ -1,13 +1,14 @@
 apiVersion: v2
 name: planton-operator
-description: Kubernetes operator that deploys the full Planton stack via a PlantonPlatform CRD
+description: Kubernetes operator that deploys the full Planton stack via a PlantonPlatform CRD, together with the definitions it serves
 type: application
-version: 0.7.1
-# appVersion is the operator image tag this chart deploys. The operator is built
-# from this repository's operator/ directory and released on its own version
-# line to ghcr.io/plantonhq/planton/operator; keep this pinned to a published
-# tag and bump it deliberately when a new operator image is released.
-appVersion: "v0.0.41-selfhosted-preview"
+# version and appVersion are stamped at release time from the operator's tag
+# (operator/vX.Y.Z): the chart publishes as X.Y.Z and deploys the operator image
+# vX.Y.Z built from the same commit, so the chart and the operator share one
+# version line. The values below mark a checkout as a development build; install
+# one with --set image.tag=<published tag>, or build the image yourself.
+version: 0.0.0-dev
+appVersion: 0.0.0-dev
 home: https://github.com/plantonhq/planton
 sources:
   - https://github.com/plantonhq/planton

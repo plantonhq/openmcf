@@ -2,11 +2,16 @@ apiVersion: v2
 name: planton
 description: The PlantonPlatform resource as a Helm release - declare a Planton platform with proven defaults on a cluster that runs the Planton operator
 type: application
-version: 0.3.1
+# version is stamped at release time from the chart's tag (helm/planton/vX.Y.Z);
+# the value below marks a checkout as a development build.
+version: 0.0.0-dev
 # appVersion is the Planton platform version the PlantonPlatform resource
-# deploys (spec.version defaults to it). The operator that reconciles it is
-# installed separately by the planton-operator chart and versions on its own
-# line; this chart carries no operator and no CustomResourceDefinition.
+# deploys (spec.version defaults to it). It is a pin, not this chart's own
+# version: the platform images are built and versioned elsewhere, so it moves
+# deliberately when a new platform line is published. The operator that
+# reconciles the resource is installed separately by the planton-operator chart
+# and versions on its own line; this chart carries no operator and no
+# CustomResourceDefinition.
 appVersion: "v0.0.41-selfhosted-preview"
 home: https://github.com/plantonhq/planton
 sources:

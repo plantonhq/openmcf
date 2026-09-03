@@ -684,9 +684,11 @@ build-iac-runner-base-image:
 # ── Kubernetes operator (operator/) ───────────────────────────────────────────
 # The operator is a standalone Go module with its own kubebuilder Makefile; the
 # targets below are front doors that delegate into it. It releases on its own
-# version line: git tags `operator/vX.Y.Z` publish the image
-# ghcr.io/plantonhq/planton/operator:vX.Y.Z through release.operator.yaml, and
-# helm/planton-operator's appVersion pins the tag a chart version deploys.
+# version line: a git tag `operator/vX.Y.Z` publishes the image
+# ghcr.io/plantonhq/planton/operator:vX.Y.Z AND the planton-operator Helm chart
+# as X.Y.Z with appVersion vX.Y.Z (release.operator.yaml, which hands the chart
+# to release.helm.yaml once the image is verified). Chart and operator share
+# one number; nothing in git changes because of a release.
 OPERATOR_TAG_PREFIX := operator/
 
 .PHONY: operator-test
@@ -706,8 +708,36 @@ operator-manifests:  ## Regenerate the operator's CRDs and RBAC into config/ and
 	$(MAKE) -C operator manifests generate
 
 .PHONY: release-operator
-release-operator:  ## Tag and push an operator release: version=vX.Y.Z (required)
-	@if [ -z "$(version)" ]; then echo "usage: make release-operator version=vX.Y.Z"; exit 1; fi
-	@case "$(version)" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "version must look like vX.Y.Z (got $(version))"; exit 1;; esac
-	git tag -a "$(OPERATOR_TAG_PREFIX)$(version)" -m "operator $(version)"
-	git push origin "$(OPERATOR_TAG_PREFIX)$(version)"
+release-operator:  ## Release the operator image + chart: auto-bump (bump=major|minor|patch, default patch) or version=vX.Y.Z
+	@if [ "$(VERSION_EXPLICIT)" = "true" ]; then \
+		rel_version="$(version)"; \
+		case "$$rel_version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "version must look like vX.Y.Z (got $$rel_version)"; exit 1;; esac; \
+		echo "Releasing operator $$rel_version (explicit version)"; \
+	else \
+		rel_version=$$(python3 tools/ci/release/next_version.py $(bump) --prefix $(OPERATOR_TAG_PREFIX)); \
+		echo "Releasing operator $$rel_version ($(bump) bump)"; \
+	fi; \
+	git tag -a "$(OPERATOR_TAG_PREFIX)$$rel_version" -m "operator $$rel_version"; \
+	git push origin "$(OPERATOR_TAG_PREFIX)$$rel_version"
+
+# ── Helm charts (helm/) ───────────────────────────────────────────────────────
+# Every chart under helm/ releases from a git tag named by its directory and
+# version: `helm/<chart>/vX.Y.Z` publishes oci://ghcr.io/plantonhq/charts/<chart>
+# at X.Y.Z through release.helm.yaml, which stamps the version at package time
+# (Chart.yaml in git carries a development placeholder). planton-operator is the
+# exception: its chart releases with the operator (make release-operator).
+.PHONY: release-helm
+release-helm:  ## Release a Helm chart: chart=<name> (helm/<name>), auto-bump (bump=...) or version=vX.Y.Z
+	@if [ -z "$(chart)" ]; then echo "usage: make release-helm chart=<name> [bump=patch|minor|major | version=vX.Y.Z]"; exit 1; fi
+	@if [ ! -f "helm/$(chart)/Chart.yaml" ]; then echo "no chart at helm/$(chart)"; exit 1; fi
+	@if [ "$(chart)" = "planton-operator" ]; then echo "planton-operator releases with the operator: make release-operator"; exit 1; fi
+	@if [ "$(VERSION_EXPLICIT)" = "true" ]; then \
+		rel_version="$(version)"; \
+		case "$$rel_version" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "version must look like vX.Y.Z (got $$rel_version)"; exit 1;; esac; \
+		echo "Releasing chart $(chart) $$rel_version (explicit version)"; \
+	else \
+		rel_version=$$(python3 tools/ci/release/next_version.py $(bump) --prefix helm/$(chart)/); \
+		echo "Releasing chart $(chart) $$rel_version ($(bump) bump)"; \
+	fi; \
+	git tag -a "helm/$(chart)/$$rel_version" -m "helm chart $(chart) $$rel_version"; \
+	git push origin "helm/$(chart)/$$rel_version"
