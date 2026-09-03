@@ -57,8 +57,8 @@ confirmation, same as any other.
 `planton env list` includes pull-request PREVIEW environments
 (`{service}-pr-{n}`, marked as previews in the KIND column). They come and go
 with pull requests, refuse direct deletes, and never join promotion order —
-never propose architecture that depends on one. Their story lives in the
-`planton-service` skill's `preview-environments.md`.
+never propose architecture that depends on one. Their story lives in
+`references/service.preview-environments.md`.
 
 Read `infra project list` results with an eye on `env` and
 `infra_project_source` — a chart-sourced project in env `dev` means that

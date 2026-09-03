@@ -37,8 +37,7 @@ environment, service, pull request number, expiry — and it is server-managed
   environments without changing any walk.
 
 Everything else about them (authoring the previews tree, the verified URL,
-the one-call read) lives in the `planton-service` skill's
-`preview-environments.md`.
+the one-call read) lives in `references/service.preview-environments.md`.
 
 ## One cluster serves multiple environments (the default recommendation)
 

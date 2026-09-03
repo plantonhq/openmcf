@@ -79,7 +79,7 @@ Say so plainly and hand it to the platform's operators with the run id and the f
 
 ## Asked for → what you do
 
-- **"Why did my build fail?"** — `get_service_pipeline`; read `status.status_reason` first; class 2/3/4/6 is answered from the record alone; class 5 is `get_service_pipeline_logs` for the failing task's lines, relayed verbatim.
+- **"Why did my build fail?"** — `get_service_pipeline`; read `status.status_reason` first; class 2/3/4/6 is answered from the record alone; class 5 is `get_service_pipeline_logs` for the failing task's lines, relayed verbatim — then the files the build actually used, at the run's commit: `read_repo_files` with the service and `ref` = `spec.git_commit.sha` (the Dockerfile and the lockfile it installs; the pipeline and its tasks), so the explanation quotes what the build saw, never what the default branch says today. When the log and the files do not settle it, clone at that commit and reproduce (`references/service.reading-a-repository.md`).
 - **"Just rerun it"** — only when the fix is outside the commit (a credential, a runner, egress) or the failure was transient; a compile failure or a code failure needs a NEW commit, and say why.
 - **"Is this my fault or Planton's?"** — the class decides: 2 and 5 (code) are the developer's, 3, 4, and the egress row of 5 are an administrator's, and the signals in the section above are the platform's.
 - **"My build is stuck"** — `queued` means waiting for a runner (class 4 will name it within two minutes if none serves the connection); `running` past the build's normal length with no node advancing — read the graph, then the log so far; past an hour the record explains itself (class 6).
