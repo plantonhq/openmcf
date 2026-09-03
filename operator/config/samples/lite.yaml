@@ -1,0 +1,35 @@
+# Lite deployment profile for Kind clusters and local development.
+#
+# All defaults: single-instance PostgreSQL via CloudNativePG, minimal
+# storage, optional components enabled for validation. Placeholder images
+# for control plane and console (real images require external config).
+#
+# Usage:
+#   kubectl apply -f config/samples/lite.yaml
+#   kubectl get plantonplatform -w
+apiVersion: planton.ai/v1
+kind: PlantonPlatform
+metadata:
+  name: planton
+  namespace: default
+spec:
+  version: v1.0.0
+  database:
+    postgresql:
+      storageSize: 1Gi
+    redis:
+      storageSize: 256Mi
+  # The bundled secrets manager (spec.vault) is deployed by default; only its
+  # lab-sized volume is overridden here. Opting out is the deliberate act:
+  #   vault:
+  #     enabled: false
+  vault:
+    storageSize: 1Gi
+  controlPlane:
+    image:
+      repository: nginx
+      tag: 1.27-alpine
+  console:
+    image:
+      repository: nginx
+      tag: 1.27-alpine

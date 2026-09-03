@@ -113,22 +113,25 @@ planton   Ready   v1.0.0    5m
 
 ## CRD Management
 
-The `PlantonPlatform` CRD is installed automatically during `helm install`. Helm places
-CRDs in a special `crds/` directory that has the following behavior:
+The operator's CRDs (`PlantonPlatform` and `PlantonIdentityProvider`) are installed
+automatically during `helm install`. Helm places CRDs in a special `crds/` directory that
+has the following behavior:
 
 - CRDs are installed **before** any templates
 - CRDs are **not deleted** on `helm uninstall` (protects existing custom resources)
 - CRDs are **not upgraded** on `helm upgrade`
 
-**Source of truth:** `crds/planton.ai_plantonplatforms.yaml` is a copy of the operator's
-generated CRD, which is authored in the operator's own repository (kubebuilder
-`config/crd/bases`). Refresh this file from that generated CRD when the operator's API
-types change; do not hand-edit it here.
+**Source of truth:** the files in `crds/` and the manager's permissions in
+`rbac/manager-role.yaml` are controller-gen output, written by
+`make -C operator manifests` in this repository from the operator's Go types and RBAC
+markers. CI regenerates and diffs them on every change, so they are never edited by hand:
+change the Go source, regenerate, and the chart follows in the same commit.
 
-To upgrade the CRD after a chart version bump:
+To upgrade the CRDs after a chart version bump:
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton-operator/crds/planton.ai_plantonplatforms.yaml
+kubectl apply -f https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton-operator/crds/planton.ai_plantonidentityproviders.yaml
 ```
 
 ## Uninstallation

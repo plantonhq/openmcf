@@ -246,6 +246,8 @@ planton/
 ├── charts/                      # Ready-made infra charts composed from components
 ├── cmd/planton/                 # The open-source CLI and IaC engine (Go)
 ├── pkg/                         # Go libraries (generators, gates, engines)
+├── operator/                    # The Planton Kubernetes operator (own Go module; self-hosted installs)
+├── helm/                        # Helm charts that install Planton itself (operator, umbrella, runner)
 ├── skills/                      # Agent skills (incl. the multi-cloud-catalog skill)
 ├── site/                        # planton.ai website, docs, and blog
 ├── architecture/                # Architecture documentation

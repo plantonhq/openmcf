@@ -1,0 +1,7 @@
+apiVersion: planton.ai/v1
+kind: PlantonPlatform
+metadata:
+  name: my-planton
+  namespace: default
+spec:
+  version: v1.0.0

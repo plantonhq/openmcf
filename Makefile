@@ -680,3 +680,34 @@ e2e-vet:  ## Run go vet on E2E packages
 .PHONY: build-iac-runner-base-image
 build-iac-runner-base-image:
 	$(MAKE) -C base-images/iac-runner build-image
+
+# ── Kubernetes operator (operator/) ───────────────────────────────────────────
+# The operator is a standalone Go module with its own kubebuilder Makefile; the
+# targets below are front doors that delegate into it. It releases on its own
+# version line: git tags `operator/vX.Y.Z` publish the image
+# ghcr.io/plantonhq/planton/operator:vX.Y.Z through release.operator.yaml, and
+# helm/planton-operator's appVersion pins the tag a chart version deploys.
+OPERATOR_TAG_PREFIX := operator/
+
+.PHONY: operator-test
+operator-test:  ## Run the operator's unit and envtest suites
+	$(MAKE) -C operator test
+
+.PHONY: operator-e2e
+operator-e2e:  ## Run the operator's Kind e2e lane (creates and deletes its own cluster)
+	$(MAKE) -C operator test-e2e
+
+.PHONY: operator-build-image
+operator-build-image:  ## Build the operator image locally (IMG=<name:tag> to override)
+	$(MAKE) -C operator docker-build $(if $(IMG),IMG=$(IMG),)
+
+.PHONY: operator-manifests
+operator-manifests:  ## Regenerate the operator's CRDs and RBAC into config/ and helm/planton-operator
+	$(MAKE) -C operator manifests generate
+
+.PHONY: release-operator
+release-operator:  ## Tag and push an operator release: version=vX.Y.Z (required)
+	@if [ -z "$(version)" ]; then echo "usage: make release-operator version=vX.Y.Z"; exit 1; fi
+	@case "$(version)" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "version must look like vX.Y.Z (got $(version))"; exit 1;; esac
+	git tag -a "$(OPERATOR_TAG_PREFIX)$(version)" -m "operator $(version)"
+	git push origin "$(OPERATOR_TAG_PREFIX)$(version)"

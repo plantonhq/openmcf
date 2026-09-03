@@ -12,6 +12,11 @@ exports_files([".bazelrc"])
 # The public website: no Go, and its node_modules tree is enormous. Excluded
 # from the walk for the same reason buf.yaml excludes it from the proto module.
 # gazelle:exclude site
+# The Kubernetes operator is its own Go module (operator/go.mod) built with the
+# Go toolchain directly; nothing in the Bazel graph depends on it, and its
+# controller-runtime dependency set is not in the root go.mod that go_deps
+# reads, so Gazelle must not walk it.
+# gazelle:exclude operator
 
 gazelle(
     name = "gazelle",

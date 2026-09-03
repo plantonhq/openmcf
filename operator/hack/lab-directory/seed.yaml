@@ -1,0 +1,158 @@
+# The lab directory seed -- the ONE definition of the corporate directory the
+# platform rehearses enterprise identity against. Every consumer (the
+# operator's Docker-gated federation suite, the sync-engine suites, the e2e
+# lab cluster) seeds from THIS file, so a journey proven on one arm is
+# comparable on the other and a bug reproduced anywhere can be replayed
+# everywhere by naming the same fixture.
+#
+# All identities are fictional (lab.example.internal). Passwords here are lab
+# fixtures, deliberately committed -- there is nothing to protect and the e2e
+# phase signs in with them.
+#
+# Every entry below earns its place by encoding an edge the platform must
+# prove; the README names each fixture's purpose. Adding an edge case is a
+# data change here, never new plumbing.
+
+realm: LAB.EXAMPLE.INTERNAL
+netbiosDomain: LAB
+baseDn: DC=lab,DC=example,DC=internal
+adminPassword: Lab-Adm1n-Pass!
+
+# Dedicated OUs so search bases are realistic (a real AD never points tools
+# at the domain root).
+usersOu: OU=Staff
+groupsOu: OU=Groups
+
+# One shared password for all seeded people: the lab rehearses sign-in, not
+# password policy.
+userPassword: Lab-P4ssw0rd!
+
+users:
+  # ---- platform-eng: the primary mapping group (14 members) ----
+  - username: ada.lovelace
+    firstName: Ada
+    lastName: Lovelace
+    email: ada.lovelace@lab.example.internal
+  - username: grace.hopper
+    firstName: Grace
+    lastName: Hopper
+    email: grace.hopper@lab.example.internal
+  - username: alan.turing
+    firstName: Alan
+    lastName: Turing
+    email: alan.turing@lab.example.internal
+  - username: katherine.johnson
+    firstName: Katherine
+    lastName: Johnson
+    email: katherine.johnson@lab.example.internal
+  - username: radia.perlman
+    firstName: Radia
+    lastName: Perlman
+    email: radia.perlman@lab.example.internal
+  - username: annie.easley
+    firstName: Annie
+    lastName: Easley
+    email: annie.easley@lab.example.internal
+  - username: mary.jackson
+    firstName: Mary
+    lastName: Jackson
+    email: mary.jackson@lab.example.internal
+  - username: edsger.dijkstra
+    firstName: Edsger
+    lastName: Dijkstra
+    email: edsger.dijkstra@lab.example.internal
+  - username: barbara.liskov
+    firstName: Barbara
+    lastName: Liskov
+    email: barbara.liskov@lab.example.internal
+
+  # Two accounts, IDENTICAL display name -- display-collision rendering.
+  - username: alex.kim
+    firstName: Alex
+    lastName: Kim
+    email: alex.kim@lab.example.internal
+  - username: akim2
+    firstName: Alex
+    lastName: Kim
+    email: alex.kim2@lab.example.internal
+
+  # NO email -- the email-less degradation's permanent regression fixture
+  # (email is load-bearing across grants, invitations, and usernames).
+  - username: sam.nomail
+    firstName: Sam
+    lastName: Nomail
+
+  # Disabled but still holding memberships -- disabled-user handling at
+  # sign-in and sync (userAccountControl carries the disabled bit).
+  - username: dara.disabled
+    firstName: Dara
+    lastName: Disabled
+    email: dara.disabled@lab.example.internal
+    disabled: true
+
+  # A service/bot account without a person behind it, no email -- directory
+  # hygiene reality inside a mapped group.
+  - username: svc.jenkins
+    firstName: Jenkins
+    lastName: Automation
+
+  # ---- fixtures outside platform-eng ----
+
+  # Email matches the seeded platform admin the tests declare (adminEmail:
+  # it.admin@lab.example.internal) -- the seeded-admin collision, rehearsable.
+  - username: it.admin
+    firstName: Ida
+    lastName: Admin
+    email: it.admin@lab.example.internal
+
+  # In no mapped group at all -- the signs-in-but-lands-with-nothing path
+  # (and the seat-cap interaction).
+  - username: lee.lonely
+    firstName: Lee
+    lastName: Lonely
+    email: lee.lonely@lab.example.internal
+
+groups:
+  # The nested chain: platform-eng < engineering < everyone (transitive
+  # membership resolution).
+  - name: everyone
+    memberGroups: [engineering]
+    members: [lee.lonely]
+  - name: engineering
+    memberGroups: [platform-eng]
+    members: [it.admin]
+  - name: platform-eng
+    members:
+      - ada.lovelace
+      - grace.hopper
+      - alan.turing
+      - katherine.johnson
+      - radia.perlman
+      - annie.easley
+      - mary.jackson
+      - edsger.dijkstra
+      - barbara.liskov
+      - alex.kim
+      - akim2
+      - sam.nomail
+      - dara.disabled
+      - svc.jenkins
+
+  # Name collides with a pre-existing Planton team name in the e2e journeys
+  # -- mirror-naming collision.
+  - name: developers
+    members: [ada.lovelace, alan.turing]
+
+  # 220 members total: the 14 above + 206 generated -- blast-radius preview
+  # realism ("214 directory members, 12 active on Planton").
+  - name: all-engineering
+    memberGroups: [platform-eng]
+
+# Bulk population for blast-radius realism, applied only when a consumer asks
+# for it (the operator's federation suite skips it; the mapping-preview and
+# e2e suites seed it). Generated users have no email deliberately -- realism
+# for large directories -- and land in the named group.
+generated:
+  - prefix: eng
+    count: 206
+    group: all-engineering

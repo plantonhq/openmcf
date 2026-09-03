@@ -1,0 +1,17 @@
+# Kind cluster configuration for Planton operator E2E testing.
+#
+# The lite stack deploys PostgreSQL, Valkey, OpenFGA, and
+# Temporal (~10 pods). This config ensures adequate resources and a local
+# storage class for persistent volumes.
+#
+# Usage: kind create cluster --name planton-operator-dev --config hack/kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"

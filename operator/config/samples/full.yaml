@@ -1,0 +1,95 @@
+apiVersion: planton.ai/v1
+kind: PlantonPlatform
+metadata:
+  name: my-planton
+  namespace: planton-system
+spec:
+  version: v1.0.0
+
+  # License -- omit entirely for Community mode. Deliver the purchased key
+  # inline OR by Secret reference (at most one; renewals are then a Secret
+  # edit + control-plane rollout, never a reinstall). The control plane
+  # verifies the key offline and reports what it grants; kubectl's LICENSE
+  # column shows the delivery mode.
+  # license:
+  #   key: plk1.1...                     # the token from your purchase email
+  #   secretKeyRef: {name: planton-license, key: license-key}
+
+  database:
+    postgresql:
+      storageSize: 10Gi
+    redis:
+      storageSize: 1Gi
+
+  # External access -- a friction ladder, each step one field up from the last:
+  #   (nothing)                        -> the built-in front-door gateway:
+  #                                       console + API + sign-in on ONE
+  #                                       kubectl port-forward command (the
+  #                                       gateway component's status prints it)
+  #   enabled: true                    -> URL auto-derived from the ingress
+  #                                       controller's address, plain HTTP
+  #   + hostname                       -> your hostname, plain HTTP
+  #   + tls.secretName                 -> HTTPS with a cert you bring
+  #   + tls.issuer: {name, kind}       -> HTTPS issued/renewed by cert-manager
+  # One origin serves the console, the API, AND sign-in in every mode;
+  # status.consoleUrl reports it.
+  ingress:
+    enabled: false
+    hostname: planton.example.com
+    # ingressClassName: nginx          # omit to use the cluster default
+    # tls:
+    #   secretName: planton-tls        # OR issuer: {name: my-issuer, kind: ClusterIssuer}
+
+  # The port-forward front door (used only while ingress is disabled). The
+  # local port is baked into sign-in URLs, so the port-forward must map it
+  # exactly -- copy the command from the gateway component's status.
+  # gateway:
+  #   localPort: 8080
+
+  # Sign-in: EVERY install deploys the bundled identity server (Keycloak) --
+  # there is no unauthenticated mode. Set adminEmail to YOUR email to seed the
+  # first admin user (their one-time password lands in the
+  # {name}-identity-admin-user Secret; first sign-in forces a password change
+  # and asks for their name). There is no generic default admin -- without
+  # adminEmail, no sign-in user is seeded.
+  identity:
+    adminEmail: you@example.com
+    # realm: planton
+    # image: {repository: quay.io/keycloak/keycloak, tag: "26.3"}
+
+  # First-boot workspace -- all optional. Defaults seed an organization and
+  # environment both named "default", owned by the adminEmail above (who also
+  # becomes the install's platform operator at first sign-in).
+  # bootstrap:
+  #   organization: {slug: acme, name: Acme Corp}
+  #   environment: {slug: prod}
+  #   admins: [you@example.com, teammate@example.com]
+  #   iacProvisioner: tofu               # or terraform; the zero-config default is tofu
+
+  # In-cluster runner -- deployed BY DEFAULT: the worker that executes IaC
+  # deploys, pre-registered at first boot with state on its own volume. Zero
+  # config gets a working runner; deploys to a cloud additionally need an
+  # identity, via ONE of:
+  #   serviceAccountAnnotations        -> workload identity, no keys stored
+  #                                       anywhere (EKS IRSA shown; GKE/AKS
+  #                                       use their own annotation)
+  #   cloudCredentialsSecretName       -> a Secret you own, injected as env
+  # The runner component's status suggests the right one for your cluster.
+  # runner:
+  #   enabled: true
+  #   storageSize: 2Gi
+  #   serviceAccountAnnotations:
+  #     eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/planton-runner
+  #   cloudCredentialsSecretName: my-cloud-credentials
+
+  # Pipeline builds -- enabled BY DEFAULT (builds power Service Hub): the
+  # operator installs Tekton Pipelines (or detects an existing install --
+  # see prerequisites.tektonPipelines), points its CloudEvents sink at the
+  # runner's webhook, runs the runner's build worker, and seeds this cluster
+  # as the platform's build destination. Opting OUT is the explicit act:
+  # build:
+  #   enabled: false
+
+  components:
+    graph:
+      enabled: false

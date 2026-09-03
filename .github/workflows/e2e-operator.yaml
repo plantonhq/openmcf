@@ -1,0 +1,53 @@
+# =============================================================================
+# Operator E2E (Kind)
+# =============================================================================
+# Runs the operator's own end-to-end suite (operator/test/e2e): builds the
+# manager image from the working tree, loads it into a dedicated Kind cluster,
+# installs the CRDs and the manager through the kubebuilder path, and asserts
+# the manager runs and serves metrics. Zero cloud cost; the suite creates and
+# deletes its own cluster (KIND_CLUSTER=planton-operator-test-e2e).
+#
+# Runs in the CI toolchain container (Go, kind, kubectl, docker CLI) with the
+# host runner's Docker socket mounted -- the same shape as e2e-kubernetes.yaml,
+# because kind creates clusters as Docker containers and a container job has no
+# daemon of its own.
+#
+# Triggers: pull requests and pushes touching operator/**, a weekly schedule as
+# the drift net, and manual dispatch.
+# =============================================================================
+
+name: e2e-operator
+
+on:
+  pull_request:
+    paths:
+      - 'operator/**'
+      - '.github/workflows/e2e-operator.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'operator/**'
+      - '.github/workflows/e2e-operator.yaml'
+  schedule:
+    - cron: '0 4 * * 0'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-operator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/plantonhq/planton/ci-toolchain:latest
+      options: --user root -v /var/run/docker.sock:/var/run/docker.sock
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run the operator Kind e2e lane
+        run: make -C operator test-e2e

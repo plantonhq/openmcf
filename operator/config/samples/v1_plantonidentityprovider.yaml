@@ -1,0 +1,45 @@
+# Connects a company's identity system to a self-hosted Planton. Exactly one
+# arm per resource: activeDirectory (on-prem AD over LDAP) or oidc (Entra
+# ID / ADFS / generic OIDC brokering). Credentials arrive ONLY by Secret
+# reference -- there are no inline credential fields.
+apiVersion: planton.ai/v1
+kind: PlantonIdentityProvider
+metadata:
+  labels:
+    app.kubernetes.io/name: planton-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: corp-directory
+  namespace: planton
+spec:
+  # Optional: omit when this namespace runs a single PlantonPlatform.
+  platformRef:
+    name: planton
+  activeDirectory:
+    servers: ["ldaps://dc1.corp.example.com:636"]
+    caBundleSecretRef: # only for a private CA
+      name: corp-ldap-ca
+      key: ca.crt
+    bindDn: "CN=svc-planton,OU=Service Accounts,DC=corp,DC=example,DC=com"
+    bindCredentialSecretRef:
+      name: corp-ldap-bind
+      key: password
+    usersDn: "OU=Staff,DC=corp,DC=example,DC=com"
+    groupsDn: "OU=Groups,DC=corp,DC=example,DC=com"
+  signInButtonLabel: "Sign in with Corp Directory"
+---
+# The brokered arm, for reference (apply one arm per resource):
+# apiVersion: planton.ai/v1
+# kind: PlantonIdentityProvider
+# metadata:
+#   name: corp-entra
+#   namespace: planton
+# spec:
+#   oidc:
+#     issuerUrl: "https://login.microsoftonline.com/<tenant-id>/v2.0"
+#     clientId: "9c5e..."
+#     clientSecretRef:
+#       name: corp-entra-client
+#       key: client-secret
+#     # Entra: oid is tenant-stable; the default (sub) is pairwise per app
+#     # registration. Planton correlates accounts and offboarding on this id.
+#     subjectClaim: "oid"

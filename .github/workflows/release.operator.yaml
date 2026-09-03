@@ -1,0 +1,112 @@
+# =============================================================================
+# Operator Image Release
+# =============================================================================
+# Publishes the Planton Kubernetes operator image on its own version line.
+#
+# Image: ghcr.io/plantonhq/planton/operator:<version>
+#
+# The operator (operator/) releases independently of the catalog (bare vX.Y.Z
+# tags) and of the platform images it runs. Its tags carry the Go nested-module
+# prefix -- `operator/vX.Y.Z` -- so `go get github.com/plantonhq/planton/operator@vX.Y.Z`
+# resolves, and the image tag is the version without the prefix. The
+# planton-operator Helm chart's appVersion pins which image tag a chart version
+# deploys.
+#
+# Triggers:
+#   - push of a tag matching operator/v*  (front door: make release-operator version=vX.Y.Z)
+#   - workflow_dispatch with an explicit version (rebuild an existing tag)
+#
+# One multi-platform buildx job produces a single manifest list for
+# linux/amd64 and linux/arm64; the Dockerfile's builder stage cross-compiles,
+# so no emulation is involved.
+#
+# Registry access: the package is granted to this repository's Actions in the
+# package's settings on GHCR. Without that grant the push step is refused with
+# a permission error -- the fix is the grant, not a token.
+# =============================================================================
+
+name: release.operator
+
+on:
+  push:
+    tags:
+      - 'operator/v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Operator version to build and publish (vX.Y.Z); the tag operator/<version> must exist'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: release-operator-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/plantonhq/planton/operator
+  PLATFORMS: linux/amd64,linux/arm64
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#operator/}"
+          fi
+          case "$version" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "version must look like vX.Y.Z (got '$version')" >&2; exit 1 ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "ref=operator/$version" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the tagged operator
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.version.outputs.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (multi-platform)
+        uses: docker/build-push-action@v6
+        with:
+          context: operator
+          file: operator/Dockerfile
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          provenance: false
+          tags: ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
+          cache-from: type=gha,scope=operator
+          cache-to: type=gha,mode=max,scope=operator
+
+      - name: Verify the published manifest list
+        run: |
+          docker manifest inspect "${IMAGE}:${{ steps.version.outputs.version }}" > manifest.json
+          for platform in ${PLATFORMS//,/ }; do
+            os="${platform%/*}"; arch="${platform#*/}"
+            if ! jq -e --arg os "$os" --arg arch "$arch" \
+                 '.manifests[] | select(.platform.os == $os and .platform.architecture == $arch)' \
+                 manifest.json > /dev/null; then
+              echo "published image is missing platform $platform" >&2
+              exit 1
+            fi
+          done
+          echo "Published ${IMAGE}:${{ steps.version.outputs.version }} for ${PLATFORMS}"

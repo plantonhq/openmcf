@@ -1,0 +1,88 @@
+# =============================================================================
+# Operator Static Gate
+# =============================================================================
+# The Kubernetes operator (operator/) is its own Go module, built with the Go
+# toolchain directly and packaged by helm/planton-operator. This lane is the
+# headless proof for both: the code compiles and vets, the envtest suite passes
+# against a real API server, everything controller-gen derives from the Go
+# sources (CRDs, the manager ClusterRole, deepcopy code) is committed fresh in
+# config/ AND in the chart, and the chart lints and renders.
+#
+# Jobs:
+#   manifests-fresh (PR + push, BLOCKING) -- regenerate with controller-gen and
+#                    diff; a hand-edited CRD or a chart copy that drifted from the
+#                    RBAC markers fails here. See hack/guards/ensure_operator_manifests_fresh.sh.
+#   build-and-test  (PR + push, BLOCKING) -- go build, go vet, envtest.
+#   chart           (PR + push, BLOCKING) -- helm lint + helm template --include-crds.
+#
+# The Kind e2e lane is e2e-operator.yaml; image publishing is release.operator.yaml.
+# =============================================================================
+
+name: lint.operator
+
+on:
+  pull_request:
+    paths:
+      - 'operator/**'
+      - 'helm/planton-operator/**'
+      - 'hack/guards/ensure_operator_manifests_fresh.sh'
+      - '.github/workflows/lint.operator.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'operator/**'
+      - 'helm/planton-operator/**'
+      - 'hack/guards/ensure_operator_manifests_fresh.sh'
+      - '.github/workflows/lint.operator.yaml'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-operator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manifests-fresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: operator/go.mod
+          cache-dependency-path: operator/go.sum
+      - name: Verify generated CRDs, RBAC, and deepcopy code are committed fresh
+        run: bash ./hack/guards/ensure_operator_manifests_fresh.sh
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: operator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: operator/go.mod
+          cache-dependency-path: operator/go.sum
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Unit and envtest suites
+        run: make test
+
+  chart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Lint
+        run: helm lint helm/planton-operator
+      - name: Render (CRDs included)
+        run: helm template lint-render helm/planton-operator --include-crds > /dev/null

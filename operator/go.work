@@ -1,0 +1,12 @@
+// The operator is a standalone Go module. This workspace file exists so that
+// go commands run inside operator/ resolve against this module alone instead
+// of the repository root's go.work, which would otherwise be found first and
+// reject the directory as not belonging to any listed module.
+//
+// The root workspace deliberately does not include the operator: workspace
+// mode unifies member requirements, and the operator's Kubernetes library
+// versions would change what the root module resolves under `go build` while
+// Bazel, reading only go.mod, would not follow.
+go 1.26.0
+
+use .
