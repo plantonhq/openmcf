@@ -106,7 +106,7 @@ planton service kustomize build
 
 ## Self-Managed Pipelines
 
-A service whose `spec.build` selects `tektonPipeline` instead of `dockerfile` or `buildpacks` builds with your own Tekton pipeline from the repository — the platform compiles it at dispatch and handles deployment orchestration exactly as for the platform tracks.
+A service whose `spec.build` selects `tektonPipeline` instead of `dockerfile` or `buildpacks` builds with your own Tekton pipeline — from the repository, or a pipeline the organization published once and the service names with `tektonPipeline: {pipeline: <name>}` — the platform compiles it at dispatch and handles deployment orchestration exactly as for the platform tracks.
 
 See [Self-Managed Pipelines](/docs/ci-cd/self-managed-pipelines) for details on writing custom build pipelines.
 

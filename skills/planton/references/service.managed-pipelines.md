@@ -21,7 +21,7 @@ A service's `spec.build` selects a track by its builder:
 
 - `build.dockerfile` → the **dockerfile** track: clone the repository at the built commit, build and push the image with BuildKit from the service's Dockerfile (respecting `dockerfilePath` and `context`), render the kustomize overlays for the deploy stage.
 - `build.buildpacks` → the **buildpacks** track: clone, build and push the image with a Cloud Native Buildpacks builder (language detected from the source), render the kustomize overlays.
-- `build.tektonPipeline` → no platform track: the service's own pipeline (from its repository at the built commit, or an organization-published record) compiles through the same compiler with the same contract.
+- `build.tektonPipeline` → no platform track: the service's own pipeline (from its repository at the built commit, or an organization-published record — `references/service.org-publishing.md`) compiles through the same compiler with the same contract.
 
 There is no platform track for Cloudflare Worker scripts; a Worker service builds through its own repository pipeline (`references/service.pipeline-authoring.md`).
 
@@ -54,7 +54,7 @@ A pipeline may require exactly one pipeline-level workspace: `source` (the clone
 
 ## Validate before you push
 
-`planton service pipeline validate <pipeline.yaml> --param <key>=<value>...` runs the very same compiler locally against the platform catalog and reports every verdict (`-o json` for the stable shape: `valid`, `source`, `pin`, `compiler_version`, the verdict list; exit 1 on any verdict). `--track <name>` validates a platform track against your params instead of a file, and `--task <ref>=<path>` supplies a task definition the way an organization-published record would. Fix every verdict, then push — a pipeline that validates clean compiles clean at dispatch.
+`planton service pipeline validate <pipeline.yaml> [--param <key>=<value>]...` runs the very same compiler locally against the platform catalog and reports every verdict (`-o json` for the stable shape: `valid`, `source`, `pin`, `compiler_version`, `compiled_bytes`, `tasks_resolved`, `errors`; exit 1 on any error). The platform contract above counts as supplied — pass `--param` only for the pipeline's own params. `--track <name>` validates a platform track instead of a file, and `--task <ref>=<path>` supplies a task definition the way an organization-published record would. Fix every verdict, then push — a pipeline that validates clean compiles clean at dispatch.
 
 ## The images a build cluster pulls
 

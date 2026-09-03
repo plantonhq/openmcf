@@ -115,13 +115,13 @@ Pin every image by digest (`crane digest <image:tag>`); secrets are `valueFrom.s
 - **"Add a lint/test/scan step"**: write `.planton/tasks/<name>.yaml` (a Task with a `source` workspace), add a pipeline task with `taskRef: {name: <name>}`, `runAfter: [git-checkout]`, and make `build-image` `runAfter` it if the step must gate the build.
 - **"Only on releases" / "only on pull requests"**: declare `git-tag` (or `pull-request-number`) with `default: ""`; on the task add `when: [{input: "$(params.git-tag)", operator: notin, values: [""]}]` (use `in` with `values: [""]` for "only when NOT a tag").
 - **"Use our own clone/build step"**: put a Task with the catalog task's name in `tasks/` — it shadows the catalog's.
-- **"Share this task across services"**: publish it as a `TektonTask` record (`planton apply -f`, `spec.yamlContent` = the Task YAML) and delete the repository copy.
+- **"Share this task / this pipeline across services"**: publish it as a `TektonTask` / `TektonPipeline` record and consume it by name -- the records, the publish check, and the switch are `references/service.org-publishing.md`.
 - **"Switch this service to its own pipeline"**: `spec.build.dockerfile`/`buildpacks` → `spec.build.tektonPipeline: {}`; keep `registry` and `imageRepositoryPath`; write the pipeline (start from the worked example); validate; `planton apply -f service.yaml`.
 - **"Move the pipeline file"**: set `tektonPipeline.yamlFile`; move the `tasks/` directory beside the new location.
 
 ## Validate, always, before "ready"
 
-`planton service pipeline validate .planton/pipeline.yaml --param <key>=<value>... [--param git-tag=v1.0.0] -o json` runs the dispatch compiler locally: discovers the tasks beside the file, resolves catalog refs, checks the contract, and returns `{valid, source, pin, compiler_version, tasks_resolved: [{name, source: repo|org|platform}], verdicts: [{code, subject, message}]}`; exit 1 on any verdict. Supply every `tektonPipeline.params` key with `--param`; `--task <name>=<path>` stands in for an organization-published task. Relay verdicts in the developer's words and fix them yourself — every one below has a mechanical fix.
+`planton service pipeline validate .planton/pipeline.yaml [--param <key>=<value>]... -o json` runs the dispatch compiler locally: discovers the tasks beside the file, resolves catalog refs, checks the contract, and returns `{valid, source, pin, compiler_version, compiled_bytes, tasks_resolved: [{name, source: repo|org|platform}], errors: [{code, subject, message}]}`; exit 1 on any error. The platform's contract stands in for the dispatch: the always-supplied params count as supplied (and a pipeline that forgets to declare one is refused with `undeclared_param`, exactly as the dispatch would), declared optional facts count as supplied, and `image-name` / the dockerfile params are treated as supplied when declared. Pass `--param` only for the pipeline's own params (every `tektonPipeline.params` key; `--param git-tag=v1.4.0` exercises a `when`); `--task <name>=<path>` stands in for an organization-published task. Relay errors in the developer's words and fix them yourself — every one below has a mechanical fix.
 
 ## Every verdict → the fix
 
@@ -130,9 +130,9 @@ Pin every image by digest (`crane digest <image:tag>`); secrets are `valueFrom.s
 - `multiple_pipeline_documents` — the source holds more than one Pipeline; keep one, turn the rest into Tasks or separate services.
 - `unexpected_document_kind` (subject: file or document index) — a document beside the pipeline is neither Pipeline nor Task; remove it or move it out of `tasks/`.
 - `duplicate_task_definition` (subject: the name) — two repository documents define the same Task name; rename one.
-- `unresolved_task_ref` (subject: the ref) — the name is in no repository file, no published record, no catalog; add the Task beside the pipeline, publish it, or fix the spelling.
+- `unresolved_task_ref` (subject: the ref) — the name is in no repository file, no published record, no catalog; add the Task beside the pipeline, publish it (`references/service.org-publishing.md`), or fix the spelling.
 - `resolver_ref_unsupported` (subject: the pipeline task) — replace `taskRef.resolver` with a plain `name` and add the Task beside the pipeline.
-- `undeclared_param` (subject: the param) — add it to `spec.params` (with a default if the pipeline ignores it).
+- `undeclared_param` (subject: the param) — add it to `spec.params` (with a default if the pipeline ignores it); for a platform contract param the message says so -- every pipeline must declare all nine.
 - `missing_required_param` (subject: the param) — give it a `default`, or add it under `spec.build.tektonPipeline.params`.
 - `unbindable_workspace` (subject: the workspace) — only `source` is bound; mark the workspace `optional: true` or remove it.
 - `dangling_result_reference` (subject: the reference) — fix `$(tasks.<task>.results.<result>)` to a task and result that exist.

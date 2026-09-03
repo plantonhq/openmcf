@@ -416,8 +416,7 @@ Hold these invariants in every service answer:
 - **Receipts are exact.** Promote re-applies a captured
   artifact+configuration pair; rollback restores a receipt byte-for-byte.
   Neither re-renders, neither needs the repository reachable.
-- **Refusals name their working paths** -- relay them, never retry around
-  them.
+- **Refusals name their working paths**: relay them, never retry them.
 
 Registration has four doors: detection-first, the primary -- the platform
 reads the repository and proposes, the user confirms once
@@ -475,6 +474,7 @@ memory what a reference answers precisely.
 | `references/service.reading-a-run.md` | Reading one run and reporting it in the user's words: build vs delivery shapes, status vocabulary, per-task errors, gates, mirrored external CI runs |
 | `references/service.managed-pipelines.md` | What a Planton-managed build runs: the platform tracks, the catalog tasks a repository pipeline reuses by plain name, the param contract and bindable workspaces, the `platform-content` pin, the compile verdicts, the images a build cluster pulls |
 | `references/service.pipeline-authoring.md` | Writing or changing a service's own pipeline: the files, Tasks beside the pipeline, name resolution, the param contract and the optional trigger facts with `when`, the validate loop, every compile verdict's fix, and what to edit when asked for a step, a release-only step, or a shared task |
+| `references/service.org-publishing.md` | Sharing a pipeline or a task across services: the `TektonPipeline`/`TektonTask` record shapes, the name law, publish order and the publish check, consuming by one line or a plain `taskRef`, what an update changes, the delete guards, listing what the organization published |
 | `references/service.delivery-verbs.md` | Deploying an image built anywhere, promoting between environments, rolling back, tag releases, feature-branch deploys, explaining a refused delivery |
 | `references/service.urls-and-rollout-verification.md` | Where a deployed service answers: URLs on the deployment record, reading the rollout verdict accurately |
 | `references/service.serving-domains.md` | A service on the customer's own domain: the environment's serving-domain declaration, the hostname label, fill-blank injection, the `domain_serving` check |

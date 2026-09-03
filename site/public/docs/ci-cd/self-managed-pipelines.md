@@ -141,11 +141,10 @@ The platform binds one pipeline-level workspace: `source`, the cloned repository
 ## Validate before you push
 
 ```bash
-planton service pipeline validate .planton/pipeline.yaml \
-  --param git-tag=v1.4.0 -o json
+planton service pipeline validate .planton/pipeline.yaml -o json
 ```
 
-The same compiler that runs at dispatch runs locally: it discovers the tasks beside the file, resolves catalog references, checks the parameter contract, and reports every problem in one pass (`--task <name>=<path>` supplies a task the way an organization-published record would). The JSON carries `valid`, `source`, `pin`, `compiler_version`, the resolved tasks and where each came from, and every verdict; the exit code is 1 on any verdict. A pipeline that validates clean compiles clean.
+The same compiler that runs at dispatch runs locally: it discovers the tasks beside the file, resolves catalog references, checks the parameter contract, and reports every problem in one pass. The platform's contract stands in for the dispatch — the parameters every build receives count as supplied, and a pipeline that forgets to declare one is refused here exactly as the dispatch would refuse it — so pass `--param` only for the pipeline's own parameters (`--param git-tag=v1.4.0` exercises a `when`); `--task <name>=<path>` supplies a task the way an organization-published record would. The JSON carries `valid`, `source`, `pin`, `compiler_version`, `compiled_bytes`, `tasks_resolved` (each with the rung that answered it), and `errors`; the exit code is 1 on any error. A pipeline that validates clean compiles clean.
 
 ## Compile verdicts
 
@@ -158,7 +157,7 @@ The same compiler that runs at dispatch runs locally: it discovers the tasks bes
 | `duplicate_task_definition` | Two repository documents define a Task with the same name | Rename one |
 | `unresolved_task_ref` | A `taskRef` names nothing in your repository, your organization, or the catalog | Add the Task beside the pipeline, publish it, or fix the name |
 | `resolver_ref_unsupported` | A `taskRef` uses a remote resolver | Reference the task by name; inline it or add it beside the pipeline |
-| `undeclared_param` | The platform supplies a parameter the pipeline does not declare | Declare it under `spec.params` |
+| `undeclared_param` | The platform supplies a parameter the pipeline does not declare (or a `build.tektonPipeline.params` key is not declared) | Declare it under `spec.params` — every pipeline declares the nine always-supplied parameters |
 | `missing_required_param` | A declared parameter has no default and nothing supplies it | Give it a default, or set it under `build.tektonPipeline.params` |
 | `unbindable_workspace` | The pipeline requires a workspace the platform does not bind | Use `source`, or mark the workspace `optional: true` |
 | `dangling_result_reference` | `$(tasks.X.results.Y)` names a task or result that does not exist | Fix the task or result name |
@@ -169,9 +168,38 @@ The same compiler that runs at dispatch runs locally: it discovers the tasks bes
 
 Every run stamps the compiled definition on its record: the exact YAML that executed, `source: repo`, and the commit SHA as its pin. A rerun replays those bytes byte-identically. The run view and `planton service pipeline get` show them; see [Pipelines](/docs/ci-cd/pipelines) for the run model.
 
-## Organization-published pipelines
+## Organization-published pipelines and tasks
 
-An organization can publish a pipeline once and reuse it across services: `build.tektonPipeline.pipeline: <name>` compiles from the published `TektonPipeline` record's content at dispatch, and published `TektonTask` records resolve for plain references the same way. Publishing is one `planton apply -f` of the record.
+An organization writes a pipeline once and every service consumes it by name. Two record kinds carry the Tekton content verbatim:
+
+- **`TektonTask`** — exactly one `tekton.dev/v1` Task document in `spec.yamlContent`. Any pipeline in the organization (a repository pipeline or a published one) references it with a plain `taskRef: {name: <name>}`; it resolves after the pipeline's own tasks and before the platform catalog.
+- **`TektonPipeline`** — one `tekton.dev/v1` Pipeline plus any Task documents it bundles (`---`-separated) in `spec.yamlContent`. A service consumes it with one line: `spec.build.tektonPipeline: {pipeline: <name>}`.
+
+Both are organization-owned records with a `description` (one line, indexed for search) and an `overviewMarkdown` where the publishing team documents what a consumer must supply — the parameters a service passes under `build.tektonPipeline.params`, and whether the service must name a container registry. The record's `metadata.name` must equal the Tekton document's `metadata.name` and must be a Tekton name (lowercase letters, digits, hyphens), so the record's name is also its slug: `planton get TektonPipeline <name>`, the service's `pipeline: <name>`, and a `taskRef` all use the same one name.
+
+```yaml
+apiVersion: service-hub.planton.ai/v1alpha1
+kind: TektonPipeline
+metadata: {name: node-service-ci, org: acme}
+spec:
+  description: Clone, lint, build with BuildKit, render kustomize
+  overviewMarkdown: |
+    Set `spec.build.registry` (this pipeline pushes an image) and
+    `build.tektonPipeline.params.node-version`.
+  yamlContent: |
+    apiVersion: tekton.dev/v1
+    kind: Pipeline
+    metadata: {name: node-service-ci}
+    spec: ...   # declares the platform contract, image-name, node-version
+```
+
+**Publishing is one `planton apply -f` per record, tasks first.** The publish check runs before the record is written — at the CLI, through the assistant's tools, and at the API: the same compiler that runs at dispatch verifies the document shape, the name law, every task reference (against the bundled tasks, the organization's published tasks, and the catalog), the parameter contract, workspaces, result references, and Tekton's own admission rules. A record that would not compile is refused with the verdicts above in one sentence, and nothing is written. A pipeline that references a task the organization has not published yet is refused with `unresolved_task_ref`: publish the task first, or bundle it as a second document.
+
+**Consuming is verified when the service is applied**: a `build.tektonPipeline.pipeline` naming no published record is refused there, with the fix in the sentence — never at the first build. Each run of a consuming service stamps `source: org_published` and the pin `<record id>@<record spec updated-at>`; updating a record changes what the next fresh run compiles, while reruns replay the stamp they carry.
+
+**Deleting is refused while anything depends on the record**: a `TektonPipeline` any service still builds from (the refusal names the services), a `TektonTask` any published pipeline still references (the refusal names the pipelines). Repository pipelines that reference a deleted task learn at their next compile through `unresolved_task_ref`.
+
+There is no catalog page. `planton search --kind TektonPipeline` (or `TektonTask`) lists what the organization has published; `planton get TektonPipeline <name>` shows a record with its documentation; the assistant reads the same through its `get_tekton_pipeline` / `get_tekton_task` tools and search.
 
 ## Related Documentation
 
