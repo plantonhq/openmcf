@@ -26,10 +26,14 @@
 //
 // The law behind the last two rules, in the words the forge and update flows
 // use: one kind, one glyph. A kind that IS a provider product wears the
-// provider's official mark, unaltered. Planton's own kinds wear Planton's
-// mark. Every other kind wears a Planton-drawn glyph that says what that kind
-// is, in the provider's icon language, never containing or modifying a
-// provider mark. When a provider publishes an official icon for a kind wearing
+// provider's official mark, unaltered -- where the provider publishes its
+// icons for use in third-party diagrams. Where a provider does not (its brand
+// terms reserve its logos and icons), every kind of that provider wears a
+// Planton-drawn glyph and no file under that provider names the Official
+// class. Planton's own kinds wear Planton's mark. Every other kind wears a
+// Planton-drawn glyph that says what that kind is, in the provider's icon
+// language (its palette and grid), never containing or modifying a provider
+// mark. When a provider that offers its icons publishes one for a kind wearing
 // a drawn glyph, the official one replaces it.
 //
 // The walk is keyed off the kind registry (crkreflect), never directory
@@ -40,6 +44,13 @@
 // The CI lane is .github/workflows/lint.catalog-logo.yaml. Provenance and
 // sharing carry a burn-down baseline (baseline.yaml, anatomy's shape) for the
 // providers whose logo sets have not yet been judged; malformed-svg never does.
+// A judged provider is pinned at zero by the test's judged-provider list.
+//
+// The gate proves bytes and provenance; whether a glyph READS is judged by a
+// person on the contact sheet tools/catalog-logo-sheet renders -- every logo
+// of one provider at the sizes the console draws an icon (18px on an
+// attachment plate, 26px on a chip or globe, 34px on a card), on a light and a
+// dark wash -- before the set is kept.
 package cataloglogo
 
 import (

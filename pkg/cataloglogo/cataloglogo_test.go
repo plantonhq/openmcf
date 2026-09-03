@@ -53,10 +53,18 @@ func TestCatalogLogoGate(t *testing.T) {
 	}
 }
 
-// TestGCPLogoSetIsJudged pins the first provider brought to the law: every GCP
-// kind wears its own glyph and names its provenance, with no baseline entry.
-// A GCP entry reappearing in baseline.yaml is the wave reopening, not debt.
-func TestGCPLogoSetIsJudged(t *testing.T) {
+// judgedProviders are the providers whose logo sets have been judged glyph by
+// glyph under the law: every kind wears its own glyph and names its
+// provenance, with no baseline entry. A provider joins this list in the same
+// change that empties its baseline entries, and never leaves it. Adding a
+// provider's directory name here is the whole act of pinning it.
+var judgedProviders = []string{"gcp", "cloudflare"}
+
+// TestJudgedProviderLogoSets pins every judged provider at zero: no violation
+// under its catalog directory, no entry for it in baseline.yaml. An entry
+// reappearing for a judged provider is the wave reopening, not debt -- fix the
+// logo, never re-baseline it.
+func TestJudgedProviderLogoSets(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot locate repo root")
@@ -66,19 +74,24 @@ func TestGCPLogoSetIsJudged(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, v := range vs {
-		if strings.HasPrefix(v.Path, "catalog/gcp/") {
-			t.Errorf("%s [%s]: %s", v.Path, v.Rule, v.Detail)
-		}
-	}
 	baseline, err := LoadBaseline(filepath.Join(filepath.Dir(thisFile), "baseline.yaml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for id := range baseline {
-		if strings.HasPrefix(id, "catalog/gcp/") {
-			t.Errorf("baseline carries a GCP entry: %s -- GCP's logo set is judged; fix the logo, never re-baseline it", id)
-		}
+	for _, provider := range judgedProviders {
+		prefix := "catalog/" + provider + "/"
+		t.Run(provider, func(t *testing.T) {
+			for _, v := range vs {
+				if strings.HasPrefix(v.Path, prefix) {
+					t.Errorf("%s [%s]: %s", v.Path, v.Rule, v.Detail)
+				}
+			}
+			for id := range baseline {
+				if strings.HasPrefix(id, prefix) {
+					t.Errorf("baseline carries a %s entry: %s -- %s's logo set is judged; fix the logo, never re-baseline it", provider, id, provider)
+				}
+			}
+		})
 	}
 }
 

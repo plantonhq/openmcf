@@ -16,20 +16,24 @@ SCOPE
 
 PREREQUISITES
 - The component's spec exists and its kind is registered (rules 001 and 014 complete), so the gate can see the kind
-- The provider's official icon library, when the provider publishes one (Google Cloud: `https://cloud.google.com/icons` -- the "legacy" set is the flat blue product-icon style the catalog uses; the 2025 "core products" set only for products absent from it)
+- The provider's official icon library, when the provider publishes one FOR USE IN THIRD-PARTY DIAGRAMS. Per provider:
+  - Google Cloud: offers its icons for diagrams and documentation (`https://cloud.google.com/icons`; the "legacy" set is the flat blue product-icon style the catalog uses; the 2025 "core products" set only for products absent from it). Official marks are used.
+  - Cloudflare: publishes product icons in its docs and dashboard packages, but its trademark guidelines reserve its logos and icons (word marks only without written permission) and the docs repository's license excludes them. **No official mark is used; every Cloudflare kind is Planton-drawn.**
+  - Any other provider: read its trademark or brand-asset terms before classifying a single kind, record the finding in this list, and draw everything until the terms say otherwise.
 
 THE LAW
 One kind, one glyph.
-- A kind that IS a provider product wears the provider's official mark, unaltered. Copy the vector; drop only the fixed `width`/`height` so the `viewBox` scales; never recolor, badge, crop, or combine it. A child of a product (a database inside an instance, a job of a service, a record in a zone) is NOT the product and does not wear its mark.
+- A kind that IS a provider product wears the provider's official mark, unaltered, WHERE THE PROVIDER OFFERS ITS ICONS FOR THIS USE (the list above). Copy the vector; drop only the fixed `width`/`height` so the `viewBox` scales; never recolor, badge, crop, or combine it. A child of a product (a database inside an instance, a job of a service, a record in a zone) is NOT the product and does not wear its mark.
+- Where the provider does not offer its icons, every kind of that provider wears a Planton-drawn glyph, and no file under that provider names the `Official` class.
 - Planton's own kinds (a Planton runner, the Planton platform, the Planton operator) wear the Planton brand mark: copy `logo.svg` byte-identical from any sibling Planton kind. Never redraw the P.
 - Every other kind wears a Planton-drawn glyph that says what THAT kind is.
 - Two kinds of one provider never share a glyph, except Planton's own kinds sharing Planton's mark.
-- Every file carries its provenance in a `<desc>` whose first words name its class (below). When the provider later publishes an official icon for a kind wearing a drawn glyph, the official one replaces it (the update rule carries this).
+- Every file carries its provenance in a `<desc>` whose first words name its class (below). When a provider that offers its icons later publishes one for a kind wearing a drawn glyph, the official one replaces it (the update rule carries this).
 
 SEQUENTIAL STEPS
 
 1) **Decide the class**
-   Is this kind the product the provider's library has an icon for (Cloud SQL, Cloud Run, Spanner)? Then `official`. Is it a Planton product? Then `brand`. Otherwise `drawn` -- including every child kind of a product, every configuration object, every grant.
+   Does the provider offer its icons (the list above), and is this kind the product its library has an icon for (Cloud SQL, Cloud Run, Spanner)? Then `official`. Is it a Planton product? Then `brand`. Otherwise `drawn` -- including every child kind of a product, every configuration object, every grant, and every kind of a provider that does not offer its icons.
 
 2) **Official: copy the mark**
    Take the SVG from the provider's library, drop `width`/`height`, replace any editor `<title>` with
@@ -41,11 +45,11 @@ SEQUENTIAL STEPS
 4) **Drawn: draw the concept**
    The style the catalog's drawn glyphs share:
    - `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">`; content inside the 2..22 square; no `width`/`height`
-   - the provider's icon palette only (Google Cloud: `#4285f4`, `#669df6`, `#aecbfa`, with `#ffffff` for cut-outs); no gradients, no text, no embedded raster, no provider mark inside
-   - filled shapes or 2px round-capped strokes; one idea per glyph (a database is a cylinder, a user a person, a key a key, an alert a bell, a probe a pulse, a sink a funnel, a schedule a clock badge, a grant a small person badge on the thing granted)
-   - recognizable at 24px without its label, and distinct at 24px from every other glyph in the provider
+   - the provider's icon palette only, two tones at most plus `#ffffff` for cut-outs, chosen so the glyph reads on BOTH a light and a dark plinth (Google Cloud: `#4285f4`, `#669df6`, `#aecbfa`; Cloudflare: its brand orange `#f6821f` with `#fbad41` as the second tone -- its dashboard blue `#0051c3` was tried and vanishes on a dark plinth); no gradients, no text, no embedded raster, no provider mark inside
+   - filled shapes or 2px round-capped strokes; one idea per glyph (a database is a cylinder, a user a person, a key a key, an alert a bell, a probe a pulse, a sink a funnel, a schedule a clock badge, a grant a small person badge on the thing granted). Kinds of one family share a base shape (every certificate is a sealed sheet, every device profile a laptop) and differ in the PRIMARY form, not only in a corner badge -- a badge alone does not separate two glyphs at 18px.
+   - recognizable at 18px without its label, and distinct at 18px from every other glyph in the provider -- 18px is the size an attachment plate draws the icon at, the smallest in the console (a chip or globe draws it at 26px, a card at 34px)
    - first child: `<desc>Planton-drawn glyph: <what it depicts, one line></desc>` -- the next reader learns the intent from the file
-   Render it at 24px and 48px beside its siblings before you keep it; a glyph that does not read at 24px is redrawn, not shipped.
+   Judge it on the provider's contact sheet before you keep it: `go run ./tools/catalog-logo-sheet/ -provider <provider>` writes an HTML sheet of every logo at 18, 26, 34, and 48px on a light and a dark wash; open it in a browser. A glyph that does not read at 18px on both washes is redrawn, not shipped.
 
 5) **Run the gate**
    `go test ./pkg/cataloglogo/` -- three rules, each failure saying what to do:
