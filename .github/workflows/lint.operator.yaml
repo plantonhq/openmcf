@@ -12,8 +12,10 @@
 #   manifests-fresh (PR + push, BLOCKING) -- regenerate with controller-gen and
 #                    diff; a hand-edited CRD or a chart copy that drifted from the
 #                    RBAC markers fails here. See hack/guards/ensure_operator_manifests_fresh.sh.
-#   build-and-test  (PR + push, BLOCKING) -- go build, go vet, envtest.
-#   chart           (PR + push, BLOCKING) -- helm lint + helm template --include-crds.
+#   build-and-test  (PR + push, BLOCKING) -- go build, go vet, envtest, and the
+#                    chart's render assertions (operator/test/chart renders the
+#                    chart through the Helm SDK and holds its CRD contract).
+#   chart           (PR + push, BLOCKING) -- helm lint + helm template.
 #
 # The Kind e2e lane is e2e-operator.yaml; image publishing is release.operator.yaml.
 # =============================================================================
@@ -84,5 +86,5 @@ jobs:
       - uses: azure/setup-helm@v4
       - name: Lint
         run: helm lint helm/planton-operator
-      - name: Render (CRDs included)
-        run: helm template lint-render helm/planton-operator --include-crds > /dev/null
+      - name: Render
+        run: helm template lint-render helm/planton-operator > /dev/null

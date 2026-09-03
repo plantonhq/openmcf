@@ -1,6 +1,18 @@
 # -- Planton Operator Helm Chart values.
 # See README.md for full documentation.
 
+crds:
+  # -- Install the PlantonPlatform and PlantonIdentityProvider definitions as
+  # part of this release, and upgrade them with it. Set false only when another
+  # release on this cluster already owns them (one Planton operator per
+  # cluster) -- the operator cannot run without them.
+  enabled: true
+  # -- Keep the definitions when this release is uninstalled. Deleting a
+  # definition deletes every resource of that kind, so with keep=false
+  # `helm uninstall` removes every PlantonPlatform on the cluster and the
+  # operator tears down every platform they describe.
+  keep: true
+
 image:
   # -- Container image repository.
   repository: ghcr.io/plantonhq/planton/operator

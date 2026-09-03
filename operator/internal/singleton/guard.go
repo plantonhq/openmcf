@@ -104,8 +104,8 @@ func Check(ctx context.Context, reader client.Reader, ownNamespace string) error
 	return fmt.Errorf(
 		"another planton-operator is already managing this cluster from namespace %q; "+
 			"one operator per cluster -- running two would make them fight over the same platforms. "+
-			"Either uninstall the other operator release, or if you meant to install the platform "+
-			"beside an existing operator, reinstall the planton chart with --set planton-operator.enabled=false. "+
+			"Uninstall one of the two operator releases (a platform is declared separately, with the planton chart "+
+			"or a PlantonPlatform manifest, and needs no operator of its own). "+
 			"This operator will keep restarting and will recover on its own once the conflict is gone",
 		strings.Join(namespaces, `", "`))
 }

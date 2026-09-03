@@ -99,11 +99,12 @@ func TestCheckRefusesSecondOperator(t *testing.T) {
 		t.Fatal("a second active operator in another namespace must block startup")
 	}
 	// The message is the product surface here: it must name the other
-	// namespace and both ways out.
+	// namespace, the way out, and that a platform needs no operator of its own.
 	for _, want := range []string{
 		"planton-operator-system",
 		"one operator per cluster",
-		"planton-operator.enabled=false",
+		"Uninstall one of the two operator releases",
+		"needs no operator of its own",
 		"recover on its own",
 	} {
 		if !strings.Contains(err.Error(), want) {

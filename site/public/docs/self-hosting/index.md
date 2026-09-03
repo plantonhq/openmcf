@@ -1,6 +1,6 @@
 ---
 title: "Self-Hosting"
-description: "Run the entire Planton platform on your own Kubernetes cluster with one helm install — batteries included, no external services, no configuration required"
+description: "Run the entire Planton platform on your own Kubernetes cluster with two helm installs — batteries included, no external services, no configuration required"
 icon: server
 order: 70
 tags:
@@ -12,7 +12,7 @@ tags:
 
 # Self-Hosting Planton
 
-Planton runs entirely on your own Kubernetes cluster: the control plane, the web console, the identity server, the secrets manager, the databases, and an in-cluster runner — installed with one Helm command, managed by a Kubernetes operator, reachable in minutes.
+Planton runs entirely on your own Kubernetes cluster: the control plane, the web console, the identity server, the secrets manager, the databases, and an in-cluster runner — installed with two Helm commands (or one Planton CLI command), managed by a Kubernetes operator, reachable in minutes.
 
 ## Why self-host
 
@@ -20,14 +20,17 @@ Your infrastructure manifests, deployment history, secrets, and cloud credential
 
 ## Install
 
-One command installs everything:
+Two commands install everything — the operator first, then the platform:
 
 ```bash
-helm install planton oci://ghcr.io/plantonhq/charts/planton \
+helm install planton-operator oci://ghcr.io/plantonhq/charts/planton-operator \
   --namespace planton --create-namespace
+
+helm install planton oci://ghcr.io/plantonhq/charts/planton \
+  --namespace planton
 ```
 
-The chart installs the Planton operator and creates one `PlantonPlatform` resource. The operator reconciles the whole stack from that single resource: PostgreSQL, the workflow engine, the control plane, the console, the identity server, the secrets manager (OpenBAO, initialized and unsealed automatically), and the in-cluster runner. No license key, no admin account, no database, and no values file are required — a zero-values install works.
+The first chart installs the Planton operator together with the `PlantonPlatform` definition it serves. The second creates one `PlantonPlatform` resource, and the operator reconciles the whole stack from that single resource: PostgreSQL, the workflow engine, the control plane, the console, the identity server, the secrets manager (OpenBAO, initialized and unsealed automatically), and the in-cluster runner. No license key, no admin account, no database, and no values file are required — a zero-values install works. The Planton CLI's self-hosted install runs both for you.
 
 Watch it converge (typically 7–11 minutes):
 
@@ -67,17 +70,16 @@ With `enabled: true` alone, the operator derives a magic-DNS hostname from your 
 Platforms are namespaced, and one operator serves the whole cluster — it watches every namespace. Teams can run separate Planton platforms side by side (staging and production, or one per team), each fully confined to its own namespace:
 
 ```bash
-# The first install brought the operator; later ones join it.
+# The operator is already on the cluster; every platform is one more release.
 helm install planton oci://ghcr.io/plantonhq/charts/planton \
-  --namespace planton-team-b --create-namespace \
-  --set planton-operator.enabled=false
+  --namespace planton-team-b --create-namespace
 ```
 
 Never install two operators (the operator itself refuses to start beside another and says so), and give each platform its own namespace. Two cluster-level facts are shared by design: build events (the CI event stream Tekton delivers) can feed only one platform per cluster, and all platforms ride the one installed operator version — each platform still pins its own `spec.version`.
 
 ## Upgrades and uninstall
 
-Config changes are edits to the `PlantonPlatform` resource; the operator reconciles them. `helm upgrade` rolls the operator and the platform version together (apply the refreshed CRD first when the chart notes a schema change — Helm never upgrades CRDs).
+Config changes are edits to the `PlantonPlatform` resource; the operator reconciles them. The platform version is `spec.version` on that resource — `helm upgrade planton --set platform.spec.version=<version>` rolls the platform with its data intact. The operator upgrades through its own chart, and that chart carries the `PlantonPlatform` definition with it, so the schema always matches the operator that reads it.
 
 `helm uninstall` removes the platform's workloads; data volumes deliberately survive. To remove everything including data, delete the namespace. The cluster-scoped badge-verification grant (`<namespace>-<name>-control-plane-token-reviewer`) is the one manual cleanup step of a full teardown.
 

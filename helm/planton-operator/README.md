@@ -7,10 +7,13 @@ Planton platform stack: PostgreSQL, Valkey, OpenFGA, Temporal, the control plane
 monolith, and the web console. A single YAML file is all it takes to go from an empty cluster
 to a running Planton instance.
 
-Want the operator AND the platform in one command? Use the
-[`planton` umbrella chart](../planton) instead -- it composes this chart and adds the
-`PlantonPlatform` resource with proven defaults. Run exactly one Planton operator per
-cluster: a second installation refuses to start and its log explains why.
+This chart installs the operator and the definitions it serves (`PlantonPlatform`,
+`PlantonIdentityProvider`), and owns their lifecycle: upgrading the chart upgrades the
+schema with the operator that reads it. The platform itself is a `PlantonPlatform`
+resource you create afterwards -- by hand, through GitOps, or as its own Helm release
+with the [`planton` chart](../planton), which carries proven defaults and per-cloud
+values files. Run exactly one Planton operator per cluster: a second installation
+refuses to start and its log explains why.
 
 ## Prerequisites
 
@@ -23,7 +26,7 @@ The chart is published to GitHub Container Registry as an OCI artifact:
 
 ```bash
 helm install planton-operator oci://ghcr.io/plantonhq/charts/planton-operator \
-  --namespace planton-operator-system \
+  --namespace planton \
   --create-namespace
 ```
 
@@ -37,6 +40,7 @@ apiVersion: planton.ai/v1
 kind: PlantonPlatform
 metadata:
   name: planton
+  namespace: planton
 spec:
   version: v1.0.0
 ```
@@ -44,7 +48,13 @@ spec:
 Apply it with `kubectl apply -f` and watch progress:
 
 ```bash
-kubectl get plantonplatform -w
+kubectl get plantonplatform -n planton -w
+```
+
+Or declare it as a Helm release with proven defaults:
+
+```bash
+helm install planton oci://ghcr.io/plantonhq/charts/planton --namespace planton
 ```
 
 ### Publishing Planton at a URL
@@ -76,6 +86,8 @@ cert-manager not installed).
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
+| `crds.enabled` | Install and upgrade the `PlantonPlatform` and `PlantonIdentityProvider` definitions with this release | `true` |
+| `crds.keep` | Keep the definitions (and every platform they define) when the release is uninstalled | `true` |
 | `image.repository` | Container image repository | `ghcr.io/plantonhq/planton/operator` |
 | `image.tag` | Container image tag | Chart `appVersion` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
@@ -113,35 +125,50 @@ planton   Ready   v1.0.0    5m
 
 ## CRD Management
 
-The operator's CRDs (`PlantonPlatform` and `PlantonIdentityProvider`) are installed
-automatically during `helm install`. Helm places CRDs in a special `crds/` directory that
-has the following behavior:
+The operator's definitions (`PlantonPlatform` and `PlantonIdentityProvider`) are
+resources of this release, rendered from `templates/crds/`:
 
-- CRDs are installed **before** any templates
-- CRDs are **not deleted** on `helm uninstall` (protects existing custom resources)
-- CRDs are **not upgraded** on `helm upgrade`
+- `helm install` creates them and `helm upgrade` upgrades them, so the schema the
+  cluster enforces is always the one the installed operator was built against. A
+  `helm rollback` rolls the definitions back with the operator, the same way.
+- `helm uninstall` keeps them (`crds.keep`, default `true`) because deleting a
+  definition deletes every resource of that kind -- every platform on the cluster.
+  Set `crds.keep=false` only when that is what you want.
+- `crds.enabled=false` renders none of them, for the one case where another
+  release on the cluster already owns them (one operator per cluster).
 
-**Source of truth:** the files in `crds/` and the manager's permissions in
+**Source of truth:** the files in `templates/crds/` and the manager's permissions in
 `rbac/manager-role.yaml` are controller-gen output, written by
 `make -C operator manifests` in this repository from the operator's Go types and RBAC
-markers. CI regenerates and diffs them on every change, so they are never edited by hand:
-change the Go source, regenerate, and the chart follows in the same commit.
+markers (the CRD templates add only the `crds.enabled` guard and the keep annotation).
+CI regenerates and diffs them on every change, so they are never edited by hand: change
+the Go source, regenerate, and the chart follows in the same commit.
 
-To upgrade the CRDs after a chart version bump:
+### Coming from a chart that installed the definitions once
+
+Chart releases before 0.8.0 shipped the `PlantonPlatform` definition through Helm's
+install-once `crds/` directory, which leaves it outside any release. Upgrading such an
+install stops with a message from this chart that names the definition and repeats the
+two commands below with your release name and namespace filled in. Run them, then
+`helm upgrade` again; the release adopts the definition and upgrades its schema:
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton-operator/crds/planton.ai_plantonplatforms.yaml
-kubectl apply -f https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton-operator/crds/planton.ai_plantonidentityproviders.yaml
+kubectl label crd plantonplatforms.planton.ai app.kubernetes.io/managed-by=Helm
+kubectl annotate crd plantonplatforms.planton.ai \
+  meta.helm.sh/release-name=<release> meta.helm.sh/release-namespace=<namespace>
 ```
 
 ## Uninstallation
 
 ```bash
-# Remove the operator (CRD and custom resources are preserved)
-helm uninstall planton-operator -n planton-operator-system
+# Remove the operator. The definitions and every PlantonPlatform stay (crds.keep).
+helm uninstall planton-operator -n planton
 
-# To also remove the CRD (destroys all PlantonPlatform resources):
-kubectl delete crd plantonplatforms.planton.ai
+# Reinstalling with the same release name and namespace adopts them again.
+
+# To remove the definitions too -- this destroys every PlantonPlatform on the
+# cluster and the platforms they describe -- delete them after the release:
+kubectl delete crd plantonplatforms.planton.ai plantonidentityproviders.planton.ai
 ```
 
 ---

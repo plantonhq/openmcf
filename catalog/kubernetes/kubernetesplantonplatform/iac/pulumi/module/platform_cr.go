@@ -8,7 +8,7 @@ import (
 // spec — a plain nested map, because the CR is applied UNTYPED (see
 // main.go). Keys render ONLY when the manifest declared them, so the
 // operator's own defaulting stays authoritative for everything unset —
-// the same posture as the `planton` umbrella chart's verbatim
+// the same posture as the `planton` Helm chart's verbatim
 // pass-through. This function must stay in byte lockstep with the
 // Terraform module's locals.platform_spec.
 //

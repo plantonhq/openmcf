@@ -13,7 +13,7 @@ PlantonPlatform resource -- the minimal one is three lines:
 
   kubectl get plantonplatform planton -n {{ .Release.Namespace }} -w
 
-Prefer one command that does both? The `planton` umbrella chart installs the
-operator AND the platform together:
+Prefer the platform as a Helm release with proven defaults and per-cloud
+values files? The `planton` chart declares it:
 
-  helm install planton oci://ghcr.io/plantonhq/charts/planton -n planton --create-namespace
+  helm install planton oci://ghcr.io/plantonhq/charts/planton -n {{ .Release.Namespace }}

@@ -1,0 +1,36 @@
+{{- /*
+Every definition this chart owns must be absent from the cluster or already
+belong to this release. Helm refuses to take over a resource it did not
+create, and its own message for that case names only the mechanism
+("invalid ownership metadata"); this preflight names the cause and the exact
+fix instead, so a definition that Helm once installed from a crds/ directory,
+or that another release owns, stops the install with the commands that
+resolve it rather than a puzzle.
+
+`lookup` returns nothing under `helm template`, `helm lint`, and client-side
+renders, so the check runs only against a real cluster during install and
+upgrade -- the only place it can observe the definition. It renders no
+resource of its own.
+*/ -}}
+{{- if .Values.crds.enabled }}
+{{- range $name := list "plantonplatforms.planton.ai" "plantonidentityproviders.planton.ai" }}
+{{- $crd := lookup "apiextensions.k8s.io/v1" "CustomResourceDefinition" "" $name }}
+{{- if $crd }}
+{{- $annotations := $crd.metadata.annotations | default dict }}
+{{- $labels := $crd.metadata.labels | default dict }}
+{{- $owner := index $annotations "meta.helm.sh/release-name" | default "" }}
+{{- $ownerNamespace := index $annotations "meta.helm.sh/release-namespace" | default "" }}
+{{- $managedBy := index $labels "app.kubernetes.io/managed-by" | default "" }}
+{{- $adopted := and (eq $owner $.Release.Name) (eq $ownerNamespace $.Release.Namespace) (eq $managedBy "Helm") }}
+{{- if not $adopted }}
+{{- if eq $owner "" }}
+{{- fail (printf "observed: CustomResourceDefinition %s exists on this cluster but belongs to no Helm release (it was installed once from an earlier chart's crds/ directory, or applied by hand)\nmeaning: this chart owns its definitions as release resources so upgrades carry the schema, and Helm will not take over a resource it did not create\nnext step: adopt the definition into release %s, then re-run:\n  kubectl label crd %s app.kubernetes.io/managed-by=Helm\n  kubectl annotate crd %s meta.helm.sh/release-name=%s meta.helm.sh/release-namespace=%s" $name $.Release.Name $name $name $.Release.Name $.Release.Namespace) }}
+{{- else if or (ne $owner $.Release.Name) (ne $ownerNamespace $.Release.Namespace) }}
+{{- fail (printf "observed: CustomResourceDefinition %s is owned by Helm release %s in namespace %s, not by release %s in namespace %s\nmeaning: another planton-operator release already owns the definitions on this cluster, and a cluster runs exactly one Planton operator\nnext step: if release %s still runs the operator, install this release with --set crds.enabled=false and let it own nothing; if that release is gone, re-point the definition and re-run:\n  kubectl annotate --overwrite crd %s meta.helm.sh/release-name=%s meta.helm.sh/release-namespace=%s" $name $owner $ownerNamespace $.Release.Name $.Release.Namespace $owner $name $.Release.Name $.Release.Namespace) }}
+{{- else }}
+{{- fail (printf "observed: CustomResourceDefinition %s carries this release's annotations but not the label app.kubernetes.io/managed-by=Helm\nmeaning: an adoption was left half done; Helm checks the label and both annotations together\nnext step: complete it, then re-run:\n  kubectl label crd %s app.kubernetes.io/managed-by=Helm" $name $name) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

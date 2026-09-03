@@ -1,33 +1,39 @@
 # planton
 
-The batteries-included Planton install: one `helm install` deploys the
-[Planton operator](../planton-operator) **and** a `PlantonPlatform` resource
-with proven defaults. A few minutes later the full platform is running --
+A Planton platform as a Helm release: this chart declares one
+`PlantonPlatform` resource with proven defaults, and the
+[Planton operator](../planton-operator) turns it into the running platform --
 console, API, sign-in, and an in-cluster runner -- reachable over a single
 `kubectl port-forward` command that the install prints for you.
 
+The operator comes first. It brings the `PlantonPlatform` definition this
+chart's resource needs, and Helm validates every resource of a release
+against the cluster before creating any of them, so the two cannot share one
+release:
+
 ```bash
-helm install planton oci://ghcr.io/plantonhq/charts/planton \
+helm install planton-operator oci://ghcr.io/plantonhq/charts/planton-operator \
   --namespace planton \
   --create-namespace
+
+helm install planton oci://ghcr.io/plantonhq/charts/planton \
+  --namespace planton
 ```
 
 No values are required. The first person to open the console becomes the
 administrator (the setup page asks for their email plus a setup code read
-from the cluster).
+from the cluster). Installing this chart before the operator fails with
+Helm's `ensure CRDs are installed first`; install the operator chart and
+run it again.
 
 Prefer to manage the `PlantonPlatform` resource yourself (GitOps, custom
-manifests)? Install the [`planton-operator`](../planton-operator) chart
-instead -- this chart simply composes it.
+manifests)? Apply it with `kubectl` -- the operator chart's NOTES print the
+minimal one -- and skip this chart. Prefer one command that does both? The
+Planton CLI's self-hosted install runs both charts in order.
 
 ## Values
 
 ```yaml
-# Passed through to the bundled planton-operator subchart (any key from that
-# chart's values.yaml works here):
-planton-operator:
-  enabled: true          # set false to use an operator you already run
-
 platform:
   name: planton          # name of the PlantonPlatform resource
   spec: {}               # the PlantonPlatform spec, passed through VERBATIM
@@ -59,7 +65,7 @@ Use them straight from GitHub:
 
 ```bash
 helm install planton oci://ghcr.io/plantonhq/charts/planton \
-  --namespace planton --create-namespace \
+  --namespace planton \
   --values https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton/values.rke2.yaml
 ```
 
@@ -140,21 +146,58 @@ platform:
 
 ## One operator per cluster
 
-Run exactly one Planton operator per cluster. If this cluster already runs
-the standalone `planton-operator` chart, install the umbrella with
-`--set planton-operator.enabled=false` so it only creates the
-`PlantonPlatform` resource. A second operator refuses to start and its log
-names the conflict and both ways out -- two operators would fight over the
-same platforms.
+Run exactly one Planton operator per cluster; it watches every namespace and
+serves every `PlantonPlatform` on the cluster, so this chart can be installed
+many times (one platform per namespace) beside one operator. A second
+operator refuses to start and its log names the conflict and the way out.
 
 ## Upgrades
 
-`helm upgrade` rolls the operator and the platform version together. One
-Helm limitation to know: Helm never upgrades CRDs. When a new chart version
-carries CRD schema changes, apply the refreshed CRD first:
+The platform and the operator upgrade independently:
+
+- **The platform version** is `spec.version` on the resource. Change it and
+  `helm upgrade planton` -- the operator rolls the platform to the new version
+  with its data intact:
+
+  ```bash
+  helm upgrade planton oci://ghcr.io/plantonhq/charts/planton \
+    --namespace planton --set platform.spec.version=<version>
+  ```
+
+- **The operator** upgrades through its own chart, which carries the
+  `PlantonPlatform` definition with it:
+
+  ```bash
+  helm upgrade planton-operator oci://ghcr.io/plantonhq/charts/planton-operator \
+    --namespace planton
+  ```
+
+### Coming from a release that bundled the operator
+
+Releases of this chart before 0.4.0 installed the operator as part of the
+same release and left the `PlantonPlatform` definition outside any release
+(Helm's install-once `crds/` behavior). Moving such an install to the
+two-release shape is three commands, in this order, and never runs two
+operators at once. `<release>` is the name you will give the operator release
+(`planton-operator` below) and `<namespace>` its namespace:
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/plantonhq/planton/main/helm/planton-operator/crds/planton.ai_plantonplatforms.yaml
+# 1. Hand the definition to the future operator release. The operator chart
+#    refuses to take over a definition that belongs to no release, and its
+#    message repeats exactly these two commands with your names filled in.
+kubectl label crd plantonplatforms.planton.ai app.kubernetes.io/managed-by=Helm
+kubectl annotate crd plantonplatforms.planton.ai \
+  meta.helm.sh/release-name=planton-operator meta.helm.sh/release-namespace=planton
+
+# 2. Upgrade this release: Helm removes the bundled operator and keeps the
+#    PlantonPlatform resource. The platform keeps running, unmanaged, for the
+#    minute until step 3.
+helm upgrade planton oci://ghcr.io/plantonhq/charts/planton --namespace planton
+
+# 3. Install the operator on its own release. It adopts the definition,
+#    upgrades its schema, and resumes reconciling the platform.
+helm install planton-operator oci://ghcr.io/plantonhq/charts/planton-operator \
+  --namespace planton
 ```
 
 ## Teardown
@@ -164,22 +207,19 @@ helm uninstall planton -n planton
 kubectl delete namespace planton
 ```
 
-`helm uninstall` removes the `PlantonPlatform` resource, the operator, and
-the platform's own workloads (control plane, console, front door, identity,
-runner). The PostgreSQL database goes WITH the platform: CloudNativePG owns
+`helm uninstall` removes the `PlantonPlatform` resource and, through the
+operator, the platform's own workloads (control plane, console, front door,
+identity, runner). The PostgreSQL database goes WITH the platform: CloudNativePG owns
 the database's volumes and credentials as one unit, so removing the platform
 removes the database cleanly -- credentials can never survive apart from the
 volumes they unlock. The remaining data-service volumes (the Valkey cache,
 Temporal's chart-rendered claims) linger until the namespace is deleted,
 which is why deleting the namespace is part of teardown. To REINSTALL,
 always delete the namespace first: a new install against leftover volumes
-would mint new credentials that the old data refuses. The CRD is
-cluster-scoped; remove it last, after every PlantonPlatform in the cluster
-is gone:
-
-```bash
-kubectl delete crd plantonplatforms.planton.ai
-```
+would mint new credentials that the old data refuses. The operator and the
+`PlantonPlatform` definition belong to the `planton-operator` release; see
+that chart's README for removing them after every platform on the cluster is
+gone.
 
 ---
 

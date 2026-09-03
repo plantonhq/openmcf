@@ -45,20 +45,20 @@ help: ## Display this help.
 ##@ Development
 
 # The Helm chart that packages this operator ships controller-gen's output
-# verbatim: the CRDs in the chart's crds/ directory and the manager ClusterRole
+# verbatim: the CRDs as templates under templates/crds/ (wrapped by
+# hack/chartcrds so the chart owns their lifecycle) and the manager ClusterRole
 # rules read by templates/clusterrole.yaml from rbac/. One target writes
 # both homes so a type or RBAC marker change and its chart change are always
 # the same commit; CI regenerates and diffs, so a stale chart fails the build.
 CHART_DIR := ../helm/planton-operator
-CHART_CRDS_DIR := $(CHART_DIR)/crds
+CHART_CRD_TEMPLATES_DIR := $(CHART_DIR)/templates/crds
 CHART_RBAC_DIR := $(CHART_DIR)/rbac
 
 .PHONY: manifests
 manifests: controller-gen ## Generate ClusterRole and CustomResourceDefinition objects into config/ and the Helm chart.
 	"$(CONTROLLER_GEN)" rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	@mkdir -p $(CHART_CRDS_DIR) $(CHART_RBAC_DIR)
-	@rm -f $(CHART_CRDS_DIR)/*.yaml
-	@cp config/crd/bases/*.yaml $(CHART_CRDS_DIR)/
+	@go run ./hack/chartcrds --in config/crd/bases --out $(CHART_CRD_TEMPLATES_DIR)
+	@mkdir -p $(CHART_RBAC_DIR)
 	@cp config/rbac/role.yaml $(CHART_RBAC_DIR)/manager-role.yaml
 
 .PHONY: generate
@@ -109,6 +109,24 @@ test-e2e: setup-test-e2e manifests generate fmt vet ## Run the e2e tests. Expect
 .PHONY: cleanup-test-e2e
 cleanup-test-e2e: ## Tear down the Kind cluster used for e2e tests
 	@$(KIND) delete cluster --name $(KIND_CLUSTER)
+
+# The chart lifecycle suite (test/chartlifecycle) proves what helm/planton-operator
+# promises for the definitions it owns -- install, keep, adopt, upgrade -- on its
+# own Kind cluster, driving Helm through the SDK against the working-tree chart
+# and the last published charts that predate that ownership.
+KIND_CHART_CLUSTER ?= planton-operator-test-chart
+
+.PHONY: test-chart-lifecycle
+test-chart-lifecycle: manifests generate fmt vet ## Run the chart lifecycle suite on a dedicated Kind cluster.
+	@case "$$($(KIND) get clusters)" in \
+		*"$(KIND_CHART_CLUSTER)"*) \
+			echo "Kind cluster '$(KIND_CHART_CLUSTER)' already exists. Skipping creation." ;; \
+		*) \
+			echo "Creating Kind cluster '$(KIND_CHART_CLUSTER)'..."; \
+			$(KIND) create cluster --name $(KIND_CHART_CLUSTER) ;; \
+	esac
+	KIND=$(KIND) KIND_CLUSTER=$(KIND_CHART_CLUSTER) go test -tags=e2e ./test/chartlifecycle/ -v -ginkgo.v -timeout 30m
+	@$(KIND) delete cluster --name $(KIND_CHART_CLUSTER)
 
 .PHONY: lint
 lint: golangci-lint ## Run golangci-lint linter

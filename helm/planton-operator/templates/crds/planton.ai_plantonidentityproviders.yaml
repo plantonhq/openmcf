@@ -1,8 +1,19 @@
+{{- /*
+Generated from the operator's Go types by `make -C operator manifests`; never edited by hand.
+This chart owns this definition's lifecycle: `crds.enabled` installs and upgrades it with the
+release, and `crds.keep` leaves it in place, together with every resource it defines, when
+the release is uninstalled. A definition that already exists outside this release is handled by
+templates/crds-preflight.yaml.
+*/ -}}
+{{- if .Values.crds.enabled }}
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
+    {{- if .Values.crds.keep }}
+    helm.sh/resource-policy: keep
+    {{- end }}
     controller-gen.kubebuilder.io/version: v0.20.1
   name: plantonidentityproviders.planton.ai
 spec:
@@ -404,3 +415,4 @@ spec:
     storage: true
     subresources:
       status: {}
+{{- end }}

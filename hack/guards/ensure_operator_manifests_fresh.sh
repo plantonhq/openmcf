@@ -8,10 +8,12 @@ set -euo pipefail
 # WHY: the operator's CRDs and its manager ClusterRole are generated from
 # +kubebuilder markers, and `make -C operator manifests` writes them to two
 # homes: config/crd/bases + config/rbac/role.yaml (what kubebuilder's own
-# install path reads) and helm/planton-operator/crds + rbac/ (what the
-# chart ships). Two homes written by one generator run is the kubebuilder-
-# with-Helm shape; the invariant that makes it safe is that nobody edits either
-# home by hand and the committed copies are never stale against the markers. A
+# install path reads) and helm/planton-operator/templates/crds + rbac/ (what
+# the chart ships; the CRD templates are controller-gen's output wrapped by
+# operator/hack/chartcrds so the chart owns their lifecycle). Two homes
+# written by one generator run is the kubebuilder-with-Helm shape; the
+# invariant that makes it safe is that nobody edits either home by hand and
+# the committed copies are never stale against the markers. A
 # regenerate-then-diff proves exactly that, and also covers the deepcopy code
 # `make generate` owns. A hand-edited CRD, a forgotten regeneration, or a
 # chart copy that drifted from the operator's code all fail here with the one
@@ -29,7 +31,7 @@ generated_paths=(
   operator/config/crd/bases
   operator/config/rbac/role.yaml
   ':(glob)operator/api/**/zz_generated.*'
-  helm/planton-operator/crds
+  helm/planton-operator/templates/crds
   helm/planton-operator/rbac
 )
 

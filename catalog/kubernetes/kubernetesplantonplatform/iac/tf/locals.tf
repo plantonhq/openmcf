@@ -6,7 +6,7 @@
 # is a null-pruned object (`key = cond ? value : null` inside one literal,
 # pruned with `{ for k, v in {...} : k => v if v != null }`), so the
 # operator's own defaulting stays authoritative for everything unset — the
-# same posture as the `planton` umbrella chart's verbatim pass-through.
+# same posture as the `planton` Helm chart's verbatim pass-through.
 # Three-state optionals (the default-true toggles, the defaulted scalars)
 # render exactly when PRESENT: an explicit `enabled: true` is faithfully
 # forwarded even though it matches the CRD default, because presence is

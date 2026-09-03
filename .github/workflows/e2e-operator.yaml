@@ -1,11 +1,22 @@
 # =============================================================================
 # Operator E2E (Kind)
 # =============================================================================
-# Runs the operator's own end-to-end suite (operator/test/e2e): builds the
-# manager image from the working tree, loads it into a dedicated Kind cluster,
-# installs the CRDs and the manager through the kubebuilder path, and asserts
-# the manager runs and serves metrics. Zero cloud cost; the suite creates and
-# deletes its own cluster (KIND_CLUSTER=planton-operator-test-e2e).
+# Two Kind suites, each on its own cluster, zero cloud cost:
+#
+#   e2e             -- the operator's own end-to-end suite (operator/test/e2e):
+#                      builds the manager image from the working tree, loads it
+#                      into Kind, installs the CRDs and the manager through the
+#                      kubebuilder path, and asserts the manager runs and serves
+#                      metrics (KIND_CLUSTER=planton-operator-test-e2e).
+#   chart-lifecycle -- the chart's lifecycle suite (operator/test/chartlifecycle):
+#                      installs helm/planton-operator from the working tree and
+#                      proves it owns its definitions (install, keep, reinstall,
+#                      crds.keep=false), then rehearses both upgrade paths from
+#                      the last published charts that predate that ownership --
+#                      the adoption the chart explains, run verbatim, and the
+#                      schema carried by the upgrade (KIND_CHART_CLUSTER=
+#                      planton-operator-test-chart). Helm runs through its SDK;
+#                      no helm binary is needed on the runner.
 #
 # Runs directly on the runner host, not in the CI toolchain container. Kind
 # publishes the cluster's API server on the Docker host's loopback; inside a
@@ -14,8 +25,9 @@
 # The host runner has Docker and kubectl; kind is installed at the same pin the
 # toolchain image carries (tools/ci/docker/Dockerfile).
 #
-# Triggers: pull requests and pushes touching operator/**, a weekly schedule as
-# the drift net, and manual dispatch.
+# Triggers: pull requests and pushes touching operator/** or the two charts the
+# lifecycle suite installs, a weekly schedule as the drift net (it also catches
+# a published chart moving under the suite), and manual dispatch.
 # =============================================================================
 
 name: e2e-operator
@@ -24,12 +36,16 @@ on:
   pull_request:
     paths:
       - 'operator/**'
+      - 'helm/planton-operator/**'
+      - 'helm/planton/**'
       - '.github/workflows/e2e-operator.yaml'
   push:
     branches:
       - main
     paths:
       - 'operator/**'
+      - 'helm/planton-operator/**'
+      - 'helm/planton/**'
       - '.github/workflows/e2e-operator.yaml'
   schedule:
     - cron: '0 4 * * 0'
@@ -64,3 +80,19 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Run the operator Kind e2e lane
         run: make -C operator test-e2e
+
+  chart-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: operator/go.mod
+          cache-dependency-path: operator/go.sum
+      - name: Install kind
+        run: |
+          go install "sigs.k8s.io/kind@${KIND_VERSION}"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Run the chart lifecycle lane
+        run: make -C operator test-chart-lifecycle
