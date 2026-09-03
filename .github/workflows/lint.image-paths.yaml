@@ -1,0 +1,34 @@
+# =============================================================================
+# Image Path Guard
+# =============================================================================
+# Fails the PR if any tracked file names a retired container image address.
+# Every Planton image is ghcr.io/plantonhq/planton/<slug>, where the slug names
+# what the image is and Planton OS images carry the os/ prefix; the operator's
+# compiled-in defaults, chart values, example manifests, and docs must all
+# agree with the addresses the platform's release lanes publish. See
+# hack/guards/ensure_image_paths.sh for the contract and the retired forms.
+# =============================================================================
+
+name: lint.image-paths
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-image-paths-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  image-paths:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify no retired image address is referenced
+        run: bash ./hack/guards/ensure_image_paths.sh

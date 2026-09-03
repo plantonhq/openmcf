@@ -676,11 +676,6 @@ e2e-vet:  ## Run go vet on E2E packages
 	go vet ./e2e/framework/...
 	go vet -tags=e2e ./e2e/...
 
-# ── Base Images ───────────────────────────────────────────────────────────────
-.PHONY: build-iac-runner-base-image
-build-iac-runner-base-image:
-	$(MAKE) -C base-images/iac-runner build-image
-
 # ── Kubernetes operator (operator/) ───────────────────────────────────────────
 # The operator is a standalone Go module with its own kubebuilder Makefile; the
 # targets below are front doors that delegate into it. It releases on its own
