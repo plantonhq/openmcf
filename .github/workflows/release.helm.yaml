@@ -107,6 +107,9 @@ jobs:
       group: release-helm-${{ inputs.chart || github.ref_name }}
       cancel-in-progress: false
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Resolve chart, version, and mode
         id: resolve
         run: |
@@ -138,9 +141,6 @@ jobs:
             echo "push=$push"
           } >> "$GITHUB_OUTPUT"
           echo "Chart: ${chart}  version: ${version}  appVersion: ${app_version:-(pinned in Chart.yaml)}  push: ${push}"
-
-      - name: Checkout
-        uses: actions/checkout@v4
 
       - name: Install Helm
         uses: azure/setup-helm@v4
