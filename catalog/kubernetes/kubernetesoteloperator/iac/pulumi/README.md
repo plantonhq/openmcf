@@ -15,11 +15,12 @@ module's `helm_release` with `values = [typed, helm_values, re-pins]`.
 1. **Namespace** (optional) — created with the standard governance
    labels when `create_namespace` is true; otherwise the namespace must
    already exist
-2. **The four opentelemetry.io CRDs** (module-owned, unless
-   `skip_crds`) — `opentelemetrycollectors`, `instrumentations`,
-   `opampbridges`, `targetallocators`, applied from the tokenized files
-   staged at `../crds/`, one resource per CRD keyed by the CRD's own
-   `metadata.name`, with `retainOnDelete`
+2. **The opentelemetry.io CRDs** (module-owned, unless
+   `crds.install` is false) — derived from the pinned chart at apply
+   time (`opentelemetrycollectors`, `instrumentations`, `opampbridges`,
+   `targetallocators` at the default pin), one resource per CRD keyed
+   by the CRD's own `metadata.name`, kept on destroy unless
+   `crds.keep_on_uninstall` is false
 3. **Helm Release `<metadata.name>`** — the `opentelemetry-operator`
    chart (pinned default 0.120.0 — the newest SERVED stable chart,
    = operator appVersion 0.156.0, verified against the repository
@@ -35,12 +36,18 @@ itself:
 - `crds.create: false` is pinned UNCONDITIONALLY in the rendered
   values — and re-pinned AFTER the escape-hatch merge, so no override
   can hand the CRDs back to Helm.
-- `module/crds.go` applies each staged CRD file with `retainOnDelete`:
-  on `pulumi destroy` the CRDs are dropped from state WITHOUT being
+- `keptcrds.Apply` (the catalog's shared Pulumi package for charts that
+  carry CRDs) derives the CRD set by rendering the pinned chart
+  in-process with the release's own values plus `crds.create: true`,
+  stamps each CRD with `planton.ai/crd-source-chart` and
+  `planton.ai/crd-source-version`, refuses a `chart_version` below what
+  the cluster's stamped CRDs carry (reading them before anything
+  registers), and applies each CRD with `retainOnDelete`: on
+  `pulumi destroy` the CRDs are dropped from state WITHOUT being
   deleted from the cluster, so destroying the operator never
-  cascade-deletes `OpenTelemetryCollector` resources. This is the
-  exact semantic twin of the Terraform module's `kubectl_manifest`
-  with `apply_only = true`.
+  cascade-deletes `OpenTelemetryCollector` resources. The release
+  installs with `skipCrds`. This is the exact semantic twin of the
+  Terraform module's generated `helm_crds.tf`.
 - The option must reach the ConfigGroup's CHILDREN (the actual CRD
   resources), and neither yaml package forwards ordinary resource
   options to them — the classic yaml SDK passes only parent/version
@@ -50,16 +57,19 @@ itself:
   here, with `retainOnDelete` delivered through a resource
   TRANSFORMATION — the one mechanism the SDK propagates down the
   parent chain to in-process children.
-- **The staged files are TOKENIZED renders of the pinned chart**: this
-  chart TEMPLATES its CRDs — the collector CRD carries the
-  `cert-manager.io/inject-ca-from` annotation and a version-conversion
-  webhook `clientConfig`, both derived from the release's identity.
-  The staged files carry `__PLANTON_RELEASE_NAME__` /
-  `__PLANTON_NAMESPACE__` tokens, substituted in `crds.go` (and
-  identically in the Terraform module), so the kept CRDs always point
-  at THIS release's webhook Service and cert-manager Certificate.
-- A `chart_version` upgrade re-applies the staged CRD files — re-stage
-  the set together with the pinned default version.
+- **The render sees the release's FULL values**: this chart TEMPLATES
+  its CRDs — the collector CRD carries the `cert-manager.io/inject-ca-from`
+  annotation and a version-conversion webhook `clientConfig`, both
+  derived from the release's identity and from other values
+  (`fullnameOverride`, the cert-manager arm). The render runs with the
+  exact merged values the release installs with, plus the CRD switch,
+  and declares `cert-manager.io/v1` served, so the kept CRDs always
+  point at THIS release's webhook Service and cert-manager Certificate.
+- A `chart_version` upgrade re-applies the CRDs derived from the new
+  pin; every failure on this path (a version that is not published, a
+  repository unreachable at preview time, a render that produces no
+  CRDs, a schema downgrade) states what was observed, what it means,
+  and the next step.
 
 ## The Two Post-Merge Re-Pins
 
@@ -152,11 +162,8 @@ planton pulumi up --manifest e2e/manifest.yaml --module-dir <path-to-this-module
 ## Module Structure
 
 - `main.go`: entrypoint that calls the module
-- `module/main.go`: name-budget guard → namespace → CRDs → operator
-  release → output exports
-- `module/crds.go`: the module-owned CRD apply (per-CRD ConfigGroups
-  keyed by CRD name, the token substitution, `retainOnDelete` via
-  transformation)
+- `module/main.go`: name-budget guard → namespace → release values →
+  derived CRDs (`keptcrds.Apply`) → operator release → output exports
 - `module/values.go`: typed-spec → chart values rendering (the manager
   block, the collector-image split, the issuer reference, scheduling),
   the escape-hatch merge, and the two post-merge re-pins
@@ -167,6 +174,7 @@ planton pulumi up --manifest e2e/manifest.yaml --module-dir <path-to-this-module
 - `module/namespace.go`: the optional governance-labeled namespace
 - `module/vars.go`: chart identity (repository,
   `opentelemetry-operator`), the pinned default version (0.120.0), the
-  staged-CRD directory, the manager image path, the 600s timeout
+  CRD render override and the API versions the render declares, the
+  manager image path, the 600s timeout
 - `module/helpers.go`: shared shape renderers (resources, tolerations,
   the Helm `-f` merge)

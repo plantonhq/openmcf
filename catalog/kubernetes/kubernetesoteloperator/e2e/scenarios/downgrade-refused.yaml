@@ -1,0 +1,20 @@
+# THE SCHEMA-DOWNGRADE REFUSAL: install at chart 0.120.3, then attempt
+# to re-deploy from downgrade-refused.to.yaml at 0.119.0. The second
+# deploy must be refused before any CRD changes (the verifier reads the
+# stamps afterwards: still 0.120.3), with the three-part message naming
+# both versions and the deliberate remedy. keepOnUninstall is off so the
+# destroy that follows the refusal leaves no 0.120.3 CRDs behind.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOtelOperator
+metadata:
+  name: e2e-otelop-down
+  annotations:
+    planton.dev/e2e-upgrade-manifest: downgrade-refused.to.yaml
+    planton.dev/e2e-expect-upgrade-failure: crd-schema-downgrade
+spec:
+  namespace:
+    value: e2e-otelop-down
+  createNamespace: true
+  chartVersion: 0.120.3
+  crds:
+    keepOnUninstall: false

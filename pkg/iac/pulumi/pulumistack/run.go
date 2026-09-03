@@ -155,6 +155,12 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 	// extraEnv is shared between the operation itself and the post-update
 	// output reads, so capture sees exactly the backend the update used.
 	extraEnv := []string{pulumimodulestackinput.FilePathEnvVar + "=" + finalStackInputFilePath}
+	if op == "destroy" {
+		// The program runs during destroy only for its delete hooks; it must
+		// know that, so steps that can fail for reasons unrelated to what is
+		// being deleted stand aside (see OperationEnvVar).
+		extraEnv = append(extraEnv, pulumimodulestackinput.OperationEnvVar+"="+pulumimodulestackinput.OperationDestroy)
+	}
 	if backendUrl != "" {
 		extraEnv = append(extraEnv, "PULUMI_BACKEND_URL="+backendUrl)
 	}

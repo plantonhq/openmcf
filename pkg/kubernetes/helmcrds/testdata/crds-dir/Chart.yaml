@@ -1,0 +1,6 @@
+apiVersion: v2
+name: crds-dir
+description: Test fixture. A chart that ships its CRD in Helm's install-once crds/ directory (the planton-operator shape).
+type: application
+version: 0.7.1
+appVersion: "0.0.41"

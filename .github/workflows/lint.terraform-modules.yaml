@@ -10,6 +10,9 @@
 # Jobs:
 #   tf-provider-pins   (PR + push, BLOCKING) -- every iac/tf module must pin every
 #                       provider it references (root-cause guard; repo-wide, static).
+#   tf-generated-drift (PR + push, BLOCKING) -- every committed generator-owned file
+#                       (variables.tf for migrated kinds; helm_crds.tf wherever it exists)
+#                       equals the generator's output (pkg/iac/tofu/generators drift tests).
 #   tf-validate-changed (PR, BLOCKING)       -- tofu fmt -check + init -backend=false +
 #                       validate on the iac/tf modules changed in the PR.
 #   tf-validate-all    (nightly + manual)    -- init + validate across ALL modules, the
@@ -28,6 +31,7 @@ on:
       - 'catalog/**/iac/tf/**'
       - 'hack/guards/ensure_tf_provider_pins.sh'
       - 'hack/guards/ensure_create_namespace_default_false.sh'
+      - 'pkg/iac/tofu/generators/**'
       - '.github/workflows/lint.terraform-modules.yaml'
   push:
     branches:
@@ -36,6 +40,7 @@ on:
       - 'catalog/**/iac/tf/**'
       - 'hack/guards/ensure_tf_provider_pins.sh'
       - 'hack/guards/ensure_create_namespace_default_false.sh'
+      - 'pkg/iac/tofu/generators/**'
       - '.github/workflows/lint.terraform-modules.yaml'
   schedule:
     - cron: '17 6 * * *' # nightly full validate (provider-drift net)
@@ -58,6 +63,21 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify all iac/tf modules pin their providers
         run: bash ./hack/guards/ensure_tf_provider_pins.sh
+
+  # Generator ownership: a committed variables.tf (migrated kinds) or helm_crds.tf
+  # (every module that carries one) must equal what the generator emits, so a fix
+  # lands once in the generator and regenerates everywhere. Static, no network.
+  tf-generated-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Generator-owned Terraform files match the generator
+        run: go test ./pkg/iac/tofu/generators/
 
   # Root-cause guard: static, no network. A plain proto3 `bool create_namespace` whose
   # TF default is true creates the namespace on every unset deploy and makes explicit

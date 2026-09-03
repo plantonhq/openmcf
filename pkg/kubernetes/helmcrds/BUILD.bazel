@@ -1,0 +1,34 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "helmcrds",
+    srcs = [
+        "bundle.go",
+        "doc.go",
+        "documents.go",
+        "failure.go",
+        "render.go",
+        "source.go",
+        "version.go",
+    ],
+    importpath = "github.com/plantonhq/planton/pkg/kubernetes/helmcrds",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_masterminds_semver_v3//:semver",
+        "@com_github_pkg_errors//:errors",
+        "@io_k8s_sigs_yaml//:yaml",
+        "@sh_helm_helm_v3//pkg/action",
+        "@sh_helm_helm_v3//pkg/chart/loader",
+        "@sh_helm_helm_v3//pkg/chartutil",
+        "@sh_helm_helm_v3//pkg/cli",
+        "@sh_helm_helm_v3//pkg/registry",
+    ],
+)
+
+go_test(
+    name = "helmcrds_test",
+    srcs = ["helmcrds_test.go"],
+    data = glob(["testdata/**"]),
+    embed = [":helmcrds"],
+    deps = ["@io_k8s_sigs_yaml//:yaml"],
+)

@@ -23,7 +23,7 @@ func GetWithKubernetesProviderConfig(ctx *pulumi.Context,
 	providerName string) (*kubernetes.Provider, error) {
 
 	if kubernetesProviderConfig == nil {
-		kubeContext := os.Getenv("KUBE_CTX")
+		kubeContext := os.Getenv(kubeconfig.KubeContextEnvVar)
 
 		providerArgs := &kubernetes.ProviderArgs{
 			EnableServerSideApply: pulumi.Bool(true),
@@ -75,7 +75,7 @@ func GetWithKubernetesProviderConfigUpsert(ctx *pulumi.Context,
 	providerName string) (*kubernetes.Provider, error) {
 
 	if kubernetesProviderConfig == nil {
-		kubeContext := os.Getenv("KUBE_CTX")
+		kubeContext := os.Getenv(kubeconfig.KubeContextEnvVar)
 
 		providerArgs := &kubernetes.ProviderArgs{
 			EnableServerSideApply: pulumi.Bool(true),
@@ -128,7 +128,7 @@ func GetWithKubernetesProviderConfigAndNamespace(ctx *pulumi.Context,
 	providerName string, defaultNamespace string) (*kubernetes.Provider, error) {
 
 	if kubernetesProviderConfig == nil {
-		kubeContext := os.Getenv("KUBE_CTX")
+		kubeContext := os.Getenv(kubeconfig.KubeContextEnvVar)
 
 		providerArgs := &kubernetes.ProviderArgs{
 			EnableServerSideApply: pulumi.Bool(true),

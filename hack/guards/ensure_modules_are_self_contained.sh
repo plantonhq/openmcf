@@ -44,8 +44,6 @@ cd "$repo_root_dir"
 known_violations=(
   "catalog/kubernetes/kubernetesopensearchoperator/iac/pulumi"
   "catalog/kubernetes/kubernetesopensearchoperator/iac/tf"
-  "catalog/kubernetes/kubernetesoteloperator/iac/pulumi"
-  "catalog/kubernetes/kubernetesoteloperator/iac/tf"
   "catalog/kubernetes/kubernetesplantonoperator/iac/pulumi"
   "catalog/kubernetes/kubernetesplantonoperator/iac/tf"
   "catalog/kubernetes/kubernetessolroperator/iac/pulumi"

@@ -29,8 +29,8 @@ locals {
   # defaulting middleware ran — mirror of the Pulumi module's
   # DefaultChartVersion. 0.120.0 is the newest SERVED stable chart
   # (= operator appVersion 0.156.0, verified against the repository
-  # index). Bumping it requires re-staging ../crds from the new pin —
-  # the staged files ARE the chart's CRDs at this version.
+  # index). The CRDs are derived from whatever version is pinned, so a
+  # bump here changes exactly one line.
   chart_version = coalesce(try(var.spec.chart_version, null), "0.120.0")
 
   namespace = var.spec.namespace
@@ -48,34 +48,31 @@ locals {
     var.metadata.env != null && var.metadata.env != "" ? { "planton.ai/environment" = var.metadata.env } : {}
   )
 
-  # ---- module-owned CRDs (twin of the Pulumi module's crds.go) --------------
-  # One entry per staged CRD file, keyed by the CRD's OWN metadata.name
-  # (parsed from the file — never a positional index), so state addresses
-  # stay stable across file renames and reorderings.
+  # ---- module-owned CRDs (the derive-branch contract for helm_crds.tf) ----
+  # The CRDs are DERIVED from the pinned chart at plan time by the
+  # generated helm_crds.tf: it renders the chart with the release's own
+  # values (helm_release_values, the same list the release consumes) plus
+  # the CRD switch turned on, keeps the CustomResourceDefinition
+  # documents, stamps them, and applies each one kept. These locals are
+  # its input; the twin of the Pulumi module's keptcrds.Args.
   #
-  # THE STAGED FILES ARE RENDERED, TOKENIZED CHART TEMPLATES: unlike
-  # plain-YAML CRD bundles, this chart TEMPLATES its CRDs — the collector
-  # CRD carries the cert-manager.io/inject-ca-from annotation and a
-  # version-conversion webhook clientConfig, both derived from the
-  # RELEASE's identity. The files under ../crds were rendered from the
-  # pinned chart with those release-derived values replaced by
-  # __PLANTON_RELEASE_NAME__ / __PLANTON_NAMESPACE__ tokens, substituted
-  # here (and identically in the Pulumi module) — so the kept CRDs always
-  # point at THIS release's webhook Service and cert-manager Certificate.
-  #
-  # skip_crds is the bring-your-own-CRDs arm: the CRDs are owned
-  # elsewhere (a GitOps-managed bundle) and this module must not touch
-  # them. The filter clause keeps the for_each type stable (never a
-  # `cond ? {} : {...}` ternary — the type-unification class).
-  crd_manifests = {
-    for f in fileset("${path.module}/../crds", "*.yaml") :
-    yamldecode(file("${path.module}/../crds/${f}")).metadata.name =>
-    replace(
-      replace(file("${path.module}/../crds/${f}"), "__PLANTON_RELEASE_NAME__", local.release_name),
-      "__PLANTON_NAMESPACE__", local.namespace
-    )
-    if !try(var.spec.skip_crds, false)
-  }
+  # crds.install false is the bring-your-own-CRDs arm (the CRDs are owned
+  # elsewhere, a GitOps-managed bundle); the release still skips CRDs.
+  # crds.keep_on_uninstall false lets a destroy take the CRDs with it.
+  helm_crds_enabled = try(var.spec.crds.install, null) == null ? true : var.spec.crds.install
+  helm_crds_keep    = try(var.spec.crds.keep_on_uninstall, null) == null ? true : var.spec.crds.keep_on_uninstall
+
+  # The chart's CRD switch, turned on for the render only. The release
+  # pins it off (see helm_release_values).
+  helm_crds_render_override = yamlencode({ crds = { create = true } })
+
+  # The collector CRD's cert-manager.io/inject-ca-from annotation renders
+  # only when the chart sees cert-manager.io/v1 served; the render must
+  # declare it or the kept CRD loses its conversion trust.
+  helm_crds_api_versions = ["cert-manager.io/v1"]
+
+  # This chart templates its CRDs; no upstream bundle.
+  helm_crds_bundle_url = ""
 
   # ---- webhook artifact names (twins of the Pulumi module's locals) ---------
   # The module pins the chart's fullnameOverride to the resource name
@@ -179,13 +176,15 @@ locals {
       # crds.create: false ALWAYS — never conditional, never a spec knob.
       # The chart templates its CRDs release-owned (a Helm uninstall
       # would cascade-delete every collector in the cluster); the module
-      # owns the CRDs instead (kubectl_manifest.crds in main.tf).
+      # owns the CRDs instead (kubectl_manifest.helm_crds in the
+      # generated helm_crds.tf).
       crds = { create = false }
 
       # fullnameOverride pins the chart's fullname to the resource name
       # (the catalog's Helm-kind identity convention). Load-bearing: the
-      # staged CRDs' conversion webhook and inject-ca-from annotation
-      # point at names derived from it (see crd_manifests above).
+      # derived CRDs' conversion webhook and inject-ca-from annotation
+      # point at names derived from it, and the CRD render runs with
+      # these exact values.
       fullnameOverride = local.release_name
 
       # Rendered on presence — an explicit 1 re-states the chart default
@@ -222,4 +221,28 @@ locals {
       priorityClassName = try(var.spec.scheduling.priority_class_name, "") != "" ? var.spec.scheduling.priority_class_name : null
     } : k => v if v != null
   }
+
+  # The release's values documents, merged in order by the provider
+  # (helm -f semantics): the typed rendering first, the user's escape
+  # hatch second — and the TWO design-load-bearing keys re-pinned LAST,
+  # the deliberate exceptions to the escape hatch's last-word contract
+  # (twin of the Pulumi module's buildHelmValues re-pins):
+  #   - crds.create=false: the module owns the CRD lifecycle; handing
+  #     them to Helm would arm the uninstall cascade-delete this design
+  #     exists to prevent.
+  #   - admissionWebhooks.certManager.enabled=true: the kept CRDs'
+  #     conversion trust rides cert-manager's CA injector; disabling it
+  #     would leave module-owned CRDs pointing at a Certificate that no
+  #     longer exists and silently break collector-CR conversion.
+  # ONE list, consumed by both the release (main.tf) and the CRD render
+  # (helm_crds.tf), so the derived CRDs can never see different values
+  # than the install.
+  helm_release_values = concat(
+    [yamlencode(local.typed_values)],
+    try(var.spec.helm_values, "") != "" ? [var.spec.helm_values] : [],
+    [yamlencode({
+      crds              = { create = false }
+      admissionWebhooks = { certManager = { enabled = true } }
+    })]
+  )
 }

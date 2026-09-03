@@ -40,15 +40,23 @@ const (
 // CRD LIFECYCLE: the chart templates its opentelemetry.io CRDs as
 // release-owned objects — a Helm uninstall would cascade-delete every
 // collector in the cluster. This component instead OWNS the CRD
-// lifecycle: the modules apply the four CRDs the default operator
-// serves (opentelemetrycollectors, instrumentations, opampbridges,
-// targetallocators), staged from the pinned chart, outside the release
-// (create/update only, retained on destroy) — so removing the operator
-// never deletes the fleet's declarations. Chart-version bumps upgrade
-// the CRDs with the staged files. The fifth, feature-gated
-// clusterobservabilities CRD (the operator.clusterobservability alpha
-// gate, off by default) is deliberately not staged — enabling that
-// gate via helm_values without its CRD is unsupported here.
+// lifecycle: the modules DERIVE the CRD set from the pinned chart at
+// apply time (rendering it with the release's own values and the
+// chart's CRD switch on), apply each CRD outside the release as a kept
+// resource, and install the release with CRDs skipped. The schema
+// therefore always matches `chart_version`: a bump re-applies the CRDs
+// at the new pin; destroy keeps them unless `crds.keep_on_uninstall` is
+// false; a reinstall re-adopts them; a lower `chart_version` than the
+// CRDs already on the cluster is refused before anything is touched,
+// with the remedy. Which CRDs exist follows the chart's own gates
+// (the feature-gated clusterobservabilities CRD appears only when its
+// gate is enabled through helm_values).
+//
+// FAILURES EXPLAIN THEMSELVES: every CRD-lifecycle refusal or error
+// states what was observed, what it most likely means, and the exact
+// next step (a chart version that is not published, a repository that
+// cannot be reached at plan time, a schema downgrade, a render that
+// produced no CRDs).
 //
 // WEBHOOK CERTIFICATE: the operator's admission webhooks (they default
 // and validate collector CRs, failurePolicy Fail) need a serving
@@ -90,14 +98,10 @@ type KubernetesOtelOperatorSpec struct {
 	// pairs with operator v0.156.0). Versions must exist as SERVED charts
 	// in the repository index
 	// (https://open-telemetry.github.io/opentelemetry-helm-charts).
-	// Bumping the chart version upgrades the module-owned CRDs with it.
+	// Bumping the chart version re-applies the module-owned CRDs at the
+	// new pin; lowering it below the CRDs already on the cluster is
+	// refused (see `crds`).
 	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
-	// *
-	// Skip installing the opentelemetry.io CRDs. Set ONLY when the CRDs
-	// are owned elsewhere (a GitOps-managed CRD bundle). With the CRDs
-	// absent the operator cannot start — this is a bring-your-own-CRDs
-	// arm, not a lighter install.
-	SkipCrds bool `protobuf:"varint,4,opt,name=skip_crds,json=skipCrds,proto3" json:"skip_crds,omitempty"`
 	// *
 	// Admission-webhook certificate configuration. cert-manager issues
 	// and rotates the certificate and keeps the retained CRDs' conversion
@@ -148,7 +152,11 @@ type KubernetesOtelOperatorSpec struct {
 	// identical on both engines). For the chart surface beyond the typed
 	// fields (kube-rbac-proxy, network policy, PDB, feature gates) —
 	// never the substitute for them.
-	HelmValues    string `protobuf:"bytes,13,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	HelmValues string `protobuf:"bytes,13,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	// *
+	// CRD installation lifecycle. Both default to true; unset means the
+	// module owns the CRDs and keeps them.
+	Crds          *KubernetesOtelOperatorCrds `protobuf:"bytes,14,opt,name=crds,proto3" json:"crds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -202,13 +210,6 @@ func (x *KubernetesOtelOperatorSpec) GetChartVersion() string {
 		return *x.ChartVersion
 	}
 	return ""
-}
-
-func (x *KubernetesOtelOperatorSpec) GetSkipCrds() bool {
-	if x != nil {
-		return x.SkipCrds
-	}
-	return false
 }
 
 func (x *KubernetesOtelOperatorSpec) GetWebhook() *KubernetesOtelOperatorWebhook {
@@ -274,6 +275,79 @@ func (x *KubernetesOtelOperatorSpec) GetHelmValues() string {
 	return ""
 }
 
+func (x *KubernetesOtelOperatorSpec) GetCrds() *KubernetesOtelOperatorCrds {
+	if x != nil {
+		return x.Crds
+	}
+	return nil
+}
+
+// *
+// CRD installation lifecycle for the module-owned opentelemetry.io CRDs.
+type KubernetesOtelOperatorCrds struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Derive and apply the opentelemetry.io CRDs from the pinned chart
+	// ahead of the release. Default TRUE. Set false ONLY when the CRDs are
+	// owned elsewhere (a GitOps-managed bundle): the release still installs
+	// with CRDs skipped, and with the CRDs absent the operator cannot start,
+	// so this is a bring-your-own-CRDs arm, never a lighter install.
+	Install *bool `protobuf:"varint,1,opt,name=install,proto3,oneof" json:"install,omitempty"`
+	// *
+	// Keep the CRDs (and therefore every OpenTelemetryCollector,
+	// Instrumentation, OpAMPBridge and TargetAllocator in the cluster) when
+	// the resource is destroyed. Default TRUE: deleting the CRDs cascades to
+	// the whole collector fleet, a destructive act that must be an explicit
+	// false. A later reinstall re-adopts kept CRDs.
+	KeepOnUninstall *bool `protobuf:"varint,2,opt,name=keep_on_uninstall,json=keepOnUninstall,proto3,oneof" json:"keep_on_uninstall,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesOtelOperatorCrds) Reset() {
+	*x = KubernetesOtelOperatorCrds{}
+	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesOtelOperatorCrds) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesOtelOperatorCrds) ProtoMessage() {}
+
+func (x *KubernetesOtelOperatorCrds) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesOtelOperatorCrds.ProtoReflect.Descriptor instead.
+func (*KubernetesOtelOperatorCrds) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesOtelOperatorCrds) GetInstall() bool {
+	if x != nil && x.Install != nil {
+		return *x.Install
+	}
+	return false
+}
+
+func (x *KubernetesOtelOperatorCrds) GetKeepOnUninstall() bool {
+	if x != nil && x.KeepOnUninstall != nil {
+		return *x.KeepOnUninstall
+	}
+	return false
+}
+
 // *
 // Admission-webhook certificate configuration (cert-manager-issued —
 // the only posture this component models; the spec's WEBHOOK
@@ -293,7 +367,7 @@ type KubernetesOtelOperatorWebhook struct {
 
 func (x *KubernetesOtelOperatorWebhook) Reset() {
 	*x = KubernetesOtelOperatorWebhook{}
-	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -305,7 +379,7 @@ func (x *KubernetesOtelOperatorWebhook) String() string {
 func (*KubernetesOtelOperatorWebhook) ProtoMessage() {}
 
 func (x *KubernetesOtelOperatorWebhook) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -318,7 +392,7 @@ func (x *KubernetesOtelOperatorWebhook) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesOtelOperatorWebhook.ProtoReflect.Descriptor instead.
 func (*KubernetesOtelOperatorWebhook) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesOtelOperatorWebhook) GetIssuerRef() *KubernetesOtelOperatorIssuerRef {
@@ -344,7 +418,7 @@ type KubernetesOtelOperatorIssuerRef struct {
 
 func (x *KubernetesOtelOperatorIssuerRef) Reset() {
 	*x = KubernetesOtelOperatorIssuerRef{}
-	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -356,7 +430,7 @@ func (x *KubernetesOtelOperatorIssuerRef) String() string {
 func (*KubernetesOtelOperatorIssuerRef) ProtoMessage() {}
 
 func (x *KubernetesOtelOperatorIssuerRef) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -369,7 +443,7 @@ func (x *KubernetesOtelOperatorIssuerRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesOtelOperatorIssuerRef.ProtoReflect.Descriptor instead.
 func (*KubernetesOtelOperatorIssuerRef) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KubernetesOtelOperatorIssuerRef) GetKind() string {
@@ -405,7 +479,7 @@ type KubernetesOtelOperatorScheduling struct {
 
 func (x *KubernetesOtelOperatorScheduling) Reset() {
 	*x = KubernetesOtelOperatorScheduling{}
-	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -417,7 +491,7 @@ func (x *KubernetesOtelOperatorScheduling) String() string {
 func (*KubernetesOtelOperatorScheduling) ProtoMessage() {}
 
 func (x *KubernetesOtelOperatorScheduling) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[3]
+	mi := &file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -430,7 +504,7 @@ func (x *KubernetesOtelOperatorScheduling) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesOtelOperatorScheduling.ProtoReflect.Descriptor instead.
 func (*KubernetesOtelOperatorScheduling) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
+	return file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *KubernetesOtelOperatorScheduling) GetNodeSelector() map[string]string {
@@ -458,12 +532,11 @@ var File_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto protorefl
 
 const file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/kubernetes/kubernetesoteloperator/v1alpha1/spec.proto\x126dev.planton.kubernetes.kubernetesoteloperator.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xbc\a\n" +
+	"=catalog/kubernetes/kubernetesoteloperator/v1alpha1/spec.proto\x126dev.planton.kubernetes.kubernetesoteloperator.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8d\b\n" +
 	"\x1aKubernetesOtelOperatorSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
 	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x125\n" +
-	"\rchart_version\x18\x03 \x01(\tB\v\x8a\xa6\x1d\a0.120.0H\x00R\fchartVersion\x88\x01\x01\x12\x1b\n" +
-	"\tskip_crds\x18\x04 \x01(\bR\bskipCrds\x12o\n" +
+	"\rchart_version\x18\x03 \x01(\tB\v\x8a\xa6\x1d\a0.120.0H\x00R\fchartVersion\x88\x01\x01\x12o\n" +
 	"\awebhook\x18\x05 \x01(\v2U.dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorWebhookR\awebhook\x126\n" +
 	"\x17default_collector_image\x18\x06 \x01(\tR\x15defaultCollectorImage\x12-\n" +
 	"\breplicas\x18\a \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x12H\n" +
@@ -476,9 +549,16 @@ const file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDesc
 	"scheduling\x18\f \x01(\v2X.dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSchedulingR\n" +
 	"scheduling\x12\x1f\n" +
 	"\vhelm_values\x18\r \x01(\tR\n" +
-	"helmValuesB\x10\n" +
+	"helmValues\x12f\n" +
+	"\x04crds\x18\x0e \x01(\v2R.dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorCrdsR\x04crdsB\x10\n" +
 	"\x0e_chart_versionB\v\n" +
-	"\t_replicas\"\x97\x01\n" +
+	"\t_replicasJ\x04\b\x04\x10\x05\"\xa2\x01\n" +
+	"\x1aKubernetesOtelOperatorCrds\x12'\n" +
+	"\ainstall\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\ainstall\x88\x01\x01\x129\n" +
+	"\x11keep_on_uninstall\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0fkeepOnUninstall\x88\x01\x01B\n" +
+	"\n" +
+	"\b_installB\x14\n" +
+	"\x12_keep_on_uninstall\"\x97\x01\n" +
 	"\x1dKubernetesOtelOperatorWebhook\x12v\n" +
 	"\n" +
 	"issuer_ref\x18\x01 \x01(\v2W.dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorIssuerRefR\tissuerRef\"o\n" +
@@ -506,30 +586,32 @@ func file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDescG
 	return file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_goTypes = []any{
 	(*KubernetesOtelOperatorSpec)(nil),       // 0: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec
-	(*KubernetesOtelOperatorWebhook)(nil),    // 1: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorWebhook
-	(*KubernetesOtelOperatorIssuerRef)(nil),  // 2: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorIssuerRef
-	(*KubernetesOtelOperatorScheduling)(nil), // 3: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling
-	nil,                                      // 4: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling.NodeSelectorEntry
-	(*v1.StringValueOrRef)(nil),              // 5: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),    // 6: dev.planton.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil),    // 7: dev.planton.kubernetes.WorkloadToleration
+	(*KubernetesOtelOperatorCrds)(nil),       // 1: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorCrds
+	(*KubernetesOtelOperatorWebhook)(nil),    // 2: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorWebhook
+	(*KubernetesOtelOperatorIssuerRef)(nil),  // 3: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorIssuerRef
+	(*KubernetesOtelOperatorScheduling)(nil), // 4: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling
+	nil,                                      // 5: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling.NodeSelectorEntry
+	(*v1.StringValueOrRef)(nil),              // 6: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),    // 7: dev.planton.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),    // 8: dev.planton.kubernetes.WorkloadToleration
 }
 var file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_depIdxs = []int32{
-	5, // 0: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	1, // 1: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec.webhook:type_name -> dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorWebhook
-	6, // 2: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	3, // 3: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec.scheduling:type_name -> dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling
-	2, // 4: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorWebhook.issuer_ref:type_name -> dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorIssuerRef
-	4, // 5: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling.node_selector:type_name -> dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling.NodeSelectorEntry
-	7, // 6: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
-	7, // [7:7] is the sub-list for method output_type
-	7, // [7:7] is the sub-list for method input_type
-	7, // [7:7] is the sub-list for extension type_name
-	7, // [7:7] is the sub-list for extension extendee
-	0, // [0:7] is the sub-list for field type_name
+	6, // 0: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	2, // 1: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec.webhook:type_name -> dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorWebhook
+	7, // 2: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	4, // 3: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec.scheduling:type_name -> dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling
+	1, // 4: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorSpec.crds:type_name -> dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorCrds
+	3, // 5: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorWebhook.issuer_ref:type_name -> dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorIssuerRef
+	5, // 6: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling.node_selector:type_name -> dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling.NodeSelectorEntry
+	8, // 7: dev.planton.kubernetes.kubernetesoteloperator.v1alpha1.KubernetesOtelOperatorScheduling.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_init() }
@@ -538,13 +620,14 @@ func file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_init() {
 		return
 	}
 	file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
+	file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDesc), len(file_catalog_kubernetes_kubernetesoteloperator_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

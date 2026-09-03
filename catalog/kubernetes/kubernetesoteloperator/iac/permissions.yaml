@@ -33,9 +33,10 @@ spec:
           - create
           - update
           - patch
+          - delete
         cluster_scoped: true
         provenance: derived
-        notes: Covers kubectl_manifest.crds (Terraform, one per staged file) and the Pulumi twin in crds.go -- the four module-owned opentelemetry.io CRDs (opentelemetrycollectors, instrumentations, opampbridges, targetallocators), applied via server-side apply OUTSIDE the Helm release and upgraded in place on chart bumps. NO delete verb by design -- apply_only/retainOnDelete makes destroy a no-op so an operator uninstall never cascade-deletes collector declarations. Skipped entirely when spec.skip_crds is true.
+        notes: Covers kubectl_manifest.helm_crds (Terraform, the generated helm_crds.tf) and the Pulumi twin (keptcrds) -- the module-owned opentelemetry.io CRDs, derived from the pinned chart at apply time and applied via server-side apply OUTSIDE the Helm release, re-applied in place on chart bumps. The list verb also serves the never-downgrade read (CRDs selected by the planton.ai/crd-source label). Delete is exercised only when spec.crds.keep_on_uninstall is false; the default keep posture makes destroy a no-op so an operator uninstall never cascade-deletes collector declarations. Skipped entirely when spec.crds.install is false.
       - api_groups:
           - ""
         resources:

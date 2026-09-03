@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fixture.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "fixture.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "fixture.fullname" . }}
+    spec:
+      containers:
+        - name: operator
+          image: example.invalid/operator:1.0.0

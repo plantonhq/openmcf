@@ -24,30 +24,32 @@ spec:
       where_to_find: >-
         `helm list -A` (NAMESPACE column); conventionally
         "otel-operator-system".
-    # ── the module-owned CRDs (for_each resource "crds") ────────────────
-    # Keyed by the CRD's own metadata.name, so the name derives blind
-    # from the state address key; CustomResourceDefinitions are
-    # cluster-scoped (no namespace segment). Absent entirely when
-    # skip_crds is true (the bring-your-own-CRDs arm).
+    # ── the module-owned CRDs (for_each resource "helm_crds") ───────────
+    # Derived from the pinned chart at plan time (the generated
+    # helm_crds.tf) and keyed by the CRD's own metadata.name, so the name
+    # derives blind from the state address key; CustomResourceDefinitions
+    # are cluster-scoped (no namespace segment). Absent entirely when
+    # crds.install is false (the bring-your-own-CRDs arm).
     - name: api_version
-      tofu_resource_name: crds
+      tofu_resource_name: helm_crds
       derivations:
         - literal: apiextensions.k8s.io/v1
       where_to_find: Always "apiextensions.k8s.io/v1" — the CRD group/version.
     - name: kind
-      tofu_resource_name: crds
+      tofu_resource_name: helm_crds
       derivations:
         - literal: CustomResourceDefinition
       where_to_find: Always "CustomResourceDefinition".
     - name: name
-      tofu_resource_name: crds
+      tofu_resource_name: helm_crds
       derivations:
         - from_address_key: true
       where_to_find: >-
         Each CRD's metadata.name (the for_each key) —
-        `kubectl get crd | grep opentelemetry.io` (NAME column; the four
-        staged CRDs are opentelemetrycollectors, instrumentations,
-        opampbridges and targetallocators).
+        `kubectl get crd -l planton.ai/crd-source=opentelemetry-operator`
+        (NAME column; at the default pin these are opentelemetrycollectors,
+        instrumentations, opampbridges and targetallocators, and the set
+        follows whatever the pinned chart templates).
     - name: namespace
       where_to_find: >-
         Not applicable — CustomResourceDefinitions are cluster-scoped,

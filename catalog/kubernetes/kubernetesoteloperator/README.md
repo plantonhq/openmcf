@@ -19,10 +19,10 @@ Also not the right component when:
   must be kept current by cert-manager's CA injector (see below for
   why no self-signed arm exists).
 - **You need the ClusterObservability alpha feature** — the
-  feature-gated `clusterobservabilities` CRD (the
-  `operator.clusterobservability` alpha gate, off by default) is
-  deliberately not staged; enabling that gate via `helm_values`
-  without its CRD is unsupported here.
+  `operator.clusterobservability` gate is off by default; enabling it
+  through `helm_values` also brings its `clusterobservabilities` CRD,
+  because the CRDs are derived from the chart with the same values the
+  release installs with.
 
 ## Overview
 
@@ -41,16 +41,23 @@ declares.
 - **The module owns the CRD lifecycle.** The chart templates its
   opentelemetry.io CRDs as release-owned resources — a Helm-owned
   install would cascade-delete every collector declaration in the
-  cluster on uninstall. The modules therefore pin `crds.create: false`
-  unconditionally and apply the four CRDs the default operator serves
-  (`opentelemetrycollectors`, `instrumentations`, `opampbridges`,
-  `targetallocators`), staged from the pinned chart, themselves: the
-  Terraform module with `kubectl_manifest` `apply_only = true` (the
-  provider's Delete is a no-op), the Pulumi module with a
-  `retainOnDelete` transformation on each CRD. Destroying this
-  resource removes the operator but NEVER the CRDs — removing the
-  operator never deletes the fleet's declarations. Chart-version bumps
-  upgrade the CRDs with the staged files.
+  cluster on uninstall. The modules therefore DERIVE the CRD set from
+  the pinned chart at apply time (rendering it with the release's own
+  values and the chart's CRD switch on), apply each CRD outside the
+  release as a kept resource, and install the release with CRDs
+  skipped and `crds.create: false` pinned. The schema always matches
+  `chart_version`: a bump re-applies the CRDs at the new pin; destroy
+  keeps them (unless `crds.keep_on_uninstall` is false), so removing
+  the operator never deletes the fleet's declarations; a reinstall
+  re-adopts them; lowering `chart_version` below what the cluster's
+  CRDs carry is refused before anything is touched, with the remedy.
+  Every CRD carries `planton.ai/crd-source-chart` and
+  `planton.ai/crd-source-version` annotations, so `kubectl` shows where
+  it came from.
+- **Failures explain themselves.** A chart version that is not
+  published, a repository unreachable at plan time, a render that
+  produces no CRDs, a schema downgrade: each stops with what was
+  observed, what it means, and the exact next step.
 - **cert-manager is REQUIRED — a consequence of the CRD lifecycle.**
   cert-manager issues and rotates the webhook serving certificate, and
   the collector CRD carries a version-CONVERSION webhook whose trust
@@ -88,11 +95,13 @@ declares.
 ### Common
 
 - **`spec.chart_version`**: chart pin (default `0.120.0` — pairs with
-  operator v0.156.0; bumping it upgrades the module-owned CRDs with
-  the staged files)
-- **`spec.skip_crds`**: bring-your-own-CRDs arm — set ONLY when the
-  CRDs are owned elsewhere (a GitOps-managed bundle); with the CRDs
-  absent the operator cannot start
+  operator v0.156.0; bumping it re-applies the module-owned CRDs at the
+  new pin; lowering it below the cluster's CRDs is refused)
+- **`spec.crds.install`**: default true; false is the bring-your-own-CRDs
+  arm — set ONLY when the CRDs are owned elsewhere (a GitOps-managed
+  bundle); with the CRDs absent the operator cannot start
+- **`spec.crds.keep_on_uninstall`**: default true; false lets a destroy
+  delete the CRDs and, with them, every collector declaration
 - **`spec.webhook.issuer_ref`**: cert-manager Issuer/ClusterIssuer to
   sign the webhook certificate; empty = the chart creates its own
   self-signed Issuer (the right choice for almost everyone)

@@ -22,15 +22,23 @@ directly).
 CRD LIFECYCLE: the chart templates its opentelemetry.io CRDs as
 release-owned objects — a Helm uninstall would cascade-delete every
 collector in the cluster. This component instead OWNS the CRD
-lifecycle: the modules apply the four CRDs the default operator
-serves (opentelemetrycollectors, instrumentations, opampbridges,
-targetallocators), staged from the pinned chart, outside the release
-(create/update only, retained on destroy) — so removing the operator
-never deletes the fleet's declarations. Chart-version bumps upgrade
-the CRDs with the staged files. The fifth, feature-gated
-clusterobservabilities CRD (the operator.clusterobservability alpha
-gate, off by default) is deliberately not staged — enabling that
-gate via helm_values without its CRD is unsupported here.
+lifecycle: the modules DERIVE the CRD set from the pinned chart at
+apply time (rendering it with the release's own values and the
+chart's CRD switch on), apply each CRD outside the release as a kept
+resource, and install the release with CRDs skipped. The schema
+therefore always matches `chart_version`: a bump re-applies the CRDs
+at the new pin; destroy keeps them unless `crds.keep_on_uninstall` is
+false; a reinstall re-adopts them; a lower `chart_version` than the
+CRDs already on the cluster is refused before anything is touched,
+with the remedy. Which CRDs exist follows the chart's own gates
+(the feature-gated clusterobservabilities CRD appears only when its
+gate is enabled through helm_values).
+
+FAILURES EXPLAIN THEMSELVES: every CRD-lifecycle refusal or error
+states what was observed, what it most likely means, and the exact
+next step (a chart version that is not published, a repository that
+cannot be reached at plan time, a schema downgrade, a render that
+produced no CRDs).
 
 WEBHOOK CERTIFICATE: the operator's admission webhooks (they default
 and validate collector CRs, failurePolicy Fail) need a serving
@@ -116,7 +124,6 @@ spec:
 | `spec.namespace` | `string \| valueFrom` | yes |  | KubernetesNamespace (`spec.name`) |
 | `spec.createNamespace` | `bool` |  |  |  |
 | `spec.chartVersion` | `string` |  | `0.120.0` |  |
-| `spec.skipCrds` | `bool` |  |  |  |
 | `spec.webhook` | `KubernetesOtelOperatorWebhook` |  |  |  |
 | `spec.webhook.issuerRef` | `KubernetesOtelOperatorIssuerRef` |  |  |  |
 | `spec.webhook.issuerRef.kind` | `string` |  |  |  |
@@ -143,6 +150,9 @@ spec:
 | `spec.scheduling.tolerations[].tolerationSeconds` | `int64` |  |  |  |
 | `spec.scheduling.priorityClassName` | `string` |  |  |  |
 | `spec.helmValues` | `string` |  |  |  |
+| `spec.crds` | `KubernetesOtelOperatorCrds` |  |  |  |
+| `spec.crds.install` | `bool` |  | `true` |  |
+| `spec.crds.keepOnUninstall` | `bool` |  | `true` |  |
 
 ## Field Details
 
@@ -173,18 +183,11 @@ Helm chart version to install (e.g. "0.120.0" — chart 0.120.0
 pairs with operator v0.156.0). Versions must exist as SERVED charts
 in the repository index
 (https://open-telemetry.github.io/opentelemetry-helm-charts).
-Bumping the chart version upgrades the module-owned CRDs with it.
+Bumping the chart version re-applies the module-owned CRDs at the
+new pin; lowering it below the CRDs already on the cluster is
+refused (see `crds`).
 
 - default: `0.120.0`
-
-### spec.skipCrds
-
-`bool`
-
-Skip installing the opentelemetry.io CRDs. Set ONLY when the CRDs
-are owned elsewhere (a GitOps-managed CRD bundle). With the CRDs
-absent the operator cannot start — this is a bring-your-own-CRDs
-arm, not a lighter install.
 
 ### spec.webhook
 
@@ -376,6 +379,37 @@ LAST over everything the typed fields render (Helm `-f` semantics,
 identical on both engines). For the chart surface beyond the typed
 fields (kube-rbac-proxy, network policy, PDB, feature gates) —
 never the substitute for them.
+
+### spec.crds
+
+`KubernetesOtelOperatorCrds`
+
+CRD installation lifecycle. Both default to true; unset means the
+module owns the CRDs and keeps them.
+
+### spec.crds.install
+
+`bool` · optional (explicit presence)
+
+Derive and apply the opentelemetry.io CRDs from the pinned chart
+ahead of the release. Default TRUE. Set false ONLY when the CRDs are
+owned elsewhere (a GitOps-managed bundle): the release still installs
+with CRDs skipped, and with the CRDs absent the operator cannot start,
+so this is a bring-your-own-CRDs arm, never a lighter install.
+
+- default: `true`
+
+### spec.crds.keepOnUninstall
+
+`bool` · optional (explicit presence)
+
+Keep the CRDs (and therefore every OpenTelemetryCollector,
+Instrumentation, OpAMPBridge and TargetAllocator in the cluster) when
+the resource is destroyed. Default TRUE: deleting the CRDs cascades to
+the whole collector fleet, a destructive act that must be an explicit
+false. A later reinstall re-adopts kept CRDs.
+
+- default: `true`
 
 ## Outputs
 

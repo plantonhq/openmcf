@@ -126,6 +126,17 @@ func TestMain(m *testing.M) {
 	pulumiBackendURL = "file://" + backendDir
 	defer os.RemoveAll(backendDir)
 
+	// Helm-based kinds render and install charts through whatever Helm
+	// repository state the process carries; a per-run directory reproduces
+	// the runner's clean state so a developer's stale `helm repo` entry can
+	// never fail a lane.
+	helmCleanup, err := runner.IsolateHelmEnvironment()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to isolate the Helm environment: %v\n", err)
+		os.Exit(1)
+	}
+	defer helmCleanup()
+
 	// Log into local backend
 	if err := runner.PulumiLogin(pulumiBackendURL); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to login to pulumi backend: %v\n", err)

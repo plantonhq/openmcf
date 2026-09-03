@@ -3,9 +3,12 @@ package module
 import (
 	"github.com/pkg/errors"
 	kubernetesoteloperatorv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetesoteloperator/v1alpha1"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/keptcrds"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider"
+	"github.com/plantonhq/planton/pkg/kubernetes/helmcrds"
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"sigs.k8s.io/yaml"
 )
 
 // Resources installs the OpenTelemetry Operator from the official
@@ -18,18 +21,24 @@ import (
 // CRD LIFECYCLE: the chart templates its opentelemetry.io CRDs as
 // release-owned resources, so a Helm-owned install would cascade-delete
 // every collector declaration on uninstall. The module therefore OWNS the
-// CRDs: crds.create pins false unconditionally in the rendered values,
-// and crds.go applies the staged, tokenized CRD files with retainOnDelete
-// — destroy drops them from state without deleting them from the cluster.
-// The release depends on the CRDs so the operator never starts against an
-// unregistered API group.
+// CRDs through the catalog's derive-branch primitive (keptcrds): the
+// pinned chart is rendered with the release's own values plus the CRD
+// switch turned on, each CustomResourceDefinition is applied keyed by its
+// own name as a kept resource (retained on destroy unless
+// crds.keep_on_uninstall is false; re-adopted on reinstall; refused when
+// the manifest lowers chart_version below what the cluster carries), and
+// the release installs with skip_crds and crds.create pinned false so
+// Helm never touches them. The release depends on the CRDs so the
+// operator never starts against an unregistered API group.
 //
 // THE CONVERSION-TRUST COUPLING (why cert-manager is required): the
 // collector CRD carries a version-conversion webhook and the
-// cert-manager.io/inject-ca-from annotation. Because the CRDs are
-// retained past the release's lifetime, their conversion trust must be
-// kept current by a RUNNING reconciler — cert-manager's CA injector —
-// not by a certificate embedded once at install time.
+// cert-manager.io/inject-ca-from annotation, both rendered from THIS
+// release's identity because the CRD render runs with the release's own
+// values. Because the CRDs are retained past the release's lifetime,
+// their conversion trust must be kept current by a RUNNING reconciler —
+// cert-manager's CA injector — not by a certificate embedded once at
+// install time.
 //
 // The typed spec renders into chart values (values.go); the helm_values
 // escape hatch merges last with Helm -f semantics — the exact semantic
@@ -58,41 +67,50 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetesoteloperatorv1alpha1.K
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// ------------------------------ CRDs ----------------------------------
-	// Module-owned, retained on delete — see crds.go for the full posture.
-	// skip_crds is the bring-your-own-CRDs arm: the CRDs are owned
-	// elsewhere (a GitOps-managed bundle) and this module must not touch
-	// them.
-	//
-	// The CRDs ride a DEDICATED upsert provider: retained-on-destroy
-	// resources are, by design, already on the cluster the next time
-	// this module installs, and a plain create fails AlreadyExists (the
-	// provider adopts only with upsertExistingObjects — verified in the
-	// pinned provider source). The upsert scope stays CRD-only; the
-	// release keeps the plain provider's create-conflict semantics.
-	var operatorDeps []pulumi.Resource
-	if !stackInput.Target.Spec.SkipCrds {
-		upsertProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert(ctx,
-			stackInput.ProviderConfig, "kubernetes-crd-upsert")
-		if err != nil {
-			return errors.Wrap(err, "failed to create the CRD upsert kubernetes provider")
-		}
-		createdCrds, err := customResourceDefinitions(ctx, locals, upsertProvider)
-		if err != nil {
-			return errors.Wrap(err, "failed to apply opentelemetry operator CRDs")
-		}
-		operatorDeps = append(operatorDeps, createdCrds...)
+	// ------------------------------ release values ------------------------
+	// Built once and used twice: the release installs with them, and the
+	// CRD render runs with them (plus the CRD switch), so the derived CRDs
+	// can never see different values than the install.
+	mergedValues, err := buildHelmValues(locals)
+	if err != nil {
+		return errors.Wrap(err, "failed to build helm values")
 	}
+	releaseValuesDocument, err := yaml.Marshal(mergedValues)
+	if err != nil {
+		return errors.Wrap(err, "failed to encode the release values for the CRD render")
+	}
+
+	// ------------------------------ CRDs ----------------------------------
+	// Derived from the pinned chart and applied kept, ahead of the release
+	// (see keptcrds for the mechanics and the failure vocabulary).
+	// crds.install false is the bring-your-own-CRDs arm: nothing is
+	// applied and the release still skips CRDs.
+	crds := stackInput.Target.Spec.GetCrds()
+	createdCrds, err := keptcrds.Apply(ctx, keptcrds.Args{
+		Source: helmcrds.Source{
+			Repository:  vars.HelmChartRepo,
+			Chart:       vars.HelmChartName,
+			Version:     locals.ChartVersion,
+			Values:      []string{string(releaseValuesDocument)},
+			CRDOverride: vars.CrdRenderOverride,
+			APIVersions: vars.CrdRenderApiVersions,
+		},
+		ReleaseName:     locals.ReleaseName,
+		Namespace:       locals.Namespace,
+		Install:         crds == nil || crds.Install == nil || crds.GetInstall(),
+		KeepOnUninstall: crds == nil || crds.KeepOnUninstall == nil || crds.GetKeepOnUninstall(),
+		ProviderConfig:  stackInput.ProviderConfig,
+		ProviderName:    "kubernetes-crd-upsert",
+	})
+	if err != nil {
+		return errors.Wrap(err, "failed to apply the opentelemetry operator CRDs")
+	}
+	operatorDeps := append([]pulumi.Resource{}, createdCrds...)
 	if createdNamespace != nil {
 		operatorDeps = append(operatorDeps, createdNamespace)
 	}
 
 	// ------------------------------ operator release ----------------------
-	mergedValues, err := buildHelmValues(locals)
-	if err != nil {
-		return errors.Wrap(err, "failed to build helm values")
-	}
-
 	_, err = helmv3.NewRelease(ctx, locals.ReleaseName, &helmv3.ReleaseArgs{
 		Name:      pulumi.String(locals.ReleaseName),
 		Namespace: pulumi.String(locals.Namespace),
@@ -102,6 +120,9 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetesoteloperatorv1alpha1.K
 			Repo: pulumi.String(vars.HelmChartRepo),
 		},
 		Values: pulumi.ToMap(mergedValues),
+		// The module owns the CRDs (above); Helm must never install its
+		// own copy of them, whichever way crds.create is set.
+		SkipCrds: pulumi.Bool(true),
 		// The module owns namespace creation (create_namespace flag).
 		CreateNamespace: pulumi.Bool(false),
 		// Wait for the operator to become Available — the manager pod

@@ -1,13 +1,20 @@
 # Minimal operator install: chart defaults end to end — the
 # cert-manager posture with the chart's own self-signed Issuer (the
 # cert-manager fixture rides the registry prerequisite), module-owned
-# CRDs, one replica. The verifier proves the admission gate and the
-# conversion round-trip on this lane too — they are the kind's
-# definition of working, not extras.
+# CRDs derived from the pinned chart, one replica. The verifier proves
+# the admission gate and the conversion round-trip on this lane too —
+# they are the kind's definition of working, not extras.
+#
+# THE KEEP-AND-READOPT PROOF: crds.keepOnUninstall defaults true, so the
+# first destroy must leave the four CRDs on the cluster (the verifier
+# asserts it), and the reinstall the annotation requests must re-adopt
+# them (server-side apply) rather than fail on their existence.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOtelOperator
 metadata:
   name: e2e-otelop-min
+  annotations:
+    planton.dev/e2e-reinstall: "true"
 spec:
   namespace:
     value: e2e-otelop-min

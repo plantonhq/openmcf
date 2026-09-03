@@ -15,28 +15,40 @@ semantic twin of the Pulumi module's `buildHelmValues` + `mergeMaps`.
 - **The module (not the chart) owns the CRDs** — the chart templates
   its opentelemetry.io CRDs as release-owned resources, so a
   Helm-owned install would cascade-delete every collector declaration
-  on uninstall. The module pins `crds.create: false` UNCONDITIONALLY
-  in the rendered values and applies the four CRD files staged at
-  `../crds/` itself, one `kubectl_manifest` per CRD keyed by the CRD's
-  own `metadata.name`. `skip_crds` is the bring-your-own-CRDs arm (the
-  CRDs are owned elsewhere, e.g. a GitOps-managed bundle).
-- **CRD keep-on-uninstall: `apply_only = true`** — the provider's
-  Delete becomes a NO-OP (verified in the provider source: "When true,
-  Delete is a no-op"), so destroying this module removes the CRDs from
-  state WITHOUT deleting them from the cluster; collector declarations
-  survive an operator uninstall. Server-side apply is REQUIRED, not
-  just preferred: the collector CRD is ~418 KB, far past the
-  262144-byte cap on the client-side last-applied-configuration
-  annotation. The exact semantic twin of the Pulumi module's
-  `retainOnDelete` on each CRD.
-- **The staged CRD files are TOKENIZED renders of the pinned chart** —
-  this chart TEMPLATES its CRDs: the collector CRD carries the
-  `cert-manager.io/inject-ca-from` annotation and a version-conversion
-  webhook `clientConfig`, both derived from the release's identity.
-  The staged files carry `__PLANTON_RELEASE_NAME__` /
-  `__PLANTON_NAMESPACE__` tokens, substituted in `locals.tf` (and
-  identically in the Pulumi module), so the kept CRDs always point at
-  THIS release's webhook Service and cert-manager Certificate.
+  on uninstall. The module DERIVES the CRD set from the pinned chart at
+  plan time through the generated `helm_crds.tf` (the catalog's shared
+  block for charts that carry CRDs): `data "helm_template"` renders the
+  chart with the release's own values plus `crds.create: true`, the
+  CustomResourceDefinition documents are kept, stamped with
+  `planton.ai/crd-source-chart` and `planton.ai/crd-source-version`,
+  and applied one `kubectl_manifest` per CRD keyed by the CRD's own
+  `metadata.name`. The release installs with `skip_crds = true` and
+  `crds.create: false` pinned. `crds.install: false` is the
+  bring-your-own-CRDs arm (the CRDs are owned elsewhere, e.g. a
+  GitOps-managed bundle).
+- **CRD keep-on-uninstall: `apply_only`** — the provider's Delete
+  becomes a NO-OP (verified in the provider source: "When true, Delete
+  is a no-op"), so destroying this module removes the CRDs from state
+  WITHOUT deleting them from the cluster; collector declarations
+  survive an operator uninstall. `crds.keep_on_uninstall: false` turns
+  it off. Server-side apply is REQUIRED, not just preferred: the
+  collector CRD is ~418 KB, far past the 262144-byte cap on the
+  client-side last-applied-configuration annotation, and it re-adopts
+  kept CRDs on reinstall. The exact semantic twin of the Pulumi
+  module's `retainOnDelete` on each CRD.
+- **The render sees the release's FULL values** — this chart TEMPLATES
+  its CRDs: the collector CRD carries the `cert-manager.io/inject-ca-from`
+  annotation and a version-conversion webhook `clientConfig`, both
+  derived from the release's identity and from other values
+  (`fullnameOverride`, the cert-manager arm). The render therefore
+  consumes the same `local.helm_release_values` list the release does,
+  with only the CRD switch added, so the kept CRDs always point at THIS
+  release's webhook Service and cert-manager Certificate.
+- **A schema downgrade is refused** — `data "kubernetes_resources"`
+  reads the CRDs this module has stamped on the cluster; a
+  `chart_version` below the version they carry fails the plan with what
+  was observed, what it means, and the next step (pin the higher
+  version, or delete the CRDs deliberately).
 - **Two keys are re-pinned AFTER the escape-hatch merge** — the
   deliberate exceptions to `helm_values`' last-word contract:
   `crds.create: false` (handing the CRDs to Helm would arm the
@@ -49,9 +61,8 @@ semantic twin of the Pulumi module's `buildHelmValues` + `mergeMaps`.
   the operator never starts against an unregistered API group.
 - **The pinned default chart version is 0.120.0** — the newest SERVED
   stable chart (= operator appVersion 0.156.0, verified against the
-  repository index). A `chart_version` bump must re-stage the
-  `../crds/` files from the new pin — the staged files ARE the chart's
-  CRDs at this version.
+  repository index). A `chart_version` bump re-applies the CRDs derived
+  from the new pin; nothing else changes.
 - **Readiness is verified at install time** — `wait` + `atomic` +
   `cleanup_on_fail` with a 600s timeout. The manager pod mounts the
   cert-manager-issued webhook Secret, so an install without a working
@@ -118,7 +129,7 @@ semantic twin of the Pulumi module's `buildHelmValues` + `mergeMaps`.
 | Resource | Condition |
 |---|---|
 | `kubernetes_namespace_v1.otel_operator` | `spec.create_namespace` |
-| `kubectl_manifest.crds` (one per staged CRD, keyed by CRD name) | unless `spec.skip_crds` |
+| `kubectl_manifest.helm_crds` (one per derived CRD, keyed by CRD name; `helm_crds.tf`) | unless `spec.crds.install` is false |
 | `helm_release.otel_operator` | always |
 
 ## Usage
@@ -158,6 +169,7 @@ Kept in lockstep with the Pulumi module (`../pulumi/module/`): same
 chart identity and pinned default version (0.120.0), same
 `metadata.name` release name and 30-character budget, same values
 rendering (the divergence-only manager block, the collector-image
-split, the two post-merge re-pins), same module-owned tokenized-CRD
-posture (`apply_only` here, `retainOnDelete` there), same atomic/wait
-posture, same outputs.
+split, the two post-merge re-pins), same derived-CRD posture (the
+generated `helm_crds.tf` here, `keptcrds` there: same render values,
+same stamps, same keep and never-downgrade semantics), same
+atomic/wait posture, same outputs.

@@ -1,0 +1,33 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "keptcrds",
+    srcs = ["keptcrds.go"],
+    importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/keptcrds",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//catalog/kubernetes",
+        "//pkg/iac/pulumi/pulumimodule/provider/kubernetes/pulumikubernetesprovider",
+        "//pkg/iac/pulumi/pulumimodule/stackinput",
+        "//pkg/kubernetes/execcredential",
+        "//pkg/kubernetes/helmcrds",
+        "//pkg/kubernetes/kubeconfig",
+        "@com_github_pkg_errors//:errors",
+        "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/yaml",
+        "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:meta",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1/unstructured",
+        "@io_k8s_apimachinery//pkg/runtime/schema",
+        "@io_k8s_client_go//dynamic",
+    ],
+)
+
+go_test(
+    name = "keptcrds_test",
+    srcs = ["keptcrds_test.go"],
+    embed = [":keptcrds"],
+    deps = [
+        "//pkg/kubernetes/helmcrds",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1/unstructured",
+    ],
+)

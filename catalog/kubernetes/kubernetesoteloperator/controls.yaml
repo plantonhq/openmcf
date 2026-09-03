@@ -77,5 +77,5 @@ spec:
       field_path: chart_version
       evidence:
         type: spec_default
-        reference: Unset installs the pinned default 0.120.0 (operator v0.156.0) -- versions must exist as served charts in the upstream repository index. Version changes are deliberate manifest edits, and a chart bump upgrades the module-owned opentelemetry.io CRDs with the files staged from the new pin.
-      notes: Unlike Helm crds/-directory operators, this component's CRDs DO upgrade with chart bumps -- the modules apply the staged CRD files server-side on every deploy.
+        reference: Unset installs the pinned default 0.120.0 (operator v0.156.0) -- versions must exist as served charts in the upstream repository index. Version changes are deliberate manifest edits; a chart bump re-applies the module-owned opentelemetry.io CRDs derived from the new pin, and a bump BELOW the version the cluster's CRDs already carry is refused with the remedy (a schema downgrade can strip fields from existing collectors).
+      notes: Unlike Helm crds/-directory operators, this component's CRDs DO upgrade with chart bumps -- the modules derive the CRDs from the pinned chart and apply them server-side on every deploy.

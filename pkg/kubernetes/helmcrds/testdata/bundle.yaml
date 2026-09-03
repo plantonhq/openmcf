@@ -1,0 +1,47 @@
+# Test fixture. An upstream CRD bundle in the shape Apache Solr publishes:
+# license comment header, a doubled leading separator, two CRDs and a
+# non-CRD document that must be filtered out.
+---
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: solrclouds.fixture.planton.ai
+spec:
+  group: fixture.planton.ai
+  names:
+    kind: SolrCloud
+    plural: solrclouds
+  scope: Namespaced
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: not-a-crd
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: zookeeperclusters.fixture.planton.ai
+  labels:
+    upstream: kept
+spec:
+  group: fixture.planton.ai
+  names:
+    kind: ZookeeperCluster
+    plural: zookeeperclusters
+  scope: Namespaced
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object

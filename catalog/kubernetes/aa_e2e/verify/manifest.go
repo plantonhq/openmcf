@@ -179,6 +179,25 @@ func manifestBarmanPluginEnabled(manifestPath string) bool {
 	return enabled
 }
 
+// manifestAnnotation reads one metadata.annotations value, "" when absent or
+// unreadable -- for verifiers whose destroy assertions depend on what the
+// scenario declared (a deploy that was designed to be refused never created
+// what a keep assertion would look for).
+func manifestAnnotation(manifestPath, key string) string {
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return ""
+	}
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return ""
+	}
+	metadata, _ := raw["metadata"].(map[string]interface{})
+	annotations, _ := metadata["annotations"].(map[string]interface{})
+	value, _ := annotations[key].(string)
+	return value
+}
+
 // manifestHasPrerequisite reports whether the manifest's e2e-prerequisites
 // annotation names the given kind — how a scenario signals it runs with a
 // fixture (e.g. an HPA scenario that installs metrics-server and can

@@ -11,16 +11,23 @@ var vars = struct {
 	// AND the platform's defaulting middleware did not run. Keep aligned
 	// with the spec default. 0.120.0 is the newest SERVED stable chart
 	// (= operator appVersion 0.156.0, verified against the repository
-	// index). Bumping it requires re-staging the ../crds files from the
-	// new pin — the staged files ARE the chart's CRDs at this version.
+	// index). The CRDs are derived from whatever version is pinned, so a
+	// bump here changes exactly one line.
 	DefaultChartVersion string
 
-	// CrdDirectory is where the module-owned CRD files are staged,
-	// relative to the Pulumi project directory (the working directory at
-	// program run time). The staged files are TOKENIZED renders of the
-	// pinned chart's templated CRDs — see crds.go for the substitution
-	// contract.
-	CrdDirectory string
+	// CrdRenderOverride is the one values document merged LAST when the
+	// pinned chart is rendered to derive its CRDs: the chart's CRD switch
+	// turned on. The release itself installs with the switch off and
+	// skip_crds set, so this never reaches the cluster through Helm. Twin
+	// of the Terraform module's helm_crds_render_override.
+	CrdRenderOverride string
+
+	// CrdRenderApiVersions are the API versions the chart gates its CRD
+	// templates on (.Capabilities.APIVersions): the collector CRD's
+	// cert-manager.io/inject-ca-from annotation renders only when
+	// cert-manager.io/v1 is declared served. Twin of the Terraform
+	// module's helm_crds_api_versions.
+	CrdRenderApiVersions []string
 
 	// ManagerImagePath is the manager image's repository path WITHOUT the
 	// registry — the half image_registry replaces (the air-gap mirror
@@ -35,10 +42,11 @@ var vars = struct {
 }{
 	// Chart identity — MUST be identical in the Terraform module's locals
 	// (cross-engine chart drift installs different software per engine).
-	HelmChartRepo:       "https://open-telemetry.github.io/opentelemetry-helm-charts",
-	HelmChartName:       "opentelemetry-operator",
-	DefaultChartVersion: "0.120.0",
-	CrdDirectory:        "../crds",
-	ManagerImagePath:    "open-telemetry/opentelemetry-operator/opentelemetry-operator",
-	HelmTimeoutSeconds:  600,
+	HelmChartRepo:        "https://open-telemetry.github.io/opentelemetry-helm-charts",
+	HelmChartName:        "opentelemetry-operator",
+	DefaultChartVersion:  "0.120.0",
+	CrdRenderOverride:    "crds:\n  create: true\n",
+	CrdRenderApiVersions: []string{"cert-manager.io/v1"},
+	ManagerImagePath:     "open-telemetry/opentelemetry-operator/opentelemetry-operator",
+	HelmTimeoutSeconds:   600,
 }

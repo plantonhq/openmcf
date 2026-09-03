@@ -1,0 +1,19 @@
+# THE UPGRADE PROOF: install at the default pin, then re-deploy the same
+# resource from upgrade.to.yaml with chart_version bumped to 0.120.3 (the
+# same operator, a newer chart). The verifier reads the CRDs' source
+# stamp after the upgrade: it must have moved to 0.120.3, which is the
+# fact "a chart bump re-applies the derived CRDs". The upgrade manifest
+# turns keepOnUninstall off so the destroy leaves the shared cluster clean
+# of 0.120.3 CRDs (a later lane pinning 0.120.0 would otherwise be
+# refused as a downgrade, correctly).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOtelOperator
+metadata:
+  name: e2e-otelop-upg
+  annotations:
+    planton.dev/e2e-upgrade-manifest: upgrade.to.yaml
+spec:
+  namespace:
+    value: e2e-otelop-upg
+  createNamespace: true
+  chartVersion: 0.120.0

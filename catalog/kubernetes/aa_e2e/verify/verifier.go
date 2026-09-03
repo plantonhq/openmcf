@@ -20,6 +20,16 @@ type RuntimeCauseVerifier interface {
 	VerifyRuntimeFailureCause(ctx context.Context, kubeconfig, cause string) error
 }
 
+// DeployFailureVerifier is the optional capability a verifier implements when
+// a scenario's deploy (or upgrade) is DESIGNED to be refused (the framework's
+// expect-deploy-failure and expect-upgrade-failure lanes): it must pin the
+// engine's error to exactly the expected class -- for the CRD lifecycle, to
+// the three-part text (observed, meaning, next step) the module promises --
+// and may read the cluster to confirm nothing was touched.
+type DeployFailureVerifier interface {
+	VerifyExpectedDeployFailure(ctx context.Context, kubeconfig, expectation string, deployErr error) error
+}
+
 // operatorKinds lists manifest kind values (lowercased) for operator/controller
 // components. Operators install CRD controllers that watch resources but typically
 // do not expose a Kubernetes Service. Verification checks namespace + running
@@ -1398,10 +1408,7 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	// module-owned-CRD design hangs on). Destroy asserts the designed
 	// keep: workloads gone, CRDs retained.
 	case "kubernetesoteloperator":
-		return &OtelOperatorVerifier{
-			Namespace:   info.Namespace,
-			ReleaseName: info.Name,
-		}, nil
+		return newOtelOperatorVerifier(manifestPath, info.Name, info.Namespace), nil
 
 	// The KubeRay operator: rollout + the three ray.io CRDs established
 	// + THE INVARIANT (installing the operator alone deploys NO Ray

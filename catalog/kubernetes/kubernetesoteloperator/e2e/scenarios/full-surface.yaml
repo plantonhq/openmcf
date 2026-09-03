@@ -5,6 +5,10 @@
 # pre-existing ClusterIssuer this lane deliberately does not carry);
 # serviceMonitorEnabled stays plan-proven (no monitoring.coreos.com
 # CRDs on the kind cluster by design).
+#
+# THE CLEANUP PROOF: crds.keepOnUninstall: false, so this destroy must
+# take the four CRDs with it (the verifier asserts their absence) — the
+# arm a lane uses to leave a shared cluster as it found it.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesOtelOperator
 metadata:
@@ -14,6 +18,8 @@ spec:
     value: e2e-otelop-full
   createNamespace: true
   chartVersion: 0.120.0
+  crds:
+    keepOnUninstall: false
   replicas: 2
   resources:
     requests:

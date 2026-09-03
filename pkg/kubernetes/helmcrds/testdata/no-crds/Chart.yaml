@@ -1,0 +1,5 @@
+apiVersion: v2
+name: no-crds
+description: Test fixture. A chart with no CRDs anywhere, so a module that expects some is told so.
+type: application
+version: 0.1.0

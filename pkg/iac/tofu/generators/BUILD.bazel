@@ -6,6 +6,7 @@ go_library(
         "doc.go",
         "flatten.go",
         "hclwrite.go",
+        "helmcrdstf.go",
         "manifestmodule.go",
         "tftype.go",
         "tfvars.go",
@@ -33,6 +34,7 @@ go_test(
     srcs = [
         "flatten_test.go",
         "hclwrite_test.go",
+        "helmcrdstf_drift_test.go",
         "manifest_tfvars_test.go",
         "tfvars_test.go",
         "typerules_test.go",
@@ -51,6 +53,7 @@ go_test(
         "//catalog/kubernetes/kubernetespeerauthentication/v1alpha1",
         "//catalog/kubernetes/kubernetesvalkey/v1alpha1",
         "//pkg/crkreflect",
+        "//pkg/kubernetes/helmcrds",
         "//shared",
         "//shared/foreignkey/v1:foreignkey",
         "@com_github_hashicorp_hcl_v2//:hcl",

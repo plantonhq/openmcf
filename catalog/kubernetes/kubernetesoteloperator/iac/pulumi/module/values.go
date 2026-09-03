@@ -29,14 +29,15 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 		// crds.create: false ALWAYS — never conditional, never a spec
 		// knob. The chart templates its CRDs as release-owned resources
 		// (a Helm uninstall would cascade-delete every collector in the
-		// cluster); the module owns the CRDs instead (crds.go applies
-		// the staged files with retainOnDelete).
+		// cluster); the module owns the CRDs instead (main.go derives
+		// them from the pinned chart and applies them kept through
+		// keptcrds).
 		"crds": map[string]interface{}{"create": false},
 		// fullnameOverride pins the chart's fullname to the resource
 		// name (the catalog's Helm-kind identity convention).
-		// Load-bearing here: the staged CRDs' conversion webhook and
-		// inject-ca-from annotation point at names derived from it (see
-		// crds.go).
+		// Load-bearing here: the derived CRDs' conversion webhook and
+		// inject-ca-from annotation point at names derived from it, and
+		// the CRD render runs with these exact values.
 		"fullnameOverride": locals.ReleaseName,
 	}
 

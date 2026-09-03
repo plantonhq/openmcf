@@ -1,0 +1,135 @@
+package helmcrds
+
+import (
+	"regexp"
+	"sort"
+	"strings"
+
+	"github.com/pkg/errors"
+	"sigs.k8s.io/yaml"
+)
+
+// documentSeparator matches a YAML document separator on its OWN line. A bare
+// "---" substring split corrupts CRDs: their schema description strings embed
+// "---" mid-line (unix permission strings, TODO markers).
+var documentSeparator = regexp.MustCompile(`(?m)^---[ \t]*$`)
+
+// splitDocuments splits a multi-document YAML stream into documents, dropping
+// empty and comment-only fragments (Helm emits "# Source: ..." headers;
+// upstream bundles open with license comments).
+func splitDocuments(stream string) []string {
+	var documents []string
+	for _, doc := range documentSeparator.Split(stream, -1) {
+		if isBlankOrComments(doc) {
+			continue
+		}
+		documents = append(documents, strings.TrimSpace(doc)+"\n")
+	}
+	return documents
+}
+
+func isBlankOrComments(doc string) bool {
+	for _, line := range strings.Split(doc, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && !strings.HasPrefix(trimmed, "#") {
+			return false
+		}
+	}
+	return true
+}
+
+// objectIdentity is the minimum a document must carry to be a CRD candidate.
+type objectIdentity struct {
+	Kind     string `json:"kind"`
+	Metadata struct {
+		Name string `json:"name"`
+	} `json:"metadata"`
+}
+
+// filterCRDs keeps only CustomResourceDefinition documents, keyed and sorted
+// by metadata.name so callers register resources in a deterministic order.
+// A chart that ships the same CRD on both of Helm's surfaces yields it once.
+func filterCRDs(documents []string) ([]CRD, error) {
+	byName := map[string]string{}
+	for _, doc := range documents {
+		var id objectIdentity
+		if err := yaml.Unmarshal([]byte(doc), &id); err != nil {
+			// Not every rendered fragment is an object (NOTES, empty maps);
+			// only CRD-shaped documents matter here.
+			continue
+		}
+		if id.Kind != "CustomResourceDefinition" {
+			continue
+		}
+		if id.Metadata.Name == "" {
+			return nil, errors.New("a rendered CustomResourceDefinition carries no metadata.name")
+		}
+		byName[id.Metadata.Name] = doc
+	}
+	names := make([]string, 0, len(byName))
+	for name := range byName {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	crds := make([]CRD, 0, len(names))
+	for _, name := range names {
+		crds = append(crds, CRD{Name: name, YAML: byName[name]})
+	}
+	return crds, nil
+}
+
+// stamp writes the source annotations and the selection label onto a CRD. The
+// document round-trips through a generic map: key order may change, values
+// and types do not (sigs.k8s.io/yaml goes through JSON, which preserves the
+// YAML 1.2 core schema types the API server reads).
+func stamp(crd CRD, src Source) (CRD, error) {
+	var object map[string]interface{}
+	if err := yaml.Unmarshal([]byte(crd.YAML), &object); err != nil {
+		return CRD{}, errors.Wrapf(err, "CRD %s is not a YAML object", crd.Name)
+	}
+	metadata, _ := object["metadata"].(map[string]interface{})
+	if metadata == nil {
+		metadata = map[string]interface{}{}
+		object["metadata"] = metadata
+	}
+	annotations, _ := metadata["annotations"].(map[string]interface{})
+	if annotations == nil {
+		annotations = map[string]interface{}{}
+		metadata["annotations"] = annotations
+	}
+	labels, _ := metadata["labels"].(map[string]interface{})
+	if labels == nil {
+		labels = map[string]interface{}{}
+		metadata["labels"] = labels
+	}
+	annotations[AnnotationSourceChart] = src.SourceDescription()
+	annotations[AnnotationSourceVersion] = src.Version
+	labels[LabelSource] = labelSourceValue(src)
+
+	out, err := yaml.Marshal(object)
+	if err != nil {
+		return CRD{}, errors.Wrapf(err, "failed to re-encode CRD %s", crd.Name)
+	}
+	return CRD{Name: crd.Name, YAML: string(out)}, nil
+}
+
+// labelSourceValue is the chart name for the render branch and the bundle
+// host for the bundle branch, kept inside the label-value character set.
+func labelSourceValue(src Source) string {
+	if !src.IsBundle() {
+		return src.Chart
+	}
+	host := src.BundleURL
+	host = strings.TrimPrefix(host, "https://")
+	host = strings.TrimPrefix(host, "http://")
+	if i := strings.Index(host, "/"); i >= 0 {
+		host = host[:i]
+	}
+	return host
+}
+
+// LabelSelector is the selector that finds every CRD this source has ever
+// applied, for re-adoption checks and the never-downgrade read.
+func LabelSelector(src Source) string {
+	return LabelSource + "=" + labelSourceValue(src)
+}

@@ -1,0 +1,289 @@
+package helmcrds
+
+import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"sigs.k8s.io/yaml"
+)
+
+// Every test here runs offline: charts load from testdata directories (Helm's
+// LocateChart returns a local path as-is) and the bundle is served by an
+// in-process HTTP server. The network paths are exercised by the e2e lanes.
+
+func fixtureChart(t *testing.T, name string) string {
+	t.Helper()
+	path, err := filepath.Abs(filepath.Join("testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(path, "Chart.yaml")); err != nil {
+		t.Fatalf("fixture chart %s missing: %v", name, err)
+	}
+	return path
+}
+
+func decode(t *testing.T, doc string) map[string]interface{} {
+	t.Helper()
+	var object map[string]interface{}
+	if err := yaml.Unmarshal([]byte(doc), &object); err != nil {
+		t.Fatalf("stamped document is not YAML: %v\n%s", err, doc)
+	}
+	return object
+}
+
+func metadataMap(t *testing.T, object map[string]interface{}, key string) map[string]interface{} {
+	t.Helper()
+	metadata, _ := object["metadata"].(map[string]interface{})
+	m, _ := metadata[key].(map[string]interface{})
+	if m == nil {
+		t.Fatalf("metadata.%s missing", key)
+	}
+	return m
+}
+
+func TestDeriveTemplatedCRDsUsesReleaseValuesAndIdentity(t *testing.T) {
+	src := Source{
+		Chart:   fixtureChart(t, "templated-crds"),
+		Version: "1.2.3",
+		// The release's own values: the module pins fullnameOverride and
+		// keeps the chart's CRD switch OFF for the install.
+		Values:      []string{"fullnameOverride: my-op\ncrds:\n  create: false\n"},
+		CRDOverride: "crds:\n  create: true\n",
+		APIVersions: []string{"cert-manager.io/v1"},
+	}
+	crds, err := Derive(context.Background(), src, "my-op", "ops")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(crds) != 2 {
+		t.Fatalf("expected 2 CRDs, got %d", len(crds))
+	}
+	// Sorted by name, so gadgets before widgets.
+	if crds[0].Name != "gadgets.fixture.planton.ai" || crds[1].Name != "widgets.fixture.planton.ai" {
+		t.Fatalf("unexpected names: %s, %s", crds[0].Name, crds[1].Name)
+	}
+
+	widgets := decode(t, crds[1].YAML)
+	annotations := metadataMap(t, widgets, "annotations")
+	if got := annotations["cert-manager.io/inject-ca-from"]; got != "ops/my-op-serving-cert" {
+		t.Fatalf("release-derived annotation not rendered from the real identity: %v", got)
+	}
+	if got := annotations[AnnotationSourceVersion]; got != "1.2.3" {
+		t.Fatalf("source version stamp: %v", got)
+	}
+	if got := annotations[AnnotationSourceChart]; got != "/"+src.Chart {
+		t.Fatalf("source chart stamp: %v", got)
+	}
+	labels := metadataMap(t, widgets, "labels")
+	if got := labels[LabelSource]; got != src.Chart {
+		t.Fatalf("source label: %v", got)
+	}
+
+	// The mid-line "---" inside a description survived the split; the
+	// conversion webhook points at the release's service.
+	if !strings.Contains(crds[1].YAML, "rwx---r--") {
+		t.Fatal("description containing --- was corrupted by the document split")
+	}
+	spec := widgets["spec"].(map[string]interface{})
+	service := spec["conversion"].(map[string]interface{})["webhook"].(map[string]interface{})["clientConfig"].(map[string]interface{})["service"].(map[string]interface{})
+	if service["name"] != "my-op-webhook" || service["namespace"] != "ops" {
+		t.Fatalf("conversion webhook not derived from release identity: %v", service)
+	}
+	// Types survive the stamping round trip: the port stays a number.
+	if _, isNumber := service["port"].(float64); !isNumber {
+		t.Fatalf("port type changed through stamping: %T", service["port"])
+	}
+}
+
+func TestDeriveTemplatedCRDsDropsCapabilityGatedContentWithoutAPIVersion(t *testing.T) {
+	src := Source{
+		Chart:       fixtureChart(t, "templated-crds"),
+		Version:     "1.2.3",
+		CRDOverride: "crds:\n  create: true\n",
+		// No cert-manager.io/v1 declared: the chart omits the annotation.
+	}
+	crds, err := Derive(context.Background(), src, "op", "ns")
+	if err != nil {
+		t.Fatal(err)
+	}
+	widgets := decode(t, crds[1].YAML)
+	annotations := metadataMap(t, widgets, "annotations")
+	if _, present := annotations["cert-manager.io/inject-ca-from"]; present {
+		t.Fatal("capability-gated annotation rendered without the API version declared")
+	}
+}
+
+func TestDeriveCRDsDirectoryChart(t *testing.T) {
+	src := Source{Chart: fixtureChart(t, "crds-dir"), Version: "0.7.1"}
+	crds, err := Derive(context.Background(), src, "op", "ns")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(crds) != 1 || crds[0].Name != "platforms.fixture.planton.ai" {
+		t.Fatalf("expected the one crds/-directory CRD, got %+v", crds)
+	}
+}
+
+func TestDeriveNoCRDsExplainsItself(t *testing.T) {
+	src := Source{Chart: fixtureChart(t, "no-crds"), Version: "0.1.0", CRDOverride: "crds:\n  create: true\n"}
+	_, err := Derive(context.Background(), src, "op", "ns")
+	assertFailure(t, err, "produced no CustomResourceDefinition documents", "CRD switch", "helm show values")
+}
+
+func TestDeriveCRDSwitchOffYieldsNothing(t *testing.T) {
+	// Without the override the templated chart renders no CRDs: the
+	// override is load-bearing, and forgetting it is reported, not silent.
+	src := Source{Chart: fixtureChart(t, "templated-crds"), Version: "1.2.3"}
+	_, err := Derive(context.Background(), src, "op", "ns")
+	if err == nil {
+		t.Fatal("expected the zero-CRD failure")
+	}
+}
+
+func TestDeriveBundle(t *testing.T) {
+	bundle, err := os.ReadFile(filepath.Join("testdata", "bundle.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/solr-operator/v0.9.1/crds/all.yaml":
+			_, _ = w.Write(bundle)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	src := Source{
+		Version:   "0.9.1",
+		BundleURL: server.URL + "/solr-operator/v{{version}}/crds/all.yaml",
+	}
+	crds, err := Derive(context.Background(), src, "solr", "ns")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(crds) != 2 {
+		t.Fatalf("expected 2 CRDs (the Namespace document filtered out), got %d", len(crds))
+	}
+	zk := decode(t, crds[1].YAML)
+	labels := metadataMap(t, zk, "labels")
+	if labels["upstream"] != "kept" {
+		t.Fatal("stamping dropped an upstream label")
+	}
+	host := strings.TrimPrefix(server.URL, "http://")
+	if labels[LabelSource] != host {
+		t.Fatalf("bundle source label should be the host, got %v", labels[LabelSource])
+	}
+
+	// 404 at a version that was never published.
+	missing := Source{Version: "0.9.0", BundleURL: src.BundleURL}
+	_, err = Derive(context.Background(), missing, "solr", "ns")
+	assertFailure(t, err, "answered HTTP 404", "no bundle is published at this version", "0.9.0")
+}
+
+func TestClassifyLocateErrors(t *testing.T) {
+	http := Source{Repository: "https://charts.example.invalid", Chart: "op", Version: "9.9.9"}
+	oci := Source{Repository: "oci://ghcr.io/example/charts", Chart: "op", Version: "9.9.9"}
+
+	cases := []struct {
+		name     string
+		src      Source
+		raw      string
+		observed string
+		next     string
+	}{
+		{"version not published", http,
+			`chart "op" version "9.9.9" not found in https://charts.example.invalid repository`,
+			"is not in the index of", "index.yaml"},
+		{"repository unreachable", http,
+			`looks like "https://charts.example.invalid" is not a valid chart repository or cannot be reached: Get "https://charts.example.invalid/index.yaml": dial tcp: lookup charts.example.invalid: no such host`,
+			"could not be reached", "curl -I"},
+		{"oci version not published", oci,
+			`failed to perform "FetchReference" on source: ghcr.io/example/charts/op:9.9.9: not found`,
+			"OCI registry has no chart", "helm show chart"},
+		{"stale local repository cache", http,
+			`no cached repo found. (try 'helm repo update'): open /home/x/.cache/helm/repository/neo4j-index.yaml: no such file or directory`,
+			"repository index on this machine", "helm repo update"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := classifyLocateError(tc.src, errors.New(tc.raw))
+			assertFailure(t, err, tc.observed, "", tc.next)
+			if !strings.Contains(err.Error(), tc.raw) {
+				t.Fatal("the raw Helm text must stay visible inside the observation")
+			}
+		})
+	}
+}
+
+func TestCheckNoDowngrade(t *testing.T) {
+	existing := []ExistingCRD{
+		{Name: "a.example", Version: "0.120.0"},
+		{Name: "b.example", Version: ""}, // unstamped: never a downgrade
+	}
+	if err := CheckNoDowngrade(existing, "0.120.0"); err != nil {
+		t.Fatalf("same version must pass: %v", err)
+	}
+	if err := CheckNoDowngrade(existing, "0.120.3"); err != nil {
+		t.Fatalf("upgrade must pass: %v", err)
+	}
+	err := CheckNoDowngrade(existing, "0.119.0")
+	assertFailure(t, err, "derived from chart version 0.120.0", "strip fields", "0.120.0 or higher")
+	if !strings.Contains(err.Error(), "kubectl delete crd a.example") {
+		t.Fatalf("remedy must name the exact CRD: %s", err)
+	}
+	if err := CheckNoDowngrade(nil, "0.1.0"); err != nil {
+		t.Fatalf("first install has nothing to compare: %v", err)
+	}
+	assertFailure(t, CheckNoDowngrade(existing, "latest"), "not a semantic version", "", "0.120.0")
+}
+
+func TestFailureRendersThreeStableLines(t *testing.T) {
+	f := &Failure{Observed: "o", Meaning: "m", NextStep: "n"}
+	if f.Error() != "observed: o\nmeaning: m\nnext step: n" {
+		t.Fatalf("unexpected rendering: %q", f.Error())
+	}
+}
+
+func TestSplitDocumentsIgnoresCommentOnlyFragments(t *testing.T) {
+	docs := splitDocuments("# license\n# header\n---\n---\nkind: A\n---\n# Source: x\n---\nkind: B\ndescription: a---b\n")
+	if len(docs) != 2 {
+		t.Fatalf("expected 2 documents, got %d: %q", len(docs), docs)
+	}
+	if !strings.Contains(docs[1], "a---b") {
+		t.Fatal("mid-line --- must not split")
+	}
+}
+
+func assertFailure(t *testing.T, err error, observed, meaning, next string) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected a failure")
+	}
+	var failure *Failure
+	if !errors.As(err, &failure) {
+		t.Fatalf("expected a *Failure, got %T: %v", err, err)
+	}
+	if observed != "" && !strings.Contains(failure.Observed, observed) {
+		t.Fatalf("observed %q lacks %q", failure.Observed, observed)
+	}
+	if meaning != "" && !strings.Contains(failure.Meaning, meaning) {
+		t.Fatalf("meaning %q lacks %q", failure.Meaning, meaning)
+	}
+	if next != "" && !strings.Contains(failure.NextStep, next) {
+		t.Fatalf("next step %q lacks %q", failure.NextStep, next)
+	}
+	for _, part := range []string{failure.Observed, failure.Meaning, failure.NextStep} {
+		if strings.TrimSpace(part) == "" {
+			t.Fatalf("every failure carries all three parts: %+v", failure)
+		}
+	}
+}

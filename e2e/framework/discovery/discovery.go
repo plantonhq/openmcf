@@ -165,6 +165,28 @@ func ModuleDir(repoRoot, provider, component, engine string) (string, error) {
 	return filepath.Join(repoRoot, "catalog", provider, component, "iac", engineDir), nil
 }
 
+// SecondActAnnotation marks a manifest in e2e/scenarios/ that is NOT a
+// scenario of its own but the second act of one: the manifest a lifecycle
+// annotation on another scenario (planton.dev/e2e-upgrade-manifest) deploys
+// against that scenario's stack. Its value names the first-act scenario file.
+// Discovery skips such manifests, so a second act never runs as a lane; the
+// runner reaches it only through the first act's annotation.
+const SecondActAnnotation = "planton.dev/e2e-second-act"
+
+// isSecondActManifest reports whether the manifest carries SecondActAnnotation.
+// Read errors count as "not a second act" so a malformed scenario still
+// surfaces as a lane failure rather than vanishing silently.
+func isSecondActManifest(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	// A structural read would be more exact, but the marker is a fixed key
+	// under metadata.annotations and scenarios are hand-authored YAML; the
+	// key's presence anywhere in the file is the author's declaration.
+	return strings.Contains(string(data), SecondActAnnotation+":")
+}
+
 // DiscoverTestScenarios scans the component's colocated e2e/scenarios/ directory for YAML manifests.
 // Path: catalog/{provider}/{component}/e2e/scenarios/
 func DiscoverTestScenarios(repoRoot, provider, component string) ([]TestScenario, error) {
@@ -188,6 +210,10 @@ func DiscoverTestScenarios(repoRoot, provider, component string) ([]TestScenario
 		}
 		name := entry.Name()
 		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
+			continue
+		}
+
+		if isSecondActManifest(filepath.Join(scenarioDir, name)) {
 			continue
 		}
 

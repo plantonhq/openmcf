@@ -454,6 +454,56 @@ post-mortem (VERIFY-CLN has no VerifyDeployed state to reuse), and
 runtime-cause classifiers should fail IMMEDIATELY on recognizable
 wrong-cause states (pull failures) rather than polling them into a timeout.
 
+### Lifecycle lanes: proving a component's second act
+
+The standard lifecycle proves one install. Some promises are about what
+happens NEXT -- a version bump re-applies what the module owns, a destroy
+keeps what it must keep and the next install re-adopts it, a change the
+module must refuse is refused before anything is touched. Three
+annotations on a scenario extend the lifecycle; all three reuse the same
+engine input binding the first deploy used, so a second manifest reaches
+the engine exactly the way the first did (a fresh stack input for Pulumi, a
+regenerated tfvars in the same working directory for Terraform):
+
+- **`planton.dev/e2e-upgrade-manifest: <file beside the scenario>`** adds
+  UPGRADE -> VERIFY-UPGRADED after VERIFY-RES: the second manifest (same
+  `metadata.name`, changed fields) is deployed against the same stack, then
+  the kind's verifier runs against the SECOND manifest, so a verifier that
+  reads its expectations from the manifest (a chart version, a replica
+  count) proves the upgrade took. DESTROY and VERIFY-CLN then run against
+  the upgraded state.
+- **`planton.dev/e2e-expect-upgrade-failure: <class>`** (with the upgrade
+  manifest) turns the second deploy into UPGRADE-EXPECT-FAIL: it MUST fail,
+  the harness's `DeployFailureVerifier` pins the class (the second manifest
+  is on the context, so the verifier reads the refused values from it), and
+  the FIRST manifest's inputs are restored before DESTROY so the teardown
+  matches what was built.
+- **`planton.dev/e2e-reinstall: "true"`** appends REINSTALL ->
+  VERIFY-REINSTALLED -> DESTROY-AGAIN -> VERIFY-CLN-AGAIN after the first
+  VERIFY-CLN: the same manifest deployed onto a cluster that may still
+  carry what the first install deliberately kept.
+
+The second-act manifest carries **`planton.dev/e2e-second-act: <first-act
+file>`** so discovery never runs it as a lane of its own; it is reachable
+only through the first act's annotation. The OpenTelemetry operator's
+scenarios are the worked example: `minimal` keeps its CRDs and reinstalls
+onto them, `full-surface` turns keep off so the shared cluster is left
+clean, `upgrade` bumps the chart and checks the CRDs' source-version stamp
+moved, `version-not-published` is refused at deploy, `downgrade-refused` is
+refused at upgrade -- and the refusal verifier asserts the three-part
+message (what was observed, what it means, the next step) on both engines.
+
+Two cluster facts the lanes must respect. Kept CRDs are cluster-scoped and
+outlive their lane, so a lane that leaves CRDs at a HIGHER version than a
+later lane pins would make that later lane's install a refused downgrade:
+every lane that raises the version turns `keepOnUninstall` off so it leaves
+the cluster as it found it, and a lane that keeps its CRDs leaves them at
+the default pin. And the Kubernetes `TestMain` isolates Helm's repository
+configuration and cache per run (`runner.IsolateHelmEnvironment`): Helm
+consults the machine's repository list even for a URL-addressed chart, and a
+stale entry there fails every render and install with "no cached repo
+found" -- a laptop's `helm repo add` from months ago must never fail a lane.
+
 ### A kind node caches `:latest` -- a re-pushed tag needs the cache cleared
 
 The local kind cluster persists across suite runs and its containerd keeps

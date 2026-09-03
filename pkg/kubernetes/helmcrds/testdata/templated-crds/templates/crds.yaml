@@ -1,0 +1,58 @@
+{{- if .Values.crds.create }}
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: widgets.fixture.planton.ai
+  annotations:
+    {{- if and .Values.webhook.certManager.enabled (.Capabilities.APIVersions.Has "cert-manager.io/v1") }}
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "fixture.fullname" . }}-serving-cert
+    {{- end }}
+    # A description with --- mid-line must never split the document: --- see above.
+spec:
+  group: fixture.planton.ai
+  names:
+    kind: Widget
+    plural: widgets
+  scope: Namespaced
+  conversion:
+    strategy: Webhook
+    webhook:
+      conversionReviewVersions: ["v1"]
+      clientConfig:
+        service:
+          name: {{ include "fixture.fullname" . }}-webhook
+          namespace: {{ .Release.Namespace }}
+          port: {{ .Values.webhook.servicePort }}
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  description: "unix-style permissions look like rwx---r-- and stay intact"
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: gadgets.fixture.planton.ai
+spec:
+  group: fixture.planton.ai
+  names:
+    kind: Gadget
+    plural: gadgets
+  scope: Cluster
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+{{- end }}

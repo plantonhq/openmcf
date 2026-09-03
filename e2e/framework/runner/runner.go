@@ -199,6 +199,26 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		return result
 	}
 
+	// Lifecycle annotations (see lifecycle.go): a second deploy against the
+	// same stack (upgrade, or an upgrade that must be refused) and a second
+	// install after the first destroy. They presuppose a successful first
+	// deploy, so they never combine with expect-deploy-failure.
+	lifecycle, lifecycleErr := readLifecycleAnnotations(tc.ManifestPath)
+	if lifecycleErr == nil && expectDeployFailure != "" && (lifecycle.upgradeManifest != "" || lifecycle.reinstall) {
+		lifecycleErr = errors.Errorf("scenario carries %s together with a lifecycle annotation -- a deploy that must fail has no second act",
+			ExpectDeployFailureAnnotation)
+	}
+	if lifecycleErr != nil {
+		result.Passed = false
+		result.Phases = append(result.Phases, PhaseResult{Phase: PhaseValidate, Passed: false, Error: lifecycleErr})
+		if tdErr := TeardownDependencies(dependencyStates); tdErr != nil {
+			result.Phases = append(result.Phases, PhaseResult{Phase: PhaseDepsDn, Passed: false, Error: tdErr})
+		}
+		result.Duration = time.Since(start)
+		return result
+	}
+	originalManifest := tc.ManifestPath
+
 	// Phases 1-6 (7 with the opt-in import round-trip): standard lifecycle.
 	type lifecyclePhase struct {
 		phase Phase
@@ -252,10 +272,57 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		if importRoundTripEnabled(tc) {
 			phases = append(phases, lifecyclePhase{PhaseImportRT, func() error { return runImportRoundTrip(tc) }})
 		}
+		// The second act (lifecycle.go). An upgrade re-deploys the same stack
+		// from the second manifest and verifies against THAT manifest; the
+		// destroy that follows tears down the upgraded state. An expected
+		// upgrade failure restores the first manifest's inputs before the
+		// destroy, so the destroy matches what was built.
+		cleanupCtx := verifyCtx
+		if lifecycle.upgradeManifest != "" {
+			upgradeManifest := lifecycle.upgradeManifest
+			if lifecycle.expectUpgradeFailure != "" {
+				expectation := lifecycle.expectUpgradeFailure
+				phases = append(phases, lifecyclePhase{PhaseUpgradeExpectFail, func() error {
+					return runUpgradeExpectFailure(verifyCtx, tc, harness, upgradeManifest, expectation, originalManifest)
+				}})
+			} else {
+				upgradedCtx := context.WithValue(ctx, provider.ManifestPathKey{}, upgradeManifest)
+				cleanupCtx = upgradedCtx
+				phases = append(phases,
+					lifecyclePhase{PhaseUpgrade, func() error { return runUpgrade(tc, upgradeManifest) }},
+					lifecyclePhase{PhaseVerifyUpgraded, func() error {
+						if err := runVerifyOutputs(tc); err != nil {
+							return err
+						}
+						return runVerifyResources(upgradedCtx, tc, harness)
+					}},
+				)
+			}
+		}
 		phases = append(phases,
 			lifecyclePhase{PhaseDestroy, func() error { return runDestroyMaybeRetry(tc) }},
-			lifecyclePhase{PhaseVerifyCln, func() error { return runVerifyCleanup(verifyCtx, tc, harness) }},
+			lifecyclePhase{PhaseVerifyCln, func() error { return runVerifyCleanup(cleanupCtx, tc, harness) }},
 		)
+		// The third act: the same manifest again, on a cluster that may still
+		// carry what the first install deliberately kept.
+		if lifecycle.reinstall {
+			phases = append(phases,
+				lifecyclePhase{PhaseReinstall, func() error {
+					if err := bindManifest(tc, originalManifest); err != nil {
+						return err
+					}
+					return runReinstall(tc)
+				}},
+				lifecyclePhase{PhaseVerifyReinstalled, func() error {
+					if err := runVerifyOutputs(tc); err != nil {
+						return err
+					}
+					return runVerifyResources(verifyCtx, tc, harness)
+				}},
+				lifecyclePhase{PhaseDestroyAgain, func() error { return runDestroyMaybeRetry(tc) }},
+				lifecyclePhase{PhaseVerifyClnAgain, func() error { return runVerifyCleanup(verifyCtx, tc, harness) }},
+			)
+		}
 	}
 
 	for _, p := range phases {
@@ -272,7 +339,8 @@ func RunComponentTest(ctx context.Context, tc *provider.ComponentTestContext, ha
 		if err != nil {
 			result.Passed = false
 			switch p.phase {
-			case PhaseDeploy, PhaseIdempotency, PhaseVerifyOut, PhaseVerifyRes, PhaseVerifyCause, PhaseImportRT, PhaseExpectFail:
+			case PhaseDeploy, PhaseIdempotency, PhaseVerifyOut, PhaseVerifyRes, PhaseVerifyCause, PhaseImportRT, PhaseExpectFail,
+				PhaseUpgrade, PhaseVerifyUpgraded, PhaseUpgradeExpectFail, PhaseReinstall, PhaseVerifyReinstalled:
 				// A failed DEPLOY-EXPECT-FAIL needs the cleanup destroy on BOTH
 				// branches: an unexpected deploy success leaves live resources,
 				// and a failed post-mortem leaves the tainted partial stack.
@@ -317,41 +385,26 @@ func runValidate(tc *provider.ComponentTestContext) error {
 		return errors.New("manifest path is empty")
 	}
 
-	// The opt-in per-component provider-config fixture (nil for the default
-	// ambient-credential posture) -- one resolution serving both engines.
-	providerConfig, err := LoadProviderConfigFixture(tc.ModuleDir, tc.ManifestPath)
-	if err != nil {
-		return errors.Wrap(err, "validation failed: provider-config fixture")
-	}
-
-	switch tc.Engine {
-	case "pulumi":
-		stackInputPath, err := BuildStackInput(tc.ManifestPath, providerConfig)
-		if err != nil {
-			return errors.Wrap(err, "validation failed: cannot build stack input from manifest")
-		}
-		tc.StackInputFilePath = stackInputPath
-
-	case "terraform":
+	// The Terraform lane needs its isolated module copy before any manifest
+	// can be bound to it; the Pulumi lane runs in place.
+	if tc.Engine == "terraform" {
 		workDir, cleanup, err := PrepareWorkDir(tc.ModuleDir)
 		if err != nil {
 			return errors.Wrap(err, "validation failed: cannot prepare terraform working directory")
 		}
 		tc.TerraformWorkDir = workDir
 		tc.TerraformCleanup = cleanup
-
-		input, err := BuildTerraformInput(tc.ManifestPath, workDir, providerConfig)
-		if err != nil {
-			cleanup()
-			return errors.Wrap(err, "validation failed: cannot build terraform input from manifest")
-		}
-
-		tc.TerraformOpts = BuildTerratestOptions(tc.T, workDir, input.TfvarsPath, input.EnvVars)
-
-	default:
-		return errors.Errorf("unsupported engine for validation: %s", tc.Engine)
 	}
 
+	// Binding the manifest (the provider-config fixture, the stack input or
+	// the tfvars) is shared with the lifecycle lanes, which rebind a second
+	// manifest to the same stack the same way.
+	if err := bindManifest(tc, tc.ManifestPath); err != nil {
+		if tc.TerraformCleanup != nil {
+			tc.TerraformCleanup()
+		}
+		return errors.Wrap(err, "validation failed")
+	}
 	return nil
 }
 

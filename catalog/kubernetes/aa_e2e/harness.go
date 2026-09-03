@@ -363,6 +363,28 @@ func (h *Harness) VerifyRuntimeFailureCause(ctx context.Context, tc *provider.Co
 	return rcv.VerifyRuntimeFailureCause(ctx, h.kubeconfigPath, cause)
 }
 
+// VerifyExpectedDeployFailure implements the framework's optional
+// DeployFailureVerifier capability (expect-deploy-failure and
+// expect-upgrade-failure lanes): it dispatches to the kind's verifier, which
+// must itself opt in via the local verify.DeployFailureVerifier interface.
+// The manifest on ctx is the one whose deploy failed (the upgrade manifest
+// for an upgrade lane), so the verifier reads the refused values from it.
+func (h *Harness) VerifyExpectedDeployFailure(ctx context.Context, tc *provider.ComponentTestContext, expectation string, deployErr error) error {
+	manifestPath, _ := ctx.Value(provider.ManifestPathKey{}).(string)
+	if manifestPath == "" {
+		manifestPath = tc.ManifestPath
+	}
+	verifier, err := verify.GetVerifierFromManifest(manifestPath)
+	if err != nil {
+		return err
+	}
+	dfv, ok := verifier.(verify.DeployFailureVerifier)
+	if !ok {
+		return errors.Errorf("component %q's verifier does not implement verify.DeployFailureVerifier -- the scenario expects a deploy failure (%s) it cannot pin", tc.Component, expectation)
+	}
+	return dfv.VerifyExpectedDeployFailure(ctx, h.kubeconfigPath, expectation, deployErr)
+}
+
 // VerifyDestroyed confirms that resources have been removed after destroy.
 func (h *Harness) VerifyDestroyed(ctx context.Context, component string) error {
 	manifestPath, _ := ctx.Value(provider.ManifestPathKey{}).(string)

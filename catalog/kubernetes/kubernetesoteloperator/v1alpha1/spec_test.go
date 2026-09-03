@@ -18,6 +18,7 @@ func TestKubernetesOtelOperator(t *testing.T) {
 
 func int32Ptr(i int32) *int32    { return &i }
 func stringPtr(s string) *string { return &s }
+func boolPtr(b bool) *bool       { return &b }
 
 func literal(value string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
@@ -85,7 +86,7 @@ var _ = ginkgo.Describe("KubernetesOtelOperator Validation Tests", func() {
 		ginkgo.It("full surface should be valid", func() {
 			input.Spec.CreateNamespace = true
 			input.Spec.ChartVersion = stringPtr("0.120.0")
-			input.Spec.SkipCrds = true
+			input.Spec.Crds = &KubernetesOtelOperatorCrds{Install: boolPtr(false), KeepOnUninstall: boolPtr(false)}
 			input.Spec.DefaultCollectorImage = "mirror.example.com/otel/opentelemetry-collector-k8s:0.156.0"
 			input.Spec.Replicas = int32Ptr(2)
 			input.Spec.ServiceMonitorEnabled = true

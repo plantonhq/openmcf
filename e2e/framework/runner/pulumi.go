@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/stackinput"
 )
 
 // PulumiResult captures the outcome of a Pulumi CLI invocation.
@@ -121,6 +122,12 @@ func runPulumi(moduleDir, backendURL, stackInputFilePath, kubeContext string, ar
 	}
 	if kubeContext != "" {
 		env = append(env, "KUBE_CTX="+kubeContext)
+	}
+	// The same operation signal the platform's runner gives module programs:
+	// a destroy re-runs the program for its delete hooks only, and steps that
+	// can fail for unrelated reasons stand aside (stackinput.OperationEnvVar).
+	if len(args) > 0 && args[0] == "destroy" {
+		env = append(env, stackinput.OperationEnvVar+"="+stackinput.OperationDestroy)
 	}
 	cmd.Env = env
 

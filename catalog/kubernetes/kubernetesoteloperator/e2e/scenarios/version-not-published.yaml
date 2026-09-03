@@ -1,0 +1,16 @@
+# THE UNPUBLISHED-VERSION REFUSAL: a chart version that does not exist in
+# the repository index. The deploy must fail before anything is created,
+# and the message must say what was observed (the version, the
+# repository), what it means, and the next step -- the verifier asserts
+# all three parts, so Helm's bare "not found" can never pass on its own.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesOtelOperator
+metadata:
+  name: e2e-otelop-unpub
+  annotations:
+    planton.dev/e2e-expect-deploy-failure: chart-version-not-published
+spec:
+  namespace:
+    value: e2e-otelop-unpub
+  createNamespace: true
+  chartVersion: 99.99.99

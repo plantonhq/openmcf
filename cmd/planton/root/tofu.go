@@ -35,6 +35,7 @@ func init() {
 	Tofu.AddCommand(
 		tofu.Apply,
 		tofu.Destroy,
+		tofu.GenerateHelmCrds,
 		tofu.GenerateModule,
 		tofu.GenerateVariables,
 		tofu.Init,

@@ -5,23 +5,20 @@ metadata:
 spec:
   tier: 4
   # Forged on the official opentelemetry-operator chart 0.120.0
-  # (= operator v0.156.0) with MODULE-OWNED CRDs (the chart templates
-  # them release-owned — an uninstall would cascade-delete every
-  # collector declaration) and the cert-manager-only webhook posture
-  # (the kept collector CRD carries a conversion webhook whose CA trust
-  # only a running injector keeps current). The dedicated verifier
-  # proves the two live-only seams: the fail-closed admission gate and
-  # the v1alpha1↔v1beta1 CONVERSION round-trip through the CA-injected
-  # kept CRD. cert-manager fixture rides the registry prerequisite.
-  status: deferred
-  deferred_reason: >-
-    Both engines read the CRD set from ../crds, a sibling directory no
-    published form of the module carries (module.zip, source.zip, and the
-    Pulumi binary workspace hold only the engine directory), so no fresh
-    install from a release has ever converged, and a lane that passes from
-    the source tree proves nothing about what ships. Lifts when the module
-    derives its CRDs from the pinned version and leaves the known_violations
-    table of hack/guards/ensure_modules_are_self_contained.sh.
+  # (= operator v0.156.0) with MODULE-OWNED CRDs derived from the pinned
+  # chart at apply time (the chart templates them release-owned — an
+  # uninstall would cascade-delete every collector declaration) and the
+  # cert-manager-only webhook posture (the kept collector CRD carries a
+  # conversion webhook whose CA trust only a running injector keeps
+  # current). The dedicated verifier proves the two live-only seams: the
+  # fail-closed admission gate and the v1alpha1↔v1beta1 CONVERSION
+  # round-trip through the CA-injected kept CRD. The scenarios cover the
+  # whole CRD lifecycle: keep and re-adopt on reinstall (minimal),
+  # cleanup when keep is off (full-surface), a chart bump re-applying
+  # the CRDs (upgrade), and the two refusals (a version that is not
+  # published; a schema downgrade). cert-manager fixture rides the
+  # registry prerequisite.
+  status: green
   validated_provisioners:
     - pulumi
     - terraform

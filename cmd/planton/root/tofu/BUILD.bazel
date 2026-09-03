@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "apply.go",
         "destroy.go",
+        "generate_helm_crds.go",
         "generate_module.go",
         "generate_variables.go",
         "init.go",
