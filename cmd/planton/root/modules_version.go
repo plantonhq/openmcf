@@ -6,18 +6,24 @@ import (
 
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/staging"
+	"github.com/plantonhq/planton/internal/cli/version"
+	"github.com/plantonhq/planton/pkg/downloads"
 	"github.com/spf13/cobra"
 )
 
 var ModulesVersion = &cobra.Command{
 	Use:   "modules-version",
-	Short: "Show the current version of IaC modules in the staging area",
-	Long: `Display the currently checked out version of the Planton IaC modules
-in the local staging area.
+	Short: "Show which release this binary downloads IaC modules from, and the staging area's version",
+	Long: `Display the catalog release this binary is pinned to for IaC module
+downloads, and the version currently checked out in the local staging area.
+
+Every apply, plan, and destroy downloads the published module for a kind from
+the pinned release (downloads.planton.dev/releases/<release>/...) so the module
+always matches the schemas compiled into this binary. A binary with no release
+pin (a development build) falls back to the staging area instead.
 
 The staging area (~/.planton/staging/planton) maintains a cached copy
 of the Planton repository containing all IaC modules (Pulumi and Terraform/OpenTofu).
-
 This command reads the version from the staging area's .version file and displays it.
 If the staging area doesn't exist, it will indicate that no modules are cached yet.
 
@@ -34,6 +40,8 @@ Use 'planton pull' to update to the latest version from upstream.`,
 }
 
 func modulesVersionHandler(cmd *cobra.Command, args []string) {
+	printPinnedRelease()
+
 	exists, version, repoPath, err := staging.GetStagingInfo()
 	if err != nil {
 		cliprint.PrintError(fmt.Sprintf("Failed to get staging info: %v", err))
@@ -60,4 +68,20 @@ func modulesVersionHandler(cmd *cobra.Command, args []string) {
 	fmt.Println("Commands:")
 	fmt.Println("  planton pull                  Update to latest from upstream")
 	fmt.Println("  planton checkout <version>    Switch to a specific version")
+}
+
+// printPinnedRelease names the release the module runtimes download from, or
+// says plainly that this binary has none. The pin is the binary's own
+// version for the standalone CLI and the embedded catalog release for a host
+// binary; either way it is the one fact that decides where modules come from.
+func printPinnedRelease() {
+	fmt.Println("IaC Modules Release Pin")
+	fmt.Println("=======================")
+	if version.Version == "" || version.Version == version.DefaultVersion {
+		fmt.Println("Release:  (none -- a development build; modules come from the staging area below)")
+	} else {
+		fmt.Printf("Release:  %s\n", version.Version)
+		fmt.Printf("Source:   %s/%s/modules/{terraform,pulumi}/<kind>/\n", downloads.BaseURL, version.Version)
+	}
+	fmt.Println("")
 }

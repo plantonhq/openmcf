@@ -25,7 +25,7 @@ var Destroy = &cobra.Command{
 
 func destroyHandler(cmd *cobra.Command, args []string) {
 	moduleDir, err := cmd.Flags().GetString(string(flag.ModuleDir))
-	flag.HandleFlagErrAndValue(err, flag.ModuleDir, moduleDir)
+	flag.HandleFlagErr(err, flag.ModuleDir)
 
 	// Stack can be provided via flag or extracted from manifest
 	stackFqdn, err := cmd.Flags().GetString(string(flag.Stack))

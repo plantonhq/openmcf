@@ -70,20 +70,14 @@ func BuildTerraformInput(manifestPath, workDir string,
 		return nil, errors.Wrap(err, "failed to write provider override file")
 	}
 
+	// The kind harness exports KUBECONFIG into the process and passes no
+	// provider config, which is exactly the operator's local workflow; the
+	// loader's ambient kubernetes branch hands the Terraform providers that
+	// kubeconfig under the names they read. The harness adds nothing of its
+	// own, so a lane here proves what a laptop gets.
 	providerEnvVarMap, err := providerenvvars.GetEnvVarsWithOptions(stackInputYaml, providerenvvars.Options{})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to extract provider environment variables")
-	}
-
-	// The Terraform Kubernetes provider uses KUBE_CONFIG_PATH (not KUBECONFIG).
-	// This bridges a DIFFERENT case than providerenvvars.loadKubernetesEnvVars (which now
-	// sets both names for connection-derived kubeconfigs): here the kind harness exports
-	// KUBECONFIG into the process for an in-cluster test kubeconfig, so we forward it to
-	// KUBE_CONFIG_PATH for the TF provider. Kept distinct on purpose.
-	if kubeconfig := os.Getenv("KUBECONFIG"); kubeconfig != "" {
-		if _, exists := providerEnvVarMap["KUBE_CONFIG_PATH"]; !exists {
-			providerEnvVarMap["KUBE_CONFIG_PATH"] = kubeconfig
-		}
 	}
 
 	return &TerraformInput{

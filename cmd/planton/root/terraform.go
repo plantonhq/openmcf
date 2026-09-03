@@ -3,6 +3,7 @@ package root
 import (
 	"github.com/plantonhq/planton/cmd/planton/root/terraform"
 	"github.com/plantonhq/planton/internal/cli/flag"
+	"github.com/plantonhq/planton/internal/cli/iacflags"
 	"github.com/spf13/cobra"
 )
 
@@ -31,6 +32,8 @@ func init() {
 
 	// Provider config flag (unified)
 	Terraform.PersistentFlags().StringP(string(flag.ProviderConfig), "p", "", "path to provider credentials file")
+
+	iacflags.AddKubeContextFlag(Terraform)
 
 	Terraform.AddCommand(
 		terraform.Apply,

@@ -38,7 +38,7 @@ func refreshHandler(cmd *cobra.Command, args []string) {
 	}
 
 	moduleDir, err := cmd.Flags().GetString(string(flag.ModuleDir))
-	flag.HandleFlagErrAndValue(err, flag.ModuleDir, moduleDir)
+	flag.HandleFlagErr(err, flag.ModuleDir)
 
 	valueOverrides, err := cmd.Flags().GetStringToString(string(flag.Set))
 	flag.HandleFlagErr(err, flag.Set)
@@ -141,10 +141,11 @@ func refreshHandler(cmd *cobra.Command, args []string) {
 		nil, // backendConfig - uses manifest annotations for direct commands
 	)
 	if err != nil {
-		ui.ErrorWithoutExit("Terraform Execution Failed", err.Error(),
+		if !ui.EngineFailure("Terraform Execution Failed", err,
 			"Check the module configuration for syntax errors",
-			"Ensure all required provider credentials are configured")
-		cliprint.PrintTerraformFailure()
+			"Ensure all required provider credentials are configured") {
+			cliprint.PrintTerraformFailure()
+		}
 		os.Exit(1)
 	}
 	cliprint.PrintTerraformSuccess()

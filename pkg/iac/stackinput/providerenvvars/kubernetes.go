@@ -3,6 +3,7 @@ package providerenvvars
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -50,5 +51,34 @@ func loadKubernetesEnvVars(providerConfigYaml []byte, fileCacheLoc string) (map[
 		"KUBE_CONFIG_PATH": kubeConfigPath,
 	}
 
+	return envVars, nil
+}
+
+// loadHostKubernetesEnvVars is the local-workflow counterpart of
+// loadKubernetesEnvVars: no Planton connection, so the operator's own
+// kubeconfig, resolved the way kubectl resolves it. The same file list is
+// exported under every name an engine reads: KUBECONFIG for Pulumi and
+// kubectl-style tooling; KUBE_CONFIG_PATH (one file) or KUBE_CONFIG_PATHS (a
+// list) for the Terraform kubernetes and helm providers, which never read
+// KUBECONFIG themselves; KUBE_CTX for the context every engine honours. A
+// missing kubeconfig is a three-part refusal from the resolver.
+func loadHostKubernetesEnvVars(kubeContext string) (map[string]string, error) {
+	paths, err := kubeconfig.HostKubeconfigPaths()
+	if err != nil {
+		return nil, err
+	}
+
+	joined := strings.Join(paths, string(os.PathListSeparator))
+	envVars := map[string]string{
+		"KUBECONFIG": joined,
+	}
+	if len(paths) == 1 {
+		envVars["KUBE_CONFIG_PATH"] = paths[0]
+	} else {
+		envVars["KUBE_CONFIG_PATHS"] = joined
+	}
+	if kubeContext != "" {
+		envVars[kubeconfig.KubeContextEnvVar] = kubeContext
+	}
 	return envVars, nil
 }

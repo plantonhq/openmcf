@@ -49,13 +49,13 @@ func initHandler(cmd *cobra.Command, args []string) {
 	flag.HandleFlagErr(err, flag.InputDir)
 
 	moduleDir, err := cmd.Flags().GetString(string(flag.ModuleDir))
-	flag.HandleFlagErrAndValue(err, flag.ModuleDir, moduleDir)
+	flag.HandleFlagErr(err, flag.ModuleDir)
 
 	valueOverrides, err := cmd.Flags().GetStringToString(string(flag.Set))
 	flag.HandleFlagErr(err, flag.Set)
 
 	backendTypeString, err := cmd.Flags().GetString(string(flag.BackendType))
-	flag.HandleFlagErrAndValue(err, flag.BackendType, backendTypeString)
+	flag.HandleFlagErr(err, flag.BackendType)
 
 	backendConfigList, err := cmd.Flags().GetStringArray(string(flag.BackendConfig))
 	flag.HandleFlagErr(err, flag.BackendConfig)
@@ -66,7 +66,7 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	if inputDir == "" {
 		targetManifestPath, err = cmd.Flags().GetString(string(flag.Manifest))
-		flag.HandleFlagErrAndValue(err, flag.Manifest, targetManifestPath)
+		flag.Require(err, flag.Manifest, targetManifestPath, "--manifest path/to/manifest.yaml (or --input-dir <dir> holding target.yaml)")
 	}
 
 	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
@@ -141,7 +141,8 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	providerConfigEnvVars, err := tofumodule.GetProviderConfigEnvVars(stackInputYaml, workspaceDir, kubeCtx)
 	if err != nil {
-		cliprint.PrintError(fmt.Sprintf("failed to get credential env vars: %v", err))
+		ui.EngineFailure("Provider credentials could not be prepared", err,
+			"check the provider configuration's fields against `planton explain <provider connection kind>`")
 		os.Exit(1)
 	}
 
@@ -160,10 +161,11 @@ func initHandler(cmd *cobra.Command, args []string) {
 		nil,
 	)
 	if err != nil {
-		ui.ErrorWithoutExit("Terraform Execution Failed", err.Error(),
+		if !ui.EngineFailure("Terraform Execution Failed", err,
 			"Check the module configuration for syntax errors",
-			"Ensure all required provider credentials are configured")
-		cliprint.PrintTerraformFailure()
+			"Ensure all required provider credentials are configured") {
+			cliprint.PrintTerraformFailure()
+		}
 		os.Exit(1)
 	}
 	cliprint.PrintTerraformSuccess()

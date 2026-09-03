@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"regexp"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/nikolalohinski/gonja/v2/config"
 	"github.com/nikolalohinski/gonja/v2/exec"
 	"github.com/nikolalohinski/gonja/v2/loaders"
+	"github.com/nikolalohinski/gonja/v2/logging"
 	"github.com/pkg/errors"
 )
 
@@ -27,9 +27,14 @@ var (
 )
 
 func init() {
-	// gonja logs through logrus by default; a validation library must not
-	// write to the host process's output.
-	gonja.SetLoggerOutput(io.Discard)
+	// gonja's lexer and parser log through logrus, and a validation library
+	// must not write to the host process's output. gonja's own switch for
+	// that is its logging package, which every one of its log calls checks
+	// first. Its exported gonja.SetLoggerOutput(io.Discard) is NOT the way:
+	// it also calls logrus.SetOutput on the PROCESS-WIDE standard logger,
+	// which silences every logrus line in any binary that links this
+	// package (the CLI's own fatal messages included).
+	logging.SetEnabled(false)
 }
 
 // chartEnvironment carries the builtin Jinja surface plus the custom filters

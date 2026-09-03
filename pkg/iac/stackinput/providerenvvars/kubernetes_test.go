@@ -1,9 +1,12 @@
 package providerenvvars
 
 import (
+	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/plantonhq/planton/pkg/failure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -93,4 +96,80 @@ digital_ocean_doks:
 	content, err := os.ReadFile(envVars["KUBE_CONFIG_PATH"])
 	require.NoError(t, err)
 	assert.Contains(t, string(content), "kind: Config")
+}
+
+// The local workflow: a Kubernetes kind with NO provider_config uses the
+// operator's own kubeconfig, exported under every name an engine reads. The
+// Terraform kubernetes and helm providers never read KUBECONFIG themselves, so
+// KUBE_CONFIG_PATH is the load-bearing key; without it the providers fall back
+// to in-cluster auth and fail with a connection refused to localhost.
+func TestGetEnvVars_KubernetesWithoutProviderConfig_UsesHostKubeconfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	one := filepath.Join(home, "one.yaml")
+	two := filepath.Join(home, "two.yaml")
+
+	stackInputYaml := `
+target:
+  apiVersion: kubernetes.planton.dev/v1alpha1
+  kind: KubernetesNamespace
+  metadata:
+    name: demo
+  spec:
+    name: demo
+`
+
+	t.Run("one file: KUBE_CONFIG_PATH", func(t *testing.T) {
+		t.Setenv("KUBECONFIG", one)
+		envVars, err := GetEnvVarsWithOptions(stackInputYaml, Options{KubeContext: "kind-planton-e2e"})
+		require.NoError(t, err)
+		assert.Equal(t, one, envVars["KUBECONFIG"])
+		assert.Equal(t, one, envVars["KUBE_CONFIG_PATH"])
+		assert.NotContains(t, envVars, "KUBE_CONFIG_PATHS")
+		assert.Equal(t, "kind-planton-e2e", envVars["KUBE_CTX"])
+	})
+
+	t.Run("a list: KUBE_CONFIG_PATHS, and no KUBE_CTX when none was chosen", func(t *testing.T) {
+		list := one + string(os.PathListSeparator) + two
+		t.Setenv("KUBECONFIG", list)
+		envVars, err := GetEnvVarsWithOptions(stackInputYaml, Options{})
+		require.NoError(t, err)
+		assert.Equal(t, list, envVars["KUBECONFIG"])
+		assert.Equal(t, list, envVars["KUBE_CONFIG_PATHS"])
+		assert.NotContains(t, envVars, "KUBE_CONFIG_PATH")
+		assert.NotContains(t, envVars, "KUBE_CTX")
+	})
+
+	t.Run("no kubeconfig anywhere: the three-part refusal, before any engine runs", func(t *testing.T) {
+		t.Setenv("KUBECONFIG", "")
+		_, err := GetEnvVarsWithOptions(stackInputYaml, Options{})
+		require.Error(t, err)
+		var f *failure.Failure
+		require.True(t, errors.As(err, &f), "want a *failure.Failure, got %T: %v", err, err)
+		assert.Contains(t, f.Observed, "KUBECONFIG")
+		assert.Contains(t, f.NextStep, "--kube-context")
+	})
+}
+
+// A connection's rendered kubeconfig still honours an explicit context choice.
+func TestGetEnvVars_KubernetesWithProviderConfig_ExportsKubeContext(t *testing.T) {
+	stackInputYaml := `
+target:
+  apiVersion: kubernetes.planton.dev/v1alpha1
+  kind: KubernetesNamespace
+  metadata:
+    name: demo
+  spec:
+    name: demo
+provider_config:
+  provider: gcp_gke
+  gcp_gke:
+    cluster_endpoint: "34.100.155.147"
+    cluster_ca_data: "dGVzdC1jYS1kYXRh"
+    service_account_key: "{\"type\":\"service_account\"}"
+`
+	envVars, err := GetEnvVarsWithOptions(stackInputYaml, Options{FileCacheLoc: t.TempDir(), KubeContext: "chosen"})
+	require.NoError(t, err)
+	assert.NotEmpty(t, envVars["KUBE_CONFIG_PATH"])
+	assert.Equal(t, "chosen", envVars["KUBE_CTX"])
 }

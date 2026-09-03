@@ -1,16 +1,61 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/plantonhq/planton/pkg/failure"
 )
 
 // separator returns a styled separator line
 func separator(style lipgloss.Style) string {
 	return style.Render(strings.Repeat(separatorChar, separatorLength))
+}
+
+// Failure prints a three-part failure and exits with code 1. Every refusal
+// the CLI makes on its own account takes this shape: what was observed (the
+// fact, with its value), what it most likely means (one root cause), and the
+// exact next step (a flag, a command, a file). The three labels match the
+// ones the IaC primitives and the repository guards print, so a person or an
+// agent reads one vocabulary everywhere. A message that names only the
+// mechanism is a defect; use Failure, never a bare log line, for anything
+// that stops the command.
+func Failure(observed, meaning, nextStep string) {
+	FailureWithoutExit(observed, meaning, nextStep)
+	os.Exit(1)
+}
+
+// FailureWithoutExit prints the three-part failure and returns, for callers
+// that own their own exit (a deferred cleanup, a wrapped error).
+func FailureWithoutExit(observed, meaning, nextStep string) {
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintf(os.Stderr, "%s  %s %s\n", errorIcon.Render(iconError), errorTitle.Render("observed:"), errorMessage.Render(observed))
+	fmt.Fprintf(os.Stderr, "   %s %s\n", errorTitle.Render("meaning:"), errorMessage.Render(meaning))
+	fmt.Fprintf(os.Stderr, "   %s %s\n", errorTitle.Render("next step:"), hintStyle.Render(nextStep))
+	fmt.Fprintln(os.Stderr)
+}
+
+// EngineFailure reports an error that came back from an engine run or its
+// preparation. When the error carries a three-part Failure anywhere in its
+// chain (a kubeconfig that could not be found, a chart version that is not
+// published) that explanation IS the report; the generic title and hints
+// would only bury it. Otherwise the error renders under the title with the
+// caller's hints, as before. Never exits: the engine handlers own their exit.
+//
+// Returns true when the three-part explanation was rendered, so the caller
+// can skip the "check the engine's output above" footer: a refusal that fired
+// before the engine started has no engine output to check.
+func EngineFailure(title string, err error, hints ...string) bool {
+	var f *failure.Failure
+	if errors.As(err, &f) {
+		FailureWithoutExit(f.Observed, f.Meaning, f.NextStep)
+		return true
+	}
+	ErrorWithoutExit(title, err.Error(), hints...)
+	return false
 }
 
 // Error prints a styled error message and exits with code 1

@@ -3,6 +3,7 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "kubeconfig",
     srcs = [
+        "host.go",
         "kubeconfig.go",
         "restconfig.go",
     ],
@@ -10,6 +11,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//catalog/kubernetes",
+        "//pkg/failure",
         "//pkg/kubernetes/execcredential",
         "@com_github_pkg_errors//:errors",
         "@io_k8s_client_go//rest",
@@ -20,13 +22,18 @@ go_library(
 
 go_test(
     name = "kubeconfig_test",
-    srcs = ["kubeconfig_test.go"],
+    srcs = [
+        "host_test.go",
+        "kubeconfig_test.go",
+    ],
     embed = [":kubeconfig"],
     deps = [
         "//catalog/kubernetes",
+        "//pkg/failure",
         "//pkg/kubernetes/execcredential",
         "@com_github_stretchr_testify//assert",
         "@com_github_stretchr_testify//require",
+        "@io_k8s_client_go//tools/clientcmd",
         "@io_k8s_sigs_yaml//:yaml",
     ],
 )

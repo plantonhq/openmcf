@@ -2,6 +2,7 @@ package tofu
 
 import (
 	"fmt"
+	"github.com/plantonhq/planton/internal/cli/ui"
 
 	"github.com/plantonhq/planton/internal/cli/flag"
 	"github.com/plantonhq/planton/pkg/crkreflect"
@@ -50,16 +51,28 @@ func generateVariablesHandler(cmd *cobra.Command, args []string) {
 	manifestObject := crkreflect.ToMessageMap[cloudResourceKind]
 
 	if manifestObject == nil {
-		log.Fatalf("proto message not found for %s cloudResourceKind", cloudResourceKind.String())
+		ui.Failure(
+			fmt.Sprintf("no spec message is registered for kind %s", cloudResourceKind.String()),
+			"the kind exists in the catalog enum but its proto package is not linked into this binary",
+			"run `make generate-cloud-resource-kind-map` and rebuild, then retry",
+		)
 	}
 
 	variablesTfContent, err := generators.ProtoToVariablesTF(manifestObject)
 	if err != nil {
-		log.Fatal("failed to generate Terraform variables: ", err)
+		ui.Failure(
+			fmt.Sprintf("the Terraform variables could not be generated: %v", err),
+			"the kind's spec message could not be walked into HCL variable declarations",
+			"report it at https://github.com/plantonhq/planton/issues naming the kind",
+		)
 	}
 	if outputFile != "" {
 		if err := os.WriteFile(outputFile, []byte(variablesTfContent), 0644); err != nil {
-			log.Fatalf("failed to write Terraform variables to file %s: %v", outputFile, err)
+			ui.Failure(
+				fmt.Sprintf("the generated variables could not be written to %s: %v", outputFile, err),
+				"the output path is not writable, or its parent directory does not exist",
+				"create the parent directory or point --output-file at a writable path",
+			)
 		}
 		log.Infof("Terraform variables written to file %s", outputFile)
 	} else {

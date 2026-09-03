@@ -3,6 +3,7 @@ package root
 import (
 	"github.com/plantonhq/planton/cmd/planton/root/pulumi"
 	"github.com/plantonhq/planton/internal/cli/flag"
+	"github.com/plantonhq/planton/internal/cli/iacflags"
 	"github.com/spf13/cobra"
 )
 
@@ -35,8 +36,7 @@ func init() {
 		"Checkout a specific version (tag, branch, or commit SHA) of the IaC modules in the workspace copy.\n"+
 			"This allows using a different module version than what's in the staging area without affecting it.")
 
-	// Kubernetes context flag
-	Pulumi.PersistentFlags().String(string(flag.KubeContext), "", "kubectl context to use for Kubernetes deployments (overrides manifest label)")
+	iacflags.AddKubeContextFlag(Pulumi)
 
 	// Stack input file flag
 	Pulumi.PersistentFlags().StringP(string(flag.StackInput), "i", "", "path to a YAML file containing the stack input (bypasses building stack input from manifest)")

@@ -1183,9 +1183,16 @@ another release or tool; CRD schema downgrade attempted; render produced
 zero CRDs for a chart expected to carry them; the chart templates CRDs
 as Helm-managed resources without the keep mark and the spec has not
 accepted that; CRD apply denied by RBAC; bundle URL 404; stale local
-repository configuration; a private repository refusing the credentials.
-A change that adds a branch to the shared mechanics adds that branch's
-failures and lanes in the same change.
+repository configuration; a private repository refusing the credentials;
+no cluster connection at all (a local deploy with neither KUBECONFIG nor
+the default kubeconfig — refused before any engine starts, never left to
+the providers' "connection refused to localhost"); a required CLI flag
+left empty (refused with the flag's copyable example, never a bare
+"please provide"). The CLI carries the same three labels
+(`ui.Failure` in `internal/cli/ui`; `pkg/failure` is the shared type)
+so a person or an agent reads one vocabulary in the module, the guard,
+and the command line. A change that adds a branch to the shared
+mechanics adds that branch's failures and lanes in the same change.
 
 **An operator's DESTROY contract is read from its controller source,
 never assumed from a sibling kind's posture.** Operators split into two

@@ -168,7 +168,7 @@ func (setEventRenderer) NodeWarning(node setdeploy.NodePlan, message string) {
 func (setEventRenderer) NodeFailed(node setdeploy.NodePlan, err error) {
 	// The engine's own error, verbatim — paraphrasing an IaC failure hides
 	// the one detail the user needs.
-	ui.ErrorWithoutExit(fmt.Sprintf("%s failed", node.Identity), err.Error())
+	ui.EngineFailure(fmt.Sprintf("%s failed", node.Identity), err)
 }
 
 // printSetFailureSummary tells the whole truth after a node failure: what

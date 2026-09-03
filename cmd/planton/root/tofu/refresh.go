@@ -15,7 +15,6 @@ import (
 	"github.com/plantonhq/planton/pkg/kubernetes/kubecontext"
 	"github.com/plantonhq/planton/shared"
 	"github.com/plantonhq/planton/shared/iac/terraform"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +33,7 @@ func init() {
 
 func refreshHandler(cmd *cobra.Command, args []string) {
 	moduleDir, err := cmd.Flags().GetString(string(flag.ModuleDir))
-	flag.HandleFlagErrAndValue(err, flag.ModuleDir, moduleDir)
+	flag.HandleFlagErr(err, flag.ModuleDir)
 
 	valueOverrides, err := cmd.Flags().GetStringToString(string(flag.Set))
 	flag.HandleFlagErr(err, flag.Set)
@@ -52,7 +51,11 @@ func refreshHandler(cmd *cobra.Command, args []string) {
 	// Resolve manifest path with priority: --manifest > --input-dir > --kustomize-dir + --overlay
 	targetManifestPath, isTemp, err := climanifest.ResolveManifestPath(cmd)
 	if err != nil {
-		log.Fatalf("failed to resolve manifest: %v", err)
+		ui.Failure(
+			fmt.Sprintf("no manifest could be resolved: %v", err),
+			"the command needs a resource manifest and none of --manifest, --input-dir, or --kustomize-dir with --overlay supplied one it could read",
+			"pass --manifest path/to/manifest.yaml",
+		)
 	}
 	if isTemp {
 		defer os.Remove(targetManifestPath)
@@ -102,14 +105,22 @@ func refreshHandler(cmd *cobra.Command, args []string) {
 	cliprint.PrintStep("Preparing OpenTofu execution...")
 	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
 	if err != nil {
-		log.Fatalf("failed to get provider config: %v", err)
+		ui.Failure(
+			fmt.Sprintf("the provider configuration could not be read: %v", err),
+			"--provider-config names a file or value the CLI cannot parse",
+			"fix the path or the file, or drop --provider-config to use this machine's own credentials",
+		)
 	}
 	cliprint.PrintSuccess("Execution prepared")
 
 	// Load manifest to extract kube context
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
-		log.Fatalf("Failed to load manifest: %v", err)
+		ui.Failure(
+			fmt.Sprintf("the manifest at %s could not be loaded: %v", targetManifestPath, err),
+			"the file is readable but its contents do not load into the kind it declares",
+			fmt.Sprintf("run `planton validate-manifest -f %s` for the field-level report", targetManifestPath),
+		)
 	}
 
 	// Resolve kube context: flag takes priority over manifest label
@@ -142,10 +153,11 @@ func refreshHandler(cmd *cobra.Command, args []string) {
 		nil, // backendConfig - uses manifest annotations for direct commands
 	)
 	if err != nil {
-		ui.ErrorWithoutExit("OpenTofu Execution Failed", err.Error(),
+		if !ui.EngineFailure("OpenTofu Execution Failed", err,
 			"Check the module configuration for syntax errors",
-			"Ensure all required provider credentials are configured")
-		cliprint.PrintTofuFailure()
+			"Ensure all required provider credentials are configured") {
+			cliprint.PrintTofuFailure()
+		}
 		os.Exit(1)
 	}
 	cliprint.PrintTofuSuccess()

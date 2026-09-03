@@ -52,6 +52,7 @@ go_test(
         "//catalog/aws",
         "//catalog/digitalocean",
         "//catalog/gcp",
+        "//pkg/failure",
         "//pkg/iac/provider/aws/awswebidentity",
         "@com_github_aws_aws_sdk_go_v2//aws",
         "@com_github_stretchr_testify//assert",

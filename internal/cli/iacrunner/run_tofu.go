@@ -206,7 +206,7 @@ func printHclFailure(binary provisioner.HclBinary) {
 // It displays the actual error message along with helpful hints for troubleshooting.
 func printHclExecutionError(binary provisioner.HclBinary, err error) {
 	title := fmt.Sprintf("%s Execution Failed", binary.DisplayName())
-	ui.ErrorWithoutExit(title, err.Error(),
+	ui.EngineFailure(title, err,
 		"Check the module configuration for syntax errors",
 		"Ensure all required provider credentials are configured")
 }

@@ -1856,7 +1856,7 @@ as its execution layer. For each test scenario:
 1. The TF module (`iac/tf/`) is copied to a temp directory
 2. `terraform.tfvars` is generated from the manifest proto via `ProtoToTFVars()`
 3. `backend.tf` is written with a local backend
-4. Provider env vars (KUBECONFIG, etc.) are extracted from the stack-input YAML
+4. Provider env vars are extracted from the stack-input YAML by the same loader the CLI and the platform runner use. For Kubernetes lanes there is no provider config, so the loader's local-workflow branch hands the Terraform providers the harness's own `KUBECONFIG` under the names they read (`KUBE_CONFIG_PATH`, `KUBE_CTX`); the harness adds nothing of its own, so a green lane proves what a laptop gets
 5. Terratest runs `tofu init` + `tofu apply` with built-in transient error retry
 6. The same kubectl verifiers validate the deployed infrastructure
 7. Terratest runs `tofu destroy`

@@ -23,6 +23,7 @@ go_library(
         "//pkg/iac/stackinput",
         "//pkg/iac/stackinput/stackinputproviderconfig",
         "//pkg/kubernetes/execcredential",
+        "//pkg/kubernetes/kubeconfig",
         "//pkg/outputs",
         "//shared/cloudresourcekind",
         "//shared/iac/pulumi",

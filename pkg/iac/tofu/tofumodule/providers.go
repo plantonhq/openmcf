@@ -13,17 +13,17 @@ func GetProviderConfigEnvVars(stackInputYaml, fileCacheLoc, kubeContext string) 
 	// the AWS modules' `provider "aws" {}` block is empty, so keyless connections must have
 	// their web-identity JWT exchanged for temporary credentials and injected as AWS_* env
 	// vars. The pulumi path calls GetEnvVarsWithOptions directly and leaves this false.
+	// KubeContext rides the same options: the loader exports it as KUBE_CTX
+	// beside the kubeconfig it resolves (a connection's rendered file, or the
+	// operator's own kubeconfig when there is no connection), so one seam owns
+	// every name the kubernetes and helm providers read.
 	providerConfigEnvVars, err := providerenvvars.GetEnvVarsWithOptions(stackInputYaml, providerenvvars.Options{
 		FileCacheLoc:          fileCacheLoc,
 		ResolveAwsWebIdentity: true,
+		KubeContext:           kubeContext,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get provider env vars from stack input")
-	}
-
-	// Add KUBE_CTX environment variable if kube context is specified
-	if kubeContext != "" {
-		providerConfigEnvVars["KUBE_CTX"] = kubeContext
 	}
 
 	return mapToSlice(providerConfigEnvVars), nil

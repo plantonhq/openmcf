@@ -23,6 +23,7 @@ go_library(
         "@com_github_nikolalohinski_gonja_v2//config",
         "@com_github_nikolalohinski_gonja_v2//exec",
         "@com_github_nikolalohinski_gonja_v2//loaders",
+        "@com_github_nikolalohinski_gonja_v2//logging",
         "@com_github_pkg_errors//:errors",
         "@in_gopkg_yaml_v3//:yaml_v3",
         "@io_k8s_sigs_yaml//:yaml",
@@ -34,10 +35,15 @@ go_test(
     name = "infrachart_test",
     srcs = [
         "discover_test.go",
+        "logging_test.go",
         "render_test.go",
         "validate_test.go",
         "values_test.go",
     ],
     data = glob(["testdata/**"]),
     embed = [":infrachart"],
+    deps = [
+        "@com_github_nikolalohinski_gonja_v2//logging",
+        "@com_github_sirupsen_logrus//:logrus",
+    ],
 )

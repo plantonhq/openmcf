@@ -10,6 +10,7 @@ import (
 	"github.com/plantonhq/planton/internal/cli/iacrunner"
 	climanifest "github.com/plantonhq/planton/internal/cli/manifest"
 	"github.com/plantonhq/planton/internal/cli/prompt"
+	"github.com/plantonhq/planton/internal/cli/ui"
 	"github.com/plantonhq/planton/internal/cli/workspace"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/crkreflect"
@@ -64,7 +65,7 @@ func init() {
 
 func initHandler(cmd *cobra.Command, args []string) {
 	moduleDir, err := cmd.Flags().GetString(string(flag.ModuleDir))
-	flag.HandleFlagErrAndValue(err, flag.ModuleDir, moduleDir)
+	flag.HandleFlagErr(err, flag.ModuleDir)
 
 	valueOverrides, err := cmd.Flags().GetStringToString(string(flag.Set))
 	flag.HandleFlagErr(err, flag.Set)
@@ -215,7 +216,7 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 	kubeContext string, manifestObject proto.Message, providerConfig *stackinputproviderconfig.ProviderConfig) {
 
 	backendTypeString, err := cmd.Flags().GetString(string(flag.BackendType))
-	flag.HandleFlagErrAndValue(err, flag.BackendType, backendTypeString)
+	flag.HandleFlagErr(err, flag.BackendType)
 
 	backendConfigList, err := cmd.Flags().GetStringArray(string(flag.BackendConfig))
 	flag.HandleFlagErr(err, flag.BackendConfig)
@@ -266,7 +267,8 @@ func initWithTofu(cmd *cobra.Command, moduleDir, targetManifestPath string, valu
 
 	providerConfigEnvVars, err := tofumodule.GetProviderConfigEnvVars(stackInputYaml, workspaceDir, kubeContext)
 	if err != nil {
-		cliprint.PrintError(fmt.Sprintf("Failed to get credential env vars: %v", err))
+		ui.EngineFailure("Provider credentials could not be prepared", err,
+			"check the provider configuration's fields against `planton explain <provider connection kind>`")
 		os.Exit(1)
 	}
 
@@ -303,7 +305,7 @@ func initWithTerraform(cmd *cobra.Command, moduleDir, targetManifestPath string,
 	kubeContext string, manifestObject proto.Message, providerConfig *stackinputproviderconfig.ProviderConfig) {
 
 	backendTypeString, err := cmd.Flags().GetString(string(flag.BackendType))
-	flag.HandleFlagErrAndValue(err, flag.BackendType, backendTypeString)
+	flag.HandleFlagErr(err, flag.BackendType)
 
 	backendConfigList, err := cmd.Flags().GetStringArray(string(flag.BackendConfig))
 	flag.HandleFlagErr(err, flag.BackendConfig)
@@ -351,7 +353,8 @@ func initWithTerraform(cmd *cobra.Command, moduleDir, targetManifestPath string,
 
 	providerConfigEnvVars, err := tofumodule.GetProviderConfigEnvVars(stackInputYaml, workspaceDir, kubeContext)
 	if err != nil {
-		cliprint.PrintError(fmt.Sprintf("Failed to get credential env vars: %v", err))
+		ui.EngineFailure("Provider credentials could not be prepared", err,
+			"check the provider configuration's fields against `planton explain <provider connection kind>`")
 		os.Exit(1)
 	}
 

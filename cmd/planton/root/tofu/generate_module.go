@@ -1,6 +1,8 @@
 package tofu
 
 import (
+	"fmt"
+	"github.com/plantonhq/planton/internal/cli/ui"
 	"os"
 	"path/filepath"
 	"sort"
@@ -46,21 +48,33 @@ func generateModuleHandler(cmd *cobra.Command, args []string) {
 	kindName := args[0]
 
 	outputDir, err := cmd.Flags().GetString(string(flag.OutputDir))
-	flag.HandleFlagErrAndValue(err, flag.OutputDir, outputDir)
+	flag.Require(err, flag.OutputDir, outputDir, "--output-dir catalog/<provider>/<kind>/iac/tf")
 
 	cloudResourceKind := crkreflect.KindFromString(kindName)
 	manifestObject := crkreflect.ToMessageMap[cloudResourceKind]
 	if manifestObject == nil {
-		log.Fatalf("proto message not found for %s cloudResourceKind", cloudResourceKind.String())
+		ui.Failure(
+			fmt.Sprintf("no spec message is registered for kind %s", cloudResourceKind.String()),
+			"the kind exists in the catalog enum but its proto package is not linked into this binary",
+			"run `make generate-cloud-resource-kind-map` and rebuild, then retry",
+		)
 	}
 
 	files, err := generators.GenerateManifestModule(cloudResourceKind, manifestObject)
 	if err != nil {
-		log.Fatalf("failed to generate terraform module for %s: %v", kindName, err)
+		ui.Failure(
+			fmt.Sprintf("the Terraform module for %s could not be generated: %v", kindName, err),
+			"the kind's spec message could not be walked into a module skeleton",
+			"report it at https://github.com/plantonhq/planton/issues naming the kind",
+		)
 	}
 
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		log.Fatalf("failed to create output directory %s: %v", outputDir, err)
+		ui.Failure(
+			fmt.Sprintf("the output directory %s could not be created: %v", outputDir, err),
+			"the path is not writable, or a file already sits where the directory should be",
+			"point --output-dir at a writable directory path",
+		)
 	}
 
 	// Deterministic write order for stable logs.
@@ -72,7 +86,11 @@ func generateModuleHandler(cmd *cobra.Command, args []string) {
 	for _, name := range names {
 		path := filepath.Join(outputDir, name)
 		if err := os.WriteFile(path, []byte(files[name]), 0644); err != nil {
-			log.Fatalf("failed to write %s: %v", path, err)
+			ui.Failure(
+				fmt.Sprintf("the generated file could not be written to %s: %v", path, err),
+				"the output directory is not writable",
+				"point --output-dir at a writable directory path",
+			)
 		}
 		log.Infof("wrote %s", path)
 	}

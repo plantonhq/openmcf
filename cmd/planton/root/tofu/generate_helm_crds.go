@@ -2,6 +2,7 @@ package tofu
 
 import (
 	"fmt"
+	"github.com/plantonhq/planton/internal/cli/ui"
 	"os"
 
 	"github.com/plantonhq/planton/internal/cli/flag"
@@ -45,7 +46,11 @@ func generateHelmCrdsHandler(cmd *cobra.Command, args []string) {
 	content := generators.HelmCRDsTF()
 	if outputFile != "" {
 		if err := os.WriteFile(outputFile, []byte(content), 0644); err != nil {
-			log.Fatalf("failed to write %s: %v", outputFile, err)
+			ui.Failure(
+				fmt.Sprintf("the generated file could not be written to %s: %v", outputFile, err),
+				"the output path is not writable, or its parent directory does not exist",
+				"create the parent directory or point --output-file at a writable path",
+			)
 		}
 		log.Infof("canonical %s written to %s", generators.HelmCRDsTFFileName, outputFile)
 		return

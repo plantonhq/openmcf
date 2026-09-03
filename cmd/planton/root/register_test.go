@@ -68,3 +68,74 @@ func TestSetModulesVersion(t *testing.T) {
 		t.Errorf("empty SetModulesVersion overwrote stamped version: %q", version.Version)
 	}
 }
+
+// Every engine command that RUNS an IaC module reads --module-dir with an
+// EMPTY default: empty means "no explicit choice", and the module runtime
+// then probes the current directory before falling through to the published
+// module for this release. A group that registered a required or defaulted
+// --module-dir would break that contract for every command under it, and a
+// handler that refused an empty value would contradict the flag's own help.
+// (The module-authoring tools, `module verify` and `validate-outputs`,
+// inspect a directory the author names and are rightly required.)
+func TestEngineCommands_ModuleDirIsOptionalEverywhere(t *testing.T) {
+	parent := &cobra.Command{Use: "host"}
+	RegisterCommands(parent, Options{})
+
+	runsAModule := map[string]bool{
+		"apply": true, "destroy": true, "plan": true, "refresh": true, "init": true,
+		"pulumi": true, "tofu": true, "terraform": true,
+	}
+
+	var walk func(c *cobra.Command)
+	walk = func(c *cobra.Command) {
+		if f := c.InheritedFlags().Lookup("module-dir"); f != nil || c.Flags().Lookup("module-dir") != nil {
+			if f == nil {
+				f = c.Flags().Lookup("module-dir")
+			}
+			if f.DefValue != "" {
+				t.Errorf("%s: --module-dir default = %q, want empty (the resolver owns the default)", c.CommandPath(), f.DefValue)
+			}
+			if ann := f.Annotations[cobra.BashCompOneRequiredFlag]; len(ann) > 0 {
+				t.Errorf("%s: --module-dir is marked required; the module runtime resolves an empty value", c.CommandPath())
+			}
+		}
+		for _, sub := range c.Commands() {
+			walk(sub)
+		}
+	}
+	for _, c := range parent.Commands() {
+		if runsAModule[c.Name()] {
+			walk(c)
+		}
+	}
+}
+
+// Every command that deploys to Kubernetes reads --kube-context; each engine
+// group must therefore register it, or the handler silently sees "" and the
+// deploy lands on whatever context the kubeconfig currently selects.
+func TestEngineGroups_RegisterKubeContext(t *testing.T) {
+	parent := &cobra.Command{Use: "host"}
+	RegisterCommands(parent, Options{})
+
+	for _, group := range []string{"pulumi", "tofu", "terraform"} {
+		var found *cobra.Command
+		for _, c := range parent.Commands() {
+			if c.Name() == group {
+				found = c
+			}
+		}
+		if found == nil {
+			t.Fatalf("engine group %q not registered", group)
+		}
+		if found.PersistentFlags().Lookup("kube-context") == nil {
+			t.Errorf("%s: --kube-context not registered on the group; its handlers read it", group)
+		}
+	}
+	for _, lifecycle := range []string{"apply", "destroy", "plan", "refresh", "init"} {
+		for _, c := range parent.Commands() {
+			if c.Name() == lifecycle && c.PersistentFlags().Lookup("kube-context") == nil {
+				t.Errorf("%s: --kube-context not registered", lifecycle)
+			}
+		}
+	}
+}

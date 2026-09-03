@@ -21,12 +21,21 @@ func AddExecutionFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().Bool(string(flag.NoCleanup), false,
 		"Do not cleanup the workspace copy after execution (keeps cloned modules)")
 
-	cmd.PersistentFlags().String(string(flag.KubeContext), "",
-		"kubectl context to use for Kubernetes deployments (overrides manifest label)")
+	AddKubeContextFlag(cmd)
 
 	cmd.PersistentFlags().StringToString(string(flag.Set), map[string]string{},
 		"override resource manifest values using key=value pairs")
 
 	cmd.PersistentFlags().Bool(string(flag.LocalModule), false,
 		"Use the local planton repository to derive the module directory")
+}
+
+// AddKubeContextFlag registers --kube-context, the one flag every engine
+// group's handlers read to pick the kubeconfig context for a Kubernetes
+// deploy. Declared once so the root lifecycle commands and the pulumi, tofu,
+// and terraform groups cannot drift: a handler that reads a flag its group
+// never registered silently sees "" and deploys to the current context.
+func AddKubeContextFlag(cmd *cobra.Command) {
+	cmd.PersistentFlags().String(string(flag.KubeContext), "",
+		"kubectl context to use for Kubernetes deployments (overrides manifest label)")
 }

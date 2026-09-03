@@ -17,6 +17,7 @@ import (
 	"github.com/plantonhq/planton/pkg/iac/stackinput"
 	"github.com/plantonhq/planton/pkg/iac/stackinput/stackinputproviderconfig"
 	"github.com/plantonhq/planton/pkg/kubernetes/execcredential"
+	"github.com/plantonhq/planton/pkg/kubernetes/kubeconfig"
 	"github.com/plantonhq/planton/shared/iac/pulumi"
 	log "github.com/sirupsen/logrus"
 )
@@ -168,7 +169,7 @@ func Run(moduleDir, stackFqdn, targetManifestPath string, pulumiOperation pulumi
 	// Set environment variables
 	pulumiCmd.Env = append(os.Environ(), extraEnv...)
 	if kubeContext != "" {
-		pulumiCmd.Env = append(pulumiCmd.Env, "KUBE_CTX="+kubeContext)
+		pulumiCmd.Env = append(pulumiCmd.Env, kubeconfig.KubeContextEnvVar+"="+kubeContext)
 	}
 
 	// Advertise this binary as the kubeconfig exec-credential command: the module

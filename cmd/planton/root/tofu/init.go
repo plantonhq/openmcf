@@ -65,13 +65,13 @@ func initHandler(cmd *cobra.Command, args []string) {
 	flag.HandleFlagErr(err, flag.InputDir)
 
 	moduleDir, err := cmd.Flags().GetString(string(flag.ModuleDir))
-	flag.HandleFlagErrAndValue(err, flag.ModuleDir, moduleDir)
+	flag.HandleFlagErr(err, flag.ModuleDir)
 
 	valueOverrides, err := cmd.Flags().GetStringToString(string(flag.Set))
 	flag.HandleFlagErr(err, flag.Set)
 
 	backendTypeString, err := cmd.Flags().GetString(string(flag.BackendType))
-	flag.HandleFlagErrAndValue(err, flag.BackendType, backendTypeString)
+	flag.HandleFlagErr(err, flag.BackendType)
 
 	backendConfigList, err := cmd.Flags().GetStringArray(string(flag.BackendConfig))
 	flag.HandleFlagErr(err, flag.BackendConfig)
@@ -82,22 +82,34 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	if inputDir == "" {
 		targetManifestPath, err = cmd.Flags().GetString(string(flag.Manifest))
-		flag.HandleFlagErrAndValue(err, flag.Manifest, targetManifestPath)
+		flag.Require(err, flag.Manifest, targetManifestPath, "--manifest path/to/manifest.yaml (or --input-dir <dir> holding target.yaml)")
 	}
 
 	providerConfig, err := stackinputproviderconfig.GetFromFlagsSimple(cmd.Flags())
 	if err != nil {
-		log.Fatalf("failed to get provider config: %v", err)
+		ui.Failure(
+			fmt.Sprintf("the provider configuration could not be read: %v", err),
+			"--provider-config names a file or value the CLI cannot parse",
+			"fix the path or the file, or drop --provider-config to use this machine's own credentials",
+		)
 	}
 
 	manifestObject, err := manifest.LoadWithOverrides(targetManifestPath, valueOverrides)
 	if err != nil {
-		log.Fatalf("failed to override values in target manifest file")
+		ui.Failure(
+			fmt.Sprintf("the manifest at %s could not be loaded with the --set overrides applied: %v", targetManifestPath, err),
+			"either the file does not load into the kind it declares, or a --set path names a field the kind does not have",
+			fmt.Sprintf("run `planton validate-manifest -f %s`, and check each --set key against `planton explain <kind>`", targetManifestPath),
+		)
 	}
 
 	kindName, err := crkreflect.ExtractKindFromProto(manifestObject)
 	if err != nil {
-		log.Fatalf("failed to extract kind name from manifest proto %v", err)
+		ui.Failure(
+			fmt.Sprintf("the manifest's kind could not be determined: %v", err),
+			"the manifest loaded, but its apiVersion and kind do not name a catalog kind this CLI knows",
+			"check `kind:` and `apiVersion:` against `planton catalog search <name>`",
+		)
 	}
 
 	noCleanup, _ := cmd.Flags().GetBool(string(flag.NoCleanup))
@@ -119,7 +131,11 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	pathResult, err := tofumodule.GetModulePath(moduleDir, kindName, moduleVersion, noCleanup)
 	if err != nil {
-		log.Fatalf("failed to get tofu module directory %v", err)
+		ui.Failure(
+			fmt.Sprintf("no OpenTofu module could be resolved for %s: %v", kindName, err),
+			"the current directory holds no module, and the published module for this release could not be downloaded or staged",
+			"pass --module-dir <dir> to run a module you have on disk, or check network access to downloads.planton.dev",
+		)
 	}
 
 	// Setup cleanup to run after execution
@@ -135,12 +151,20 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	stackInputYaml, err := stackinput.BuildStackInputYaml(manifestObject, providerConfig)
 	if err != nil {
-		log.Fatalf("failed to build stack input yaml %v", err)
+		ui.Failure(
+			fmt.Sprintf("the stack input could not be assembled from the manifest: %v", err),
+			"the manifest and provider configuration loaded, but could not be combined into the input the module reads",
+			"report it at https://github.com/plantonhq/planton/issues with the manifest (secrets removed)",
+		)
 	}
 
 	workspaceDir, err := workspace.GetWorkspaceDir()
 	if err != nil {
-		log.Fatalf("failed to get workspace directory")
+		ui.Failure(
+			fmt.Sprintf("the CLI workspace directory could not be prepared: %v", err),
+			"the CLI keeps module copies and generated files under ~/.planton and could not create or read that directory",
+			"check that your home directory is writable, or set HOME to a writable location",
+		)
 	}
 
 	// Resolve kube context: flag takes priority over manifest label
@@ -154,7 +178,9 @@ func initHandler(cmd *cobra.Command, args []string) {
 
 	providerConfigEnvVars, err := tofumodule.GetProviderConfigEnvVars(stackInputYaml, workspaceDir, kubeCtx)
 	if err != nil {
-		log.Fatalf("failed to get credential env vars %v", err)
+		ui.EngineFailure("Provider credentials could not be prepared", err,
+			"check the provider configuration's fields against `planton explain <provider connection kind>`")
+		os.Exit(1)
 	}
 
 	cliprint.PrintHandoff("OpenTofu")
@@ -172,10 +198,11 @@ func initHandler(cmd *cobra.Command, args []string) {
 		nil,
 	)
 	if err != nil {
-		ui.ErrorWithoutExit("OpenTofu Execution Failed", err.Error(),
+		if !ui.EngineFailure("OpenTofu Execution Failed", err,
 			"Check the module configuration for syntax errors",
-			"Ensure all required provider credentials are configured")
-		cliprint.PrintTofuFailure()
+			"Ensure all required provider credentials are configured") {
+			cliprint.PrintTofuFailure()
+		}
 		os.Exit(1)
 	}
 	cliprint.PrintTofuSuccess()

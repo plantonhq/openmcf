@@ -129,15 +129,24 @@ All command handlers follow this pattern:
 
 ```go
 func commandHandler(cmd *cobra.Command, args []string) {
-    // 1. Parse flags
-    manifest, err := cmd.Flags().GetString(string(flag.Manifest))
-    flag.HandleFlagErrAndValue(err, flag.Manifest, manifest)
+    // 1. Read flags. Empty is a LEGAL value for every flag that has another
+    //    source: --module-dir is resolved by the module runtime (the current
+    //    directory, then the published module for this release), --stack
+    //    and --backend-url fall back to manifest annotations and the
+    //    environment. Only a flag with no other source uses flag.Require,
+    //    which refuses in the three-part form with a copyable example.
+    moduleDir, err := cmd.Flags().GetString(string(flag.ModuleDir))
+    flag.HandleFlagErr(err, flag.ModuleDir)
 
     // 2. Load manifest
     cliprint.PrintStep("Loading manifest...")
     targetManifest, isTemp, err := climanifest.ResolveManifestPath(cmd)
     if err != nil {
-        log.Fatalf("failed to resolve manifest: %v", err)
+        ui.Failure(
+            fmt.Sprintf("no manifest could be resolved: %v", err),
+            "the command needs a resource manifest and none of --manifest, --input-dir, --kustomize-dir/--overlay, or the clipboard supplied one",
+            "pass --manifest path/to/manifest.yaml",
+        )
     }
     if isTemp {
         defer os.Remove(targetManifest)
@@ -156,10 +165,23 @@ func commandHandler(cmd *cobra.Command, args []string) {
     cliprint.PrintHandoff("Pulumi")  // or "OpenTofu"
     err = executeOperation(targetManifest, ...)
     if err != nil {
-        log.Fatalf("failed to execute: %v", err)
+        ui.ErrorWithoutExit("Pulumi Execution Failed", err.Error(), "hint...")
+        os.Exit(1)
     }
 }
 ```
+
+### Every failure explains itself
+
+A command that stops on its own account (a flag it cannot proceed without, a
+manifest it cannot read, a provider it cannot configure) refuses through
+`ui.Failure(observed, meaning, nextStep)`: what was observed with its value,
+what it most likely means (one root cause), and the exact next step. The three
+labels (`observed:`, `meaning:`, `next step:`) are the same ones the IaC
+primitives and the repository guards print, so a person or an agent reads one
+vocabulary everywhere. Never stop a command through the logger: `log.Fatalf`
+names a mechanism, not a remedy, and its output is not part of the CLI's
+designed surface.
 
 ### CLI Output Formatting
 

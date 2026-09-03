@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/provider/aws/awswebidentity"
+	"github.com/plantonhq/planton/pkg/kubernetes/kubeconfig"
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"gopkg.in/yaml.v3"
 )
@@ -35,6 +36,13 @@ type Options struct {
 	// in-program builder owns provider auth -- resolving here would trigger a wasteful STS
 	// call whose output is shadowed by the state-backend keys anyway.
 	ResolveAwsWebIdentity bool
+
+	// KubeContext selects the kubeconfig context for a Kubernetes deploy (the
+	// --kube-context flag, else the manifest's context label). It is exported
+	// as KUBE_CTX, the name the Terraform kubernetes and helm providers and
+	// the Pulumi provider getter all read. Empty means the kubeconfig's
+	// current context.
+	KubeContext string
 }
 
 // GetEnvVarsWithOptions takes stack input YAML and options, returns provider-specific environment variables.
@@ -78,13 +86,31 @@ func GetEnvVarsWithOptions(stackInputYaml string, opts Options) (map[string]stri
 			awswebidentity.ResolveCredentials)
 	}
 
+	// 7. Kubernetes without a provider_config is the local workflow: the
+	//    operator's own kubeconfig, the way kubectl reads it. The Terraform
+	//    kubernetes and helm providers do not read KUBECONFIG on their own
+	//    (they read KUBE_CONFIG_PATH), so left alone they would fall back to
+	//    in-cluster auth and fail with a connection refused to localhost;
+	//    the ambient branch hands them the host kubeconfig and explains a
+	//    missing one in three parts before any engine starts.
+	if provider == cloudresourcekind.CloudResourceProvider_kubernetes && !hasProviderConfig {
+		return loadHostKubernetesEnvVars(opts.KubeContext)
+	}
+
 	if !hasProviderConfig {
 		// No provider_config in stack input - return empty map
 		return map[string]string{}, nil
 	}
 
-	// 7. Load provider_config and convert to env vars based on provider
-	return loadProviderEnvVars(providerConfigYaml, provider, opts)
+	// 8. Load provider_config and convert to env vars based on provider
+	envVars, err := loadProviderEnvVars(providerConfigYaml, provider, opts)
+	if err != nil {
+		return nil, err
+	}
+	if provider == cloudresourcekind.CloudResourceProvider_kubernetes && opts.KubeContext != "" {
+		envVars[kubeconfig.KubeContextEnvVar] = opts.KubeContext
+	}
+	return envVars, nil
 }
 
 // extractTargetYaml extracts the target field from stack input and marshals it back to YAML bytes.

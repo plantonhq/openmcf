@@ -1,7 +1,9 @@
 package flag
 
 import (
-	log "github.com/sirupsen/logrus"
+	"fmt"
+
+	"github.com/plantonhq/planton/internal/cli/ui"
 )
 
 type Flag string
@@ -39,17 +41,35 @@ const (
 	Yes             Flag = "yes"
 )
 
-func HandleFlagErrAndValue(err error, flag Flag, flagVal string) {
+// HandleFlagErr stops the command when cobra could not read a flag. That only
+// happens when a handler asks for a flag its command never registered (a
+// programming error), so the message names the flag and the fix.
+func HandleFlagErr(err error, flag Flag) {
 	if err != nil {
-		log.Fatalf("error parsing %s flag. err %v", flag, err)
-	}
-	if flagVal == "" {
-		log.Fatalf("please provide %s", flag)
+		ui.Failure(
+			fmt.Sprintf("the --%s flag could not be read: %v", flag, err),
+			"the command asked for a flag it does not register; this is a defect in the CLI, not in your invocation",
+			"report it at https://github.com/plantonhq/planton/issues with the exact command you ran",
+		)
 	}
 }
 
-func HandleFlagErr(err error, flag Flag) {
-	if err != nil {
-		log.Fatalf("error parsing %s flag. err %v", flag, err)
+// Require stops the command when a flag that has NO default and no other
+// source (a manifest annotation, an environment variable, a probe of the
+// current directory) was left empty. Most engine flags have one of those and
+// must not use Require: --module-dir, for example, is resolved by the module
+// runtime (current directory, then the published module for this release),
+// so an empty value is a legal choice, not a mistake.
+//
+// example is the flag as the user would type it, filled in
+// (`--manifest path/to/manifest.yaml`), so the next step is copyable.
+func Require(err error, flag Flag, value string, example string) {
+	HandleFlagErr(err, flag)
+	if value == "" {
+		ui.Failure(
+			fmt.Sprintf("--%s is empty", flag),
+			fmt.Sprintf("this command has no other source for %s and cannot proceed without it", flag),
+			fmt.Sprintf("pass %s", example),
+		)
 	}
 }

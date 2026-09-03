@@ -2,10 +2,10 @@ package tofu
 
 import (
 	"fmt"
+	"github.com/plantonhq/planton/internal/cli/ui"
 
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/iac/tofu/generators"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -23,11 +23,19 @@ func loadTfVarsHandler(cmd *cobra.Command, args []string) {
 	manifestPath := args[0]
 	updatedManifest, err := manifest.LoadWithOverrides(manifestPath, map[string]string{})
 	if err != nil {
-		log.Fatal(err)
+		ui.Failure(
+			fmt.Sprintf("the manifest at %s could not be loaded: %v", manifestPath, err),
+			"the file is missing, unreadable, or does not load into the kind it declares",
+			fmt.Sprintf("check the path, then run `planton validate-manifest -f %s` for the field-level report", manifestPath),
+		)
 	}
 	tfvarsString, err := generators.RenderTFVars(updatedManifest)
 	if err != nil {
-		log.Fatal("failed to generate Terraform variables: ", err)
+		ui.Failure(
+			fmt.Sprintf("the manifest at %s could not be rendered as tfvars: %v", manifestPath, err),
+			"the kind's spec loaded but one of its fields has no HCL representation",
+			"report it at https://github.com/plantonhq/planton/issues naming the kind and the field",
+		)
 	}
 	// stdout, not the builtin println (which writes to stderr) -- the whole
 	// point of this command is piping the tfvars into a file or another tool.
