@@ -1,17 +1,1 @@
-<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Badge disc: the named role -->
-  <circle cx="8" cy="8" r="6.5" fill="#4285F4" opacity="0.9"/>
-  <circle cx="8" cy="8" r="6.5" stroke="#1967D2" stroke-width="0.5" fill="none"/>
-
-  <!-- Checklist: the permission bundle -->
-  <g stroke="#FFFFFF" stroke-width="1" stroke-linecap="round">
-    <line x1="6.6" y1="5.4" x2="11" y2="5.4"/>
-    <line x1="6.6" y1="8" x2="11" y2="8"/>
-    <line x1="6.6" y1="10.6" x2="11" y2="10.6"/>
-  </g>
-  <g stroke="#FFFFFF" stroke-width="1.1" stroke-linecap="round" fill="none">
-    <path d="M 4.4 5.4 L 4.9 5.9 L 5.7 4.9"/>
-    <path d="M 4.4 8 L 4.9 8.5 L 5.7 7.5"/>
-    <path d="M 4.4 10.6 L 4.9 11.1 L 5.7 10.1"/>
-  </g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><desc>Planton-drawn glyph: an IAM custom role: an identity badge card carrying a star of bundled permissions</desc><rect x="3" y="4" width="18" height="16" rx="2" fill="#4285f4"/><rect x="3" y="4" width="18" height="4" rx="2" fill="#669df6"/><rect x="6" y="11" width="5" height="5.5" rx="0.8" fill="#ffffff"/><path d="M17 10.2 l1.2 2.4 2.6 0.4 -1.9 1.8 0.45 2.6 -2.35 -1.25 -2.35 1.25 0.45 -2.6 -1.9 -1.8 2.6 -0.4 z" fill="#ffffff"/></svg>

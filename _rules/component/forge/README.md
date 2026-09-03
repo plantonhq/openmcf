@@ -161,6 +161,9 @@ component e2e profiles, not the forge pipeline.)
 19. `020-catalog-md` - Write the component-root `catalog.md` (THE catalog page) per the catalog page standard — runs first in this phase because the guide grounds its claims partly on the catalog page
 20. `019-guide` - Seed the component-root `GUIDE.md` (authored wisdom), then run `make generate-reference` so the reference page, guide head link, and catalog indexes materialize together
 
+### Phase 10: Logo
+21. `021-logo` - Author the component-root `logo.svg` under the logo law (one kind, one glyph: the provider's official mark only when the kind IS the product, the Planton brand mark on Planton's own kinds, a Planton-drawn glyph with its provenance `<desc>` everywhere else), then run the catalog-logo gate
+
 Rule numbers are stable identities, not execution positions — `020` executes before `019` here, just as `014`/`015` execute in Phase 2.
 
 ## Progress Tracking
@@ -171,42 +174,45 @@ Forge provides real-time progress updates:
 🔨 Forge: Creating CloudflareD1Database
 
 Phase 1: Proto API Definitions
-[1/20] ✅ Generated spec.proto
-[2/20] ✅ Added buf.validate rules
-[3/20] ✅ Generated and ran spec tests
-[4/20] ✅ Generated outputs.proto
-[5/20] ✅ Generated api.proto
-[6/20] ✅ Generated input.proto
+[1/21] ✅ Generated spec.proto
+[2/21] ✅ Added buf.validate rules
+[3/21] ✅ Generated and ran spec tests
+[4/21] ✅ Generated outputs.proto
+[5/21] ✅ Generated api.proto
+[6/21] ✅ Generated input.proto
 
 Phase 2: Registration
-[7/20] ✅ Registered CloudflareD1Database = 7005 in cloud_resource_kind.proto
-[8/20] ✅ Generated proto stubs (make protos)
+[7/21] ✅ Registered CloudflareD1Database = 7005 in cloud_resource_kind.proto
+[8/21] ✅ Generated proto stubs (make protos)
 
 Phase 3: Documentation
-[9/20] ✅ Generated component-root README.md
+[9/21] ✅ Generated component-root README.md
 
 Phase 4: Test Infrastructure
-[10/20] ✅ Generated e2e/manifest.yaml
+[10/21] ✅ Generated e2e/manifest.yaml
 
 Phase 5: Pulumi Implementation
-[11/20] ✅ Generated Pulumi module
-[12/20] ✅ Generated Pulumi entrypoint
-[13/20] ✅ Generated Pulumi docs
+[11/21] ✅ Generated Pulumi module
+[12/21] ✅ Generated Pulumi entrypoint
+[13/21] ✅ Generated Pulumi docs
 
 Phase 6: Terraform Implementation
-[14/20] ✅ Generated Terraform module
-[15/20] ✅ Generated Terraform docs
+[14/21] ✅ Generated Terraform module
+[15/21] ✅ Generated Terraform docs
 
 Phase 7: Presets
-[16/20] ✅ Generated initial presets
+[16/21] ✅ Generated initial presets
 
 Phase 8: Final Validation
-[17/20] ✅ Build validation passed (go build ./catalog/<provider>/<kind>/...)
-[18/20] ✅ Component tests passed (go test -v ./catalog/<provider>/<kind>/v1alpha1/)
+[17/21] ✅ Build validation passed (go build ./catalog/<provider>/<kind>/...)
+[18/21] ✅ Component tests passed (go test -v ./catalog/<provider>/<kind>/v1alpha1/)
 
 Phase 9: Catalog Page + Guide + Reference
-[19/20] ✅ Wrote catalog.md (the catalog page)
-[20/20] ✅ Seeded GUIDE.md and regenerated the reference
+[19/21] ✅ Wrote catalog.md (the catalog page)
+[20/21] ✅ Seeded GUIDE.md and regenerated the reference
+
+Phase 10: Logo
+[21/21] ✅ Authored logo.svg (catalog-logo gate green, no baseline entry)
 
 🎉 Component creation complete!
 

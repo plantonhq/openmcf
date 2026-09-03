@@ -1,14 +1,1 @@
-<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Persistent disk: a durable platter cylinder -->
-  <ellipse cx="8" cy="4" rx="6" ry="2.2" fill="#4285F4"/>
-  <path d="M 2 4 L 2 11 A 6 2.2 0 0 0 14 11 L 14 4 A 6 2.2 0 0 1 2 4 Z" fill="#669DF6"/>
-  <ellipse cx="8" cy="4" rx="6" ry="2.2" stroke="#1967D2" stroke-width="0.5" fill="#4285F4"/>
-
-  <!-- Platter sheen lines: the block-device stack -->
-  <path d="M 2 7 A 6 2.2 0 0 0 14 7" stroke="#1967D2" stroke-width="0.5" fill="none" opacity="0.6"/>
-  <path d="M 2 9.5 A 6 2.2 0 0 0 14 9.5" stroke="#1967D2" stroke-width="0.5" fill="none" opacity="0.6"/>
-
-  <!-- Zonal anchor: the disk lives in exactly one zone -->
-  <circle cx="12.2" cy="12.2" r="2.6" fill="#34A853"/>
-  <path d="M 12.2 10.9 A 1.05 1.05 0 0 1 13.25 11.95 C 13.25 12.75 12.2 13.7 12.2 13.7 C 12.2 13.7 11.15 12.75 11.15 11.95 A 1.05 1.05 0 0 1 12.2 10.9 Z" fill="#FFFFFF"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><desc>Official Google Cloud product icon: google-cloud-legacy-icons/persistent_disk.svg</desc><defs><style>.cls-1{fill:#4285f4;}.cls-2{fill:#aecbfa;}.cls-3{fill:#669df6;}</style></defs><g data-name="Product Icons"><polygon class="cls-1" points="16.17 13.67 16.17 18.25 4.08 18.25 4.08 22 19.92 22 19.92 13.67 16.17 13.67"/><polygon class="cls-2" points="7.83 10.33 7.83 5.75 19.92 5.75 19.92 2 4.08 2 4.08 10.33 7.83 10.33"/><polygon class="cls-3" points="9.92 7.83 9.92 12.42 4.08 12.42 4.08 16.17 14.08 16.17 14.08 11.58 19.92 11.58 19.92 7.83 9.92 7.83"/></g></svg>

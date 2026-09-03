@@ -1,17 +1,1 @@
-<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Pool boundary: the trust perimeter -->
-  <circle cx="8" cy="8" r="6.5" fill="#4285F4" opacity="0.9"/>
-  <circle cx="8" cy="8" r="6.5" stroke="#1967D2" stroke-width="0.5" fill="none"/>
-
-  <!-- External identities federating in (arrows crossing the boundary) -->
-  <g stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" fill="none">
-    <line x1="3.6" y1="5.2" x2="6.4" y2="6.8"/>
-    <path d="M 5.7 6.1 L 6.4 6.8 L 5.5 7.1" stroke-linejoin="round"/>
-    <line x1="3.6" y1="10.8" x2="6.4" y2="9.2"/>
-    <path d="M 5.5 8.9 L 6.4 9.2 L 5.7 9.9" stroke-linejoin="round"/>
-  </g>
-
-  <!-- The federated identity: keyless inside the boundary -->
-  <circle cx="9.6" cy="7" r="1.6" fill="#FFFFFF"/>
-  <path d="M 7 12 Q 7 9.4 9.6 9.4 Q 12.2 9.4 12.2 12 Z" fill="#FFFFFF"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><desc>Planton-drawn glyph: an Identity Platform tenant: one organization of users under a sign-in front</desc><rect x="3" y="9" width="18" height="12" rx="1.5" fill="#4285f4"/><polygon points="3,9 12,3 21,9" fill="#669df6"/><circle cx="9" cy="15" r="1.7" fill="#ffffff"/><circle cx="15" cy="15" r="1.7" fill="#ffffff"/><path d="M6.5 19 a2.5 2 0 0 1 5 0 M12.5 19 a2.5 2 0 0 1 5 0" fill="#ffffff"/></svg>

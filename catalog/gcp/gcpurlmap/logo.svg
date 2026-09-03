@@ -1,13 +1,1 @@
-<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- One request enters the routing brain -->
-  <circle cx="2.6" cy="8" r="1.4" fill="#4285F4"/>
-  <path d="M 4 8 L 6.6 8" stroke="#4285F4" stroke-width="1.2" stroke-linecap="round"/>
-  <!-- The decision node: the URL map -->
-  <rect x="6.6" y="6.4" width="3.2" height="3.2" rx="0.8" stroke="#4285F4" stroke-width="1.2"/>
-  <!-- Fan-out to three targets: api, static, redirect -->
-  <path d="M 9.8 7.2 Q 11.4 5.2 12.6 4.4 M 9.8 8 L 12.8 8 M 9.8 8.8 Q 11.4 10.8 12.6 11.6"
-        stroke="#34A853" stroke-width="1.2" stroke-linecap="round"/>
-  <circle cx="13.6" cy="3.8" r="1.2" fill="#34A853" opacity="0.85"/>
-  <circle cx="13.8" cy="8" r="1.2" fill="#34A853" opacity="0.85"/>
-  <circle cx="13.6" cy="12.2" r="1.2" fill="#FBBC05" opacity="0.9"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><desc>Planton-drawn glyph: a URL map: one request split by path to three backends</desc><path d="M2 12 H8" fill="none" stroke="#4285f4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12 C11 12 11 5 14 5 H21 M8 12 H21 M8 12 C11 12 11 19 14 19 H21" fill="none" stroke="#669df6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21" cy="5" r="1.8" fill="#4285f4"/><circle cx="21" cy="12" r="1.8" fill="#4285f4"/><circle cx="21" cy="19" r="1.8" fill="#4285f4"/></svg>

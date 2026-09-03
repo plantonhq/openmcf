@@ -208,7 +208,7 @@ are the cheaper equivalent gate when no CLI invocation is needed.
 
 ## Execution Sequence
 
-The following 20 rules execute in order. Each rule is atomic and can be run individually if needed. Rule numbers are stable identities, not execution positions — Phase 2 runs rules 014-015 and Phase 9 runs rule 020 before rule 019.
+The following 21 rules execute in order. Each rule is atomic and can be run individually if needed. Rule numbers are stable identities, not execution positions — Phase 2 runs rules 014-015 and Phase 9 runs rule 020 before rule 019.
 
 ### Phase 1: Proto API Definitions (Rules 001-006)
 
@@ -474,6 +474,17 @@ are gated from this commit on.
     link, and the catalog indexes all materialize in one pass, and the reference
     freshness gate fails any new kind whose pages were not regenerated.
 
+### Phase 10: Logo (Rule 021)
+
+21. **021-logo** - Author the component's `logo.svg` under the logo law: one kind, one
+    glyph. The provider's official mark, unaltered, ONLY when the kind IS the product;
+    the Planton brand mark on Planton's own kinds; a Planton-drawn glyph that says what
+    the kind is everywhere else (every child of a product, every configuration object,
+    every grant), never containing or modifying a provider mark. Every file carries its
+    provenance in a `<desc>`. Then `go test ./pkg/cataloglogo/` -- three rules
+    (`malformed-svg`, `missing-provenance`, `shared-glyph`), each failure saying what to
+    do; a new kind never enters the gate's baseline.
+
 ## Error Handling
 
 - Each rule retries up to 3 times on fixable errors
@@ -485,11 +496,12 @@ are gated from this commit on.
 
 The orchestrator provides progress updates:
 ```
-[1/20] ✅ Generated spec.proto
-[2/20] ✅ Added validations
-[3/20] ✅ Generated tests
+[1/21] ✅ Generated spec.proto
+[2/21] ✅ Added validations
+[3/21] ✅ Generated tests
 ...
-[20/20] ✅ Guide seeded and reference regenerated
+[20/21] ✅ Guide seeded and reference regenerated
+[21/21] ✅ Authored logo.svg (catalog-logo gate green)
 
 🎉 Component creation complete!
 Run @audit-planton-component to verify 100% ideal state compliance.
