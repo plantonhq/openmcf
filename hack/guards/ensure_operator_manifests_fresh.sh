@@ -23,18 +23,28 @@ set -euo pipefail
 repo_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root_dir"
 
+# Only the generator-owned paths are compared, so a developer's in-progress edit
+# to a hand-written source file does not read as a stale manifest.
+generated_paths=(
+  operator/config/crd/bases
+  operator/config/rbac/role.yaml
+  ':(glob)operator/api/**/zz_generated.*'
+  helm/planton-operator/crds
+  helm/planton-operator/rbac
+)
+
 make -C operator manifests generate >/dev/null
 
-if ! git diff --quiet --exit-code -- operator helm/planton-operator; then
+if ! git diff --quiet --exit-code -- "${generated_paths[@]}"; then
   echo "ERROR: generated operator manifests are stale against the Go sources." >&2
   echo "" >&2
-  git --no-pager diff --stat -- operator helm/planton-operator >&2
+  git --no-pager diff --stat -- "${generated_paths[@]}" >&2
   echo "" >&2
   echo "Fix: run 'make operator-manifests' and commit the result." >&2
   exit 1
 fi
 
-untracked="$(git ls-files --others --exclude-standard -- operator/config helm/planton-operator/crds helm/planton-operator/rbac)"
+untracked="$(git ls-files --others --exclude-standard -- "${generated_paths[@]}")"
 if [[ -n "$untracked" ]]; then
   echo "ERROR: generation produced files that are not committed:" >&2
   echo "$untracked" >&2

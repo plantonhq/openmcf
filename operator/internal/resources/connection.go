@@ -103,7 +103,8 @@ func RedisConnection(crName, namespace string) RedisConnectionInfo {
 // ---------------------------------------------------------------------------
 
 // OpenFGAConnectionInfo provides the HTTP endpoint and the name of the
-// bootstrap ConfigMap that holds store_id and authorization_model_id.
+// bootstrap ConfigMap that holds the store_id (the model inside the store is
+// the control plane's own, established at its boot).
 type OpenFGAConnectionInfo struct {
 	HTTPURL                string
 	BootstrapConfigMapName string

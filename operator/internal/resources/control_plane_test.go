@@ -242,23 +242,30 @@ func TestControlPlaneDeployment_OpenFGAOptIn(t *testing.T) {
 	if envMap["FGA_API_ENDPOINT"] != cfg.OpenFGA.HTTPURL {
 		t.Errorf("FGA_API_ENDPOINT = %q, want the deployed engine %q", envMap["FGA_API_ENDPOINT"], cfg.OpenFGA.HTTPURL)
 	}
-	// Store and model ids exist only after the component bootstraps them; the
+	// The store id exists only after the component bootstraps it; the
 	// ConfigMap reference is what makes the pod wait for that instead of
-	// booting against ids that do not exist.
+	// booting against an id that does not exist.
 	for _, envVar := range deploy.Spec.Template.Spec.Containers[0].Env {
-		switch envVar.Name {
-		case "FGA_STORE_ID":
+		if envVar.Name == "FGA_STORE_ID" {
 			if envVar.ValueFrom == nil || envVar.ValueFrom.ConfigMapKeyRef == nil ||
 				envVar.ValueFrom.ConfigMapKeyRef.Name != cfg.OpenFGA.BootstrapConfigMapName ||
 				envVar.ValueFrom.ConfigMapKeyRef.Key != "store_id" {
 				t.Error("FGA_STORE_ID must come from the bootstrap ConfigMap's store_id key")
 			}
-		case "FGA_MODEL_ID":
-			if envVar.ValueFrom == nil || envVar.ValueFrom.ConfigMapKeyRef == nil ||
-				envVar.ValueFrom.ConfigMapKeyRef.Key != "authorization_model_id" {
-				t.Error("FGA_MODEL_ID must come from the bootstrap ConfigMap's authorization_model_id key")
-			}
 		}
+	}
+	// The model is the control plane's, established at its own boot from the
+	// rulebook of its own version; the operator hands over no model id, only
+	// the instruction to manage it. The hyphen-stripped name is load-bearing
+	// (relaxed binding of planton.bootstrap.authorization-model.manage).
+	if _, set := envMap["FGA_MODEL_ID"]; set {
+		t.Error("FGA_MODEL_ID must not be set: the control plane establishes its own model")
+	}
+	if envMap["PLANTON_BOOTSTRAP_AUTHORIZATIONMODEL_MANAGE"] != "true" {
+		t.Errorf("PLANTON_BOOTSTRAP_AUTHORIZATIONMODEL_MANAGE = %q, want true", envMap["PLANTON_BOOTSTRAP_AUTHORIZATIONMODEL_MANAGE"])
+	}
+	if _, set := envMap["PLANTON_BOOTSTRAP_AUTHORIZATION_MODEL_MANAGE"]; set {
+		t.Error("PLANTON_BOOTSTRAP_AUTHORIZATION_MODEL_MANAGE must not be set (does not bind to planton.bootstrap.authorization-model.manage)")
 	}
 }
 
@@ -821,15 +828,16 @@ func TestControlPlaneDeployment_ModuleArtifactsVersionPinned(t *testing.T) {
 		t.Errorf("PLANTON_VERSION = %q, want the CR override v0.6.1 to beat the pin",
 			overridden["PLANTON_VERSION"])
 	}
-	if envMap["PLANTON_BOOTSTRAP_INFRACHARTS_SOURCEURL"] != infraChartsReleaseBaseURL {
-		t.Errorf("PLANTON_BOOTSTRAP_INFRACHARTS_SOURCEURL = %q, want pinned release base %q",
-			envMap["PLANTON_BOOTSTRAP_INFRACHARTS_SOURCEURL"], infraChartsReleaseBaseURL)
+	// The chart bundle's location is the control plane's to derive from its own
+	// catalog pin; the operator only switches the seed on. The hyphen-stripped
+	// name is load-bearing: the underscored variant does not bind.
+	if envMap["PLANTON_BOOTSTRAP_INFRACHARTS_ENABLED"] != "true" {
+		t.Errorf("PLANTON_BOOTSTRAP_INFRACHARTS_ENABLED = %q, want true", envMap["PLANTON_BOOTSTRAP_INFRACHARTS_ENABLED"])
 	}
-	// The hyphen-stripped name is load-bearing: the underscored variant satisfies
-	// @ConditionalOnProperty but not the ConfigurationProperties binder, leaving the
-	// seeder active with a null URL. Guard against that regression explicitly.
-	if _, ok := envMap["PLANTON_BOOTSTRAP_INFRA_CHARTS_SOURCE_URL"]; ok {
-		t.Error("PLANTON_BOOTSTRAP_INFRA_CHARTS_SOURCE_URL must not be set (does not bind to planton.bootstrap.infra-charts.source-url)")
+	for _, stale := range []string{"PLANTON_BOOTSTRAP_INFRACHARTS_SOURCEURL", "PLANTON_BOOTSTRAP_INFRA_CHARTS_ENABLED"} {
+		if _, ok := envMap[stale]; ok {
+			t.Errorf("%s must not be set", stale)
+		}
 	}
 }
 

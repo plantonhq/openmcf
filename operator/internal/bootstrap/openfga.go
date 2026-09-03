@@ -9,37 +9,30 @@ import (
 	"net/http"
 )
 
-// FGABootstrapResult holds the IDs produced by a successful bootstrap.
+// FGABootstrapResult holds the identity produced by a successful bootstrap.
 type FGABootstrapResult struct {
-	StoreID              string
-	AuthorizationModelID string
+	StoreID string
 }
 
-// EnsureFGABootstrap creates the OpenFGA store and writes the authorization
-// model if they do not already exist. The function is idempotent: calling it
-// when the store and model already exist is a safe no-op.
+// EnsureFGABootstrap creates the OpenFGA store if it does not already exist
+// and returns its ID. Idempotent: an existing store of the same name is
+// adopted, never recreated.
 //
-// The caller is responsible for persisting the returned IDs (typically in a
-// ConfigMap) so that downstream services can discover them.
-func EnsureFGABootstrap(ctx context.Context, client *http.Client, fgaURL, storeName string, modelJSON []byte) (*FGABootstrapResult, error) {
+// The store is the operator's to provide: it is an installation identity, like
+// the databases the operator creates. The authorization MODEL inside it is not:
+// it belongs to the control plane's version, and the control plane compares
+// and writes its own model at boot. The caller persists the store ID
+// (typically in a ConfigMap) so the control plane can find its store.
+func EnsureFGABootstrap(ctx context.Context, client *http.Client, fgaURL, storeName string) (*FGABootstrapResult, error) {
 	storeID, err := ensureStore(ctx, client, fgaURL, storeName)
 	if err != nil {
 		return nil, fmt.Errorf("ensuring FGA store: %w", err)
 	}
-
-	modelID, err := ensureAuthorizationModel(ctx, client, fgaURL, storeID, modelJSON)
-	if err != nil {
-		return nil, fmt.Errorf("ensuring FGA authorization model: %w", err)
-	}
-
-	return &FGABootstrapResult{
-		StoreID:              storeID,
-		AuthorizationModelID: modelID,
-	}, nil
+	return &FGABootstrapResult{StoreID: storeID}, nil
 }
 
 // BootstrapConfigMapName returns the ConfigMap name used to persist FGA
-// bootstrap state (store ID, model ID) for a given PlantonPlatform CR.
+// bootstrap state (the store ID) for a given PlantonPlatform CR.
 func BootstrapConfigMapName(crName string) string {
 	return fmt.Sprintf("%s-fga-bootstrap", crName)
 }
@@ -124,37 +117,4 @@ func createStore(ctx context.Context, client *http.Client, fgaURL, storeName str
 	}
 
 	return result.ID, nil
-}
-
-// ensureAuthorizationModel writes the authorization model to the store. It
-// always writes a new model version; OpenFGA models are immutable and writing
-// a duplicate is harmless (it just creates a new version with the same content).
-func ensureAuthorizationModel(ctx context.Context, client *http.Client, fgaURL, storeID string, modelJSON []byte) (string, error) {
-	url := fmt.Sprintf("%s/stores/%s/authorization-models", fgaURL, storeID)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(modelJSON))
-	if err != nil {
-		return "", fmt.Errorf("building write model request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("writing authorization model: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("write model returned %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	var result struct {
-		AuthorizationModelID string `json:"authorization_model_id"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("decoding write model response: %w", err)
-	}
-
-	return result.AuthorizationModelID, nil
 }

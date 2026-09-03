@@ -73,13 +73,3 @@ func TestOpenFGAServiceNames(t *testing.T) {
 		t.Errorf("OpenFGAHTTPURL = %q", got)
 	}
 }
-
-func TestLoadFGAAuthorizationModel(t *testing.T) {
-	model := resources.LoadFGAAuthorizationModel()
-	if len(model) == 0 {
-		t.Fatal("Embedded FGA authorization model is empty")
-	}
-	if model[0] != '{' {
-		t.Errorf("FGA model should be JSON (start with '{'), starts with %q", string(model[:10]))
-	}
-}

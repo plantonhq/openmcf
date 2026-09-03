@@ -10,9 +10,11 @@ import (
 	"github.com/plantonhq/planton/operator/internal/bootstrap"
 )
 
-func TestEnsureFGABootstrap_CreatesStoreAndModel(t *testing.T) {
+// The operator provides the store and nothing inside it: no request ever
+// reaches an authorization-models path, because the control plane owns its
+// model and writes it itself at boot.
+func TestEnsureFGABootstrap_CreatesStoreOnly(t *testing.T) {
 	storeCreated := false
-	modelWritten := false
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -24,11 +26,6 @@ func TestEnsureFGABootstrap_CreatesStoreAndModel(t *testing.T) {
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(map[string]string{"id": "store-123", "name": "planton"})
 
-		case r.Method == http.MethodPost && r.URL.Path == "/stores/store-123/authorization-models":
-			modelWritten = true
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]string{"authorization_model_id": "model-456"})
-
 		default:
 			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
@@ -36,8 +33,7 @@ func TestEnsureFGABootstrap_CreatesStoreAndModel(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	modelJSON := []byte(`{"schema_version":"1.1","type_definitions":[{"type":"user"}]}`)
-	result, err := bootstrap.EnsureFGABootstrap(context.Background(), srv.Client(), srv.URL, "planton", modelJSON)
+	result, err := bootstrap.EnsureFGABootstrap(context.Background(), srv.Client(), srv.URL, "planton")
 	if err != nil {
 		t.Fatalf("EnsureFGABootstrap failed: %v", err)
 	}
@@ -45,14 +41,8 @@ func TestEnsureFGABootstrap_CreatesStoreAndModel(t *testing.T) {
 	if !storeCreated {
 		t.Error("Expected store to be created")
 	}
-	if !modelWritten {
-		t.Error("Expected model to be written")
-	}
 	if result.StoreID != "store-123" {
 		t.Errorf("StoreID = %q, want %q", result.StoreID, "store-123")
-	}
-	if result.AuthorizationModelID != "model-456" {
-		t.Errorf("AuthorizationModelID = %q, want %q", result.AuthorizationModelID, "model-456")
 	}
 }
 
@@ -73,10 +63,6 @@ func TestEnsureFGABootstrap_FindsExistingStore(t *testing.T) {
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(map[string]string{"id": "new-store", "name": "planton"})
 
-		case r.Method == http.MethodPost && r.URL.Path == "/stores/existing-store/authorization-models":
-			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(map[string]string{"authorization_model_id": "model-789"})
-
 		default:
 			t.Errorf("Unexpected request: %s %s", r.Method, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
@@ -84,8 +70,7 @@ func TestEnsureFGABootstrap_FindsExistingStore(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	modelJSON := []byte(`{"schema_version":"1.1","type_definitions":[{"type":"user"}]}`)
-	result, err := bootstrap.EnsureFGABootstrap(context.Background(), srv.Client(), srv.URL, "planton", modelJSON)
+	result, err := bootstrap.EnsureFGABootstrap(context.Background(), srv.Client(), srv.URL, "planton")
 	if err != nil {
 		t.Fatalf("EnsureFGABootstrap failed: %v", err)
 	}
@@ -105,8 +90,7 @@ func TestEnsureFGABootstrap_ServerError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	modelJSON := []byte(`{}`)
-	_, err := bootstrap.EnsureFGABootstrap(context.Background(), srv.Client(), srv.URL, "planton", modelJSON)
+	_, err := bootstrap.EnsureFGABootstrap(context.Background(), srv.Client(), srv.URL, "planton")
 	if err == nil {
 		t.Error("Expected error when server returns 500, got nil")
 	}

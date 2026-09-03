@@ -32,9 +32,6 @@ var openbaoChartData []byte
 //go:embed manifests/neo4j-chart/neo4j-2026.1.4.tgz
 var neo4jChartData []byte
 
-//go:embed manifests/openfga/authorization-model.json
-var fgaAuthorizationModelJSON []byte
-
 // LoadCloudNativePGManifests parses the embedded CloudNativePG operator
 // release manifest (namespace, CRDs, controller deployment, webhook
 // configurations) into unstructured Kubernetes objects. The manifest is the
@@ -80,14 +77,6 @@ func loadEmbeddedManifests(fs embed.FS, files []string) ([]*unstructured.Unstruc
 
 	return all, nil
 }
-
-// LoadFGAAuthorizationModel returns the embedded OpenFGA authorization model
-// in JSON format: the object types, relations, and permission rules the
-// control plane enforces. The model belongs to the control plane, whose
-// permission catalog generates it; the copy embedded here must be identical
-// to the model of the platform version the operator boots, so it is carried
-// verbatim and never edited by hand.
-func LoadFGAAuthorizationModel() []byte { return fgaAuthorizationModelJSON }
 
 // LoadOpenFGAChart returns the raw bytes of the embedded OpenFGA Helm chart
 // archive (.tgz). The chart is rendered at runtime using the Helm SDK with

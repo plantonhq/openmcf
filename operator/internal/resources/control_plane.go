@@ -38,24 +38,6 @@ const (
 	// live against the CDN (HEAD on the module zips, not inferred from the
 	// release existing).
 	controlPlaneModuleArtifactsVersion = "v0.5.14"
-
-	// infraChartsReleaseTag pins the OSS release whose chart bundle the
-	// control plane seeds at bootstrap. Charts are VALIDATED by the control
-	// plane's own protos at apply, so this tag must be the release those
-	// protos were generated from -- the platform pin -- or every chart is
-	// rejected and the catalog seeds empty. It is maintained by the pin
-	// pipeline (make upgrade-planton), never edited by hand; the supported
-	// deployment shape ships the operator and the control-plane image from
-	// the same platform release, which is what keeps this compile-time tag
-	// truthful for the image it deploys. It is deliberately NOT coupled to
-	// controlPlaneModuleArtifactsVersion above: a chart/proto mismatch bricks
-	// bootstrap outright, while a chart/module skew surfaces per deploy --
-	// the module train advances on its own verified cadence.
-	infraChartsReleaseTag = "v0.5.25"
-
-	// infraChartsReleaseBaseURL is the pinned-tag GitHub release directory that
-	// hosts infra-charts.zip + sidecars.
-	infraChartsReleaseBaseURL = "https://github.com/plantonhq/planton/releases/download/" + infraChartsReleaseTag + "/"
 )
 
 // ControlPlaneConfig bundles all inputs needed to build the ControlPlane
@@ -781,11 +763,15 @@ func controlPlaneEnvVars(cfg ControlPlaneConfig) []corev1.EnvVar {
 
 		// ── misc ──
 		{Name: "PLANTON_VERSION", Value: effectiveIacModulesVersion(cfg)},
-		// Canonical Spring relaxed-binding form of planton.bootstrap.infra-charts.source-url:
-		// hyphens are STRIPPED, not underscored (same as PLANTON_BOOTSTRAP_SECRETBACKEND_TYPE).
-		// An underscored INFRA_CHARTS_SOURCE_URL would satisfy @ConditionalOnProperty but
-		// NOT the @ConfigurationProperties binder -- the seeder would activate with a null URL.
-		{Name: "PLANTON_BOOTSTRAP_INFRACHARTS_SOURCEURL", Value: infraChartsReleaseBaseURL},
+		// The control plane seeds the InfraChart catalog from the bundle of its
+		// OWN catalog release: the charts are validated against its protos at
+		// apply, so only the release those protos came from can ever be right,
+		// and the control plane carries that pin itself. The operator only
+		// switches the seed on. Canonical Spring relaxed-binding form of
+		// planton.bootstrap.infra-charts.enabled: hyphens are STRIPPED, not
+		// underscored (same as PLANTON_BOOTSTRAP_SECRETBACKEND_TYPE); an
+		// underscored INFRA_CHARTS_ENABLED would not bind.
+		{Name: "PLANTON_BOOTSTRAP_INFRACHARTS_ENABLED", Value: "true"},
 		{Name: "PULUMI_ORG", Value: "local"},
 		{Name: "STACK_EXECUTION_LOGS_GCS_BUCKET", Value: "local"},
 		{Name: "STIGMER_API_KEY", Value: "local"},
@@ -840,7 +826,7 @@ func controlPlaneEnvVars(cfg ControlPlaneConfig) []corev1.EnvVar {
 		// builds off means NO variables, not empty ones. The env names are
 		// the canonical relaxed-binding forms of
 		// planton.bootstrap.tekton-connection.* -- hyphens STRIPPED, not
-		// underscored (see PLANTON_BOOTSTRAP_INFRACHARTS_SOURCEURL below).
+		// underscored (see PLANTON_BOOTSTRAP_INFRACHARTS_ENABLED below).
 		// The connection's namespace variable is deliberately not set: empty
 		// means "the runner's own placement" (TEKTON_NAMESPACE on the runner
 		// Deployment), which keeps the seeded connection inside the log
@@ -873,13 +859,16 @@ func controlPlaneEnvVars(cfg ControlPlaneConfig) []corev1.EnvVar {
 }
 
 // fgaEnvVars wires the policy-engine connection. With the authorization
-// component enabled (a populated connection) the real endpoint is set and the
-// store/model ids come from the component's bootstrap ConfigMap -- the pod
+// component enabled (a populated connection) the real endpoint is set, the
+// store id comes from the component's bootstrap ConfigMap -- the pod
 // deliberately cannot start before that ConfigMap exists, which is why the
-// controlplane component depends on openfga when the component is enabled.
-// Otherwise the FGA settings are inert placeholders that exist only because
-// their yaml bindings are part of the fail-fast boot contract; no arm dials
-// them (allow-owner and allow-authenticated run no policy engine).
+// controlplane component depends on openfga when the component is enabled --
+// and the control plane is told to manage the authorization MODEL itself:
+// the model belongs to the control plane's version, so at boot it compares the
+// store's latest with its own and writes its own when they differ. No model id
+// is ever passed. Otherwise the FGA settings are inert placeholders that exist
+// only because their yaml bindings are part of the fail-fast boot contract; no
+// arm dials them (allow-owner and allow-authenticated run no policy engine).
 // effectiveIacModulesVersion resolves PLANTON_VERSION: the CR's explicit
 // spec.controlPlane.iacModulesVersion when set, otherwise the operator's
 // verified default pin. The override exists because the module-artifact train
@@ -898,7 +887,6 @@ func fgaEnvVars(fga OpenFGAConnectionInfo) []corev1.EnvVar {
 		return []corev1.EnvVar{
 			{Name: "FGA_API_ENDPOINT", Value: "http://localhost:8088"},
 			{Name: "FGA_STORE_ID", Value: "local"},
-			{Name: "FGA_MODEL_ID", Value: "local"},
 			{Name: "FGA_READ_TIMEOUT_SECONDS", Value: "30"},
 			{Name: "FGA_CONNECT_TIMEOUT_SECONDS", Value: "10"},
 			{Name: "FGA_WRITE_TIMEOUT_SECONDS", Value: "30"},
@@ -907,7 +895,9 @@ func fgaEnvVars(fga OpenFGAConnectionInfo) []corev1.EnvVar {
 	return []corev1.EnvVar{
 		{Name: "FGA_API_ENDPOINT", Value: fga.HTTPURL},
 		configMapEnv("FGA_STORE_ID", fga.BootstrapConfigMapName, "store_id"),
-		configMapEnv("FGA_MODEL_ID", fga.BootstrapConfigMapName, "authorization_model_id"),
+		// Relaxed-binding form of planton.bootstrap.authorization-model.manage
+		// (hyphens stripped).
+		{Name: "PLANTON_BOOTSTRAP_AUTHORIZATIONMODEL_MANAGE", Value: "true"},
 		{Name: "FGA_READ_TIMEOUT_SECONDS", Value: "30"},
 		{Name: "FGA_CONNECT_TIMEOUT_SECONDS", Value: "10"},
 		{Name: "FGA_WRITE_TIMEOUT_SECONDS", Value: "30"},

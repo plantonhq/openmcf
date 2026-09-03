@@ -20,13 +20,16 @@ import (
 )
 
 const (
+	// fgaBootstrapStoreIDKey is the one fact the bootstrap ConfigMap carries:
+	// the store's identity. The authorization model inside the store belongs to
+	// the control plane's version, and the control plane establishes it itself
+	// at boot; the operator never writes or records a model id.
 	fgaBootstrapStoreIDKey = "store_id"
-	fgaBootstrapModelIDKey = "authorization_model_id"
 	httpClientTimeout      = 10 * time.Second
 )
 
 // OpenFGA deploys and monitors OpenFGA via its official Helm chart, then
-// bootstraps the FGA store and authorization model via the OpenFGA HTTP API.
+// bootstraps the FGA store via the OpenFGA HTTP API.
 // Depends on PostgreSQL because OpenFGA uses it as its datastore.
 type OpenFGA struct{ Base }
 
@@ -76,11 +79,11 @@ func (o *OpenFGA) Reconcile(ctx context.Context, c client.Client, _ *runtime.Sch
 	}
 	if !bootstrapped {
 		log.Info("FGA bootstrap in progress")
-		return Result{Ready: false, Message: "Bootstrapping FGA store and model"}, nil
+		return Result{Ready: false, Message: "Bootstrapping FGA store"}, nil
 	}
 
 	log.Info("OpenFGA ready")
-	return Result{Ready: true, Message: "OpenFGA healthy, store and model bootstrapped"}, nil
+	return Result{Ready: true, Message: "OpenFGA healthy, store bootstrapped"}, nil
 }
 
 func (o *OpenFGA) ensureFGABootstrap(ctx context.Context, c client.Client, planton *v1.PlantonPlatform) (bool, error) {
@@ -92,7 +95,9 @@ func (o *OpenFGA) ensureFGABootstrap(ctx context.Context, c client.Client, plant
 	getErr := c.Get(ctx, types.NamespacedName{Name: cmName, Namespace: planton.Namespace}, &existing)
 	if getErr == nil {
 		cmExists = true
-		if existing.Data[fgaBootstrapStoreIDKey] != "" && existing.Data[fgaBootstrapModelIDKey] != "" {
+		// Exactly the store id and nothing else: a ConfigMap carrying more (or
+		// less) is rewritten to the contract on the next pass.
+		if len(existing.Data) == 1 && existing.Data[fgaBootstrapStoreIDKey] != "" {
 			return true, nil
 		}
 	} else if !apierrors.IsNotFound(getErr) {
@@ -100,10 +105,9 @@ func (o *OpenFGA) ensureFGABootstrap(ctx context.Context, c client.Client, plant
 	}
 
 	fgaURL := resources.OpenFGAHTTPURL(planton.Name, planton.Namespace)
-	modelJSON := resources.LoadFGAAuthorizationModel()
 
 	httpClient := &http.Client{Timeout: httpClientTimeout}
-	result, err := bootstrap.EnsureFGABootstrap(ctx, httpClient, fgaURL, resources.OpenFGAStoreName, modelJSON)
+	result, err := bootstrap.EnsureFGABootstrap(ctx, httpClient, fgaURL, resources.OpenFGAStoreName)
 	if err != nil {
 		log.Error(err, "FGA bootstrap failed, will retry on next reconcile")
 		return false, nil
@@ -111,7 +115,6 @@ func (o *OpenFGA) ensureFGABootstrap(ctx context.Context, c client.Client, plant
 
 	data := map[string]string{
 		fgaBootstrapStoreIDKey: result.StoreID,
-		fgaBootstrapModelIDKey: result.AuthorizationModelID,
 	}
 
 	if cmExists {
@@ -137,10 +140,7 @@ func (o *OpenFGA) ensureFGABootstrap(ctx context.Context, c client.Client, plant
 		}
 	}
 
-	log.Info("FGA bootstrap complete",
-		"storeID", result.StoreID,
-		"modelID", result.AuthorizationModelID,
-	)
+	log.Info("FGA bootstrap complete", "storeID", result.StoreID)
 	return true, nil
 }
 
