@@ -58,6 +58,21 @@ func EngineFailure(title string, err error, hints ...string) bool {
 	return false
 }
 
+// EngineExecutionFailed is the one report for "the engine ran and did not
+// succeed", whichever engine it was. Pulumi, OpenTofu, and Terraform runs
+// all come back through the same runner layer, which attaches a three-part
+// explanation to the failures it can recognise in the engine's output (a
+// chart repository that does not resolve, an API server answering
+// Forbidden); this renders that explanation when it is there and the
+// engine's own error under a titled report when it is not. Every engine
+// handler ends a failed run here, so the two engines never drift into
+// different vocabularies. Never exits: the handler owns its exit.
+func EngineExecutionFailed(engineDisplayName string, err error) bool {
+	return EngineFailure(engineDisplayName+" Execution Failed", err,
+		"Check the module configuration for syntax errors",
+		"Ensure all required provider credentials are configured")
+}
+
 // Error prints a styled error message and exits with code 1
 func Error(title, message string, hints ...string) {
 	printError(title, message, hints...)

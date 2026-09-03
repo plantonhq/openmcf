@@ -165,7 +165,10 @@ func commandHandler(cmd *cobra.Command, args []string) {
     cliprint.PrintHandoff("Pulumi")  // or "OpenTofu"
     err = executeOperation(targetManifest, ...)
     if err != nil {
-        ui.ErrorWithoutExit("Pulumi Execution Failed", err.Error(), "hint...")
+        // One report for every engine: renders the three-part explanation the
+        // runner layer attached when it recognised the failure, the engine's
+        // own error otherwise. Never a bare "execution failed" line.
+        ui.EngineExecutionFailed("Pulumi", err)  // or binary.DisplayName()
         os.Exit(1)
     }
 }

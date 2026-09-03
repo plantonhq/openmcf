@@ -202,11 +202,9 @@ func printHclFailure(binary provisioner.HclBinary) {
 	}
 }
 
-// printHclExecutionError prints a beautiful error message when HCL execution fails.
-// It displays the actual error message along with helpful hints for troubleshooting.
+// printHclExecutionError reports a failed HCL engine run through the one
+// engine-failure report the Pulumi handlers use too, so both engines render
+// a recognised failure in the same three parts.
 func printHclExecutionError(binary provisioner.HclBinary, err error) {
-	title := fmt.Sprintf("%s Execution Failed", binary.DisplayName())
-	ui.EngineFailure(title, err,
-		"Check the module configuration for syntax errors",
-		"Ensure all required provider credentials are configured")
+	ui.EngineExecutionFailed(binary.DisplayName(), err)
 }

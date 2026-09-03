@@ -206,7 +206,7 @@ func initWithPulumi(cmd *cobra.Command, moduleDir, targetManifestPath string, va
 
 	err = pulumistack.Init(moduleDir, stackFqdn, targetManifestPath, valueOverrides, moduleVersion, noCleanup)
 	if err != nil {
-		cliprint.PrintPulumiFailure()
+		ui.EngineExecutionFailed("Pulumi", err)
 		os.Exit(1)
 	}
 	cliprint.PrintPulumiSuccess()

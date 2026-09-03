@@ -57,7 +57,7 @@ func RunPulumi(ctx *Context, cmd *cobra.Command, operation pulumi.PulumiOperatio
 		runOpts...,
 	)
 	if err != nil {
-		cliprint.PrintPulumiFailure()
+		ui.EngineExecutionFailed("Pulumi", err)
 		os.Exit(1)
 	}
 	cliprint.PrintPulumiSuccess()

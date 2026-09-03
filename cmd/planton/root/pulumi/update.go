@@ -7,6 +7,7 @@ import (
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/flag"
 	climanifest "github.com/plantonhq/planton/internal/cli/manifest"
+	"github.com/plantonhq/planton/internal/cli/ui"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/iac/localmodule"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumistack"
@@ -128,7 +129,7 @@ func updateHandler(cmd *cobra.Command, args []string) {
 	err = pulumistack.Run(moduleDir, stackFqdn, targetManifestPath,
 		pulumi.PulumiOperationType_update, false, true, valueOverrides, showDiff, moduleVersion, noCleanup, kubeCtx, stackInputFilePath, providerConfig)
 	if err != nil {
-		cliprint.PrintPulumiFailure()
+		ui.EngineExecutionFailed("Pulumi", err)
 		os.Exit(1)
 	}
 	cliprint.PrintPulumiSuccess()

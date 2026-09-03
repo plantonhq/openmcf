@@ -7,6 +7,7 @@ import (
 	"github.com/plantonhq/planton/internal/cli/cliprint"
 	"github.com/plantonhq/planton/internal/cli/flag"
 	climanifest "github.com/plantonhq/planton/internal/cli/manifest"
+	"github.com/plantonhq/planton/internal/cli/ui"
 	"github.com/plantonhq/planton/internal/manifest"
 	"github.com/plantonhq/planton/pkg/iac/localmodule"
 	"github.com/plantonhq/planton/pkg/iac/pulumi/pulumistack"
@@ -102,7 +103,7 @@ func cancelHandler(cmd *cobra.Command, args []string) {
 
 	err = pulumistack.Cancel(moduleDir, stackFqdn, targetManifestPath, valueOverrides, moduleVersion, noCleanup)
 	if err != nil {
-		cliprint.PrintPulumiFailure()
+		ui.EngineExecutionFailed("Pulumi", err)
 		os.Exit(1)
 	}
 	cliprint.PrintPulumiSuccess()
