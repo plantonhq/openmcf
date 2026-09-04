@@ -15,9 +15,9 @@ import (
 type Locals struct {
 	Spec *kubernetesplantonoperatorv1alpha1.KubernetesPlantonOperatorSpec
 
-	// Resource-identity labels stamped on the module-created satellites
-	// (the namespace and the staged CRD — never injected into the chart's
-	// own resources; Helm owns those).
+	// Resource-identity labels stamped on the one object the module creates
+	// itself (the optional namespace) — never injected into the chart's own
+	// resources; Helm owns those.
 	Labels map[string]string
 
 	// Namespace the operator installs into (resolved literal from the

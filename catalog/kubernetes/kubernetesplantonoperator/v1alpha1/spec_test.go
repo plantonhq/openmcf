@@ -49,7 +49,7 @@ var _ = ginkgo.Describe("KubernetesPlantonOperatorSpec Validation Tests", func()
 
 		ginkgo.It("should accept an exact-semver chart version pin", func() {
 			input := minimalValidOperator()
-			input.Spec.ChartVersion = "0.7.1"
+			input.Spec.ChartVersion = stringPtr("0.8.0")
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -88,11 +88,17 @@ var _ = ginkgo.Describe("KubernetesPlantonOperatorSpec Validation Tests", func()
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
-		ginkgo.It("should accept skip_crds for externally managed CRDs", func() {
-			input := minimalValidOperator()
-			input.Spec.SkipCrds = true
-			err := protovalidate.Validate(input)
-			gomega.Expect(err).To(gomega.BeNil())
+		ginkgo.It("should accept every position of the two CRD dials", func() {
+			for _, dials := range []*KubernetesPlantonOperatorCrds{
+				{},
+				{Install: boolPtr(false)},
+				{KeepOnUninstall: boolPtr(false)},
+				{Install: boolPtr(true), KeepOnUninstall: boolPtr(true)},
+			} {
+				input := minimalValidOperator()
+				input.Spec.Crds = dials
+				gomega.Expect(protovalidate.Validate(input)).To(gomega.BeNil())
+			}
 		})
 	})
 
@@ -121,7 +127,7 @@ var _ = ginkgo.Describe("KubernetesPlantonOperatorSpec Validation Tests", func()
 
 		ginkgo.It("should fail on a chart version range (not reproducible)", func() {
 			input := minimalValidOperator()
-			input.Spec.ChartVersion = "^0.7.0"
+			input.Spec.ChartVersion = stringPtr("^0.8.0")
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
@@ -135,3 +141,7 @@ var _ = ginkgo.Describe("KubernetesPlantonOperatorSpec Validation Tests", func()
 		})
 	})
 })
+
+func boolPtr(b bool) *bool { return &b }
+
+func stringPtr(v string) *string { return &v }

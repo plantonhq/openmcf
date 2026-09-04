@@ -48,21 +48,23 @@ const (
 // KubernetesPlantonPlatform resources instead. The Helm release name is
 // fixed to "planton-operator" for the same singleton reason.
 //
-// CRD LIFECYCLE IS MODULE-OWNED: the `plantonplatforms.planton.ai` CRD is
-// applied by the modules from a copy staged at the pinned chart version
-// (the chart's own CRD install is skipped), and it is KEPT on uninstall —
-// destroying this resource never cascade-deletes PlantonPlatform
-// declarations or the platforms behind them. Because the module owns the
-// CRD, a `chart_version` upgrade also carries the matching CRD update —
-// unlike a plain `helm upgrade`, which never touches CRDs.
+// THE CHART OWNS ITS DEFINITIONS: the `PlantonPlatform` and
+// `PlantonIdentityProvider` CRDs are ordinary resources of the release,
+// rendered from the operator's own source, so a `chart_version` upgrade
+// carries the matching schema with the operator, and an uninstall keeps
+// them by default (`crds.keep_on_uninstall`) — destroying this resource
+// never cascade-deletes PlantonPlatform declarations or the platforms
+// behind them. The modules map the two `crds` dials onto the chart's own
+// values and apply nothing else: no second copy of the schema exists
+// anywhere.
 //
 // DESTROY: removing the operator leaves every platform RUNNING but
 // unmanaged — spec edits stop taking effect until an operator returns
 // and adopts them. Platform deletion still completes without the
 // operator (teardown is Kubernetes garbage collection of the
 // declaration's owner-referenced objects), so the ordering is
-// operational hygiene, not a hard constraint. The kept CRD is what makes
-// all of this safe: declarations survive the operator's absence.
+// operational hygiene, not a hard constraint. The kept definitions are
+// what make all of this safe: declarations survive the operator's absence.
 type KubernetesPlantonOperatorSpec struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
@@ -77,21 +79,14 @@ type KubernetesPlantonOperatorSpec struct {
 	// the resource. When false, the namespace must already exist.
 	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
 	// *
-	// The planton-operator chart version to install. Defaults to the version
-	// this catalog release was validated against; pin a different version
-	// only for change control. The chart's appVersion pins the operator
-	// image, and the module's staged CRD copy matches this default — when
-	// pinning a NEWER chart than the default, know that the module still
-	// applies the CRD staged at the default pin (upgrade the catalog to move
-	// both together).
-	ChartVersion string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3" json:"chart_version,omitempty"`
-	// *
-	// Skip applying the module-owned `plantonplatforms.planton.ai` CRD.
-	// Set true only when something else manages the CRD (a GitOps tool, a
-	// pre-existing operator install being adopted). The chart's own CRD
-	// install is always skipped regardless — the module owns the CRD
-	// lifecycle so upgrades and keep-on-uninstall semantics are guaranteed.
-	SkipCrds bool `protobuf:"varint,4,opt,name=skip_crds,json=skipCrds,proto3" json:"skip_crds,omitempty"`
+	// The planton-operator chart version to install (e.g. "0.8.0"). The chart
+	// and the operator image share one version line: chart 0.8.0 runs
+	// operator v0.8.0. Defaults to the version this catalog release was
+	// validated against; pin a different version only for change control.
+	// Versions must exist as published charts at oci://ghcr.io/plantonhq/charts.
+	// Charts older than 0.8.0 do not own their definitions and are refused
+	// at plan time: the `crds` dials would have nothing to act on.
+	ChartVersion *string `protobuf:"bytes,3,opt,name=chart_version,json=chartVersion,proto3,oneof" json:"chart_version,omitempty"`
 	// *
 	// Operator replica count. Chart default: 1. Extra replicas are
 	// leader-elected warm standbys that shorten failover of the OPERATOR
@@ -137,8 +132,8 @@ type KubernetesPlantonOperatorSpec struct {
 	// Override the operator image (registry mirrors, air-gapped clusters).
 	// Empty = the chart default (ghcr.io/plantonhq/planton/operator at the
 	// chart's app version). The mirror must be digest-identical to the
-	// official image — the operator's version must match the CRD schema the
-	// module stages.
+	// official image — the operator and the definitions the chart renders
+	// are one build.
 	Image *KubernetesPlantonOperatorImage `protobuf:"bytes,14,opt,name=image,proto3" json:"image,omitempty"`
 	// *
 	// Escape hatch: additional chart values as a YAML document, merged LAST
@@ -149,7 +144,11 @@ type KubernetesPlantonOperatorSpec struct {
 	// deliberately not honored knobs: renaming the Deployment takes it out
 	// of the operator's own one-per-cluster startup guard's view. Do not
 	// put secrets here.
-	HelmValues    string `protobuf:"bytes,15,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	HelmValues string `protobuf:"bytes,15,opt,name=helm_values,json=helmValues,proto3" json:"helm_values,omitempty"`
+	// *
+	// CRD lifecycle. The chart owns its two definitions as release resources;
+	// these dials map onto the chart's `crds.enabled` and `crds.keep` values.
+	Crds          *KubernetesPlantonOperatorCrds `protobuf:"bytes,16,opt,name=crds,proto3" json:"crds,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -199,17 +198,10 @@ func (x *KubernetesPlantonOperatorSpec) GetCreateNamespace() bool {
 }
 
 func (x *KubernetesPlantonOperatorSpec) GetChartVersion() string {
-	if x != nil {
-		return x.ChartVersion
+	if x != nil && x.ChartVersion != nil {
+		return *x.ChartVersion
 	}
 	return ""
-}
-
-func (x *KubernetesPlantonOperatorSpec) GetSkipCrds() bool {
-	if x != nil {
-		return x.SkipCrds
-	}
-	return false
 }
 
 func (x *KubernetesPlantonOperatorSpec) GetReplicas() int32 {
@@ -289,6 +281,79 @@ func (x *KubernetesPlantonOperatorSpec) GetHelmValues() string {
 	return ""
 }
 
+func (x *KubernetesPlantonOperatorSpec) GetCrds() *KubernetesPlantonOperatorCrds {
+	if x != nil {
+		return x.Crds
+	}
+	return nil
+}
+
+// *
+// The chart's CRD lifecycle dials.
+type KubernetesPlantonOperatorCrds struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Install the `PlantonPlatform` and `PlantonIdentityProvider` definitions
+	// with the release. Default TRUE. Set false ONLY when another release or
+	// a GitOps tool already owns them on this cluster: with the definitions
+	// absent the operator cannot start, so this is a bring-your-own-CRDs arm,
+	// never a lighter install.
+	Install *bool `protobuf:"varint,1,opt,name=install,proto3,oneof" json:"install,omitempty"`
+	// *
+	// Keep the definitions (and therefore every PlantonPlatform declaration
+	// and every platform behind it) when the resource is destroyed. Default
+	// TRUE: deleting them cascades to every self-hosted Planton on the
+	// cluster, a destructive act that must be an explicit false. A later
+	// install under the same release adopts kept definitions.
+	KeepOnUninstall *bool `protobuf:"varint,2,opt,name=keep_on_uninstall,json=keepOnUninstall,proto3,oneof" json:"keep_on_uninstall,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *KubernetesPlantonOperatorCrds) Reset() {
+	*x = KubernetesPlantonOperatorCrds{}
+	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KubernetesPlantonOperatorCrds) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KubernetesPlantonOperatorCrds) ProtoMessage() {}
+
+func (x *KubernetesPlantonOperatorCrds) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KubernetesPlantonOperatorCrds.ProtoReflect.Descriptor instead.
+func (*KubernetesPlantonOperatorCrds) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *KubernetesPlantonOperatorCrds) GetInstall() bool {
+	if x != nil && x.Install != nil {
+		return *x.Install
+	}
+	return false
+}
+
+func (x *KubernetesPlantonOperatorCrds) GetKeepOnUninstall() bool {
+	if x != nil && x.KeepOnUninstall != nil {
+		return *x.KeepOnUninstall
+	}
+	return false
+}
+
 // *
 // The operator's ServiceAccount.
 type KubernetesPlantonOperatorServiceAccount struct {
@@ -309,7 +374,7 @@ type KubernetesPlantonOperatorServiceAccount struct {
 
 func (x *KubernetesPlantonOperatorServiceAccount) Reset() {
 	*x = KubernetesPlantonOperatorServiceAccount{}
-	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -321,7 +386,7 @@ func (x *KubernetesPlantonOperatorServiceAccount) String() string {
 func (*KubernetesPlantonOperatorServiceAccount) ProtoMessage() {}
 
 func (x *KubernetesPlantonOperatorServiceAccount) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -334,7 +399,7 @@ func (x *KubernetesPlantonOperatorServiceAccount) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use KubernetesPlantonOperatorServiceAccount.ProtoReflect.Descriptor instead.
 func (*KubernetesPlantonOperatorServiceAccount) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDescGZIP(), []int{1}
+	return file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *KubernetesPlantonOperatorServiceAccount) GetCreate() bool {
@@ -374,7 +439,7 @@ type KubernetesPlantonOperatorImage struct {
 
 func (x *KubernetesPlantonOperatorImage) Reset() {
 	*x = KubernetesPlantonOperatorImage{}
-	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -386,7 +451,7 @@ func (x *KubernetesPlantonOperatorImage) String() string {
 func (*KubernetesPlantonOperatorImage) ProtoMessage() {}
 
 func (x *KubernetesPlantonOperatorImage) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -399,7 +464,7 @@ func (x *KubernetesPlantonOperatorImage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KubernetesPlantonOperatorImage.ProtoReflect.Descriptor instead.
 func (*KubernetesPlantonOperatorImage) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDescGZIP(), []int{2}
+	return file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *KubernetesPlantonOperatorImage) GetRepository() string {
@@ -420,15 +485,14 @@ var File_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto protor
 
 const file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"@catalog/kubernetes/kubernetesplantonoperator/v1alpha1/spec.proto\x129dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd8\r\n" +
+	"@catalog/kubernetes/kubernetesplantonoperator/v1alpha1/spec.proto\x129dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a%catalog/kubernetes/workload_pod.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xd7\x0e\n" +
 	"\x1dKubernetesPlantonOperatorSpec\x12j\n" +
 	"\tnamespace\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB\x18\xbaH\x03\xc8\x01\x01\x88\xd4a\xa0\x1f\x92\xd4a\tspec.nameR\tnamespace\x12)\n" +
-	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xc7\x01\n" +
-	"\rchart_version\x18\x03 \x01(\tB\xa1\x01\xbaH\x9d\x01\xba\x01\x96\x01\n" +
-	"\x14chart_version_format\x12Rchart version must be an exact semver like \"0.7.1\" — ranges are not reproducible\x1a*this.matches('^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$')\xd8\x01\x01R\fchartVersion\x12\x1b\n" +
-	"\tskip_crds\x18\x04 \x01(\bR\bskipCrds\x12-\n" +
-	"\breplicas\x18\x05 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x00R\breplicas\x88\x01\x01\x126\n" +
-	"\x0fleader_election\x18\x06 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0eleaderElection\x88\x01\x01\x12H\n" +
+	"\x10create_namespace\x18\x02 \x01(\bR\x0fcreateNamespace\x12\xd2\x01\n" +
+	"\rchart_version\x18\x03 \x01(\tB\xa7\x01\xbaH\x9a\x01\xba\x01\x96\x01\n" +
+	"\x14chart_version_format\x12Rchart version must be an exact semver like \"0.8.0\" — ranges are not reproducible\x1a*this.matches('^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$')\x8a\xa6\x1d\x050.8.0H\x00R\fchartVersion\x88\x01\x01\x12-\n" +
+	"\breplicas\x18\x05 \x01(\x05B\f\xbaH\x04\x1a\x02(\x01\x8a\xa6\x1d\x011H\x01R\breplicas\x88\x01\x01\x126\n" +
+	"\x0fleader_election\x18\x06 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x02R\x0eleaderElection\x88\x01\x01\x12H\n" +
 	"\tresources\x18\a \x01(\v2*.dev.planton.kubernetes.ContainerResourcesR\tresources\x12\x8b\x01\n" +
 	"\x0fservice_account\x18\b \x01(\v2b.dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccountR\x0eserviceAccount\x12\x8f\x01\n" +
 	"\rcommon_labels\x18\t \x03(\v2j.dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.CommonLabelsEntryR\fcommonLabels\x12\x95\x01\n" +
@@ -439,7 +503,8 @@ const file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawD
 	"\x12image_pull_secrets\x18\r \x03(\tBJ\xaa\xa6\x1dFNames of existing Kubernetes Secrets (references), not secret materialR\x10imagePullSecrets\x12o\n" +
 	"\x05image\x18\x0e \x01(\v2Y.dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorImageR\x05image\x12\x1f\n" +
 	"\vhelm_values\x18\x0f \x01(\tR\n" +
-	"helmValues\x1a?\n" +
+	"helmValues\x12l\n" +
+	"\x04crds\x18\x10 \x01(\v2X.dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorCrdsR\x04crds\x1a?\n" +
 	"\x11CommonLabelsEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1aA\n" +
@@ -448,9 +513,16 @@ const file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawD
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
 	"\x11NodeSelectorEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\v\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\x10\n" +
+	"\x0e_chart_versionB\v\n" +
 	"\t_replicasB\x12\n" +
-	"\x10_leader_election\"\xc7\x02\n" +
+	"\x10_leader_electionJ\x04\b\x04\x10\x05R\tskip_crds\"\xa5\x01\n" +
+	"\x1dKubernetesPlantonOperatorCrds\x12'\n" +
+	"\ainstall\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\ainstall\x88\x01\x01\x129\n" +
+	"\x11keep_on_uninstall\x18\x02 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x01R\x0fkeepOnUninstall\x88\x01\x01B\n" +
+	"\n" +
+	"\b_installB\x14\n" +
+	"\x12_keep_on_uninstall\"\xc7\x02\n" +
 	"'KubernetesPlantonOperatorServiceAccount\x12%\n" +
 	"\x06create\x18\x01 \x01(\bB\b\x8a\xa6\x1d\x04trueH\x00R\x06create\x88\x01\x01\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x95\x01\n" +
@@ -478,34 +550,36 @@ func file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDe
 	return file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDescData
 }
 
-var file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
+var file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_goTypes = []any{
 	(*KubernetesPlantonOperatorSpec)(nil),           // 0: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec
-	(*KubernetesPlantonOperatorServiceAccount)(nil), // 1: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount
-	(*KubernetesPlantonOperatorImage)(nil),          // 2: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorImage
-	nil,                                             // 3: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.CommonLabelsEntry
-	nil,                                             // 4: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.PodAnnotationsEntry
-	nil,                                             // 5: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.NodeSelectorEntry
-	nil,                                             // 6: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount.AnnotationsEntry
-	(*v1.StringValueOrRef)(nil),                     // 7: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*kubernetes.ContainerResources)(nil),           // 8: dev.planton.kubernetes.ContainerResources
-	(*kubernetes.WorkloadToleration)(nil),           // 9: dev.planton.kubernetes.WorkloadToleration
+	(*KubernetesPlantonOperatorCrds)(nil),           // 1: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorCrds
+	(*KubernetesPlantonOperatorServiceAccount)(nil), // 2: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount
+	(*KubernetesPlantonOperatorImage)(nil),          // 3: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorImage
+	nil,                                             // 4: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.CommonLabelsEntry
+	nil,                                             // 5: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.PodAnnotationsEntry
+	nil,                                             // 6: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.NodeSelectorEntry
+	nil,                                             // 7: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount.AnnotationsEntry
+	(*v1.StringValueOrRef)(nil),                     // 8: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*kubernetes.ContainerResources)(nil),           // 9: dev.planton.kubernetes.ContainerResources
+	(*kubernetes.WorkloadToleration)(nil),           // 10: dev.planton.kubernetes.WorkloadToleration
 }
 var file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_depIdxs = []int32{
-	7, // 0: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	8, // 1: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
-	1, // 2: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.service_account:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount
-	3, // 3: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.common_labels:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.CommonLabelsEntry
-	4, // 4: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.pod_annotations:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.PodAnnotationsEntry
-	5, // 5: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.node_selector:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.NodeSelectorEntry
-	9, // 6: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
-	2, // 7: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.image:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorImage
-	6, // 8: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount.annotations:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount.AnnotationsEntry
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	8,  // 0: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.namespace:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	9,  // 1: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.resources:type_name -> dev.planton.kubernetes.ContainerResources
+	2,  // 2: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.service_account:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount
+	4,  // 3: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.common_labels:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.CommonLabelsEntry
+	5,  // 4: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.pod_annotations:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.PodAnnotationsEntry
+	6,  // 5: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.node_selector:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.NodeSelectorEntry
+	10, // 6: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
+	3,  // 7: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.image:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorImage
+	1,  // 8: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorSpec.crds:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorCrds
+	7,  // 9: dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount.annotations:type_name -> dev.planton.kubernetes.kubernetesplantonoperator.v1alpha1.KubernetesPlantonOperatorServiceAccount.AnnotationsEntry
+	10, // [10:10] is the sub-list for method output_type
+	10, // [10:10] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_init() }
@@ -515,13 +589,14 @@ func file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_init(
 	}
 	file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[0].OneofWrappers = []any{}
 	file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[1].OneofWrappers = []any{}
+	file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDesc), len(file_catalog_kubernetes_kubernetesplantonoperator_v1alpha1_spec_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   7,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

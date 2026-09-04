@@ -163,7 +163,6 @@ violations:
   - catalog/kubernetes/kubernetesopenbao/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesopenfga/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetesopenfga/iac/tf:missing-iac-readme
-  - catalog/kubernetes/kubernetesplantonoperator/iac/crds:unexpected-entry
   - catalog/kubernetes/kubernetesqdrant/iac/pulumi:missing-iac-readme
   - catalog/kubernetes/kubernetesqdrant/iac/tf:missing-iac-readme
   - catalog/kubernetes/kubernetesrabbitmq/iac/pulumi:missing-iac-readme

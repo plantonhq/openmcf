@@ -74,7 +74,7 @@ spec:
   namespace:
     value: planton
   create_namespace: true
-  version: v0.0.40-selfhosted-preview
+  version: v0.0.45
   license:
     secret_key_ref:
       name: planton-license
@@ -276,7 +276,7 @@ the resource. When false, the namespace must already exist.
 `string` · required
 
 The Planton platform version to deploy (e.g.
-"v0.0.40-selfhosted-preview") — pins the control plane, console, and
+"v0.0.45") — pins the control plane, console, and
 runner images as one coherent line. REQUIRED, never defaulted:
 changing it is how a platform upgrades, and upgrades of a system
 holding your data must always be a deliberate act.

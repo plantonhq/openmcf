@@ -21,22 +21,25 @@ the spec surface for every platform, while each platform still pins its
 own application version), and Tekton's cluster-wide build-events sink
 means builds can feed only one build-enabled platform per cluster.
 
-## The CRD is the load-bearing artifact
+## The chart owns its definitions
 
-The chart ships its CRD in Helm's install-once `crds/` directory — never
-upgraded, never removed. The modules deliberately take that lifecycle
-over: the CRD is applied from a staged copy extracted from the pinned
-published chart, kept on uninstall (a destroyed operator strands no
-platform declarations), adopted on reinstall, and upgraded exactly when
-`chart_version` moves. When pinning a NEWER chart than the module
-default, know that the staged CRD stays at the default pin — the catalog
-release that bumps the default re-stages the CRD with it, which is the
-supported way to move.
+The `PlantonPlatform` and `PlantonIdentityProvider` CRDs are ordinary
+resources of the release, rendered from the operator's own source behind
+two chart values the spec's `crds` dials map onto: `install` (the
+definitions ship with the release; false only when another owner already
+has them on the cluster, and with them absent the operator cannot start)
+and `keep_on_uninstall` (Helm stamps the definitions to survive an
+uninstall; false deletes them and every platform behind them). Because the
+definitions travel with the chart, `chart_version` is the one lever:
+upgrading it upgrades the operator and its schema together, and the
+modules carry no copy of the schema anywhere. Kept definitions carry the
+release's identity, and the release name is fixed, so every later install
+of the operator on the cluster adopts them.
 
 ## Destroy is safe by construction
 
-The operator's own destroy strands nothing: the CRD survives (kept,
-module-owned), declarations survive, running platforms keep serving —
+The operator's own destroy strands nothing: the definitions survive (kept
+by default), declarations survive, running platforms keep serving —
 merely unmanaged until the next install adopts them. Even platform
 DELETION completes without the operator, because platform teardown is
 Kubernetes garbage collection of the declaration's owner-referenced
@@ -48,6 +51,6 @@ requirement.
 
 The operator draws one explicit `depends_on` edge FROM each
 KubernetesPlantonPlatform — no spec field consumes an operator output
-(the coupling is the cluster-global CRD contract), so composed charts
+(the coupling is the cluster-global schema contract), so composed charts
 declare the edge in metadata. The `planton-on-kubernetes` infra-chart
 carries namespace + operator + platform as one deployable arm.

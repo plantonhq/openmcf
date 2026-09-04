@@ -25,9 +25,10 @@ and the release name is fixed to `planton-operator`.
   workloads, never in the operator)
 - **`namespace: planton-operator` + `create_namespace: true`** — the
   convention, in a namespace this resource creates and owns
-- **CRD keeps on uninstall** — the module owns the
-  `plantonplatforms.planton.ai` CRD with keep-on-uninstall semantics, so
-  removing the operator never cascade-deletes platform declarations
+- **Definitions keep on uninstall** — the chart owns the `PlantonPlatform`
+  and `PlantonIdentityProvider` CRDs and keeps them by default
+  (`crds.keep_on_uninstall`), so removing the operator never
+  cascade-deletes platform declarations
 
 ## Placeholders to Replace
 

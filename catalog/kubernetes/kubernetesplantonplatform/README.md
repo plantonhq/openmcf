@@ -79,7 +79,7 @@ spec:
   namespace:
     value: planton
   create_namespace: true
-  version: v0.0.40-selfhosted-preview
+  version: v0.0.45
 ```
 
 Apply it, wait for the operator to reach Ready (`kubectl get

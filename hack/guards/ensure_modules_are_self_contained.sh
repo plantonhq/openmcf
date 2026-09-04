@@ -31,8 +31,9 @@ set -euo pipefail
 # invariant.
 #
 # KNOWN VIOLATIONS
-# Modules listed below predate the invariant and are being moved onto the
-# derive-from-the-pinned-version shape. The list only shrinks: a listed
+# The table is empty: every module reads only its own directory. It exists
+# so a module that must temporarily read outside itself can be listed while
+# it is moved onto a self-contained shape. The list only shrinks: a listed
 # module that no longer violates FAILS this guard until its entry is
 # removed, so the table can never go stale, and an unlisted violation fails
 # immediately. Set SELF_CONTAINED_GUARD_IGNORE_KNOWN=1 to see the raw result
@@ -41,10 +42,7 @@ set -euo pipefail
 repo_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$repo_root_dir"
 
-known_violations=(
-  "catalog/kubernetes/kubernetesplantonoperator/iac/pulumi"
-  "catalog/kubernetes/kubernetesplantonoperator/iac/tf"
-)
+known_violations=()
 if [[ "${SELF_CONTAINED_GUARD_IGNORE_KNOWN:-0}" == "1" ]]; then
   known_violations=()
 fi

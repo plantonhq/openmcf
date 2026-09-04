@@ -27,6 +27,27 @@ func buildHelmValues(locals *Locals) (map[string]interface{}, error) {
 
 	values := map[string]interface{}{}
 
+	// ---- CRDs -----------------------------------------------------------------
+	// The chart owns its two definitions as release resources behind these
+	// two values. Planton default: install them with the release and keep
+	// them on uninstall (kept definitions preserve every PlantonPlatform
+	// declaration and the platforms behind them; a later install under the
+	// fixed release name adopts them). Rendered unconditionally so the
+	// release's values always state the posture, whichever way the dials
+	// were left.
+	crdsInstall := true
+	if spec.GetCrds() != nil && spec.GetCrds().Install != nil {
+		crdsInstall = spec.GetCrds().GetInstall()
+	}
+	crdsKeep := true
+	if spec.GetCrds() != nil && spec.GetCrds().KeepOnUninstall != nil {
+		crdsKeep = spec.GetCrds().GetKeepOnUninstall()
+	}
+	values["crds"] = map[string]interface{}{
+		"enabled": crdsInstall,
+		"keep":    crdsKeep,
+	}
+
 	// ---- sizing ---------------------------------------------------------------
 	if spec.Replicas != nil {
 		values["replicaCount"] = int(spec.GetReplicas())

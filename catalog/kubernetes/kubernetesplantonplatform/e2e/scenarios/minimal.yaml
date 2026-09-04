@@ -16,4 +16,4 @@ spec:
   namespace:
     value: planton
   create_namespace: true
-  version: v0.0.40-selfhosted-preview
+  version: v0.0.45

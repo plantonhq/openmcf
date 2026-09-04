@@ -22,10 +22,16 @@ var (
 	// form, e.g. "Microsoft.ContainerService/managedClusters/write".
 	azureActionPattern = regexp.MustCompile(`^[A-Za-z]+\.[A-Za-z]+(/[A-Za-z0-9*]+)+$`)
 	// kubernetesVerbs is the closed RBAC verb vocabulary. "*" is absent
-	// deliberately -- a wildcard verb is never least privilege.
+	// deliberately -- a wildcard verb is never least privilege. escalate
+	// (on roles and clusterroles) and bind (on their bindings) are the
+	// verbs Kubernetes defines for a principal that grants permissions it
+	// does not itself hold -- what installing an operator IS -- so a kind
+	// that installs one can state that exactly instead of being run as
+	// cluster-admin in practice and described as least privilege on paper.
 	kubernetesVerbs = map[string]bool{
 		"get": true, "list": true, "watch": true, "create": true,
 		"update": true, "patch": true, "delete": true, "deletecollection": true,
+		"escalate": true, "bind": true,
 	}
 	// cloudflareScopePattern is Cloudflare's scope identifier spelling,
 	// e.g. "com.cloudflare.api.account.zone". The spelling is checked

@@ -1,8 +1,9 @@
 # KubernetesPlantonOperator Pulumi Module
 
 Installs the Planton operator from the official `planton-operator` Helm
-chart (OCI, `ghcr.io/plantonhq/charts`) as ONE real Helm release plus the
-module-owned `plantonplatforms.planton.ai` CRD. The typed spec renders
+chart (OCI, `ghcr.io/plantonhq/charts`) as ONE real Helm release,
+byte-identical to a hand-installed one; the chart owns its two definitions
+as release resources. The typed spec renders
 into chart values in `values.go` (`buildHelmValues`); the `helm_values`
 escape hatch merges LAST with Helm `-f` semantics (`mergeMaps`) — the
 exact semantic twin of the Terraform module's two-document `values` list.
@@ -17,29 +18,24 @@ exact semantic twin of the Terraform module's two-document `values` list.
   equal to the chart name, the chart's fullname helper renders the
   Deployment as plain `planton-operator` — the name the startup guard's
   labels ride.
-- **The CRD is module-owned** (`crds.go`) — applied from the copy staged
-  at `../crds` (extracted from the published chart at the pinned default
-  version) BEFORE the release, which installs with `SkipCrds`. The chart
-  ships its CRD in Helm's install-once `crds/` directory (never upgraded,
-  never removed); module ownership is what makes `chart_version` bumps
-  carry the CRD and keep-on-uninstall a guarantee.
-- **Keep-on-uninstall via a retainOnDelete TRANSFORMATION** — the option
-  must reach the ConfigGroup's children, and only a transformation
-  propagates there (ordinary resource options do not). The exact semantic
-  twin of the Terraform module's `apply_only = true`.
-- **Reinstall ADOPTS the retained CRD** — the CRD applies through the
-  UPSERT provider (`GetWithKubernetesProviderConfigUpsert`): a destroy
-  leaves the CRD by design, so the next install's server-side apply must
-  adopt it instead of failing AlreadyExists. Only the CRD rides that
-  provider; every other resource keeps create-conflict semantics.
+- **The chart owns its definitions; the module maps two dials onto them** —
+  the `PlantonPlatform` and `PlantonIdentityProvider` CRDs are resources of
+  the release behind the chart's `crds.enabled` / `crds.keep` values, which
+  `buildHelmValues` renders from `spec.crds.install` and
+  `spec.crds.keep_on_uninstall` (both default true). A `chart_version`
+  bump upgrades the operator and its schema together; a destroy keeps the
+  definitions (Helm's `helm.sh/resource-policy: keep`) unless keeping is
+  explicitly disabled. The module carries no copy of the schema and
+  applies no CRD itself; `SkipCrds` is never set, because it governs only
+  Helm's install-once `crds/` directory, which this chart does not use.
+- **Reinstall adopts the kept definitions** — kept definitions carry the
+  release's identity in their Helm ownership metadata, and the release
+  name is fixed, so every later install of the operator on the cluster
+  owns them again.
 - **The chart-version floor fails loudly** (`chartVersionAtLeast`) —
-  charts below 0.7.0 ship operators whose reconcilers predate the
-  PlantonPlatform schema the staged CRD advertises; the API server would
-  ACCEPT fields the running operator silently ignores, so the module
-  refuses instead. Twin: the Terraform module's lifecycle precondition.
-- **A fail-loud staged-file count** — an empty `../crds` would silently
-  apply ZERO CRDs; the module requires exactly the staged count (1 at
-  chart 0.7.1; re-stage and update together with `DefaultChartVersion`).
+  charts below 0.8.0 do not own their definitions and have no `crds`
+  values, so the dials would be silently dropped; the refusal names the
+  version to pin. Twin: the Terraform module's lifecycle precondition.
 - **Readiness is verified at install time** — `Atomic` +
   `CleanupOnFail` with a 600s timeout: a manager that never becomes
   ready (the startup guard refusing beside a sibling operator is THE

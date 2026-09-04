@@ -3,10 +3,9 @@ kind: ComponentImportMap
 metadata:
   name: kubernetesplantonoperator
 spec:
-  # The module declares one Helm release (the operator, fixed name), the
-  # module-owned plantonplatforms.planton.ai CRD (kubectl_manifest,
-  # for_each keyed by the CRD's own metadata.name), and the optional
-  # anchor namespace.
+  # The module declares one Helm release (the operator, fixed name) and the
+  # optional anchor namespace. The operator's definitions are resources of
+  # the release itself, so they have no import row of their own.
   values:
     # ── the operator release (helm_release "planton_operator") ──────────
     - name: release_name
@@ -24,32 +23,6 @@ spec:
       where_to_find: >-
         `helm list -A` (NAMESPACE column); conventionally
         "planton-operator".
-    # ── the module-owned CRD (for_each resource "crds") ──────────────────
-    # Cluster-scoped, so the composed ID has no namespace segment. Not
-    # imported when skip_crds is true (the bring-your-own-CRD arm).
-    - name: api_version
-      tofu_resource_name: crds
-      derivations:
-        - literal: apiextensions.k8s.io/v1
-      where_to_find: Always "apiextensions.k8s.io/v1" — the CRD API group/version.
-    - name: kind
-      tofu_resource_name: crds
-      derivations:
-        - literal: CustomResourceDefinition
-      where_to_find: Always "CustomResourceDefinition".
-    - name: name
-      tofu_resource_name: crds
-      derivations:
-        - literal: plantonplatforms.planton.ai
-      where_to_find: >-
-        Always "plantonplatforms.planton.ai" — the one CRD the module owns
-        (`kubectl get crd | grep planton`).
-    - name: namespace
-      tofu_resource_name: crds
-      where_to_find: >-
-        Not applicable — a CustomResourceDefinition is cluster-scoped, so
-        the composed import ID has no namespace segment (the optional
-        [//{namespace}] group drops).
     # ── the optional anchor namespace ────────────────────────────────────
     - name: namespace_name
       derivations:

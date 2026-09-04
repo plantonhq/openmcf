@@ -24,15 +24,15 @@ locals {
   helm_oci_repo   = "oci://ghcr.io/plantonhq/charts"
   helm_chart_name = "planton-operator"
 
-  # DefaultChartVersion is the chart this catalog release was validated
-  # against; the staged CRD at ../crds is extracted from EXACTLY this
-  # published chart package. MinChartVersion is the schema-contract floor:
-  # older charts ship operators whose reconcilers predate the
-  # PlantonPlatform schema the staged CRD advertises — the API server
-  # would ACCEPT fields the running operator silently ignores. Bumping the
-  # default requires re-staging ../crds in the same change.
-  default_chart_version = "0.7.1"
-  min_chart_version     = "0.7.0"
+  # default_chart_version is the chart this catalog release was validated
+  # against (mirror of the proto field's default and the Pulumi module's
+  # DefaultChartVersion; the three move together). min_chart_version is the
+  # oldest chart whose definitions are release resources behind the
+  # crds.enabled / crds.keep values this module renders; older charts have
+  # no such values, so the crds dials would be silently dropped — refused
+  # at plan time instead (main.tf precondition).
+  default_chart_version = "0.8.0"
+  min_chart_version     = "0.8.0"
   chart_version         = coalesce(try(var.spec.chart_version, null), local.default_chart_version)
 
   # Release name FIXED to "planton-operator": the operator enforces one
@@ -46,9 +46,9 @@ locals {
 
   namespace = var.spec.namespace
 
-  # Resource-identity labels stamped on the module-created satellites (the
-  # namespace and the staged CRD — never injected into the chart's own
-  # resources; Helm owns those).
+  # Resource-identity labels stamped on the one object the module creates
+  # itself (the optional namespace) — never injected into the chart's own
+  # resources; Helm owns those.
   labels = merge(
     {
       "planton.ai/resource"      = "true"
@@ -59,18 +59,6 @@ locals {
     var.metadata.org != null && var.metadata.org != "" ? { "planton.ai/organization" = var.metadata.org } : {},
     var.metadata.env != null && var.metadata.env != "" ? { "planton.ai/environment" = var.metadata.env } : {}
   )
-
-  # ---- module-owned CRD ------------------------------------------------------
-  # The plantonplatforms.planton.ai CRD, staged from the published chart at
-  # default_chart_version (Helm's crds/ directory is install-once and never
-  # upgraded — module ownership is what makes chart_version bumps carry the
-  # CRD and keep-on-uninstall guaranteed). Keyed by each CRD's OWN
-  # metadata.name so state addresses stay stable across file reorderings.
-  # skip_crds empties the map — something else manages the CRD then.
-  crd_manifests = try(var.spec.skip_crds, false) ? {} : {
-    for f in fileset("${path.module}/../crds", "*.yaml") :
-    yamldecode(file("${path.module}/../crds/${f}")).metadata.name => file("${path.module}/../crds/${f}")
-  }
 
   # ---- operator container resources (shared ContainerResources shape) --------
   # Twin of the Pulumi module's resourcesMap. Rendered values deep-merge
@@ -123,6 +111,17 @@ locals {
   # would take the Deployment out of the guard's view.
   typed_values = {
     for k, v in {
+      # The chart owns its two definitions as release resources behind these
+      # values. Planton default: install them with the release and keep them
+      # on uninstall (kept definitions preserve every PlantonPlatform
+      # declaration and the platforms behind them; a later install under the
+      # fixed release name adopts them). Always rendered, so the release's
+      # values state the posture whichever way the dials were left.
+      crds = {
+        enabled = try(var.spec.crds.install, null) != null ? var.spec.crds.install : true
+        keep    = try(var.spec.crds.keep_on_uninstall, null) != null ? var.spec.crds.keep_on_uninstall : true
+      }
+
       replicaCount = try(var.spec.replicas, null)
 
       # leaderElection.enabled matches the chart's own default (true) —

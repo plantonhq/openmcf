@@ -1,8 +1,13 @@
 # The full typed surface on a kind cluster: HA replicas with leader
 # election, explicit sizing, scheduling constraints that still schedule on
-# a single-node kind cluster (the toleration matches no taint — a no-op by
+# a single-node kind cluster (the toleration matches no taint -- a no-op by
 # design; a node_selector beyond kubernetes.io/os would leave the pod
 # Pending forever on the lane's cluster).
+#
+# This is also the cleanup lane: crds.keep_on_uninstall false means destroy
+# removes both definitions with the release (the verifier asserts they are
+# gone), leaving the shared cluster as it started. Same namespace as every
+# other lane of this kind, so it adopts whatever an earlier lane kept.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPlantonOperator
 metadata:
@@ -11,7 +16,10 @@ spec:
   namespace:
     value: planton-operator
   create_namespace: true
-  chart_version: 0.7.1
+  chart_version: 0.8.0
+  crds:
+    install: true
+    keep_on_uninstall: false
   replicas: 2
   leader_election: true
   resources:

@@ -17,7 +17,10 @@ variable "spec" {
     namespace        = string
     create_namespace = optional(bool, false)
     chart_version    = optional(string, "")
-    skip_crds        = optional(bool, false)
+    crds = optional(object({
+      install           = optional(bool)
+      keep_on_uninstall = optional(bool)
+    }))
     replicas         = optional(number)
     leader_election  = optional(bool)
     resources = optional(object({

@@ -44,17 +44,18 @@ on both engines) for anything beyond it.
   auto-creates a PlantonPlatform; every platform is a deliberate
   KubernetesPlantonPlatform declaration. One operator watches all
   namespaces and serves every platform on the cluster.
-- **The CRD is module-owned and survives uninstall** — the
-  `plantonplatforms.planton.ai` CRD is applied by the modules from a copy
-  staged at the pinned chart version (the chart's own install-once
-  `crds/` posture is bypassed with `skip_crds`), so a `chart_version`
-  upgrade carries the matching CRD update, and destroying this resource
-  never cascade-deletes platform declarations or the platforms behind
-  them.
-- **Versions are floored, loudly** — charts below `0.7.0` ship operators
-  whose reconcilers predate the PlantonPlatform schema the staged CRD
-  advertises; both engines refuse them instead of letting the API server
-  accept fields a running operator would silently ignore.
+- **The chart owns its definitions, and they survive uninstall** — the
+  `PlantonPlatform` and `PlantonIdentityProvider` CRDs are resources of
+  the release, rendered from the operator's own source, so a
+  `chart_version` upgrade carries the matching schema with the operator,
+  and with `crds.keep_on_uninstall` (default true) destroying this
+  resource never cascade-deletes platform declarations or the platforms
+  behind them. The modules map the two `crds` dials onto the chart's
+  values and apply nothing else.
+- **Versions are floored, loudly** — charts below `0.8.0` install their
+  definitions once from Helm's `crds/` directory and have no `crds`
+  values, so the dials would be silently dropped; both engines refuse
+  them at plan time and say which version to pin.
 - **Destroying the operator strands nothing** — platforms keep running
   (unmanaged — spec edits wait for an operator's return), declarations
   survive on the kept CRD, and platform deletion still completes
@@ -67,8 +68,9 @@ on both engines) for anything beyond it.
 |---|---|---|---|
 | `namespace` | yes | — | Installation namespace (literal or KubernetesNamespace reference); `planton-operator` is the convention |
 | `create_namespace` | no | `false` | Create (and own) the namespace with governance labels |
-| `chart_version` | no | `0.7.1` | Exact-semver chart pin; floored at `0.7.0` |
-| `skip_crds` | no | `false` | Skip the module-owned CRD (something else manages it) |
+| `chart_version` | no | `0.8.0` | Exact-semver chart pin; floored at `0.8.0` |
+| `crds.install` | no | `true` | Install the two definitions with the release (false = another owner already has them) |
+| `crds.keep_on_uninstall` | no | `true` | Keep the definitions, and every platform behind them, when the resource is destroyed |
 | `replicas` | no | `1` | Leader-elected warm standbys — operator failover, not throughput |
 | `leader_election` | no | `true` | Required when `replicas > 1` |
 | `resources` | no | chart defaults | Requests 10m/256Mi, limits 500m/512Mi when unset |
@@ -93,7 +95,7 @@ spec:
   namespace:
     value: planton-operator
   create_namespace: true
-  chart_version: "0.7.1"
+  chart_version: "0.8.0"
 ```
 
 Then declare platforms with KubernetesPlantonPlatform resources — the

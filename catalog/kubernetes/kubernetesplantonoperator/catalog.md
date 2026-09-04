@@ -8,7 +8,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **Kubernetes Namespace** — created only when `createNamespace` is `true` (`planton-operator` is the convention); otherwise installs into an existing namespace
 - **Helm Release** (`planton-operator`) — the operator's manager Deployment, its ServiceAccount, the cluster-wide reconciliation ClusterRole/ClusterRoleBinding, and the namespaced leader-election Role/RoleBinding
-- **CRD** (`plantonplatforms.planton.ai`) — module-owned: applied from a copy staged at the pinned chart version, KEPT on uninstall so removing the operator never cascade-deletes platform declarations, and upgraded deliberately with every `chartVersion` bump
+- **CRDs** (`plantonplatforms.planton.ai`, `plantonidentityproviders.planton.ai`) — resources of the release, rendered from the operator's own source, so every `chartVersion` bump carries the matching schema; KEPT on uninstall by default (`crds.keepOnUninstall`) so removing the operator never cascade-deletes platform declarations
 
 ## Before You Deploy
 
@@ -48,7 +48,7 @@ spec:
 planton apply -f planton-operator.yaml
 ```
 
-This installs the manager with chart defaults (one replica, leader election on) and the module-owned `plantonplatforms.planton.ai` CRD — no platform is deployed until one is declared. A Stack Job tracks the provisioning in real time.
+This installs the manager with chart defaults (one replica, leader election on) and the two definitions the chart owns — no platform is deployed until one is declared. A Stack Job tracks the provisioning in real time.
 
 ### InfraChart
 
@@ -72,13 +72,13 @@ These are the most important decisions when configuring a Planton Operator insta
 
 **One operator per cluster is self-enforced** — the operator scans for sibling operator Deployments at startup and refuses to start beside one, so the failure mode of a duplicate install is a crash-looping pod with a remedy in its log, never two managers fighting. It watches every namespace: adding platforms to the cluster means declaring more KubernetesPlantonPlatform resources, never installing a second operator.
 
-**The chart pin moves the CRD too — but only at the default** — `chartVersion` defaults to the version this catalog release was validated against, and the module's staged CRD copy matches that default. Pinning a NEWER chart still applies the CRD staged at the default pin — the catalog release that bumps the default re-stages the CRD with it, which is the supported way to move both together. Unlike a plain `helm upgrade`, which never touches CRDs, the module carries the CRD update deliberately.
+**The chart pin moves the schema with it** — `chartVersion` defaults to the version this catalog release was validated against; pin a different published version for change control. The operator's definitions are resources of the release, so a `chartVersion` bump upgrades the operator and its schema together, and there is no second copy of the schema for anything to fall behind. Charts older than `0.8.0` do not own their definitions and are refused at plan time with the version to pin.
 
-**`skipCrds` is a hand-off, not a shortcut** — set it true only when something else owns the `plantonplatforms.planton.ai` CRD (a GitOps tool, a pre-existing install being adopted). The chart's own CRD install is always skipped regardless; without the CRD present from somewhere, no platform declaration admits.
+**`crds.install: false` is a hand-off, not a shortcut** — set it only when another release or a GitOps tool already owns the two definitions on this cluster; with them absent the operator cannot start. **`crds.keepOnUninstall: false` is the one destructive dial** — destroying the resource then deletes the definitions and, with them, every PlantonPlatform declaration and every platform behind them on the cluster. The default keeps them.
 
 **Replicas are warm standbys** — extra replicas shorten failover of the OPERATOR itself through leader election; they add no reconciliation throughput. Leader election (chart default on) is required whenever `replicas` exceeds 1. The chart's resource defaults (requests 10m/256Mi, limits 500m/512Mi) comfortably serve several platforms — the heavy lifting happens in the platforms' own workloads, never in the operator.
 
-**Destroy is safe by construction** — destroying this resource removes the manager and its RBAC, but the kept CRD means platform declarations — and the running platforms behind them — survive, unmanaged, until an operator is reinstalled and adopts them. Platform deletion completes even without the operator (teardown is Kubernetes garbage collection of each declaration's owner-referenced objects), so platforms-then-operator ordering is hygiene, not a requirement.
+**Destroy is safe by construction** — destroying this resource removes the manager and its RBAC, but the kept definitions mean platform declarations — and the running platforms behind them — survive, unmanaged, until an operator is reinstalled and adopts them. Platform deletion completes even without the operator (teardown is Kubernetes garbage collection of each declaration's owner-referenced objects), so platforms-then-operator ordering is hygiene, not a requirement.
 
 **The Helm-values escape hatch has two forbidden knobs** — `helmValues` merges LAST over the typed fields (Helm `-f` semantics) for the chart surface beyond them (affinity, health-probe port, image pull policy). `nameOverride`/`fullnameOverride` are deliberately not honored: renaming the Deployment takes it out of the operator's own one-per-cluster startup guard's view. Never put secrets here.
 
@@ -98,7 +98,7 @@ This component's `status.outputs` only identify the installation — `namespace`
 
 Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 
-**Standard install** — the manager alone with chart defaults: one replica, leader election on, pinned chart, module-owned CRD with keep-on-uninstall. The right first install for any cluster that will run self-hosted Planton platforms. Start from the **Standard** preset.
+**Standard install** — the manager alone with chart defaults: one replica, leader election on, pinned chart, definitions kept on uninstall. The right first install for any cluster that will run self-hosted Planton platforms. Start from the **Standard** preset.
 
 **HA operator** — two leader-elected replicas and raised resource headroom for clusters where several platforms ride one operator and reconcile latency after a node failure matters. The standby holds no work but takes the lease within seconds of the leader dying. Start from the **HA** preset.
 

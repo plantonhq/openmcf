@@ -86,7 +86,7 @@ type KubernetesPlantonPlatformSpec struct {
 	CreateNamespace bool `protobuf:"varint,2,opt,name=create_namespace,json=createNamespace,proto3" json:"create_namespace,omitempty"`
 	// *
 	// The Planton platform version to deploy (e.g.
-	// "v0.0.40-selfhosted-preview") — pins the control plane, console, and
+	// "v0.0.45") — pins the control plane, console, and
 	// runner images as one coherent line. REQUIRED, never defaulted:
 	// changing it is how a platform upgrades, and upgrades of a system
 	// holding your data must always be a deliberate act.

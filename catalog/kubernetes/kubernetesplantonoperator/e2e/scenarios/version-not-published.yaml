@@ -1,0 +1,16 @@
+# THE UNPUBLISHED-VERSION REFUSAL: a chart version that does not exist at
+# oci://ghcr.io/plantonhq/charts. The deploy must fail before anything is
+# created, and the message must say what was observed (the version, the
+# repository), what it means, and the next step -- the verifier asserts all
+# three parts, so Helm's bare "not found" can never pass on its own.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonOperator
+metadata:
+  name: e2e-planton-operator-unpub
+  annotations:
+    planton.dev/e2e-expect-deploy-failure: chart-version-not-published
+spec:
+  namespace:
+    value: planton-operator
+  create_namespace: true
+  chart_version: 99.99.99

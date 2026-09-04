@@ -11,7 +11,10 @@ spec:
   namespace:
     value: planton-operator
   create_namespace: true
-  chart_version: 0.7.1
+  chart_version: 0.8.0
+  crds:
+    install: true
+    keep_on_uninstall: true
   replicas: 2
   leader_election: true
   resources:
@@ -38,4 +41,4 @@ spec:
     - mirror-pull
   image:
     repository: ghcr.io/plantonhq/planton/operator
-    tag: v0.0.41-selfhosted-preview
+    tag: v0.8.0

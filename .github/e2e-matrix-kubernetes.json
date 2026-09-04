@@ -52,17 +52,17 @@
       "name": "Tier 4 Pulumi",
       "tier": 4,
       "engine": "pulumi",
-      "timeout": 335,
-      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesFlinkOperator|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesKeycloakOperator|KubernetesKubeRayOperator|KubernetesOtelOperator|KubernetesPeerAuthentication|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTektonOperator|KubernetesTelemetry)_Pulumi",
-      "component_count": 16
+      "timeout": 355,
+      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesFlinkOperator|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesKeycloakOperator|KubernetesKubeRayOperator|KubernetesOtelOperator|KubernetesPeerAuthentication|KubernetesPlantonOperator|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTektonOperator|KubernetesTelemetry)_Pulumi",
+      "component_count": 17
     },
     {
       "name": "Tier 4 Terraform",
       "tier": 4,
       "engine": "terraform",
-      "timeout": 335,
-      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesFlinkOperator|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesKeycloakOperator|KubernetesKubeRayOperator|KubernetesOtelOperator|KubernetesPeerAuthentication|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTektonOperator|KubernetesTelemetry)_Terraform",
-      "component_count": 16
+      "timeout": 355,
+      "run_regex": "Test(KubernetesAltinityOperator|KubernetesAuthorizationPolicy|KubernetesDestinationRule|KubernetesEnvoyFilter|KubernetesFlinkOperator|KubernetesGhaRunnerScaleSetController|KubernetesIstioBaseCrds|KubernetesKeycloakOperator|KubernetesKubeRayOperator|KubernetesOtelOperator|KubernetesPeerAuthentication|KubernetesPlantonOperator|KubernetesRabbitMqOperator|KubernetesRequestAuthentication|KubernetesServiceEntry|KubernetesTektonOperator|KubernetesTelemetry)_Terraform",
+      "component_count": 17
     }
   ]
 }

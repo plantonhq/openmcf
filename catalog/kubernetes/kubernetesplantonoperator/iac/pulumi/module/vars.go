@@ -10,36 +10,25 @@ var vars = struct {
 	HelmChartName string
 	// DefaultChartVersion is the chart this catalog release was validated
 	// against — the version installed when spec.chart_version is unset.
-	// The staged CRD at ../crds is extracted from EXACTLY this published
-	// chart package, so the CRD and the operator it schedules always
-	// match; bumping this pin requires re-staging the CRD file in the
-	// same change.
+	// Mirrors the proto field's default; the two move together.
 	DefaultChartVersion string
-	// MinChartVersion is the schema-contract floor: charts below 0.7.0
-	// ship operators whose reconcilers predate the PlantonPlatform
-	// schema the staged CRD advertises — the API server would ACCEPT
-	// fields the running operator silently ignores, the worst failure
-	// shape. Refused loudly in both engines instead.
+	// MinChartVersion is the oldest chart whose definitions are release
+	// resources behind the crds.enabled / crds.keep values this module
+	// renders. Older charts install their definitions once from Helm's
+	// crds/ directory and have no such values, so the spec's two crds dials
+	// would be silently dropped — the one outcome a module must never
+	// produce. Refused at plan time on both engines instead; the Terraform
+	// module's lifecycle precondition is the twin.
 	MinChartVersion string
 	// ReleaseName is FIXED: the operator enforces one installation per
 	// cluster itself at startup (a label-matched Deployment scan that
 	// refuses to start beside a sibling), so the release name never
 	// derives from metadata.name — a second differently-named release
 	// would only produce a crash-looping manager, never a second
-	// operator.
+	// operator. Kept definitions carry this release identity in their
+	// Helm ownership metadata, so every later install of the operator on
+	// the cluster adopts them.
 	ReleaseName string
-	// CrdDirectory holds the module-owned plantonplatforms.planton.ai
-	// CRD, staged from the published chart at DefaultChartVersion
-	// (relative to the Pulumi project dir). The chart's own crds/
-	// install is always skipped — module ownership is what makes
-	// chart_version upgrades carry the CRD and keep-on-uninstall
-	// guaranteed rather than incidental.
-	CrdDirectory string
-	// ExpectedCrdCount fails the install loudly when the staged files
-	// did not travel with the module (an empty directory would silently
-	// apply nothing). Exactly one CRD at chart 0.7.1 — update together
-	// with DefaultChartVersion when re-staging.
-	ExpectedCrdCount int
 	// HelmTimeoutSeconds bounds the atomic install/upgrade. 600s covers
 	// image pulls on cold clusters; atomic rolls back on expiry so a
 	// wedged install never lingers half-deployed.
@@ -49,10 +38,8 @@ var vars = struct {
 	// (cross-engine chart drift installs different software per engine).
 	HelmOciRepo:         "oci://ghcr.io/plantonhq/charts",
 	HelmChartName:       "planton-operator",
-	DefaultChartVersion: "0.7.1",
-	MinChartVersion:     "0.7.0",
+	DefaultChartVersion: "0.8.0",
+	MinChartVersion:     "0.8.0",
 	ReleaseName:         "planton-operator",
-	CrdDirectory:        "../crds",
-	ExpectedCrdCount:    1,
 	HelmTimeoutSeconds:  600,
 }

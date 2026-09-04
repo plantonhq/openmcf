@@ -11,9 +11,14 @@ import (
 )
 
 // plantonPlatformCrd is the CRD the KubernetesPlantonPlatform declaration
-// renders against. It is MODULE-OWNED by the operator kind with
-// keep-on-uninstall semantics — destroy asserts it SURVIVES.
+// renders against. The operator chart owns it as a release resource and
+// keeps it on uninstall by default (crds.keep_on_uninstall), so destroy
+// asserts it SURVIVES unless the scenario turned keeping off.
 const plantonPlatformCrd = "plantonplatforms.planton.ai"
+
+// plantonIdentityProviderCrd is the operator chart's second definition; it
+// follows the same keep dial.
+const plantonIdentityProviderCrd = "plantonidentityproviders.planton.ai"
 
 // plantonOperatorDeployment is the chart fullname with the module's fixed
 // release name "planton-operator" (release name == chart name, so the
@@ -30,6 +35,35 @@ const plantonOperatorDeployment = "planton-operator"
 // regressed into an SSA field-manager fight.
 type PlantonOperatorInstallVerifier struct {
 	Namespace string
+	// The manifest's chart version and crds dials (both proto-JSON key
+	// cases), and the shared three-part refusal check: destroy asserts the
+	// definitions SURVIVE when keep_on_uninstall is true (the default) and
+	// are GONE when false, so the keep, reinstall, and cleanup lanes share
+	// one verifier, and a refused deploy is pinned to its class the same
+	// way every CRD-carrying kind pins it.
+	helmCRDLifecycle
+}
+
+// plantonOperatorDefaultChartVersion mirrors the module's default pin; the
+// refusal check names the version a scenario pinned, so only a scenario
+// that leaves it unset relies on this.
+const plantonOperatorDefaultChartVersion = "0.8.0"
+
+// newPlantonOperatorInstallVerifier reads the scenario manifest's chart
+// version and crds dials, defaulting to the chart's own defaults when a dial
+// is untouched.
+func newPlantonOperatorInstallVerifier(namespace, manifestPath string) *PlantonOperatorInstallVerifier {
+	return &PlantonOperatorInstallVerifier{
+		Namespace: namespace,
+		helmCRDLifecycle: readHelmCRDLifecycle(manifestPath, plantonOperatorDefaultChartVersion, "planton-operator",
+			[]string{plantonPlatformCrd, plantonIdentityProviderCrd}),
+	}
+}
+
+// VerifyExpectedDeployFailure pins a refused deploy (an unpublished chart
+// version) to the shared three-part refusal.
+func (v *PlantonOperatorInstallVerifier) VerifyExpectedDeployFailure(ctx context.Context, kubeconfig, expectation string, deployErr error) error {
+	return v.verifyRefusal(ctx, kubeconfig, expectation, deployErr)
 }
 
 func (v *PlantonOperatorInstallVerifier) VerifyExists(ctx context.Context, kubeconfig string) error {
@@ -42,9 +76,11 @@ func (v *PlantonOperatorInstallVerifier) VerifyExists(ctx context.Context, kubec
 		"condition=Available", 3*time.Minute); err != nil {
 		return errors.Wrap(err, "planton-operator deployment not available (a sibling operator on the cluster makes the startup guard refuse — read the pod log)")
 	}
-	if err := kubectlWait(ctx, kubeconfig, "crd", plantonPlatformCrd, "",
-		"condition=Established", 2*time.Minute); err != nil {
-		return errors.Wrapf(err, "CRD %s not established (module-owned — the staged copy applies before the release)", plantonPlatformCrd)
+	for _, crd := range []string{plantonPlatformCrd, plantonIdentityProviderCrd} {
+		if err := kubectlWait(ctx, kubeconfig, "crd", crd, "",
+			"condition=Established", 2*time.Minute); err != nil {
+			return errors.Wrapf(err, "CRD %s not established (the chart renders it as a release resource behind crds.enabled)", crd)
+		}
 	}
 
 	// THE DESIGN INVARIANT: installing the operator alone deploys no
@@ -67,14 +103,30 @@ func (v *PlantonOperatorInstallVerifier) VerifyAbsent(ctx context.Context, kubec
 	if err := KubectlResourceAbsent(ctx, kubeconfig, "deployment", plantonOperatorDeployment, v.Namespace); err != nil {
 		return err
 	}
-	// THE KEEP POSTURE, asserted positively: the module-owned CRD
-	// SURVIVES destroy (retainOnDelete / apply_only), so removing the
-	// operator can never cascade-delete platform declarations. A missing
-	// CRD here means the keep semantics regressed.
-	if err := KubectlResourceExists(ctx, kubeconfig, "crd", plantonPlatformCrd, ""); err != nil {
-		return errors.Wrapf(err, "the %s CRD must SURVIVE the operator's destroy (module-owned, keep-on-uninstall) — its absence means the retain semantics regressed", plantonPlatformCrd)
+	crds := v.CRDs
+	if v.KeepOnUninstall {
+		// THE KEEP POSTURE, asserted positively: the chart stamps
+		// helm.sh/resource-policy: keep on its definitions while
+		// crds.keep_on_uninstall is true, so removing the operator can never
+		// cascade-delete platform declarations. A missing CRD here means the
+		// keep semantics regressed.
+		for _, crd := range crds {
+			if err := KubectlResourceExists(ctx, kubeconfig, "crd", crd, ""); err != nil {
+				return errors.Wrapf(err, "the %s CRD must SURVIVE the operator's destroy (crds.keep_on_uninstall is true) — its absence means the chart's keep annotation regressed", crd)
+			}
+		}
+		fmt.Printf("  [verify] KEEP POSTURE: both definitions survived the operator's destroy\n")
+		return nil
 	}
-	fmt.Printf("  [verify] KEEP POSTURE: the PlantonPlatform CRD survived the operator's destroy\n")
+	// THE CLEANUP POSTURE: keeping was explicitly disabled, so the
+	// definitions leave with the release and the shared cluster is left as
+	// it started.
+	for _, crd := range crds {
+		if err := KubectlResourceAbsent(ctx, kubeconfig, "crd", crd, ""); err != nil {
+			return errors.Wrapf(err, "the %s CRD must be GONE after a destroy with crds.keep_on_uninstall false — its presence means the keep dial was not honored", crd)
+		}
+	}
+	fmt.Printf("  [verify] CLEANUP POSTURE: both definitions left with the release\n")
 	return nil
 }
 

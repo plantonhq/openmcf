@@ -34,7 +34,7 @@ func minimalValidPlatform() *KubernetesPlantonPlatform {
 		Spec: &KubernetesPlantonPlatformSpec{
 			Namespace:       literalRef("planton"),
 			CreateNamespace: true,
-			Version:         "v0.0.40-selfhosted-preview",
+			Version:         "v0.0.45",
 		},
 	}
 }

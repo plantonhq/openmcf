@@ -1,11 +1,20 @@
-# The baseline install: the operator alone, chart defaults — the shape the
-# platform kind's prerequisite chain installs. Installing the operator
-# alone deploys NO platform (the verifier asserts exactly that); platforms
-# are declared separately with KubernetesPlantonPlatform resources.
+# The baseline install: the operator alone, chart defaults. Installing the
+# operator alone deploys NO platform (the verifier asserts exactly that);
+# platforms are declared separately with KubernetesPlantonPlatform
+# resources. The chart owns its definitions and keeps them on uninstall by
+# default, so destroy leaves the PlantonPlatform CRD on the cluster (the
+# verifier asserts it survives) and the reinstall lane adopts it.
+#
+# EVERY scenario of this kind installs into namespace "planton-operator":
+# the release name is fixed (one operator per cluster), and Helm binds kept
+# definitions to that release identity, so a lane in another namespace
+# would be refused by the definitions an earlier lane kept.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPlantonOperator
 metadata:
   name: e2e-planton-operator-minimal
+  annotations:
+    planton.dev/e2e-reinstall: "true"
 spec:
   namespace:
     value: planton-operator

@@ -1,0 +1,19 @@
+# THE LEAST-PRIVILEGE PROOF: the deploy runs as an identity bound to exactly
+# the rules this module's iac/permissions.yaml declares -- nothing the
+# harness's administrative credentials would quietly cover. A chart that
+# owns its definitions needs cluster-scoped rights on
+# CustomResourceDefinitions through the release (and delete only when
+# keeping is disabled), and the Pulumi provider's deletion await needs list
+# and watch on namespaces; if either were missing, this lane would stall or
+# refuse instead of converging. Same namespace as every other lane of this
+# kind (see minimal.yaml for why).
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonOperator
+metadata:
+  name: e2e-planton-operator-declared
+  annotations:
+    planton.dev/e2e-identity: declared
+spec:
+  namespace:
+    value: planton-operator
+  create_namespace: true

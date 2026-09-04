@@ -1532,14 +1532,13 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 		}, nil
 
 	// The Planton operator: the manager Available in its namespace, the
-	// module-owned PlantonPlatform CRD Established — and THE DESIGN
-	// INVARIANT proven: NO PlantonPlatform exists after installing the
-	// operator alone (platforms are always deliberate declarations).
-	// Destroy asserts the KEEP posture positively: the CRD survives.
+	// chart's two definitions Established — and THE DESIGN INVARIANT
+	// proven: NO PlantonPlatform exists after installing the operator
+	// alone (platforms are always deliberate declarations). Destroy
+	// asserts the keep dial the manifest chose: the definitions survive
+	// (the default) or leave with the release.
 	case "kubernetesplantonoperator":
-		return &PlantonOperatorInstallVerifier{
-			Namespace: info.Namespace,
-		}, nil
+		return newPlantonOperatorInstallVerifier(info.Namespace, manifestPath), nil
 
 	// A declared Planton platform: the PlantonPlatform reaches phase
 	// Ready (the operator's per-component gates all pass inside it) and

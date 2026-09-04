@@ -10,17 +10,13 @@ import (
 
 // Resources installs the Planton operator from the official
 // planton-operator Helm chart (OCI, ghcr.io/plantonhq/charts) as ONE real
-// Helm release plus the module-owned PlantonPlatform CRD:
-//
-//  1. The plantonplatforms.planton.ai CRD, applied from the staged copy at
-//     ../crds (extracted from the published chart at the pinned default
-//     version) with keep-on-uninstall semantics — destroying the operator
-//     never cascade-deletes PlantonPlatform declarations. Applied BEFORE
-//     the release through the UPSERT provider, so a reinstall after a
-//     destroy adopts the retained CRD instead of failing AlreadyExists.
-//  2. The "planton-operator" release, installed with SkipCrds — the module
-//     owns the CRD lifecycle (see crds.go for why), so the chart's own
-//     crds/ install never runs.
+// Helm release, byte-identical to a hand-installed one. The chart owns its
+// two definitions (PlantonPlatform, PlantonIdentityProvider) as release
+// resources: they upgrade with the chart and, behind crds.keep, survive an
+// uninstall. The module maps the spec's crds dials onto the chart's
+// crds.enabled / crds.keep values (values.go) and applies nothing else —
+// no second copy of the schema exists anywhere. The optional namespace is
+// the only object the module creates itself.
 //
 // The release name is FIXED: the operator enforces one installation per
 // cluster itself at startup (a label-matched Deployment scan), so a second
@@ -35,19 +31,19 @@ import (
 func Resources(ctx *pulumi.Context, stackInput *kubernetesplantonoperatorv1alpha1.KubernetesPlantonOperatorStackInput) error {
 	locals := initializeLocals(ctx, stackInput)
 
-	// FAIL LOUDLY below the schema-contract floor: charts below the floor
-	// ship operators whose reconcilers predate the PlantonPlatform schema
-	// the staged CRD advertises — the API server would ACCEPT fields the
-	// running operator silently ignores. Twin: the Terraform module's
-	// lifecycle precondition.
+	// Refuse charts that do not own their definitions: below the floor the
+	// crds dials would be silently dropped, which a module must never do.
+	// Twin: the Terraform module's lifecycle precondition.
 	ok, err := chartVersionAtLeast(locals.ChartVersion, vars.MinChartVersion)
 	if err != nil {
 		return errors.Wrapf(err, "failed to parse chart version %q", locals.ChartVersion)
 	}
 	if !ok {
 		return errors.Errorf(
-			"chart version %q predates the PlantonPlatform schema this catalog models — use %s or newer (older operators silently ignore fields the staged CRD accepts)",
-			locals.ChartVersion, vars.MinChartVersion)
+			"observed: spec.chart_version is %q\n"+
+				"meaning: planton-operator charts older than %s install their definitions once from Helm's crds/ directory and have no crds.enabled / crds.keep values, so the crds dials of this resource would have no effect\n"+
+				"next step: set spec.chart_version to %s or newer (or leave it unset for the catalog default)",
+			locals.ChartVersion, vars.MinChartVersion, vars.MinChartVersion)
 	}
 
 	kubernetesProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfig(ctx,
@@ -62,25 +58,9 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetesplantonoperatorv1alpha
 		return errors.Wrap(err, "failed to create namespace")
 	}
 
-	// ------------------------------ CRD (module-owned) --------------------
-	// Skipped only when something else manages the CRD (spec.skip_crds).
-	// Routed through the UPSERT provider — the CRD is retained on destroy
-	// by design, so the next install must ADOPT it (see crds.go).
 	var releaseDeps []pulumi.Resource
 	if createdNamespace != nil {
 		releaseDeps = append(releaseDeps, createdNamespace)
-	}
-	if !locals.Spec.SkipCrds {
-		upsertProvider, err := pulumikubernetesprovider.GetWithKubernetesProviderConfigUpsert(ctx,
-			stackInput.ProviderConfig, "kubernetes-upsert")
-		if err != nil {
-			return errors.Wrap(err, "failed to create kubernetes upsert provider")
-		}
-		crds, err := customResourceDefinitions(ctx, locals, upsertProvider)
-		if err != nil {
-			return errors.Wrap(err, "failed to apply module-owned CRDs")
-		}
-		releaseDeps = append(releaseDeps, crds...)
 	}
 
 	// ------------------------------ operator release ----------------------
@@ -98,11 +78,11 @@ func Resources(ctx *pulumi.Context, stackInput *kubernetesplantonoperatorv1alpha
 		Chart:   pulumi.String(vars.HelmOciRepo + "/" + vars.HelmChartName),
 		Version: pulumi.String(locals.ChartVersion),
 		Values:  pulumi.ToMap(mergedValues),
-		// The module owns namespace creation (create_namespace flag) and
-		// the CRD lifecycle (crds.go) — the chart's own crds/ install
-		// never runs.
+		// The module owns namespace creation (create_namespace flag). The
+		// definitions are release resources the chart renders behind
+		// values.crds — never skipped here: SkipCrds governs only Helm's
+		// install-once crds/ directory, which this chart does not use.
 		CreateNamespace: pulumi.Bool(false),
-		SkipCrds:        pulumi.Bool(true),
 		// Wait for the operator to become Available — a manager that never
 		// becomes ready (the one-per-cluster startup guard refusing beside
 		// a sibling operator is THE classic case) should fail THIS deploy

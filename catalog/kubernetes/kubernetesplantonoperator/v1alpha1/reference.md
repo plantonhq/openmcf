@@ -30,21 +30,23 @@ the operator is normal and needs no second operator — declare more
 KubernetesPlantonPlatform resources instead. The Helm release name is
 fixed to "planton-operator" for the same singleton reason.
 
-CRD LIFECYCLE IS MODULE-OWNED: the `plantonplatforms.planton.ai` CRD is
-applied by the modules from a copy staged at the pinned chart version
-(the chart's own CRD install is skipped), and it is KEPT on uninstall —
-destroying this resource never cascade-deletes PlantonPlatform
-declarations or the platforms behind them. Because the module owns the
-CRD, a `chart_version` upgrade also carries the matching CRD update —
-unlike a plain `helm upgrade`, which never touches CRDs.
+THE CHART OWNS ITS DEFINITIONS: the `PlantonPlatform` and
+`PlantonIdentityProvider` CRDs are ordinary resources of the release,
+rendered from the operator's own source, so a `chart_version` upgrade
+carries the matching schema with the operator, and an uninstall keeps
+them by default (`crds.keep_on_uninstall`) — destroying this resource
+never cascade-deletes PlantonPlatform declarations or the platforms
+behind them. The modules map the two `crds` dials onto the chart's own
+values and apply nothing else: no second copy of the schema exists
+anywhere.
 
 DESTROY: removing the operator leaves every platform RUNNING but
 unmanaged — spec edits stop taking effect until an operator returns
 and adopts them. Platform deletion still completes without the
 operator (teardown is Kubernetes garbage collection of the
 declaration's owner-referenced objects), so the ordering is
-operational hygiene, not a hard constraint. The kept CRD is what makes
-all of this safe: declarations survive the operator's absence.
+operational hygiene, not a hard constraint. The kept definitions are
+what make all of this safe: declarations survive the operator's absence.
 
 ## Example
 
@@ -62,7 +64,10 @@ spec:
   namespace:
     value: planton-operator
   create_namespace: true
-  chart_version: 0.7.1
+  chart_version: 0.8.0
+  crds:
+    install: true
+    keep_on_uninstall: true
   replicas: 2
   leader_election: true
   resources:
@@ -89,7 +94,7 @@ spec:
     - mirror-pull
   image:
     repository: ghcr.io/plantonhq/planton/operator
-    tag: v0.0.41-selfhosted-preview
+    tag: v0.8.0
 ```
 
 ## Spec Fields
@@ -98,8 +103,7 @@ spec:
 |---|---|---|---|---|
 | `spec.namespace` | `string \| valueFrom` | yes |  | KubernetesNamespace (`spec.name`) |
 | `spec.createNamespace` | `bool` |  |  |  |
-| `spec.chartVersion` | `string` |  |  |  |
-| `spec.skipCrds` | `bool` |  |  |  |
+| `spec.chartVersion` | `string` |  | `0.8.0` |  |
 | `spec.replicas` | `int32` |  | `1` |  |
 | `spec.leaderElection` | `bool` |  | `true` |  |
 | `spec.resources` | `ContainerResources` |  |  |  |
@@ -127,6 +131,9 @@ spec:
 | `spec.image.repository` | `string` |  |  |  |
 | `spec.image.tag` | `string` |  |  |  |
 | `spec.helmValues` | `string` |  |  |  |
+| `spec.crds` | `KubernetesPlantonOperatorCrds` |  |  |  |
+| `spec.crds.install` | `bool` |  | `true` |  |
+| `spec.crds.keepOnUninstall` | `bool` |  | `true` |  |
 
 ## Field Details
 
@@ -153,28 +160,18 @@ the resource. When false, the namespace must already exist.
 
 ### spec.chartVersion
 
-`string`
+`string` · optional (explicit presence)
 
-The planton-operator chart version to install. Defaults to the version
-this catalog release was validated against; pin a different version
-only for change control. The chart's appVersion pins the operator
-image, and the module's staged CRD copy matches this default — when
-pinning a NEWER chart than the default, know that the module still
-applies the CRD staged at the default pin (upgrade the catalog to move
-both together).
+The planton-operator chart version to install (e.g. "0.8.0"). The chart
+and the operator image share one version line: chart 0.8.0 runs
+operator v0.8.0. Defaults to the version this catalog release was
+validated against; pin a different version only for change control.
+Versions must exist as published charts at oci://ghcr.io/plantonhq/charts.
+Charts older than 0.8.0 do not own their definitions and are refused
+at plan time: the `crds` dials would have nothing to act on.
 
-- rule: chart version must be an exact semver like "0.7.1" — ranges are not reproducible
-- rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
-
-### spec.skipCrds
-
-`bool`
-
-Skip applying the module-owned `plantonplatforms.planton.ai` CRD.
-Set true only when something else manages the CRD (a GitOps tool, a
-pre-existing operator install being adopted). The chart's own CRD
-install is always skipped regardless — the module owns the CRD
-lifecycle so upgrades and keep-on-uninstall semantics are guaranteed.
+- default: `0.8.0`
+- rule: chart version must be an exact semver like "0.8.0" — ranges are not reproducible
 
 ### spec.replicas
 
@@ -344,8 +341,8 @@ pulling the operator image from a private mirror.
 Override the operator image (registry mirrors, air-gapped clusters).
 Empty = the chart default (ghcr.io/plantonhq/planton/operator at the
 chart's app version). The mirror must be digest-identical to the
-official image — the operator's version must match the CRD schema the
-module stages.
+official image — the operator and the definitions the chart renders
+are one build.
 
 ### spec.image.repository
 
@@ -371,6 +368,37 @@ substitute for them. `nameOverride`/`fullnameOverride` are
 deliberately not honored knobs: renaming the Deployment takes it out
 of the operator's own one-per-cluster startup guard's view. Do not
 put secrets here.
+
+### spec.crds
+
+`KubernetesPlantonOperatorCrds`
+
+CRD lifecycle. The chart owns its two definitions as release resources;
+these dials map onto the chart's `crds.enabled` and `crds.keep` values.
+
+### spec.crds.install
+
+`bool` · optional (explicit presence)
+
+Install the `PlantonPlatform` and `PlantonIdentityProvider` definitions
+with the release. Default TRUE. Set false ONLY when another release or
+a GitOps tool already owns them on this cluster: with the definitions
+absent the operator cannot start, so this is a bring-your-own-CRDs arm,
+never a lighter install.
+
+- default: `true`
+
+### spec.crds.keepOnUninstall
+
+`bool` · optional (explicit presence)
+
+Keep the definitions (and therefore every PlantonPlatform declaration
+and every platform behind it) when the resource is destroyed. Default
+TRUE: deleting them cascades to every self-hosted Planton on the
+cluster, a destructive act that must be an explicit false. A later
+install under the same release adopts kept definitions.
+
+- default: `true`
 
 ## Outputs
 
