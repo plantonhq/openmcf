@@ -1,6 +1,8 @@
 package providerenvvars
 
 import (
+	"os"
+
 	"github.com/pkg/errors"
 	"github.com/plantonhq/planton/pkg/crkreflect"
 	"github.com/plantonhq/planton/pkg/iac/provider/aws/awswebidentity"
@@ -8,6 +10,10 @@ import (
 	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	"gopkg.in/yaml.v3"
 )
+
+// runningInCluster answers whether this process is a pod with its own
+// ServiceAccount identity; a variable so a test can stand in a pod.
+var runningInCluster = kubeconfig.RunningInCluster
 
 // ProviderConfigKey is the key used to store provider configuration in stack input YAML.
 // All providers use this same key - the correct provider is determined by the target's api_version/kind.
@@ -86,14 +92,22 @@ func GetEnvVarsWithOptions(stackInputYaml string, opts Options) (map[string]stri
 			awswebidentity.ResolveCredentials)
 	}
 
-	// 7. Kubernetes without a provider_config is the local workflow: the
-	//    operator's own kubeconfig, the way kubectl reads it. The Terraform
-	//    kubernetes and helm providers do not read KUBECONFIG on their own
-	//    (they read KUBE_CONFIG_PATH), so left alone they would fall back to
-	//    in-cluster auth and fail with a connection refused to localhost;
-	//    the ambient branch hands them the host kubeconfig and explains a
-	//    missing one in three parts before any engine starts.
+	// 7. Kubernetes without a provider_config is the ambient workflow, and it
+	//    has two homes. On a laptop it is the operator's own kubeconfig, the
+	//    way kubectl reads it: the Terraform kubernetes and helm providers do
+	//    not read KUBECONFIG on their own (they read KUBE_CONFIG_PATH), so
+	//    left alone they would fall back to in-cluster auth and fail with a
+	//    connection refused to localhost; the ambient branch hands them the
+	//    host kubeconfig and explains a missing one in three parts before any
+	//    engine starts. Inside a pod with no kubeconfig named -- the in-cluster
+	//    runner deploying through a runner-mode connection -- the pod's own
+	//    ServiceAccount IS the credential and the cluster it lives in IS the
+	//    target, so nothing is exported and every engine takes its in-cluster
+	//    path. A kubeconfig named in the environment wins even inside a pod.
 	if provider == cloudresourcekind.CloudResourceProvider_kubernetes && !hasProviderConfig {
+		if os.Getenv("KUBECONFIG") == "" && runningInCluster() {
+			return map[string]string{}, nil
+		}
 		return loadHostKubernetesEnvVars(opts.KubeContext)
 	}
 

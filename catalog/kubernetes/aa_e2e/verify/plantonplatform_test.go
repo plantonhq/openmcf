@@ -1,6 +1,9 @@
 package verify
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 // The operator's phase Error is transient (any component error for one
 // reconcile cycle, requeued and retried); only VersionSupported=False is
@@ -27,6 +30,43 @@ func TestPlatformBootVerdict(t *testing.T) {
 				t.Fatalf("platformBootVerdict(%q, %q) = %v, want %v", tc.phase, tc.versionSupported, got, tc.want)
 			}
 		})
+	}
+}
+
+// A Deployment has rolled out at a tag only when its image carries the tag
+// AND the rollout is complete: during an image change the previous pod stays
+// available while the new one starts, and both counters can read 1 while
+// they name different pods.
+func TestDeploymentRolledOutAt(t *testing.T) {
+	deploy := func(image string, generation, observed, total, updated, available int64) []byte {
+		return []byte(fmt.Sprintf(`{"metadata":{"generation":%d},"spec":{"replicas":1,"template":{"spec":{"containers":[{"image":%q}]}}},`+
+			`"status":{"observedGeneration":%d,"replicas":%d,"updatedReplicas":%d,"availableReplicas":%d}}`,
+			generation, image, observed, total, updated, available))
+	}
+	cases := []struct {
+		name string
+		json []byte
+		want bool
+	}{
+		{"complete at the tag", deploy("ghcr.io/x/control-plane:v0.0.46", 2, 2, 1, 1, 1), true},
+		{"still on the old image", deploy("ghcr.io/x/control-plane:v0.0.45", 2, 2, 1, 1, 1), false},
+		{"new image, old pod still serving beside the new one", deploy("ghcr.io/x/control-plane:v0.0.46", 2, 2, 2, 1, 1), false},
+		{"new image, new pod not yet created", deploy("ghcr.io/x/control-plane:v0.0.46", 2, 2, 1, 0, 1), false},
+		{"new image, spec not yet observed", deploy("ghcr.io/x/control-plane:v0.0.46", 2, 1, 1, 1, 1), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := deploymentRolledOutAt(tc.json, "v0.0.46")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("deploymentRolledOutAt = %v, want %v", got, tc.want)
+			}
+		})
+	}
+	if _, err := deploymentRolledOutAt([]byte("not json"), "v0.0.46"); err == nil {
+		t.Fatal("unparseable input must be an error, not a verdict")
 	}
 }
 

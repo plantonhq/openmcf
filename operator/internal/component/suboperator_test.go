@@ -57,6 +57,11 @@ func testControllerDeployment(available bool) *appsv1.Deployment {
 		ObjectMeta: metav1.ObjectMeta{Name: testDeployment, Namespace: testNamespace},
 	}
 	if available {
+		// A completed rollout, as the readiness test defines it: the spec
+		// observed, one replica on the current template, none stale, available.
+		deploy.Status.ObservedGeneration = deploy.Generation
+		deploy.Status.Replicas = 1
+		deploy.Status.UpdatedReplicas = 1
 		deploy.Status.AvailableReplicas = 1
 	}
 	return deploy

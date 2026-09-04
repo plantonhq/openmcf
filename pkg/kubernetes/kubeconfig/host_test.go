@@ -58,3 +58,32 @@ func TestHostKubeconfigPaths(t *testing.T) {
 		assert.Contains(t, f.NextStep, "--kube-context")
 	})
 }
+
+// A pod's own identity is recognised by the two facts client-go's in-cluster
+// config requires: the API server's address in the environment and the
+// projected ServiceAccount token on disk. Either missing means "not a pod".
+func TestRunningInCluster(t *testing.T) {
+	token := filepath.Join(t.TempDir(), "token")
+	previous := inClusterTokenPath
+	inClusterTokenPath = token
+	t.Cleanup(func() { inClusterTokenPath = previous })
+
+	t.Run("no API server in the environment", func(t *testing.T) {
+		t.Setenv("KUBERNETES_SERVICE_HOST", "")
+		t.Setenv("KUBERNETES_SERVICE_PORT", "")
+		require.NoError(t, os.WriteFile(token, []byte("t"), 0o600))
+		assert.False(t, RunningInCluster())
+	})
+	t.Run("API server named but no projected token", func(t *testing.T) {
+		t.Setenv("KUBERNETES_SERVICE_HOST", "10.96.0.1")
+		t.Setenv("KUBERNETES_SERVICE_PORT", "443")
+		_ = os.Remove(token)
+		assert.False(t, RunningInCluster())
+	})
+	t.Run("both: a pod with an identity of its own", func(t *testing.T) {
+		t.Setenv("KUBERNETES_SERVICE_HOST", "10.96.0.1")
+		t.Setenv("KUBERNETES_SERVICE_PORT", "443")
+		require.NoError(t, os.WriteFile(token, []byte("t"), 0o600))
+		assert.True(t, RunningInCluster())
+	})
+}

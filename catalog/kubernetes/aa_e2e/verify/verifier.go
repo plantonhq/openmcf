@@ -1546,10 +1546,7 @@ func GetVerifierFromManifest(manifestPath string) (ResourceVerifier, error) {
 	// Secret). Destroy polls the garbage-collected drain — the operator
 	// has no finalizers; teardown is owner-reference GC.
 	case "kubernetesplantonplatform":
-		return &PlantonPlatformVerifier{
-			Namespace: info.Namespace,
-			Name:      info.Name,
-		}, nil
+		return newPlantonPlatformVerifier(info.Namespace, info.Name, manifestPath), nil
 
 	default:
 		if crdNames, ok := crdInstallKinds[component]; ok {

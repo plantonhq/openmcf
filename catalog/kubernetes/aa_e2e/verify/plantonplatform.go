@@ -146,13 +146,39 @@ func (v *PlantonOperatorInstallVerifier) VerifyAbsent(ctx context.Context, kubec
 type PlantonPlatformVerifier struct {
 	Namespace string
 	Name      string
+	// Version is the release the manifest declares (`spec.version`, required
+	// on this kind). After the boot the platform must run exactly it: on the
+	// first act that pins the install, on an upgrade act it is what makes the
+	// upgrade an upgrade.
+	Version string
 }
 
+// newPlantonPlatformVerifier reads the declared version off the scenario
+// manifest (or the upgrade manifest, on the second act).
+func newPlantonPlatformVerifier(namespace, name, manifestPath string) *PlantonPlatformVerifier {
+	version, _ := manifestSpecString(manifestPath, "version")
+	return &PlantonPlatformVerifier{Namespace: namespace, Name: name, Version: version}
+}
+
+// versionedDeployments are the components whose images carry the platform's
+// version; their rollouts are what a version change IS.
+var versionedDeployments = []string{"control-plane", "console", "runner"}
+
 func (v *PlantonPlatformVerifier) VerifyExists(ctx context.Context, kubeconfig string) error {
-	fmt.Printf("  [verify] planton platform %q in namespace %q\n", v.Name, v.Namespace)
+	fmt.Printf("  [verify] planton platform %q in namespace %q (declared version %s)\n", v.Name, v.Namespace, v.Version)
 
 	if err := KubectlResourceExists(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace); err != nil {
 		return errors.Wrap(err, "the PlantonPlatform declaration was not created")
+	}
+
+	// The operator mirrors the declared version into status once it accepts
+	// it (a refused version is recorded terminally instead; waitForBoot reads
+	// that). Waiting for the mirror first matters on an upgrade act: the
+	// phase may still read Ready from before the declaration changed.
+	if v.Version != "" {
+		if err := v.waitForDeclaredVersion(ctx, kubeconfig, 3*time.Minute); err != nil {
+			return err
+		}
 	}
 
 	// The whole platform boots inside this one wait — databases, identity
@@ -162,6 +188,29 @@ func (v *PlantonPlatformVerifier) VerifyExists(ctx context.Context, kubeconfig s
 	fmt.Printf("  [verify] waiting for phase Ready (a full platform boot — expect ~10-15 minutes on a kind cluster)\n")
 	if err := v.waitForBoot(ctx, kubeconfig, 30*time.Minute); err != nil {
 		return err
+	}
+
+	// The outside-vantage half of "runs this version": every versioned
+	// Deployment carries an image tagged with the declared release and has
+	// finished rolling (spec observed, every replica current, none stale,
+	// all available -- `kubectl rollout status`'s test). Read directly
+	// rather than trusted from the phase, because an operator that judged
+	// readiness by availability alone would report Ready mid-rollout while
+	// the previous release still served.
+	if v.Version != "" {
+		for _, component := range versionedDeployments {
+			if err := waitForDeploymentRolledOut(ctx, kubeconfig, v.Namespace, v.Name+"-"+component, v.Version, 15*time.Minute); err != nil {
+				return err
+			}
+		}
+		// The data layer predates the control plane that serves it: the
+		// PostgreSQL cluster the operator created, and the declaration
+		// itself, were created before the control-plane pod now running
+		// started. On a fresh boot that is the dependency order; after an
+		// upgrade it is the proof that nothing holding data was recreated.
+		if err := v.verifyDataLayerPredatesControlPlane(ctx, kubeconfig); err != nil {
+			return err
+		}
 	}
 
 	// The first-visit handles the module exports — a Ready platform must
@@ -174,6 +223,162 @@ func (v *PlantonPlatformVerifier) VerifyExists(ctx context.Context, kubeconfig s
 	}
 	fmt.Printf("  [verify] platform Ready — gateway Service and setup-code Secret present\n")
 	return nil
+}
+
+// waitForDeclaredVersion waits until status.version mirrors the manifest's
+// version, stopping at once if the operator refuses it.
+func (v *PlantonPlatformVerifier) waitForDeclaredVersion(ctx context.Context, kubeconfig string, budget time.Duration) error {
+	deadline := time.Now().Add(budget)
+	for {
+		status, _ := kubectlGetJSONPath(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace, `{.status.version}`)
+		if strings.TrimSpace(status) == v.Version {
+			fmt.Printf("  [verify] the operator accepted version %s (status.version)\n", v.Version)
+			return nil
+		}
+		supported, _ := kubectlGetJSONPath(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace,
+			`{.status.conditions[?(@.type=="VersionSupported")].status}`)
+		if strings.TrimSpace(supported) == "False" {
+			msg, _ := kubectlGetJSONPath(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace,
+				`{.status.conditions[?(@.type=="VersionSupported")].message}`)
+			return errors.Errorf("the operator refuses version %s (VersionSupported=False): %s", v.Version, strings.TrimSpace(msg))
+		}
+		if time.Now().After(deadline) {
+			return errors.Errorf("status.version never mirrored the declared %s within %s (last %q)", v.Version, budget, strings.TrimSpace(status))
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(5 * time.Second):
+		}
+	}
+}
+
+// deploymentRollout is the subset of a Deployment a rollout verdict reads.
+type deploymentRollout struct {
+	Metadata struct {
+		Generation int64 `json:"generation"`
+	} `json:"metadata"`
+	Spec struct {
+		Replicas *int64 `json:"replicas"`
+		Template struct {
+			Spec struct {
+				Containers []struct {
+					Image string `json:"image"`
+				} `json:"containers"`
+			} `json:"spec"`
+		} `json:"template"`
+	} `json:"spec"`
+	Status struct {
+		ObservedGeneration int64 `json:"observedGeneration"`
+		Replicas           int64 `json:"replicas"`
+		UpdatedReplicas    int64 `json:"updatedReplicas"`
+		AvailableReplicas  int64 `json:"availableReplicas"`
+	} `json:"status"`
+}
+
+// deploymentRolledOutAt reports whether the Deployment (as `kubectl get -o
+// json` renders it) has finished rolling to an image tagged `tag`: the spec
+// observed, every desired replica on the current template, none from an
+// older one, all available. spec.replicas defaults to 1 as the API server
+// does.
+func deploymentRolledOutAt(deployJSON []byte, tag string) (bool, error) {
+	var d deploymentRollout
+	if err := json.Unmarshal(deployJSON, &d); err != nil {
+		return false, errors.Wrap(err, "parsing the Deployment")
+	}
+	if len(d.Spec.Template.Spec.Containers) == 0 || !strings.HasSuffix(d.Spec.Template.Spec.Containers[0].Image, ":"+tag) {
+		return false, nil
+	}
+	desired := int64(1)
+	if d.Spec.Replicas != nil {
+		desired = *d.Spec.Replicas
+	}
+	s := d.Status
+	return desired > 0 && s.ObservedGeneration >= d.Metadata.Generation &&
+		s.UpdatedReplicas == desired && s.Replicas == desired && s.AvailableReplicas == desired, nil
+}
+
+// waitForDeploymentRolledOut polls one Deployment until deploymentRolledOutAt
+// holds, naming the image it last saw when the budget is spent.
+func waitForDeploymentRolledOut(ctx context.Context, kubeconfig, namespace, name, tag string, budget time.Duration) error {
+	deadline := time.Now().Add(budget)
+	var lastImage string
+	for {
+		out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+			"get", "deployment", name, "-n", namespace, "-o", "json").Output()
+		if err == nil {
+			done, verdictErr := deploymentRolledOutAt(out, tag)
+			if verdictErr != nil {
+				return errors.Wrapf(verdictErr, "deployment %s", name)
+			}
+			if done {
+				fmt.Printf("  [verify] deployment %s rolled out at :%s\n", name, tag)
+				return nil
+			}
+			image, _ := kubectlGetJSONPath(ctx, kubeconfig, "deployment", name, namespace, `{.spec.template.spec.containers[0].image}`)
+			lastImage = strings.TrimSpace(image)
+		}
+		if time.Now().After(deadline) {
+			return errors.Errorf("deployment %s did not finish rolling to an image tagged %s within %s (last image %q)", name, tag, budget, lastImage)
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(10 * time.Second):
+		}
+	}
+}
+
+// verifyDataLayerPredatesControlPlane asserts that the objects holding the
+// platform's state -- the PostgreSQL cluster and the declaration itself --
+// were created before the control-plane pod now running started.
+func (v *PlantonPlatformVerifier) verifyDataLayerPredatesControlPlane(ctx context.Context, kubeconfig string) error {
+	started, err := kubectlGetJSONPathList(ctx, kubeconfig, "pods", v.Namespace,
+		"app.kubernetes.io/name=control-plane", `{range .items[*]}{.status.startTime}{"\n"}{end}`)
+	if err != nil || len(started) == 0 {
+		return errors.Wrap(err, "reading the control-plane pod's start time")
+	}
+	newest := time.Time{}
+	for _, s := range started {
+		if t, err := time.Parse(time.RFC3339, s); err == nil && t.After(newest) {
+			newest = t
+		}
+	}
+	for _, holder := range []struct{ kind, name string }{
+		{"clusters.postgresql.cnpg.io", v.Name + "-postgres"},
+		{plantonPlatformCrd, v.Name},
+	} {
+		created, err := kubectlGetJSONPath(ctx, kubeconfig, holder.kind, holder.name, v.Namespace, `{.metadata.creationTimestamp}`)
+		if err != nil {
+			return errors.Wrapf(err, "reading %s %s", holder.kind, holder.name)
+		}
+		t, err := time.Parse(time.RFC3339, strings.TrimSpace(created))
+		if err != nil {
+			return errors.Wrapf(err, "%s %s creationTimestamp %q", holder.kind, holder.name, created)
+		}
+		if !t.Before(newest) {
+			return errors.Errorf("%s %s was created at %s, after the control-plane pod started at %s -- the data layer was recreated under the platform", holder.kind, holder.name, t.Format(time.RFC3339), newest.Format(time.RFC3339))
+		}
+	}
+	fmt.Printf("  [verify] DATA LAYER: the PostgreSQL cluster and the declaration predate the control plane that serves them\n")
+	return nil
+}
+
+// kubectlGetJSONPathList reads a jsonpath over a label-selected list and
+// returns its non-empty lines.
+func kubectlGetJSONPathList(ctx context.Context, kubeconfig, kind, namespace, selector, jsonPath string) ([]string, error) {
+	out, err := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+		"get", kind, "-n", namespace, "-l", selector, "-o", "jsonpath="+jsonPath).Output()
+	if err != nil {
+		return nil, errors.Wrapf(err, "kubectl get %s -l %s", kind, selector)
+	}
+	var lines []string
+	for _, line := range strings.Split(string(out), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines, nil
 }
 
 // bootVerdict is what one reading of the platform's status means for the wait.

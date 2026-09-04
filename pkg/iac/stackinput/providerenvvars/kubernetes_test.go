@@ -140,8 +140,35 @@ target:
 		assert.NotContains(t, envVars, "KUBE_CTX")
 	})
 
-	t.Run("no kubeconfig anywhere: the three-part refusal, before any engine runs", func(t *testing.T) {
+	t.Run("inside a pod with no kubeconfig named: nothing exported, the engines take their in-cluster path", func(t *testing.T) {
+		// The in-cluster runner deploying through a runner-mode connection:
+		// the pod's own ServiceAccount is the credential and the cluster it
+		// lives in is the target, so a demand for a host kubeconfig here
+		// would refuse every such deploy.
 		t.Setenv("KUBECONFIG", "")
+		previous := runningInCluster
+		runningInCluster = func() bool { return true }
+		t.Cleanup(func() { runningInCluster = previous })
+		envVars, err := GetEnvVarsWithOptions(stackInputYaml, Options{})
+		require.NoError(t, err)
+		assert.Empty(t, envVars)
+	})
+
+	t.Run("inside a pod but a kubeconfig is named: the named files win", func(t *testing.T) {
+		t.Setenv("KUBECONFIG", one)
+		previous := runningInCluster
+		runningInCluster = func() bool { return true }
+		t.Cleanup(func() { runningInCluster = previous })
+		envVars, err := GetEnvVarsWithOptions(stackInputYaml, Options{})
+		require.NoError(t, err)
+		assert.Equal(t, one, envVars["KUBE_CONFIG_PATH"])
+	})
+
+	t.Run("no kubeconfig anywhere and not a pod: the three-part refusal, before any engine runs", func(t *testing.T) {
+		t.Setenv("KUBECONFIG", "")
+		previous := runningInCluster
+		runningInCluster = func() bool { return false }
+		t.Cleanup(func() { runningInCluster = previous })
 		_, err := GetEnvVarsWithOptions(stackInputYaml, Options{})
 		require.Error(t, err)
 		var f *failure.Failure

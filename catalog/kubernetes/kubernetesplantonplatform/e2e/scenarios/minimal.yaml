@@ -8,10 +8,19 @@
 # The full platform boot (databases, identity, control plane, console,
 # vault, runner) takes ~10-15 minutes on an emulated-amd64 kind cluster —
 # the profile's timeout accounts for it.
+#
+# The second act is the upgrade: the same declaration re-applied with the
+# next release's version (minimal.to.yaml). The verifier then proves
+# the operator accepted the new version, every versioned Deployment rolled
+# to the new images and finished rolling, the platform is Ready again, and
+# the data layer (the PostgreSQL cluster, the declaration itself) predates
+# the control plane now serving -- nothing holding state was recreated.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPlantonPlatform
 metadata:
   name: planton
+  annotations:
+    planton.dev/e2e-upgrade-manifest: minimal.to.yaml
 spec:
   namespace:
     value: planton

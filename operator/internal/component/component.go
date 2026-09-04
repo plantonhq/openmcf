@@ -187,7 +187,16 @@ func (b *Base) IsStatefulSetReady(ctx context.Context, c client.Client, name, na
 	return readyReplicas > 0, nil
 }
 
-// IsDeploymentReady checks if a Deployment has at least one available replica.
+// IsDeploymentReady reports whether a Deployment's rollout is complete: the
+// controller has observed the current spec, every desired replica runs the
+// current pod template, and every one of them is available.
+//
+// Availability alone is not readiness. While a Deployment rolls to a new
+// image (a platform version change), the previous pod stays available until
+// the new one is, so "at least one available replica" is true throughout
+// the rollout and would let the platform report Ready at the new version
+// while the old release is still the one serving. The rollout-complete
+// definition is the one `kubectl rollout status` waits for.
 func (b *Base) IsDeploymentReady(ctx context.Context, c client.Client, name, namespace string) (bool, error) {
 	deploy := &unstructured.Unstructured{}
 	deploy.SetGroupVersionKind(schema.GroupVersionKind{
@@ -200,12 +209,26 @@ func (b *Base) IsDeploymentReady(ctx context.Context, c client.Client, name, nam
 		}
 		return false, err
 	}
+	return deploymentRolloutComplete(deploy), nil
+}
 
-	availableReplicas, found, err := unstructured.NestedInt64(deploy.Object, "status", "availableReplicas")
-	if err != nil || !found {
-		return false, nil
+// deploymentRolloutComplete is IsDeploymentReady's verdict on one Deployment
+// object: the spec has been observed, every desired replica is on the current
+// template, no replica from an older template remains (status.replicas counts
+// old and new together, so it must equal the updated count), and every
+// replica is available. spec.replicas defaults to 1 when unset, as the API
+// server does.
+func deploymentRolloutComplete(deploy *unstructured.Unstructured) bool {
+	desired := int64(1)
+	if replicas, found, err := unstructured.NestedInt64(deploy.Object, "spec", "replicas"); err == nil && found {
+		desired = replicas
 	}
-	return availableReplicas > 0, nil
+	generation := deploy.GetGeneration()
+	observed, _, _ := unstructured.NestedInt64(deploy.Object, "status", "observedGeneration")
+	total, _, _ := unstructured.NestedInt64(deploy.Object, "status", "replicas")
+	updated, _, _ := unstructured.NestedInt64(deploy.Object, "status", "updatedReplicas")
+	available, _, _ := unstructured.NestedInt64(deploy.Object, "status", "availableReplicas")
+	return desired > 0 && observed >= generation && updated == desired && total == desired && available == desired
 }
 
 // IsPodRunning checks if at least one Pod matching the given StatefulSet name

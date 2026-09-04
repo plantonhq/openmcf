@@ -272,7 +272,10 @@ var _ = Describe("PlantonPlatform Controller", func() {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name: "cnpg-controller-manager", Namespace: "cnpg-system",
 			}, &cnpgDeploy)).To(Succeed())
+			// A completed rollout, as the readiness test defines it.
+			cnpgDeploy.Status.ObservedGeneration = cnpgDeploy.Generation
 			cnpgDeploy.Status.Replicas = 1
+			cnpgDeploy.Status.UpdatedReplicas = 1
 			cnpgDeploy.Status.ReadyReplicas = 1
 			cnpgDeploy.Status.AvailableReplicas = 1
 			Expect(k8sClient.Status().Update(ctx, &cnpgDeploy)).To(Succeed())
