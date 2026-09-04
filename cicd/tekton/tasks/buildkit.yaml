@@ -92,6 +92,17 @@ spec:
       workingDir: "$(workspaces.source.path)/$(params.contextDir)"
       securityContext:
         privileged: true          # required even for rootless image
+      # BuildKit's layer store lives on a pod volume, not inside the step's own
+      # root filesystem. A container's root filesystem is already an overlay
+      # mount, and the kernel refuses an overlay whose upper directory sits on
+      # another overlay; BuildKit would then fall back to fuse-overlayfs, whose
+      # mounts the executor cannot always run build steps on (nested Docker
+      # environments fail with exit code 255) and which is slower everywhere.
+      # An emptyDir sits on the node's real filesystem, so the auto-detected
+      # snapshotter is plain overlayfs on every cluster shape.
+      volumeMounts:
+        - name: layers-dir
+          mountPath: /var/lib/buildkit
       env:
         - name: DOCKER_CONFIG
           value: "$(workspaces.dockerconfig.path)"
@@ -127,7 +138,5 @@ spec:
           --progress=plain
 
   volumes:
-    - name: empty-dir
-      emptyDir: {}
     - name: layers-dir
       emptyDir: {}

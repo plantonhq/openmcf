@@ -83,7 +83,7 @@ func TestImages_matchTheRecordedSet(t *testing.T) {
 	}
 	want := []string{
 		"bitnamilegacy/kubectl:latest@sha256:cd354d5b25562b195b277125439c23e4046902d7f1abc0dc3c75aad04d298c17",
-		"docker.io/library/bash:5.1.4@sha256:b208215a4655538be652b2769d82e576bc4d0a2bb132144c060efc5be8c3f5d6",
+		"docker.io/library/bash:5.1.4@sha256:c523c636b722339f41b6a431b44588ab2f762c5de5ec3bd7964420ff982fb1d9",
 		"ghcr.io/tektoncd-catalog/git-clone:v1.1.0@sha256:b7fe6c370322586feb555c807f3fae7ca5d62c20ebbcca987114e69366151957",
 		"ghcr.io/tektoncd/github.com/tektoncd/pipeline/cmd/git-init:v0.45.0@sha256:8ab0f58d8381b0b71f5b2bae1f63522989d739e3154d8cab1bacfa0ef5317214",
 		"moby/buildkit:v0.23.2-rootless@sha256:cab936745de5d673465948f1e93ff4d6e372bbe33f218afd3314eba45a6f85a9",
