@@ -60,12 +60,13 @@ platforms may ride them.
 ```yaml
 # Full-surface hack manifest for the offline plan/preview proofs — every
 # typed field exercised with realistic values. DELIBERATELY NOT a live
-# scenario yet: `build` and `prerequisites.tekton_pipelines` postdate the
-# currently published operator chart's CRD, which would silently PRUNE
-# them — a live lane would then "pass" while proving nothing about those
-# fields. When the published chart line carries the post-CloudNativePG
-# schema, promote this shape into e2e/scenarios/ (sized to the lane's
-# single-node cluster) so the full surface earns a live proof.
+# scenario: this shape declares a real cluster's fittings (a `gp3`
+# StorageClass, an nginx IngressClass, a Let's Encrypt ClusterIssuer, a
+# license Secret), none of which exist on the lane's single-node kind
+# cluster, so a live run here could only fail for reasons that say nothing
+# about the platform. The zero-config `scenarios/minimal.yaml` is the live
+# install proof; the full surface earns its live proof on a cluster that
+# has these fittings.
 apiVersion: kubernetes.planton.dev/v1alpha1
 kind: KubernetesPlantonPlatform
 metadata:
