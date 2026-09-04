@@ -17,7 +17,7 @@ Address the repository one of two ways, and never both: **by registered service*
 - **Read the files**: `read_repo_files` (CLI: `planton service repo cat <service> <path> [--ref]`) takes one to twenty repository-relative paths and answers each on its own: `found` with `content`; found but not carried (`unreadable_reason` says why — over one megabyte, or not text — and names the clone lane); or `found: false`. One absent or oversized file never fails the batch, so ask for the whole neighbourhood at once: the Dockerfile with the lockfile it installs, the pipeline with its tasks, the overlay with its base.
 - **Validate the pipeline straight from the repository**: `validate_service_pipeline` with the repository as its source (`org` + `service`, or the coordinates, plus an optional `ref`) reads `.planton/pipeline.yaml` (or `pipeline_path`) and the tasks beside it and compiles them exactly as dispatch would; the report's `pin` is the commit it read. `references/service.pipeline-authoring.md` owns the compile loop; this is its "nothing pasted" entrance.
 
-What the platform will never do in this lane: execute anything it reads, write anything back, or hand out a credential. What it needs from the caller: read access on the connection (the same grant detection uses), or credential-read on it — either passes.
+What the platform will never do in this lane: execute anything it reads, write anything back (writing has its own door — a pull request, `references/service.opening-a-pull-request.md`), or hand out a credential. What it needs from the caller: read access on the connection (the same grant detection uses), or credential-read on it — either passes.
 
 ## The clone lane
 
@@ -61,4 +61,4 @@ Every refusal names its next step; relay it, never retry around it.
 
 ## Writing back
 
-You read; the person commits. Propose the change as the exact file or diff, explain it against the lines you read, and let the developer apply it in their checkout (on the desktop, edit the clone in your workspace and hand them the diff). Nothing in either lane writes to the repository.
+Neither lane writes. When a read ends in a fix, the fix leaves through one door only: a pull request the platform opens on a branch of its own, after the person has seen the exact files and the pull request's text and said yes — `references/service.opening-a-pull-request.md`. On the desktop, edit the clone in your workspace and hand the edited files to `planton service repo pr`; never push from the clone with the minted token. A person who would rather commit themselves gets the exact file or diff, explained against the lines you read.
