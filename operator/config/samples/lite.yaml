@@ -13,7 +13,7 @@ metadata:
   name: planton
   namespace: default
 spec:
-  version: v0.0.44
+  version: v0.0.45
   database:
     postgresql:
       storageSize: 1Gi

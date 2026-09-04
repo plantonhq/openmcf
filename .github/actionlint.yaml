@@ -1,0 +1,7 @@
+# actionlint reads this file to learn the runner labels that are not GitHub's
+# public defaults. The operator lanes run on the organization's larger Linux
+# runner (16 cores, 64 GB), the same class the platform's Go lanes use, so a
+# cold multi-platform image build fits inside a job with room to spare.
+self-hosted-runner:
+  labels:
+    - linux-x64-16-core-64gb-ubuntu-22.04

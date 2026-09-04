@@ -50,7 +50,7 @@ concurrency:
 
 jobs:
   manifests-fresh:
-    runs-on: ubuntu-latest
+    runs-on: linux-x64-16-core-64gb-ubuntu-22.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -62,7 +62,7 @@ jobs:
         run: bash ./hack/guards/ensure_operator_manifests_fresh.sh
 
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: linux-x64-16-core-64gb-ubuntu-22.04
     timeout-minutes: 30
     defaults:
       run:

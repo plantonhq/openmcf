@@ -45,7 +45,7 @@ metadata:
   name: planton
   namespace: planton
 spec:
-  version: v0.0.44
+  version: v0.0.45
 ```
 
 `spec.version` names a Planton platform release as `vMAJOR.MINOR.PATCH`; the API server
@@ -132,7 +132,7 @@ message is the `MESSAGE` column, and a `VersionSupported` condition:
 ```
 $ kubectl get plantonplatform
 NAME      PHASE   VERSION   URL                          LICENSE     MESSAGE                              AGE
-planton   Ready   v0.0.44   https://planton.example.com  Community   All enabled components are healthy   5m
+planton   Ready   v0.0.45   https://planton.example.com  Community   All enabled components are healthy   5m
 ```
 
 ## CRD Management

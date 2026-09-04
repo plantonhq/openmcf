@@ -4,7 +4,7 @@ metadata:
   name: my-planton
   namespace: planton-system
 spec:
-  version: v0.0.44
+  version: v0.0.45
 
   # License -- omit entirely for Community mode. Deliver the purchased key
   # inline OR by Secret reference (at most one; renewals are then a Secret

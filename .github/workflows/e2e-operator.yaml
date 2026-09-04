@@ -66,7 +66,7 @@ env:
 
 jobs:
   e2e:
-    runs-on: ubuntu-latest
+    runs-on: linux-x64-16-core-64gb-ubuntu-22.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -82,7 +82,7 @@ jobs:
         run: make -C operator test-e2e
 
   chart-lifecycle:
-    runs-on: ubuntu-latest
+    runs-on: linux-x64-16-core-64gb-ubuntu-22.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4

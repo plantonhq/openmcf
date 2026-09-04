@@ -39,7 +39,7 @@ import (
 // shape. The boot-contract fixture test in internal/resources asks this
 // question whenever the rendered variable names change; a variable older
 // platforms simply ignore does not move the floor.
-const MinimumSupported = "v0.0.44"
+const MinimumSupported = "v0.0.45"
 
 // releaseForm is the only shape spec.version may take: a full semantic
 // version with the "v" prefix, optionally with a pre-release suffix and build
