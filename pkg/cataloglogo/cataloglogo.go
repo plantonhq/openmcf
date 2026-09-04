@@ -25,16 +25,24 @@
 //     mark, and the files say so themselves.
 //
 // The law behind the last two rules, in the words the forge and update flows
-// use: one kind, one glyph. A kind that IS a provider product wears the
-// provider's official mark, unaltered -- where the provider publishes its
-// icons for use in third-party diagrams. Where a provider does not (its brand
-// terms reserve its logos and icons), every kind of that provider wears a
-// Planton-drawn glyph and no file under that provider names the Official
-// class. Planton's own kinds wear Planton's mark. Every other kind wears a
-// Planton-drawn glyph that says what that kind is, in the provider's icon
-// language (its palette and grid), never containing or modifying a provider
-// mark. When a provider that offers its icons publishes one for a kind wearing
-// a drawn glyph, the official one replaces it.
+// use: one kind, one glyph. A kind wears an official mark only when it IS a
+// product (or a built-in object) of the provider it belongs to, unaltered --
+// and only where that provider publishes its icons for use in third-party
+// diagrams. Where a provider does not (its brand terms reserve its logos and
+// icons), every kind of that provider wears a Planton-drawn glyph and no file
+// under that provider names the Official class. Software of another project
+// hosted on a provider (a database, a broker, a mesh, an operator running on
+// Kubernetes) is not the provider's product and is always Planton-drawn,
+// whatever that project's own terms would allow, so every catalog logo stays
+// under one owner's terms. Planton's own kinds wear Planton's mark. Every
+// other kind wears a Planton-drawn glyph that says what that kind is, in the
+// provider's icon language (its palette and grid), never containing,
+// modifying, or resembling a provider's or a project's mark -- with one
+// exception tied to a license: where a provider publishes its own icon set
+// under terms that permit derivative work, drawn glyphs for that provider's
+// own objects may extend the set on its base form. When a provider that
+// offers its icons publishes one for a kind wearing a drawn glyph, the
+// official one replaces it.
 //
 // The walk is keyed off the kind registry (crkreflect), never directory
 // globs, mirroring pkg/anatomy: the gate sees exactly the components the
@@ -139,7 +147,7 @@ func Check(repoRoot string) ([]Violation, error) {
 		sum := sha256.Sum256(data)
 		l := logo{provider: providerDir, kind: kindDir, path: rel, hash: hex.EncodeToString(sum[:]), class: provenanceClass(data)}
 		if l.class == "" {
-			vs = append(vs, Violation{Path: rel, Rule: RuleMissingProvenance, Detail: "no provenance: open the <desc> with one of \"Official <provider> product icon: <library>/<file>\", \"Planton-drawn glyph: <what it depicts>\", or \"Planton brand mark\", so the update flow, this gate, and the next reader know what this file is"})
+			vs = append(vs, Violation{Path: rel, Rule: RuleMissingProvenance, Detail: "no provenance: open the <desc> with one of \"Official <provider> product icon: <library>/<file>\" (or \"Official <provider> resource icon: ...\" for a provider's own object icon set), \"Planton-drawn glyph: <what it depicts>\" (or \"Planton-drawn glyph on the <provider> ... base: ...\" where a provider's icon set is licensed for derivatives), or \"Planton brand mark\", so the update flow, this gate, and the next reader know what this file is"})
 		}
 		logos = append(logos, l)
 	}

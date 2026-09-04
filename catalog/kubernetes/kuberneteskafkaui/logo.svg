@@ -1,38 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   width="681"
-   height="661"
-   viewBox="0 0 681 661"
-   version="1.1"
-   xml:space="preserve"
-   style="clip-rule:evenodd;fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5"
-   xmlns="http://www.w3.org/2000/svg">
-  <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
-       Kafka UI is distinguished by a browser-window glyph: the console
-       pane teams use to observe many Kafka clusters from one place.
-       Distinct from KafkaUser (credential key) and Kafka (broker rings). -->
-  <g
-     style="clip-rule:evenodd;fill-rule:evenodd;stroke:#ffffff;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-     transform="translate(-34.717245,-44.527423)">
-    <path
-       d="m 386.932,178.598 c -6.507,0.328 -12.882,1.941 -18.751,4.745 l -255.875,122.26 c -13.407,6.402 -23.162,18.533 -26.475,32.921 L 22.705,613.15 c -2.943,12.778 -0.545,26.21 6.643,37.208 0.864,1.332 1.792,2.62 2.782,3.862 l 177.106,220.205 c 9.281,11.534 23.377,18.263 38.256,18.26 L 531.51,892.62 c 14.873,0.01 28.968,-6.705 38.255,-18.228 L 746.806,654.154 c 9.285,-11.54 12.771,-26.675 9.458,-41.069 L 693.039,338.458 C 689.727,324.071 679.972,311.94 666.565,305.537 L 410.657,183.343 c -7.382,-3.527 -15.541,-5.159 -23.725,-4.745 z"
-       style="clip-rule:evenodd;display:inline;fill:#326ce5;fill-rule:nonzero;stroke:#ffffff;stroke-width:22.2842;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(0.89749856,0,0,0.89749856,25.440716,-105.70745)" />
-  </g>
-  <!-- Browser window: rounded frame + title bar + topic rows. -->
-  <g>
-    <rect x="196" y="196" width="288" height="220" rx="28"
-       style="fill:none;stroke:#ffffff;stroke-width:18" />
-    <path d="M196 248 H484"
-       style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
-    <circle cx="232" cy="222" r="10" style="fill:#ffffff" />
-    <circle cx="268" cy="222" r="10" style="fill:#ffffff" />
-    <circle cx="304" cy="222" r="10" style="fill:#ffffff" />
-    <path d="M232 300 H420"
-       style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
-    <path d="M232 344 H380"
-       style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
-    <path d="M232 388 H340"
-       style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph: a stream console -- a screen showing the pipes it watches</desc>
+  <g transform="translate(12 12) scale(1.1) translate(-12 -12)"><rect x="3" y="4" width="18" height="13" rx="1.5" fill="#326ce5"/><line x1="9.0" y1="19.4" x2="15.0" y2="19.4" stroke="#326ce5" stroke-width="2" stroke-linecap="round"/><rect x="6" y="7" width="12" height="2.4" rx="1.2" fill="#ffffff"/><rect x="6" y="11.5" width="12" height="2.4" rx="1.2" fill="#74a5f4"/></g>
 </svg>

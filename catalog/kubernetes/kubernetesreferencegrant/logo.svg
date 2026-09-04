@@ -1,33 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   width="681"
-   height="661"
-   viewBox="0 0 681 661"
-   version="1.1"
-   xml:space="preserve"
-   style="clip-rule:evenodd;fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5"
-   xmlns="http://www.w3.org/2000/svg">
-  <!-- Gateway API family base mark (shared Kubernetes-blue septagon).
-       ReferenceGrant is distinguished from the other Gateway API kinds by the
-       white shield + check glyph (authorized cross-namespace trust), in place of
-       the GatewayClass routing wheel. Per the _shared/gateway-api README icon note. -->
-  <g
-     inkscape:label="base"
-     style="clip-rule:evenodd;fill-rule:evenodd;stroke:#ffffff;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-     transform="translate(-34.717245,-44.527423)"
-     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
-    <path
-       d="m 386.932,178.598 c -6.507,0.328 -12.882,1.941 -18.751,4.745 l -255.875,122.26 c -13.407,6.402 -23.162,18.533 -26.475,32.921 L 22.705,613.15 c -2.943,12.778 -0.545,26.21 6.643,37.208 0.864,1.332 1.792,2.62 2.782,3.862 l 177.106,220.205 c 9.281,11.534 23.377,18.263 38.256,18.26 L 531.51,892.62 c 14.873,0.01 28.968,-6.705 38.255,-18.228 L 746.806,654.154 c 9.285,-11.54 12.771,-26.675 9.458,-41.069 L 693.039,338.458 C 689.727,324.071 679.972,311.94 666.565,305.537 L 410.657,183.343 c -7.382,-3.527 -15.541,-5.159 -23.725,-4.745 z"
-       style="clip-rule:evenodd;display:inline;fill:#326ce5;fill-rule:nonzero;stroke:#ffffff;stroke-width:22.2842;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(0.89749856,0,0,0.89749856,25.440716,-105.70745)" />
-  </g>
-  <!-- Trust glyph: white shield (the grant) with a blue check (authorized). -->
-  <g inkscape:label="grant" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
-    <path
-       d="M340 238 L 430 272 L 430 352 C 430 404 388 436 340 454 C 292 436 250 404 250 352 L 250 272 Z"
-       style="fill:#ffffff;fill-rule:nonzero;stroke:#ffffff;stroke-width:12;stroke-linejoin:round" />
-    <path
-       d="M299 340 L 330 372 L 389 306"
-       style="fill:none;stroke:#326ce5;stroke-width:26;stroke-linecap:round;stroke-linejoin:round" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph on the Kubernetes Icons Set base: a ReferenceGrant -- a key handed across the wall between two namespaces (the base is derived from the Kubernetes Icons Set, licensed Apache-2.0 or CC-BY-4.0; the Kubernetes mark is a trademark of The Linux Foundation)</desc>
+  <path d="M12.00,1.40 L20.76,5.62 L22.92,15.09 L16.86,22.69 L7.14,22.69 L1.08,15.09 L3.24,5.62 Z" fill="#326ce5"/><path d="M12.00,3.00 L19.51,6.61 L21.36,14.74 L16.17,21.25 L7.83,21.25 L2.64,14.74 L4.49,6.61 Z" fill="none" stroke="#ffffff" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="7" x2="12" y2="18.4" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/><circle cx="7.380000000000001" cy="12.8" r="1.98" fill="none" stroke="#ffffff" stroke-width="1.4520000000000002"/><line x1="9.36" y1="12.8" x2="14.64" y2="12.8" stroke="#ffffff" stroke-width="1.4520000000000002" stroke-linecap="round"/><line x1="12.66" y1="12.8" x2="12.66" y2="14.516000000000002" stroke="#ffffff" stroke-width="1.4520000000000002" stroke-linecap="round"/><line x1="14.64" y1="12.8" x2="14.64" y2="14.252" stroke="#ffffff" stroke-width="1.4520000000000002" stroke-linecap="round"/><path d="M17.6,10.2 L15, 12.8 L17.6,15.4" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

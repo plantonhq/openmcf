@@ -1,21 +1,4 @@
-<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Locust mark: a stylized grasshopper in the project's green,
-       hand-drawn as pure vector paths (no embedded rasters). -->
-  <g fill="#57A300">
-    <!-- head -->
-    <circle cx="14.5" cy="27.5" r="5.5"/>
-    <!-- antennae -->
-    <path d="M12.2 22.6C10.4 18.9 7.4 16.4 3.6 15.3c3.2-.4 8.4.7 10.9 6.1z"/>
-    <path d="M16.4 22.1c.3-4.1-1-7.8-3.7-10.7 2.9 1.4 6.6 5.2 5.9 11.1z"/>
-    <!-- body: an elongated tapered abdomen sweeping right -->
-    <path d="M18.5 24.5c8.2-4.2 19.9-4.6 28.9-.4 6.6 3.1 10.8 8.1 12.9 13.6-4.7-3.4-9.6-5.2-15.5-5-4.6.2-9.5 1.8-15.3 1.6-6.3-.2-10.7-3.4-11-9.8z"/>
-    <!-- wing accent -->
-    <path d="M24.9 22.2c7.1-2.7 15.5-2.5 21.9.6 3.6 1.7 6.4 4.1 8.5 6.9-6.9-4.6-15.5-6.3-25.1-4.7-2.4.4-4.4-.9-5.3-2.8z" opacity=".55"/>
-    <!-- foreleg -->
-    <path d="M20.5 33.5l-3.8 9.6 2.6.9 3.6-9.1c-.9-.3-1.7-.8-2.4-1.4z"/>
-    <!-- midleg -->
-    <path d="M29.5 35.2l-2.9 10.9 2.7.7 2.9-11.2c-.9-.1-1.8-.2-2.7-.4z"/>
-    <!-- hind leg: the grasshopper's signature sprung limb -->
-    <path d="M43.9 33.9l8.6 4.9-9.9 10.9 2.1 1.9 11.6-12.8a1.9 1.9 0 0 0-.5-2.9l-10.4-5.9c-.4 1.4-.9 2.7-1.5 3.9z"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph: a load generator -- a swarm of requests converging on one target</desc>
+  <g transform="translate(12 12) scale(1.1) translate(-12 -12)"><line x1="3" y1="4" x2="15.4" y2="12" stroke="#74a5f4" stroke-width="1.8" stroke-linecap="round"/><line x1="3" y1="12" x2="15.4" y2="12" stroke="#74a5f4" stroke-width="1.8" stroke-linecap="round"/><line x1="3" y1="20" x2="15.4" y2="12" stroke="#74a5f4" stroke-width="1.8" stroke-linecap="round"/><line x1="8" y1="3" x2="15.4" y2="12" stroke="#74a5f4" stroke-width="1.8" stroke-linecap="round"/><line x1="8" y1="21" x2="15.4" y2="12" stroke="#74a5f4" stroke-width="1.8" stroke-linecap="round"/><circle cx="17" cy="12" r="4" fill="#326ce5"/><circle cx="17" cy="12" r="1.6" fill="#ffffff"/></g>
 </svg>

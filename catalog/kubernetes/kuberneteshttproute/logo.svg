@@ -1,41 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   width="681"
-   height="661"
-   viewBox="0 0 681 661"
-   version="1.1"
-   xml:space="preserve"
-   style="clip-rule:evenodd;fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5"
-   xmlns="http://www.w3.org/2000/svg">
-  <!-- Gateway API family base mark (shared Kubernetes-blue septagon).
-       HTTPRoute is distinguished from the other Gateway API kinds by a routing
-       fork: one inbound request (left trunk) fans out into three branches, each
-       ending in a rightward arrow — host/path/header matching that routes a
-       request to one of several backends. Distinct from the GRPCRoute opposing
-       arrows, the TCPRoute parallel same-direction arrows, the TLSRoute padlock,
-       the Gateway portal, the GatewayClass routing wheel, and the ReferenceGrant
-       shield. Per the _shared/gateway-api README icon note. -->
-  <g
-     inkscape:label="base"
-     style="clip-rule:evenodd;fill-rule:evenodd;stroke:#ffffff;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-     transform="translate(-34.717245,-44.527423)"
-     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
-    <path
-       d="m 386.932,178.598 c -6.507,0.328 -12.882,1.941 -18.751,4.745 l -255.875,122.26 c -13.407,6.402 -23.162,18.533 -26.475,32.921 L 22.705,613.15 c -2.943,12.778 -0.545,26.21 6.643,37.208 0.864,1.332 1.792,2.62 2.782,3.862 l 177.106,220.205 c 9.281,11.534 23.377,18.263 38.256,18.26 L 531.51,892.62 c 14.873,0.01 28.968,-6.705 38.255,-18.228 L 746.806,654.154 c 9.285,-11.54 12.771,-26.675 9.458,-41.069 L 693.039,338.458 C 689.727,324.071 679.972,311.94 666.565,305.537 L 410.657,183.343 c -7.382,-3.527 -15.541,-5.159 -23.725,-4.745 z"
-       style="clip-rule:evenodd;display:inline;fill:#326ce5;fill-rule:nonzero;stroke:#ffffff;stroke-width:22.2842;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(0.89749856,0,0,0.89749856,25.440716,-105.70745)" />
-  </g>
-  <!-- HTTP routing fork: one request trunk fans out to three routed branches. -->
-  <g inkscape:label="http-route" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
-    <!-- Trunk + three branch lines. -->
-    <path
-       d="M236 360 L322 360 M322 360 L360 300 L398 300 M322 360 L398 360 M322 360 L360 420 L398 420"
-       style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linecap:round;stroke-linejoin:round" />
-    <!-- Junction node. -->
-    <circle cx="322" cy="360" r="13" style="fill:#ffffff;stroke:none" />
-    <!-- Rightward arrowheads at each branch end. -->
-    <path d="M396 286 L430 300 L396 314 Z" style="fill:#ffffff;stroke:#ffffff;stroke-width:4;stroke-linejoin:round" />
-    <path d="M396 346 L430 360 L396 374 Z" style="fill:#ffffff;stroke:#ffffff;stroke-width:4;stroke-linejoin:round" />
-    <path d="M396 406 L430 420 L396 434 Z" style="fill:#ffffff;stroke:#ffffff;stroke-width:4;stroke-linejoin:round" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph on the Kubernetes Icons Set base: an HTTPRoute -- a web page with the arrow that routes requests to it (the base is derived from the Kubernetes Icons Set, licensed Apache-2.0 or CC-BY-4.0; the Kubernetes mark is a trademark of The Linux Foundation)</desc>
+  <path d="M12.00,1.40 L20.76,5.62 L22.92,15.09 L16.86,22.69 L7.14,22.69 L1.08,15.09 L3.24,5.62 Z" fill="#326ce5"/><path d="M12.00,3.00 L19.51,6.61 L21.36,14.74 L16.17,21.25 L7.83,21.25 L2.64,14.74 L4.49,6.61 Z" fill="none" stroke="#ffffff" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round"/><rect x="7" y="7.2" width="10" height="7" rx="0.8" fill="#ffffff"/><rect x="7" y="7.2" width="10" height="2" rx="0.8" fill="#ffffff"/><line x1="8.6" y1="8.2" x2="12.6" y2="8.2" stroke="#326ce5" stroke-width="1" stroke-linecap="round"/><line x1="7.4" y1="17" x2="16.6" y2="17" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/><path d="M14.000000000000002,14.4 L16.6,17 L14.000000000000002,19.6" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

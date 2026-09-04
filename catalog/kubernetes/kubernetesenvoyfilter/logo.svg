@@ -1,8 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Istio">
-  <title>Istio</title>
-  <!-- Istio sail mark: large sail with concave (billowing) leading edge -->
-  <path fill="#466BB0" d="M168 24 L168 198 L78 198 C118 150 154 92 168 24 Z"/>
-  <!-- Hull: small triangle beneath the sail, separated by a gap -->
-  <path fill="#466BB0" d="M92 210 L168 210 L168 232 Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph: a proxy filter -- a nozzle set into the traffic line, wide where traffic enters and narrow where it leaves</desc>
+  <g transform="translate(12 12) scale(1.1) translate(-12 -12)"><line x1="2" y1="12" x2="5" y2="12" stroke="#74a5f4" stroke-width="2.2" stroke-linecap="round"/><path d="M5,4.5 V19.5 L14,14.5 H20 V9.5 H14 Z" fill="#326ce5"/><line x1="20" y1="12" x2="22.5" y2="12" stroke="#74a5f4" stroke-width="2.2" stroke-linecap="round"/><circle cx="8" cy="9" r="1.1" fill="#ffffff"/><circle cx="8" cy="12" r="1.1" fill="#ffffff"/><circle cx="8" cy="15" r="1.1" fill="#ffffff"/></g>
 </svg>

@@ -1,13 +1,4 @@
-<svg id="Layer_1"
-     data-name="Layer 1"
-     xmlns="http://www.w3.org/2000/svg"
-     viewBox="0 0 708 398"
-     width="1416"
-     height="796">
-    <defs>
-        <style>.cls-1{fill:#466bb0;}</style>
-    </defs>
-
-    <path class="cls-1"
-          d="M245.56,321H462.44L326.92,361.67Zm0-13.58,81.36-13.57V144.78Zm94.87-13.57,122,13.57-122-271.11Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph: a service mesh -- a woven lattice of services</desc>
+  <g transform="translate(12 12) scale(1.1) translate(-12 -12)"><line x1="6" y1="3" x2="6" y2="21" stroke="#326ce5" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="3" x2="12" y2="21" stroke="#326ce5" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="3" x2="18" y2="21" stroke="#326ce5" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="6" x2="21" y2="6" stroke="#74a5f4" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="12" x2="21" y2="12" stroke="#74a5f4" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="18" x2="21" y2="18" stroke="#74a5f4" stroke-width="2" stroke-linecap="round"/><circle cx="6" cy="6" r="1.6" fill="#ffffff"/><circle cx="6" cy="12" r="1.6" fill="#ffffff"/><circle cx="6" cy="18" r="1.6" fill="#ffffff"/><circle cx="12" cy="6" r="1.6" fill="#ffffff"/><circle cx="12" cy="12" r="1.6" fill="#ffffff"/><circle cx="12" cy="18" r="1.6" fill="#ffffff"/><circle cx="18" cy="6" r="1.6" fill="#ffffff"/><circle cx="18" cy="12" r="1.6" fill="#ffffff"/><circle cx="18" cy="18" r="1.6" fill="#ffffff"/></g>
 </svg>

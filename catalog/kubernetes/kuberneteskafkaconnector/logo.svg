@@ -1,41 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   width="681"
-   height="661"
-   viewBox="0 0 681 661"
-   version="1.1"
-   xml:space="preserve"
-   style="clip-rule:evenodd;fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5"
-   xmlns="http://www.w3.org/2000/svg">
-  <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
-       KafkaConnector is distinguished by the data-pipe glyph: an inlet,
-       a shaft with a flow arrow, and an outlet — the connector instance
-       that moves records between an external system and Kafka (or the
-       reverse for sinks). Distinct from the Topic mark (partitioned
-       logs) and the User mark (credential key). -->
-  <g
-     inkscape:label="base"
-     style="clip-rule:evenodd;fill-rule:evenodd;stroke:#ffffff;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-     transform="translate(-34.717245,-44.527423)"
-     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
-    <path
-       d="m 386.932,178.598 c -6.507,0.328 -12.882,1.941 -18.751,4.745 l -255.875,122.26 c -13.407,6.402 -23.162,18.533 -26.475,32.921 L 22.705,613.15 c -2.943,12.778 -0.545,26.21 6.643,37.208 0.864,1.332 1.792,2.62 2.782,3.862 l 177.106,220.205 c 9.281,11.534 23.377,18.263 38.256,18.26 L 531.51,892.62 c 14.873,0.01 28.968,-6.705 38.255,-18.228 L 746.806,654.154 c 9.285,-11.54 12.771,-26.675 9.458,-41.069 L 693.039,338.458 C 689.727,324.071 679.972,311.94 666.565,305.537 L 410.657,183.343 c -7.382,-3.527 -15.541,-5.159 -23.725,-4.745 z"
-       style="clip-rule:evenodd;display:inline;fill:#326ce5;fill-rule:nonzero;stroke:#ffffff;stroke-width:22.2842;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(0.89749856,0,0,0.89749856,25.440716,-105.70745)" />
-  </g>
-  <!-- The data pipe: inlet, shaft, flow arrow, outlet. -->
-  <g inkscape:label="kafkaconnector" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
-    <!-- Inlet (source system / upstream side). -->
-    <circle cx="254" cy="348" r="30"
-       style="fill:none;stroke:#ffffff;stroke-width:18" />
-    <!-- Pipe shaft. -->
-    <path d="M284 348 L352 348"
-       style="fill:none;stroke:#ffffff;stroke-width:18;stroke-linecap:round" />
-    <!-- Flow arrowhead. -->
-    <path d="M352 348 L412 348 M390 322 L412 348 L390 374"
-       style="fill:none;stroke:#ffffff;stroke-width:18;stroke-linecap:round;stroke-linejoin:round" />
-    <!-- Outlet (Kafka / downstream side). -->
-    <circle cx="442" cy="348" r="30"
-       style="fill:none;stroke:#ffffff;stroke-width:18" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph: a connector -- a cable running from a plug into the pipe</desc>
+  <g transform="translate(12 12) scale(1.1) translate(-12 -12)"><rect x="3" y="3" width="8" height="7" rx="1.5" fill="#326ce5"/><rect x="4.5" y="1.5" width="1.8" height="3" rx="0.6" fill="#74a5f4"/><rect x="7.7" y="1.5" width="1.8" height="3" rx="0.6" fill="#74a5f4"/><path d="M7,10 V13 Q7,16 10,16 H13" fill="none" stroke="#74a5f4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><rect x="12" y="13.5" width="9.5" height="5" rx="2.5" fill="#326ce5"/><path d="M15.55,15.5 L17.95,16.0 L15.55,16.5" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
 </svg>

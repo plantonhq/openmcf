@@ -1,8 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Istio">
-  <title>Istio</title>
-  <!-- Istio sail mark: large sail with concave (billowing) leading edge -->
-  <path fill="#466BB0" d="M168 24 L168 198 L78 198 C118 150 154 92 168 24 Z"/>
-  <!-- Hull: small triangle beneath the sail, separated by a gap -->
-  <path fill="#466BB0" d="M92 210 L168 210 L168 232 Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph: a service entry -- a door set into the mesh for a service outside it</desc>
+  <g transform="translate(12 12) scale(1.1) translate(-12 -12)"><line x1="4" y1="3" x2="4" y2="21" stroke="#74a5f4" stroke-width="1.6" stroke-linecap="round"/><line x1="20" y1="3" x2="20" y2="21" stroke="#74a5f4" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="4" x2="21" y2="4" stroke="#74a5f4" stroke-width="1.6" stroke-linecap="round"/><line x1="3" y1="20" x2="21" y2="20" stroke="#74a5f4" stroke-width="1.6" stroke-linecap="round"/><rect x="8" y="6" width="8" height="12" rx="1" fill="#326ce5"/><circle cx="14" cy="12.5" r="1" fill="#ffffff"/></g>
 </svg>

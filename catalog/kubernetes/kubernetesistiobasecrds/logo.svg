@@ -1,8 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Istio">
-  <title>Istio</title>
-  <!-- Istio sail mark: large sail with concave (billowing) leading edge -->
-  <path fill="#466BB0" d="M168 24 L168 198 L78 198 C118 150 154 92 168 24 Z"/>
-  <!-- Hull: small triangle beneath the sail, separated by a gap -->
-  <path fill="#466BB0" d="M92 210 L168 210 L168 232 Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph: the mesh definitions -- a document carrying the lattice</desc>
+  <g transform="translate(12 12) scale(1.1) translate(-12 -12)"><path d="M5,3 H16 L19,6 V21 H5 Z" fill="#326ce5"/><path d="M16,3 V6 H19" fill="#74a5f4"/><line x1="9.5" y1="9" x2="9.5" y2="17" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/><line x1="14.5" y1="9" x2="14.5" y2="17" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/><line x1="8" y1="11" x2="16" y2="11" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/><line x1="8" y1="15" x2="16" y2="15" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/></g>
 </svg>

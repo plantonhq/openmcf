@@ -1,34 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg
-   width="681"
-   height="661"
-   viewBox="0 0 681 661"
-   version="1.1"
-   xml:space="preserve"
-   style="clip-rule:evenodd;fill-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5"
-   xmlns="http://www.w3.org/2000/svg">
-  <!-- Kubernetes resource base mark (shared Kubernetes-blue septagon).
-       PodDisruptionBudget is distinguished by the umbrella glyph: an
-       umbrella sheltering pod dots - protection against voluntary
-       disruption (drains, upgrades) for the pods underneath. -->
-  <g
-     inkscape:label="base"
-     style="clip-rule:evenodd;fill-rule:evenodd;stroke:#ffffff;stroke-width:20;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-     transform="translate(-34.717245,-44.527423)"
-     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
-    <path
-       d="m 386.932,178.598 c -6.507,0.328 -12.882,1.941 -18.751,4.745 l -255.875,122.26 c -13.407,6.402 -23.162,18.533 -26.475,32.921 L 22.705,613.15 c -2.943,12.778 -0.545,26.21 6.643,37.208 0.864,1.332 1.792,2.62 2.782,3.862 l 177.106,220.205 c 9.281,11.534 23.377,18.263 38.256,18.26 L 531.51,892.62 c 14.873,0.01 28.968,-6.705 38.255,-18.228 L 746.806,654.154 c 9.285,-11.54 12.771,-26.675 9.458,-41.069 L 693.039,338.458 C 689.727,324.071 679.972,311.94 666.565,305.537 L 410.657,183.343 c -7.382,-3.527 -15.541,-5.159 -23.725,-4.745 z"
-       style="clip-rule:evenodd;display:inline;fill:#326ce5;fill-rule:nonzero;stroke:#ffffff;stroke-width:22.2842;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(0.89749856,0,0,0.89749856,25.440716,-105.70745)" />
-  </g>
-  <g inkscape:label="poddisruptionbudget" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
-    <!-- The umbrella canopy + handle. -->
-    <path d="M236 340 C236 282.562 282.562 236 340 236 C397.438 236 444 282.562 444 340 L236 340"
-       style="fill:none;stroke:#ffffff;stroke-width:16;stroke-linejoin:round" />
-    <path d="M340 236 L340 216" style="fill:none;stroke:#ffffff;stroke-width:14;stroke-linecap:round" />
-    <!-- The sheltered pods. -->
-    <circle cx="288" cy="404" r="22" style="fill:none;stroke:#ffffff;stroke-width:14" />
-    <circle cx="340" cy="428" r="22" style="fill:none;stroke:#ffffff;stroke-width:14" />
-    <circle cx="392" cy="404" r="22" style="fill:none;stroke:#ffffff;stroke-width:14" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <desc>Planton-drawn glyph on the Kubernetes Icons Set base: a pod disruption budget -- three pod bars with the minimum-available floor line under them (the base is derived from the Kubernetes Icons Set, licensed Apache-2.0 or CC-BY-4.0; the Kubernetes mark is a trademark of The Linux Foundation)</desc>
+  <path d="M12.00,1.40 L20.76,5.62 L22.92,15.09 L16.86,22.69 L7.14,22.69 L1.08,15.09 L3.24,5.62 Z" fill="#326ce5"/><path d="M12.00,3.00 L19.51,6.61 L21.36,14.74 L16.17,21.25 L7.83,21.25 L2.64,14.74 L4.49,6.61 Z" fill="none" stroke="#ffffff" stroke-width="0.7" stroke-linecap="round" stroke-linejoin="round"/><rect x="7.4" y="9.5" width="2.4" height="6" rx="0.5" fill="#ffffff"/><rect x="11.100000000000001" y="11.5" width="2.4" height="4" rx="0.5" fill="#ffffff"/><rect x="14.8" y="10.0" width="2.4" height="5.5" rx="0.5" fill="#ffffff"/><line x1="6.4" y1="17.6" x2="17.6" y2="17.6" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round"/>
 </svg>

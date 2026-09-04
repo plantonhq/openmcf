@@ -9,13 +9,12 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="18.035334mm"
-   height="17.500378mm"
    viewBox="0 0 18.035334 17.500378"
    version="1.1"
    id="svg13826"
    inkscape:version="0.91 r13725"
    sodipodi:docname="job.svg">
+  <desc>Official Kubernetes resource icon: kubernetes/community/icons/svg/resources/unlabeled/job.svg (Kubernetes Icons Set, licensed Apache-2.0 or CC-BY-4.0 for diagrams; the Kubernetes mark is a trademark of The Linux Foundation)</desc>
   <defs
      id="defs13820" />
   <sodipodi:namedview
