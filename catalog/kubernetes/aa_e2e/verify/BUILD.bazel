@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "verify",
@@ -116,4 +116,10 @@ go_library(
         "@io_temporal_go_sdk//workflow",
         "@org_golang_google_protobuf//types/known/durationpb",
     ],
+)
+
+go_test(
+    name = "verify_test",
+    srcs = ["plantonplatform_test.go"],
+    embed = [":verify"],
 )

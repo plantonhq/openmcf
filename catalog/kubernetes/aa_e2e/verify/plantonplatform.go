@@ -2,8 +2,10 @@ package verify
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
@@ -158,14 +160,8 @@ func (v *PlantonPlatformVerifier) VerifyExists(ctx context.Context, kubeconfig s
 	// emulated-amd64 kind cluster the full boot runs 10-15 minutes; the
 	// budget leaves headroom for cold image pulls.
 	fmt.Printf("  [verify] waiting for phase Ready (a full platform boot — expect ~10-15 minutes on a kind cluster)\n")
-	if err := kubectlWait(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace,
-		"jsonpath={.status.phase}=Ready", 30*time.Minute); err != nil {
-		// The operator explains itself: surface the per-component status
-		// alongside the timeout so the lane's failure names the culprit.
-		out, _ := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
-			"get", plantonPlatformCrd, v.Name, "-n", v.Namespace,
-			"-o", "jsonpath={.status.components}").CombinedOutput()
-		return errors.Wrapf(err, "the platform never reached Ready; component status: %s", firstLines(string(out), 6))
+	if err := v.waitForBoot(ctx, kubeconfig, 30*time.Minute); err != nil {
+		return err
 	}
 
 	// The first-visit handles the module exports — a Ready platform must
@@ -178,6 +174,114 @@ func (v *PlantonPlatformVerifier) VerifyExists(ctx context.Context, kubeconfig s
 	}
 	fmt.Printf("  [verify] platform Ready — gateway Service and setup-code Secret present\n")
 	return nil
+}
+
+// bootVerdict is what one reading of the platform's status means for the wait.
+type bootVerdict int
+
+const (
+	// bootWaiting: the operator is still working (or retrying); keep polling.
+	bootWaiting bootVerdict = iota
+	// bootReady: every enabled component is Ready.
+	bootReady
+	// bootRefused: the operator will never run this declaration; stop now.
+	bootRefused
+)
+
+// platformBootVerdict reads the operator's contract off one status sample.
+//
+// The overall phase is NOT a stop signal on its own: the operator sets phase
+// Error whenever any component's reconcile returned an error in that cycle
+// and requeues thirty seconds later, so a database not yet accepting
+// connections or a slow image pull shows as Error for one cycle and
+// recovers. Stopping on the phase would fail boots that were about to
+// succeed. The one terminal refusal is the platform version floor: the
+// operator sets VersionSupported=False, writes the reason on the Ready
+// condition too, and returns without requeueing. That condition alone ends
+// the wait early.
+func platformBootVerdict(phase, versionSupported string) bootVerdict {
+	switch {
+	case versionSupported == "False":
+		return bootRefused
+	case phase == "Ready":
+		return bootReady
+	default:
+		return bootWaiting
+	}
+}
+
+// componentPhaseSummary renders the platform's per-component status (the
+// JSON object under .status.components) as a stable, name-sorted line such
+// as "controlPlane=Deploying identity=Ready", so a trace of the boot reads
+// as progress rather than as the map's changing iteration order. Anything
+// that is not that object is returned as is.
+func componentPhaseSummary(rawComponents string) string {
+	var components map[string]struct {
+		Phase string `json:"phase"`
+	}
+	if err := json.Unmarshal([]byte(rawComponents), &components); err != nil || len(components) == 0 {
+		return strings.TrimSpace(rawComponents)
+	}
+	names := make([]string, 0, len(components))
+	for name := range components {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	parts := make([]string, 0, len(names))
+	for _, name := range names {
+		parts = append(parts, name+"="+components[name].Phase)
+	}
+	return strings.Join(parts, " ")
+}
+
+// waitForBoot polls the platform until it is Ready, the operator refuses the
+// declared version, or the budget is spent. Component phases are printed on
+// every change so a fifteen-minute boot is legible, and the operator's own
+// messages travel into the returned error so the lane's failure names the
+// culprit in the operator's words.
+func (v *PlantonPlatformVerifier) waitForBoot(ctx context.Context, kubeconfig string, budget time.Duration) error {
+	const (
+		versionSupportedStatus  = `{.status.conditions[?(@.type=="VersionSupported")].status}`
+		versionSupportedMessage = `{.status.conditions[?(@.type=="VersionSupported")].message}`
+		readyMessage            = `{.status.conditions[?(@.type=="Ready")].message}`
+		componentStatuses       = `{.status.components}`
+	)
+	deadline := time.Now().Add(budget)
+	var lastPhase, lastComponents string
+	for {
+		phase, _ := kubectlGetJSONPath(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace, `{.status.phase}`)
+		supported, _ := kubectlGetJSONPath(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace, versionSupportedStatus)
+		phase, supported = strings.TrimSpace(phase), strings.TrimSpace(supported)
+
+		rawComponents, _ := kubectlGetJSONPath(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace, componentStatuses)
+		components := componentPhaseSummary(rawComponents)
+		if phase != lastPhase || components != lastComponents {
+			fmt.Printf("  [verify] phase=%s components=[%s]\n", phase, components)
+			lastPhase, lastComponents = phase, components
+		}
+
+		switch platformBootVerdict(phase, supported) {
+		case bootReady:
+			return nil
+		case bootRefused:
+			msg, _ := kubectlGetJSONPath(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace, versionSupportedMessage)
+			return errors.Errorf("the operator refuses this platform declaration (VersionSupported=False): %s", strings.TrimSpace(msg))
+		}
+
+		if time.Now().After(deadline) {
+			msg, _ := kubectlGetJSONPath(ctx, kubeconfig, plantonPlatformCrd, v.Name, v.Namespace, readyMessage)
+			out, _ := exec.CommandContext(ctx, "kubectl", "--kubeconfig", kubeconfig,
+				"get", plantonPlatformCrd, v.Name, "-n", v.Namespace,
+				"-o", "jsonpath={.status.components}").CombinedOutput()
+			return errors.Errorf("the platform never reached Ready within %s (phase %s: %s); component status: %s",
+				budget, phase, strings.TrimSpace(msg), firstLines(string(out), 6))
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(10 * time.Second):
+		}
+	}
 }
 
 func (v *PlantonPlatformVerifier) VerifyAbsent(ctx context.Context, kubeconfig string) error {

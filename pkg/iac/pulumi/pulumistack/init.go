@@ -80,6 +80,18 @@ func Init(moduleDir, stackFqdn, targetManifestPath string, valueOverrides map[st
 	// Set the working directory to the repository path
 	pulumiCmd.Dir = pulumiModuleRepoPath
 
+	// The backend the stack is created in must be the backend the later apply
+	// runs against (annotation, then environment -- the same resolution Run
+	// uses). Without it, `pulumi stack init` talks to the machine's ambient
+	// login, and on a machine that has never logged in Pulumi mints an
+	// ephemeral cloud account instead of creating the stack where the
+	// manifest says.
+	if backendUrl, backendUrlSource := backendconfig.ResolveBackendURL(manifestObject, ""); backendUrl != "" {
+		cyan := color.New(color.FgCyan).SprintFunc()
+		fmt.Printf("Backend URL (%s): %s\n", backendUrlSource, cyan(backendUrl))
+		pulumiCmd.Env = append(os.Environ(), "PULUMI_BACKEND_URL="+backendUrl)
+	}
+
 	// Stream to terminal and also capture output for error classification
 	buf := &bytes.Buffer{}
 	mwOut := io.MultiWriter(os.Stdout, buf)

@@ -1,6 +1,6 @@
 ---
 title: "Self-Hosting"
-description: "Run the entire Planton platform on your own Kubernetes cluster with two helm installs — batteries included, no external services, no configuration required"
+description: "Run the entire Planton platform on your own Kubernetes cluster — two helm installs or two manifests through OpenTofu or Pulumi; batteries included, no external services, no configuration required"
 icon: server
 order: 70
 tags:
@@ -39,6 +39,44 @@ kubectl get plantonplatform -n planton -w
 ```
 
 Every component reports its own plain-language status on the resource — a stuck component names the problem and the fix in `kubectl describe plantonplatform`.
+
+## Install through infrastructure as code
+
+The same two steps exist as catalog resources, so an agent or a pipeline installs Planton the way it installs everything else: two manifests, applied in order, through OpenTofu or Pulumi. The operator kind installs the operator chart (and the `PlantonPlatform` definition it owns); the platform kind declares one platform against it.
+
+```yaml
+# planton-operator.yaml
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonOperator
+metadata:
+  name: planton-operator
+  annotations:
+    planton.dev/provisioner: tofu      # or pulumi
+spec:
+  namespace:
+    value: planton-operator
+  create_namespace: true
+---
+# planton.yaml
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonPlatform
+metadata:
+  name: planton
+  annotations:
+    planton.dev/provisioner: tofu      # or pulumi
+spec:
+  namespace:
+    value: planton
+  create_namespace: true
+  version: v0.0.45
+```
+
+```bash
+planton apply -f planton-operator.yaml
+planton apply -f planton.yaml
+```
+
+The CLI downloads each kind's published module for its own release and runs the engine the annotation names; with `KUBECONFIG` pointing at the cluster, nothing else is configured for OpenTofu, and Pulumi additionally takes its state backend from the `pulumi.planton.dev/backend.url` annotation (with `pulumi.planton.dev/stack.fqdn` naming the stack). The operator kind's chart version and the platform kind's `version` are the two upgrade levers: change one and re-apply. The operator kind's two `crds` dials (`install`, `keep_on_uninstall`) govern whether the operator release installs the definitions and whether they survive its removal, both on by default. Field-by-field reference: the two kinds' pages in the open-source catalog, [KubernetesPlantonOperator](https://github.com/plantonhq/planton/tree/main/catalog/kubernetes/kubernetesplantonoperator) and [KubernetesPlantonPlatform](https://github.com/plantonhq/planton/tree/main/catalog/kubernetes/kubernetesplantonplatform), or the same kinds in the console's deployment-components store.
 
 ## First sign-in
 
