@@ -13,18 +13,6 @@
 # Entry format: <repo-relative path>:<rule>   (rules: shared-glyph, missing-provenance)
 # Regenerate with:  PLANTON_REGEN_LOGO_BASELINE=1 go test ./pkg/cataloglogo/
 violations:
-  - catalog/auth0/auth0action/logo.svg:missing-provenance
-  - catalog/auth0/auth0action/logo.svg:shared-glyph
-  - catalog/auth0/auth0client/logo.svg:missing-provenance
-  - catalog/auth0/auth0client/logo.svg:shared-glyph
-  - catalog/auth0/auth0connection/logo.svg:missing-provenance
-  - catalog/auth0/auth0connection/logo.svg:shared-glyph
-  - catalog/auth0/auth0eventstream/logo.svg:missing-provenance
-  - catalog/auth0/auth0eventstream/logo.svg:shared-glyph
-  - catalog/auth0/auth0resourceserver/logo.svg:missing-provenance
-  - catalog/auth0/auth0resourceserver/logo.svg:shared-glyph
-  - catalog/auth0/auth0role/logo.svg:missing-provenance
-  - catalog/auth0/auth0role/logo.svg:shared-glyph
   - catalog/aws/awsalb/logo.svg:missing-provenance
   - catalog/aws/awsalb/logo.svg:shared-glyph
   - catalog/aws/awsapigatewayaccountsettings/logo.svg:missing-provenance
@@ -663,9 +651,3 @@ violations:
   - catalog/digitalocean/digitaloceanvolume/logo.svg:missing-provenance
   - catalog/digitalocean/digitaloceanvpc/logo.svg:missing-provenance
   - catalog/digitalocean/digitaloceanvpcpeering/logo.svg:missing-provenance
-  - catalog/openfga/openfgaauthorizationmodel/logo.svg:missing-provenance
-  - catalog/openfga/openfgaauthorizationmodel/logo.svg:shared-glyph
-  - catalog/openfga/openfgarelationshiptuple/logo.svg:missing-provenance
-  - catalog/openfga/openfgarelationshiptuple/logo.svg:shared-glyph
-  - catalog/openfga/openfgastore/logo.svg:missing-provenance
-  - catalog/openfga/openfgastore/logo.svg:shared-glyph

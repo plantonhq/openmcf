@@ -58,7 +58,7 @@ func TestCatalogLogoGate(t *testing.T) {
 // provenance, with no baseline entry. A provider joins this list in the same
 // change that empties its baseline entries, and never leaves it. Adding a
 // provider's directory name here is the whole act of pinning it.
-var judgedProviders = []string{"gcp", "cloudflare", "kubernetes"}
+var judgedProviders = []string{"gcp", "cloudflare", "kubernetes", "auth0", "openfga"}
 
 // TestJudgedProviderLogoSets pins every judged provider at zero: no violation
 // under its catalog directory, no entry for it in baseline.yaml. An entry
