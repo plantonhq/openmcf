@@ -61,7 +61,7 @@ And the runtime relationship mirrors Kubernetes and Helm:
    tunable parameter and its default.
 3. Provide your values and deploy it through Planton.
 
-Each chart's templates render standard Planton Cloud Resources — the same
+Each chart's templates render standard Planton cloud resources — the same
 `apiVersion: <provider>.planton.dev/v1` manifests you would write by hand — so
 nothing about a chart is a black box: it is a transparent composition of the
 components in this repo.
