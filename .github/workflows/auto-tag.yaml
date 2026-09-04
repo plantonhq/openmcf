@@ -1,9 +1,8 @@
 # =============================================================================
 # Auto-Tag Creator
 # =============================================================================
-# Detects changes in monitored paths and creates appropriate tags, then
-# triggers the per-module auto-release workflows via workflow_dispatch for
-# each tag.
+# Creates per-component pre-release tags and triggers the matching
+# auto-release workflows via workflow_dispatch, one dispatch per tag.
 #
 # This workflow CREATES TAGS and TRIGGERS RELEASES - but does not build.
 # The actual build/release is handled by the auto-release workflows.
@@ -17,28 +16,34 @@
 # v0.3.5-pulumi.awsvpc.20260108.0. This ensures auto-release tags sort ABOVE
 # the current release in GitHub's UI.
 #
-# Mass-change guard: pushes that change MODULE_AUTO_TAG_THRESHOLD or more
-# unique components skip Pulumi/Terraform module tags - a mass change means a
-# proper full release will follow. See docs/auto-tags.md. The guard does NOT
-# apply to skill lanes: there are at most two skill tags per push regardless
-# of how many files changed (a catalog-wide reference regeneration is ONE
-# catalog-skill tag), so there is nothing to throttle.
+# Two kinds of lane, two triggers (founder direction, 2026-09-04):
 #
-# Trigger: Push to main with changes in monitored paths
+#   - Skill lanes tag ON PUSH. The skills are definitions that a consumer
+#     (Stigmer) reads the same day they change; a merge to main IS the
+#     publish decision for them, and a push produces at most two skill tags
+#     however many files it touched.
+#   - Module lanes (Pulumi, Terraform) tag ON DISPATCH ONLY, via the
+#     force_*_all flags. A merge to main is not a release decision for a
+#     module; the unified release at a v* tag ships every module. The
+#     change-based path detection these lanes used to run on push (and the
+#     mass-change guard that throttled it) is retired; the detector script
+#     stays in tools/ci/release/ for the day push module tags come back.
+#     See .github/workflows/docs/auto-tags.md.
+#
+# Trigger: push to main touching a skill's published artifact; workflow_dispatch
 # =============================================================================
 
 name: auto-tag
-run-name: "Auto-tag: ${{ github.event.head_commit.message || 'Manual trigger' }}"
+run-name: "Auto-tag: ${{ github.event.head_commit.message || 'Manual dispatch' }}"
 
 on:
   push:
     branches: [main]
     paths:
-      - 'catalog/**/iac/pulumi/**'
-      - 'catalog/**/iac/tf/**'
-      # Stigmer skill lanes: the authored skill trees, plus (for the
+      # Stigmer skill lanes only: the authored skill trees, plus (for the
       # catalog skill, whose archive embeds the reference pack) every file
       # the pack assembler selects -- see pkg/skills/defspack/catalogpack.go.
+      # No iac/ path here on purpose: module tags are dispatch-only.
       - 'skills/**'
       - 'catalog/**/reference.md'
       - 'catalog/**/GUIDE.md'
@@ -50,12 +55,12 @@ on:
   workflow_dispatch:
     inputs:
       force_pulumi_all:
-        description: 'Force all Pulumi modules tags'
+        description: 'Tag every Pulumi module (the only way module tags are cut)'
         required: false
         type: boolean
         default: false
       force_terraform_all:
-        description: 'Force all Terraform modules tags'
+        description: 'Tag every Terraform module (the only way module tags are cut)'
         required: false
         type: boolean
         default: false
@@ -63,12 +68,6 @@ on:
 permissions:
   contents: write
   actions: write  # Required to trigger auto-release workflow
-
-env:
-  # Skip per-module auto-tags when a push changes this many or more unique
-  # components (a mass change means a proper full release will follow).
-  # Manual dispatch (force flags) always bypasses this guard.
-  MODULE_AUTO_TAG_THRESHOLD: 5
 
 jobs:
   # ===========================================================================
@@ -81,22 +80,12 @@ jobs:
       terraform_modules: ${{ steps.detect.outputs.terraform_modules }}
       stigmer_skills: ${{ steps.detect.outputs.stigmer_skills }}
       any_tags_created: ${{ steps.detect.outputs.any_tags_created }}
-      modules_skipped: ${{ steps.detect.outputs.modules_skipped }}
-      skipped_module_count: ${{ steps.detect.outputs.skipped_module_count }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Module change-detection self-test
-        # The detection patterns live in tools/ci/release/detect_module_dirs.sh
-        # (single source, maturity-grammar-aware). The self-test proves they
-        # fire for every version channel BEFORE any detection runs -- a
-        # pattern that silently stops matching would otherwise stop module
-        # releases with no error anywhere.
-        run: bash tools/ci/release/detect_module_dirs.sh --self-test
 
       - name: Detect changes and create tags
         id: detect
@@ -132,10 +121,12 @@ jobs:
           echo "Auto-release base version: ${NEXT_SEMVER}"
 
           # =================================================================
-          # Get changed files
+          # Get changed files (skill lanes only)
           # =================================================================
+          # The module lanes never read this list: they are dispatch-only and
+          # take their directories from the force flags below.
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "Manual dispatch - using force flags"
+            echo "Manual dispatch - skill lanes idle, module lanes follow the force flags"
             CHANGED_FILES=""
           else
             echo "Detecting changes between ${{ github.event.before }} and ${{ github.sha }}"
@@ -145,57 +136,28 @@ jobs:
           fi
 
           # =================================================================
-          # Module Change Detection and Mass-Change Guard
+          # Module Directories (dispatch-only)
           # =================================================================
-          # Module directories are derived up front (before any tagging) so
-          # the guard can count unique components across BOTH iac flavors.
+          # Module tags are cut only when a force flag asks for them, and then
+          # for every module of that flavor. There is no change-based path on
+          # push any more (see the header); when it comes back, the detector
+          # is tools/ci/release/detect_module_dirs.sh.
+          PULUMI_DIRS=""
           if [ "${{ inputs.force_pulumi_all }}" = "true" ]; then
-            echo "Pulumi: forced all via manual dispatch"
+            echo "Pulumi: all modules, forced via manual dispatch"
             PULUMI_DIRS=$(find catalog -type d -name "pulumi" -path "*/iac/pulumi" 2>/dev/null | sort)
-          else
-            PULUMI_DIRS=$(echo "$CHANGED_FILES" | bash tools/ci/release/detect_module_dirs.sh --pulumi)
           fi
 
+          TERRAFORM_DIRS=""
           if [ "${{ inputs.force_terraform_all }}" = "true" ]; then
-            echo "Terraform: forced all via manual dispatch"
+            echo "Terraform: all modules, forced via manual dispatch"
             TERRAFORM_DIRS=$(find catalog -type d -name "tf" -path "*/iac/tf" 2>/dev/null | sort)
-          else
-            TERRAFORM_DIRS=$(echo "$CHANGED_FILES" | bash tools/ci/release/detect_module_dirs.sh --terraform)
-          fi
-
-          # Count unique changed components, keyed on provider/component: a
-          # component touched in both iac/pulumi and iac/tf counts once, while
-          # same-named components under different providers count separately.
-          # _test providers are excluded (they are never tagged).
-          CHANGED_COMPONENTS=$( (echo "$PULUMI_DIRS"; echo "$TERRAFORM_DIRS") | \
-            grep -v '^$' | \
-            sed 's|catalog/\([^/]*/[^/]*\)/.*|\1|' | \
-            grep -v '^_test/' | sort -u)
-          COMPONENT_COUNT=$(echo "$CHANGED_COMPONENTS" | grep -c . || true)
-          echo "Changed components: ${COMPONENT_COUNT}"
-
-          # Mass-change guard: a push touching many modules signals that a
-          # proper full release will follow, so per-module auto-tags would
-          # only flood Actions with redundant releases. Applies only to push
-          # events: on workflow_dispatch, module dirs can only come from the
-          # force flags, which are explicit intent and are never throttled.
-          MODULES_SKIPPED="false"
-          SKIPPED_MODULE_COUNT=0
-          if [ "${{ github.event_name }}" = "push" ] && [ "$COMPONENT_COUNT" -ge "$MODULE_AUTO_TAG_THRESHOLD" ]; then
-            MODULES_SKIPPED="true"
-            SKIPPED_MODULE_COUNT="$COMPONENT_COUNT"
-            PULUMI_DIRS=""
-            TERRAFORM_DIRS=""
-            echo "Module auto-tags SKIPPED: ${COMPONENT_COUNT} components changed (threshold: ${MODULE_AUTO_TAG_THRESHOLD})."
-            echo "Cut a proper release, or force module tags via manual dispatch."
           fi
 
           # =================================================================
           # Pulumi Modules Tags
           # =================================================================
           # Output JSON array with full module info for triggering releases.
-          # PULUMI_DIRS was derived in the detection section above and is
-          # empty when the mass-change guard tripped.
           PULUMI_JSON="[]"
 
           for dir in $PULUMI_DIRS; do
@@ -232,8 +194,6 @@ jobs:
           # Terraform Modules Tags
           # =================================================================
           # Output JSON array with full module info for triggering releases.
-          # TERRAFORM_DIRS was derived in the detection section above and is
-          # empty when the mass-change guard tripped.
           TERRAFORM_JSON="[]"
 
           for dir in $TERRAFORM_DIRS; do
@@ -274,10 +234,10 @@ jobs:
           # archive additionally embeds the component reference pack, so its
           # set extends to every file the pack assembler selects (mirrors
           # pkg/skills/defspack/catalogpack.go -- name-based, _test excluded).
-          # The mass-change guard deliberately does not apply: a catalog-wide
-          # regeneration sweep is still exactly one catalog-skill tag, and
-          # publishing unchanged content downstream is a no-op by
-          # construction (content-addressed engine).
+          # These are the lanes that tag on push: a catalog-wide regeneration
+          # sweep is still exactly one catalog-skill tag, and publishing
+          # unchanged content downstream is a no-op by construction
+          # (content-addressed engine), so there is nothing to throttle.
           SKILLS_JSON="[]"
 
           PLANTON_SKILL_CHANGED=$(echo "$CHANGED_FILES" | grep -cE '^skills/planton/' || true)
@@ -310,8 +270,6 @@ jobs:
 
           echo "stigmer_skills=${SKILLS_JSON}" >> $GITHUB_OUTPUT
           echo "any_tags_created=${ANY_TAGS_CREATED}" >> $GITHUB_OUTPUT
-          echo "modules_skipped=${MODULES_SKIPPED}" >> $GITHUB_OUTPUT
-          echo "skipped_module_count=${SKIPPED_MODULE_COUNT}" >> $GITHUB_OUTPUT
 
           # =================================================================
           # Summary
@@ -323,9 +281,6 @@ jobs:
           echo "Latest Release: ${LATEST_SEMVER}"
           echo "Auto-Release Base: ${NEXT_SEMVER}"
           echo "Tags Created: ${ANY_TAGS_CREATED}"
-          if [ "$MODULES_SKIPPED" = "true" ]; then
-            echo "Module Tags Skipped: ${SKIPPED_MODULE_COUNT} components >= threshold ${MODULE_AUTO_TAG_THRESHOLD}"
-          fi
           echo "========================================"
 
   # ===========================================================================
@@ -436,14 +391,9 @@ jobs:
             echo "$STIGMER_SKILLS" | jq -r '.[] | "| Stigmer skill: \(.skill) | `\(.tag)` |"' >> $GITHUB_STEP_SUMMARY
           fi
 
-          if [ "${{ needs.create-tags.outputs.modules_skipped }}" = "true" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "> **Module auto-tags skipped:** ${{ needs.create-tags.outputs.skipped_module_count }} components changed (threshold: ${MODULE_AUTO_TAG_THRESHOLD}). Cut a proper release, or force module tags via manual dispatch." >> $GITHUB_STEP_SUMMARY
-          fi
-
           if [ "${{ needs.create-tags.outputs.any_tags_created }}" != "true" ]; then
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "_No tags were created - no relevant changes detected._" >> $GITHUB_STEP_SUMMARY
+            echo "_No tags were created: no skill artifact changed, and no module force flag was set (module tags are dispatch-only)._" >> $GITHUB_STEP_SUMMARY
           else
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "**Note:** Component-specific auto-release workflows have been triggered for each tag above." >> $GITHUB_STEP_SUMMARY

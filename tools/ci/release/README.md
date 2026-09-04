@@ -93,9 +93,9 @@ Tests: `cd tools/ci/release && python3 -m unittest next_version_test.py`.
 
 ### detect_module_dirs.sh
 
-Single source of truth for which changed files count as Pulumi/Terraform
-module changes (maturity-grammar-aware). Used by `auto-tag.yaml`, which runs
-its `--self-test` before every detection pass.
+Which changed files count as Pulumi/Terraform module changes (maturity-grammar-aware), with a `--self-test` that proves the patterns fire for every version channel.
+
+Not wired to CI since 2026-09-04: module auto-tags are dispatch-only by founder direction (`force_*_all` tags every module, so nothing detects changes), and `auto-tag.yaml` no longer calls this script or its self-test. It stays because it is what push-time module tagging needs and that may come back; re-enabling restores the two `iac/` push paths, the detector call, and the self-test step in `auto-tag.yaml` (see `.github/workflows/docs/auto-tags.md`). Run `bash tools/ci/release/detect_module_dirs.sh --self-test` by hand to prove it still works.
 
 ### package_content.sh
 
