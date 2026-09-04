@@ -5,7 +5,7 @@ description: How to read a service's repository the way an engineer troubleshoot
 
 # Reading a Service's Repository — Two Lanes, One Judgment
 
-A service's truth is its repository, and the platform gives you two ways in. **The file lane**: the platform reads files for you through the organization's GitHub connection — the tree at a commit, then up to twenty files' text in one call — with no credential leaving the control plane. **The clone lane**: you ask the platform for the connection's one-hour installation token and shallow-clone the repository at an exact commit into your workspace, where you can run, search, and diff. Choose the way an engineer chooses: start from the run's own words and open the one or two files it names; clone only when the answer needs a working copy (running the install, grepping a tree, diffing two commits). A glance never needs a clone; a reproduction never fits in a glance.
+A service's truth is its repository, and the platform gives you two ways in. **The file lane**: the platform reads files for you through the organization's GitHub connection — the tree at a commit, then up to twenty files' text in one call — with no credential leaving the control plane. **The clone lane**: you ask the platform for the connection's credential — a token and the git username to pair it with, whatever the connection is (a GitHub App's short-lived installation token, or the sign-in the machine running Planton already holds) — and shallow-clone the repository at an exact commit into your workspace, where you can run, search, and diff. Choose the way an engineer chooses: start from the run's own words and open the one or two files it names; clone only when the answer needs a working copy (running the install, grepping a tree, diffing two commits). A glance never needs a clone; a reproduction never fits in a glance.
 
 **Which commit, always.** A failed run built ONE commit: `spec.git_commit.sha` on the run record (`get_service_pipeline`; CLI `planton service pipelines`/`runs`). Read the files AT THAT SHA — `ref` on every read below — and explain the failure from what the build actually saw. Today's default branch may already differ; reading it to explain yesterday's failure is guessing with extra steps. "Would this work now?" and "what does the repository contain?" read HEAD (empty `ref`).
 
@@ -25,26 +25,26 @@ When the files are not the answer — the install must run, the tree must be sea
 
 **Platform-tools arm** (the web console; `git` in your sandbox, no CLI):
 
-1. Mint the token: `get_github_installation_token` with `org` + `slug` (the slug is the service's `spec.gitRepo.gitConnection`). Refused? You lack credential-read on that connection — say so in one sentence and continue in the file lane; never ask around it.
+1. Get the credential: `get_github_access_token` with `org` + `slug` (the slug is the service's `spec.gitRepo.gitConnection`). It returns `token` and `git_username` — use both exactly as given. Refused? You lack credential-read on that connection — say so in one sentence and continue in the file lane; never ask around it. Told the machine is not signed in to GitHub? Relay that sentence verbatim — it names the account and the `gh auth login` to run; the fix is on the machine, not in this conversation.
 2. Clone with the token supplied ONCE, on the fetch's own command line, into a directory inside your workspace:
 
 ```sh
 git init --quiet storefront && cd storefront
 git remote add origin https://github.com/<owner>/<repo>.git
-git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64)" fetch --quiet --depth 1 origin <sha-or-branch>
+git -c http.extraheader="AUTHORIZATION: basic $(printf '%s:%s' "$GIT_USERNAME" "$TOKEN" | base64)" fetch --quiet --depth 1 origin <sha-or-branch>
 git checkout --quiet --detach FETCH_HEAD
 ```
 
    `-c` applies to that one invocation, so nothing lands in `.git/config` or the remote URL; the checkout carries no credential (a later `git fetch` will ask for one — mint again if you need it). Fetching by sha is how you get exactly the commit a run built.
-3. Hygiene, always: the token appears in this conversation's tool output and expires within the hour; it reaches every repository the installation reaches. Never write it to a file, never repeat it in prose, never put it in a remote URL, never commit anything. The sandbox is disposable; treat the clone as one.
+3. Hygiene, always: the token appears in this conversation's tool output; an App's token expires within the hour, a machine sign-in's does not (the platform re-reads it on every call, so ask again rather than keep it); it reaches every repository the connection reaches. Never write it to a file, never repeat it in prose, never put it in a remote URL, never commit anything. The sandbox is disposable; treat the clone as one.
 
-**CLI arm** (desktop): `planton service repo clone <service> [directory] [--ref <sha-or-branch>]` does the whole sequence with the same hygiene — token minted, used once on the fetch, never stored; shallow, detached at the commit. Then `planton service pipeline validate` on the checkout, `grep`, `docker build`, whatever the question needs.
+**CLI arm** (desktop): `planton service repo clone <service> [directory] [--ref <sha-or-branch>]` does the whole sequence with the same hygiene — credential resolved, used once on the fetch, never stored; shallow, detached at the commit. Then `planton service pipeline validate` on the checkout, `grep`, `docker build`, whatever the question needs.
 
 The clone lands in your workspace and nowhere else — the hard boundary on reading outside the workspace still holds.
 
 ## Before a service exists
 
-Registering a repository (`references/service.detection-first-registration.md`) and reading one the platform has never seen use the coordinates door. Find them in two reads: `search_api_resources_by_kind` on kind `github_connection` in the organization gives each connection's `slug`; `list_github_repositories` with `org` + `slug` lists every repository that connection's installation reaches, each with `owner_name`, `name`, and `default_branch` — exactly the coordinates `detect_service_from_repo`, `list_repo_files`, and `read_repo_files` take. A repository absent from that list is one the installation was not granted; the organization's GitHub administrator adds it on the installation's settings.
+Registering a repository (`references/service.detection-first-registration.md`) and reading one the platform has never seen use the coordinates door. Find them in two reads: `search_api_resources_by_kind` on kind `github_connection` in the organization gives each connection's `slug`; `list_github_repositories` with `org` + `slug` lists every repository that connection reaches (what the App installation was granted, or what the signed-in account can see), each with `owner_name`, `name`, and `default_branch` — exactly the coordinates `detect_service_from_repo`, `list_repo_files`, and `read_repo_files` take. A repository absent from that list is one the connection cannot reach: for an App, the organization's GitHub administrator adds it on the installation's settings; for a machine sign-in, the signed-in account needs access to it.
 
 ## Walking a refusal
 
