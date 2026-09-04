@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,6 +31,7 @@ import (
 
 	plantonaiv1 "github.com/plantonhq/planton/operator/api/v1"
 	"github.com/plantonhq/planton/operator/internal/component"
+	"github.com/plantonhq/planton/operator/internal/platformversion"
 	"github.com/plantonhq/planton/operator/internal/status"
 )
 
@@ -75,6 +77,27 @@ func (r *PlantonPlatformReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		log.Info("Initialized status")
 		return ctrl.Result{Requeue: true}, nil
 	}
+
+	// The declared version is judged before any component runs. A platform
+	// this operator cannot run is refused whole -- nothing created, nothing
+	// deleted, a running platform left exactly as it is -- and the reason is
+	// written where the person will look. No requeue: there is nothing to
+	// watch until the spec changes, and a spec change re-enqueues on its own.
+	if verdict := platformversion.Check(planton.Spec.Version); !verdict.Supported {
+		log.Info("Refusing to reconcile: platform version unsupported",
+			"version", planton.Spec.Version,
+			"minimumSupported", platformversion.MinimumSupported,
+			"reason", verdict.Reason,
+		)
+		if status.RefuseVersion(&planton, verdict.Reason, verdict.Message) {
+			if err := r.Status().Update(ctx, &planton); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+		return ctrl.Result{}, nil
+	}
+	status.SetCondition(&planton, plantonaiv1.ConditionVersionSupported, metav1.ConditionTrue,
+		platformversion.ReasonSupported, "spec.version names a platform release this operator runs")
 
 	components := component.All()
 

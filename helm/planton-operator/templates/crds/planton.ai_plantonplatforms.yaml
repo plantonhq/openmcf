@@ -42,6 +42,10 @@ spec:
       jsonPath: .status.license
       name: License
       type: string
+    - description: Why the platform is in its phase, in plain language
+      jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Message
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -760,10 +764,20 @@ spec:
                 type: object
               version:
                 description: |-
-                  version is the Planton platform version to deploy (e.g., "v1.0.0", "latest").
-                  All components are deployed at this version to ensure compatibility.
+                  version is the Planton platform release to deploy, as vMAJOR.MINOR.PATCH
+                  (a pre-release suffix is allowed). The control plane, console, and runner
+                  run this version as one coherent line; changing it is how the platform
+                  upgrades. The operator refuses a release older than the oldest it runs
+                  and says so in status (VersionSupported). To run a custom build, keep
+                  version at a release and set image.tag on the component: the version
+                  names the contract, the tag names the bytes.
                 minLength: 1
                 type: string
+                x-kubernetes-validations:
+                - message: spec.version must name a Planton release as vMAJOR.MINOR.PATCH
+                    (a pre-release suffix is allowed); to run a custom build, keep
+                    version at a release and set image.tag on the component
+                  rule: self.matches('^v[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$')
             required:
             - version
             type: object
@@ -1032,7 +1046,8 @@ spec:
               conditions:
                 description: |-
                   conditions represent the latest available observations of the deployment's state.
-                  Standard condition types: DataLayerReady, SupportingServicesReady, ApplicationReady.
+                  Condition types: Ready (all enabled components healthy) and VersionSupported
+                  (spec.version names a release this operator runs).
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.

@@ -79,7 +79,7 @@ Never install two operators (the operator itself refuses to start beside another
 
 ## Upgrades and uninstall
 
-Config changes are edits to the `PlantonPlatform` resource; the operator reconciles them. The platform version is `spec.version` on that resource — `helm upgrade planton --set platform.spec.version=<version>` rolls the platform with its data intact. The operator upgrades through its own chart, and that chart carries the `PlantonPlatform` definition with it, so the schema always matches the operator that reads it.
+Config changes are edits to the `PlantonPlatform` resource; the operator reconciles them. The platform version is `spec.version` on that resource — `helm upgrade planton --set platform.spec.version=<version>` rolls the platform with its data intact. The operator upgrades through its own chart, and that chart carries the `PlantonPlatform` definition with it, so the schema always matches the operator that reads it. An operator runs platform releases from a floor upward: declare a version older than the oldest it supports and the resource goes to phase `Error` with the reason in its `MESSAGE` column, nothing is created, and a platform already running is left as it is — move the version, or install an operator release built for it.
 
 `helm uninstall` removes the platform's workloads; data volumes deliberately survive. To remove everything including data, delete the namespace. The cluster-scoped badge-verification grant (`<namespace>-<name>-control-plane-token-reviewer`) is the one manual cleanup step of a full teardown.
 

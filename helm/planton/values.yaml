@@ -24,7 +24,7 @@ platform:
   # reference: https://github.com/plantonhq/planton/tree/main/helm/planton-operator#the-plantonplatform-resource
   # spec.version defaults to this chart's appVersion when omitted.
   spec: {}
-    # version: v0.0.41-selfhosted-preview
+    # version: v0.0.44
     # storage:                # platform-wide storage defaults (see README "Storage"):
     #   storageClassName: ""  #   the class EVERY volume provisions from (else the cluster default)
     #   size: 800Gi           #   one size for EVERY volume (else per-component defaults;

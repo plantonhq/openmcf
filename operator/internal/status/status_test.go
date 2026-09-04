@@ -488,3 +488,46 @@ func TestInitialize_TektonSlotFollowsBuildCapability(t *testing.T) {
 		t.Error("expected the tekton slot to exist for explicit build enable even with the runner off")
 	}
 }
+
+func TestRefuseVersion_RecordsTheRefusalOnceAndLeavesComponentsAlone(t *testing.T) {
+	p := newMinimalPlanton()
+	Initialize(p)
+	p.Status.Components.PostgreSQL.Phase = v1.ComponentPhaseReady // a running platform an operator upgrade has outgrown
+
+	if !RefuseVersion(p, "BelowOperatorMinimum", "too old") {
+		t.Fatal("expected the first refusal to report a change")
+	}
+	if p.Status.Phase != v1.PhaseError {
+		t.Errorf("expected phase Error, got %s", p.Status.Phase)
+	}
+	if p.Status.Components.PostgreSQL.Phase != v1.ComponentPhaseReady {
+		t.Error("a refusal must not rewrite what components report is running")
+	}
+	for _, want := range []struct {
+		condType, reason string
+	}{
+		{v1.ConditionVersionSupported, "BelowOperatorMinimum"},
+		{v1.ConditionReady, ReasonPlatformVersionUnsupported},
+	} {
+		c := findCondition(p, want.condType)
+		if c == nil || c.Status != metav1.ConditionFalse || c.Reason != want.reason || c.Message != "too old" {
+			t.Errorf("condition %s = %+v, want False/%s/too old", want.condType, c, want.reason)
+		}
+	}
+
+	if RefuseVersion(p, "BelowOperatorMinimum", "too old") {
+		t.Error("an already-recorded refusal must not report a change (it would cost a status write per reconcile)")
+	}
+	if !RefuseVersion(p, "BelowOperatorMinimum", "different words") {
+		t.Error("a changed message must be recorded")
+	}
+}
+
+func findCondition(p *v1.PlantonPlatform, condType string) *metav1.Condition {
+	for i := range p.Status.Conditions {
+		if p.Status.Conditions[i].Type == condType {
+			return &p.Status.Conditions[i]
+		}
+	}
+	return nil
+}

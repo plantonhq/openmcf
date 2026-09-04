@@ -1,45 +1,35 @@
-# internal/controller -- Phase Executor
+# internal/controller -- the reconcile loop
 
-This package implements the main reconciliation loop for the `PlantonPlatform` custom resource. It acts as a thin orchestrator that delegates work to phases defined in `internal/phases/`.
+This package implements the reconciliation loop for the `PlantonPlatform` custom resource. It is a thin orchestrator: it decides the order and the gates, and delegates every deployment decision to the components registered in `internal/component/` and every status mutation to `internal/status/`.
 
 ## How It Works
 
 Each reconciliation follows this sequence:
 
-1. Fetch the PlantonPlatform CR (handle deletion gracefully)
-2. Initialize status if this is a fresh resource (delegate to `internal/status/`)
-3. Run phases in order: Prerequisites, DataLayer, (future: SupportingServices, Application)
-4. If a phase is not ready, update the overall phase and requeue after 30 seconds
-5. If all phases are ready, compute and set the overall phase to Ready
+1. Fetch the `PlantonPlatform` (a deleted resource ends the reconcile quietly).
+2. Initialize status on a fresh resource or when the spec has changed shape (component slots, the version echo, the toggled slots); write it and requeue immediately.
+3. Judge the declared platform version against the operator's floor (`internal/platformversion`). A version this operator cannot run is refused whole: phase `Error`, the `VersionSupported` and `Ready` conditions carry the explanation, no component is touched, and the reconcile ends without a requeue -- a spec change re-enqueues on its own.
+4. Walk every registered component. A component whose dependencies are not yet Ready is marked Pending with the dependency named; the rest reconcile their own resources and report Ready, Deploying, or Error with a message.
+5. Compute the overall phase from the component phases, set the `Ready` condition, write the status once, and requeue after 30 seconds.
 
-The controller does not contain deployment logic itself. Each phase owns its resources and reports readiness through the Phase interface.
+`PlantonIdentityProvider` deliberately has no controller of its own: a change to one re-enqueues the platforms in its namespace, and the identity component resolves the binding inside the same loop -- one loop, one cadence, no second writer.
 
 ## Design Decisions
 
-### Phase Gating
+### One status write per reconcile
 
-Phases execute sequentially. The DataLayer phase does not run until Prerequisites reports Ready. This ensures sub-operators are healthy before we create CRDs that depend on them. The overhead is negligible since phases check status (fast) rather than block on readiness.
+Components mutate the in-memory status as they run; the controller performs a single `Status().Update()` at the end. Fewer API calls, fewer conflicts.
 
-### Status Update Strategy
+### The version floor runs here, not only at admission
 
-Status is updated at two points:
-- After initialization (immediate requeue to start phases)
-- When the overall phase changes (computed from component phases via `status.ComputeOverallPhase`)
-
-Phases modify the in-memory status struct. The controller performs the API server write. This minimizes API calls per reconciliation.
+The API server enforces the shape of `spec.version` (a release as `vMAJOR.MINOR.PATCH`) through the CRD. Whether this operator RUNS that release is a property of the operator binary, and an operator upgrade can outgrow a platform that is already running -- no admission rule sees that moment. So the reconciler judges the version on every pass and explains a refusal where a person reads first: the `MESSAGE` column of `kubectl get plantonplatform`.
 
 ### Requeue Strategy
 
-- **After initialization**: Immediate requeue (`Requeue: true`) to start phases without waiting
-- **Phase not ready**: Requeue after 30 seconds (`RequeueAfter: 30s`)
-- **All phases ready**: Requeue after 30 seconds for ongoing health monitoring
-
-As the operator matures, the interval will adapt -- shorter when actively deploying, longer when everything is healthy.
+- **After initialization**: immediate requeue (`Requeue: true`) so components start without waiting.
+- **Version refused**: no requeue. Nothing changes until the spec does, and the spec change is itself the trigger.
+- **Otherwise**: requeue after 30 seconds, whether deploying or healthy, for ongoing convergence and health monitoring.
 
 ## Testing
 
-Tests use envtest (lightweight Kubernetes API server) via the Kubebuilder test harness. They verify:
-- Status initialization on first reconcile
-- Component and condition setup
-- Phase execution and requeue behavior
-- Graceful handling of deleted resources
+Tests use envtest (a real API server and etcd, the actual CRD applied) through the Kubebuilder harness. They verify status initialization on first reconcile, component and condition setup, requeue behavior, graceful handling of deleted resources, the CRD's validation rules (the messages the API server prints), and both branches of the version floor.

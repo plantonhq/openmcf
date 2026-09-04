@@ -45,8 +45,16 @@ metadata:
   name: planton
   namespace: planton
 spec:
-  version: v1.0.0
+  version: v0.0.44
 ```
+
+`spec.version` names a Planton platform release as `vMAJOR.MINOR.PATCH`; the API server
+refuses any other shape. The operator runs releases from a floor upward: a version older
+than the oldest it supports is refused before anything is created, with the reason in the
+resource's `MESSAGE` column and a `VersionSupported` condition, and a platform already
+running is left untouched. The operator's first log line (`Platform version floor`) names
+the floor. To run a custom build, keep `spec.version` at a release and set `image.tag` on
+the component: the version names the contract, the tag names the bytes.
 
 Apply it with `kubectl apply -f` and watch progress:
 
@@ -118,12 +126,13 @@ in any namespace. When a resource is created, the operator:
 3. Deploys the application layer (control plane monolith, web console)
 
 Each component is reconciled independently with explicit dependency tracking.
-The operator reports per-component status and an aggregate `Ready` condition:
+The operator reports per-component status, an aggregate `Ready` condition whose
+message is the `MESSAGE` column, and a `VersionSupported` condition:
 
 ```
 $ kubectl get plantonplatform
-NAME      PHASE   VERSION   AGE
-planton   Ready   v1.0.0    5m
+NAME      PHASE   VERSION   URL                          LICENSE     MESSAGE                              AGE
+planton   Ready   v0.0.44   https://planton.example.com  Community   All enabled components are healthy   5m
 ```
 
 ## CRD Management

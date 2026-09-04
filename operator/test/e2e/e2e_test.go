@@ -25,11 +25,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/plantonhq/planton/operator/internal/platformversion"
 	"github.com/plantonhq/planton/operator/test/utils"
 )
 
@@ -270,15 +272,69 @@ var _ = Describe("Manager", Ordered, func() {
 
 		// +kubebuilder:scaffold:e2e-webhooks-checks
 
-		// TODO: Customize the e2e test suite with scenarios specific to your project.
-		// Consider applying sample/CR(s) and check their status and/or verifying
-		// the reconciliation by using the metrics, i.e.:
-		// metricsOutput, err := getMetricsOutput()
-		// Expect(err).NotTo(HaveOccurred(), "Failed to retrieve logs from curl pod")
-		// Expect(metricsOutput).To(ContainSubstring(
-		//    fmt.Sprintf(`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
-		//    strings.ToLower(<Kind>),
-		// ))
+		It("should refuse a platform below its version floor with the reason in kubectl get, and resume when the version moves", func() {
+			// The floor runs in the reconciler against the real API server and the
+			// real CRD: a below-floor declaration creates nothing and explains itself
+			// in the Message column; moving the version to the floor lifts the
+			// refusal in the same resource. The declared versions are derived from
+			// the floor the build carries, so this proof follows the floor.
+			const platformName = "floor-proof"
+			floor := platformversion.MinimumSupported
+			below := "v0.0.41-selfhosted-preview"
+
+			applyPlatform := func(version string) {
+				manifest := fmt.Sprintf(`apiVersion: planton.ai/v1
+kind: PlantonPlatform
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  version: %s
+`, platformName, namespace, version)
+				cmd := exec.Command("kubectl", "apply", "-f", "-")
+				cmd.Stdin = strings.NewReader(manifest)
+				_, err := utils.Run(cmd)
+				Expect(err).NotTo(HaveOccurred(), "applying the PlantonPlatform at %s", version)
+			}
+			platformColumn := func(g Gomega, jsonPath string) string {
+				cmd := exec.Command("kubectl", "get", "plantonplatform", platformName, "-n", namespace,
+					"-o", "jsonpath="+jsonPath)
+				out, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+				return out
+			}
+
+			By("declaring a platform below the floor")
+			applyPlatform(below)
+			DeferCleanup(func() {
+				cmd := exec.Command("kubectl", "delete", "plantonplatform", platformName, "-n", namespace, "--ignore-not-found")
+				_, _ = utils.Run(cmd)
+			})
+
+			By("reading the refusal where a person reads first: the phase and the Message column")
+			Eventually(func(g Gomega) {
+				g.Expect(platformColumn(g, "{.status.phase}")).To(Equal("Error"))
+				message := platformColumn(g, "{.status.conditions[?(@.type=='Ready')].message}")
+				g.Expect(message).To(ContainSubstring(below))
+				g.Expect(message).To(ContainSubstring(floor))
+				g.Expect(message).To(ContainSubstring("Nothing running was changed"))
+				g.Expect(platformColumn(g, "{.status.conditions[?(@.type=='VersionSupported')].status}")).To(Equal("False"))
+			}, 2*time.Minute, 2*time.Second).Should(Succeed())
+
+			By("confirming the refused platform owns nothing")
+			cmd := exec.Command("kubectl", "get", "deployments,statefulsets,services", "-n", namespace,
+				"-o", "jsonpath={range .items[*]}{.metadata.ownerReferences[*].name}{\"\\n\"}{end}")
+			owners, err := utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(owners).NotTo(ContainSubstring(platformName))
+
+			By("moving the version to the floor")
+			applyPlatform(floor)
+			Eventually(func(g Gomega) {
+				g.Expect(platformColumn(g, "{.status.conditions[?(@.type=='VersionSupported')].status}")).To(Equal("True"))
+				g.Expect(platformColumn(g, "{.status.phase}")).NotTo(Equal("Error"))
+			}, 2*time.Minute, 2*time.Second).Should(Succeed())
+		})
 	})
 })
 

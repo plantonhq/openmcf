@@ -48,6 +48,12 @@ const (
 const (
 	// ConditionReady is True when all enabled components are in Ready phase.
 	ConditionReady = "Ready"
+
+	// ConditionVersionSupported is True when spec.version names a platform
+	// release this operator runs. False stops reconciliation before any object
+	// is created: the message says which release is the oldest this operator
+	// supports and how to move (the version, or an operator built for it).
+	ConditionVersionSupported = "VersionSupported"
 )
 
 // License delivery modes reported in status.license -- how the key reaches
@@ -234,9 +240,15 @@ type BuildSpec struct {
 // A minimal spec requires only the version field; all other fields have sensible defaults.
 // +kubebuilder:validation:XValidation:rule="!has(self.bootstrap) || !has(self.bootstrap.secretBackend) || self.bootstrap.secretBackend.type != 'platform' || !has(self.vault) || !has(self.vault.enabled) || self.vault.enabled",message="bootstrap.secretBackend type 'platform' stores secrets in the bundled vault, which spec.vault.enabled: false has opted out of; re-enable the vault or use type awsSecretsManager"
 type PlantonPlatformSpec struct {
-	// version is the Planton platform version to deploy (e.g., "v1.0.0", "latest").
-	// All components are deployed at this version to ensure compatibility.
+	// version is the Planton platform release to deploy, as vMAJOR.MINOR.PATCH
+	// (a pre-release suffix is allowed). The control plane, console, and runner
+	// run this version as one coherent line; changing it is how the platform
+	// upgrades. The operator refuses a release older than the oldest it runs
+	// and says so in status (VersionSupported). To run a custom build, keep
+	// version at a release and set image.tag on the component: the version
+	// names the contract, the tag names the bytes.
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:XValidation:rule="self.matches('^v[0-9]+\\\\.[0-9]+\\\\.[0-9]+(-[0-9A-Za-z.-]+)?(\\\\+[0-9A-Za-z.-]+)?$')",message="spec.version must name a Planton release as vMAJOR.MINOR.PATCH (a pre-release suffix is allowed); to run a custom build, keep version at a release and set image.tag on the component"
 	Version string `json:"version"`
 
 	// license delivers the deployment's license key -- inline or by Secret
@@ -824,7 +836,8 @@ type PlantonPlatformStatus struct {
 	Components ComponentStatuses `json:"components,omitempty"`
 
 	// conditions represent the latest available observations of the deployment's state.
-	// Standard condition types: DataLayerReady, SupportingServicesReady, ApplicationReady.
+	// Condition types: Ready (all enabled components healthy) and VersionSupported
+	// (spec.version names a release this operator runs).
 	// +listType=map
 	// +listMapKey=type
 	// +optional
@@ -877,6 +890,7 @@ type ComponentStatus struct {
 // +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.version`,description="Deployed platform version"
 // +kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.status.consoleUrl`,description="Web console URL once ingress is admitted"
 // +kubebuilder:printcolumn:name="License",type=string,JSONPath=`.status.license`,description="License delivery mode (Community when none configured)"
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`,description="Why the platform is in its phase, in plain language"
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
 // PlantonPlatform is the Schema for deploying a complete Planton platform

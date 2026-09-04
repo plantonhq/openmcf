@@ -39,6 +39,7 @@ import (
 
 	plantonaiv1 "github.com/plantonhq/planton/operator/api/v1"
 	"github.com/plantonhq/planton/operator/internal/controller"
+	"github.com/plantonhq/planton/operator/internal/platformversion"
 	"github.com/plantonhq/planton/operator/internal/singleton"
 	// +kubebuilder:scaffold:imports
 )
@@ -158,6 +159,11 @@ func main() {
 	}
 
 	restConfig := ctrl.GetConfigOrDie()
+
+	// The oldest platform release this build runs. Logged once so a person
+	// reading the operator's log can pair it with the platform versions they
+	// declare without opening the source.
+	setupLog.Info("Platform version floor", "minimumSupported", platformversion.MinimumSupported)
 
 	// One operator per cluster: leader election only arbitrates replicas
 	// within one namespace, so a second installation elsewhere would win its

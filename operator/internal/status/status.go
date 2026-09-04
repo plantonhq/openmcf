@@ -167,6 +167,41 @@ func SetCondition(planton *v1.PlantonPlatform, condType string, condStatus metav
 	})
 }
 
+// ReasonPlatformVersionUnsupported is the Ready condition's reason when the
+// declared version is refused; the VersionSupported condition carries the
+// finer reason and the same message.
+const ReasonPlatformVersionUnsupported = "PlatformVersionUnsupported"
+
+// RefuseVersion records that this operator will not run the declared platform
+// version: phase Error, VersionSupported False with the given reason, and
+// Ready False with the same message, so the explanation reaches the column a
+// person reads first. Component statuses are left as they are -- on a fresh
+// install they are Pending and untouched; on a running platform that an
+// operator upgrade has outgrown they keep reporting what is actually running.
+// Reports whether anything changed, so a refusal that is already recorded
+// costs no status write.
+func RefuseVersion(planton *v1.PlantonPlatform, reason, message string) bool {
+	changed := false
+	if planton.Status.Phase != v1.PhaseError {
+		planton.Status.Phase = v1.PhaseError
+		changed = true
+	}
+	changed = setConditionIfDifferent(planton, v1.ConditionVersionSupported, metav1.ConditionFalse, reason, message) || changed
+	changed = setConditionIfDifferent(planton, v1.ConditionReady, metav1.ConditionFalse, ReasonPlatformVersionUnsupported, message) || changed
+	return changed
+}
+
+// setConditionIfDifferent is SetCondition that also reports whether the
+// condition's status, reason, or message moved.
+func setConditionIfDifferent(planton *v1.PlantonPlatform, condType string, condStatus metav1.ConditionStatus, reason, message string) bool {
+	if existing := meta.FindStatusCondition(planton.Status.Conditions, condType); existing != nil &&
+		existing.Status == condStatus && existing.Reason == reason && existing.Message == message {
+		return false
+	}
+	SetCondition(planton, condType, condStatus, reason, message)
+	return true
+}
+
 // SetComponentPhase sets the phase and message for a component. The component
 // pointer must be non-nil (call Initialize first).
 func SetComponentPhase(cs *v1.ComponentStatus, phase v1.ComponentPhase, message string) {

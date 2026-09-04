@@ -157,7 +157,10 @@ The platform and the operator upgrade independently:
 
 - **The platform version** is `spec.version` on the resource. Change it and
   `helm upgrade planton` -- the operator rolls the platform to the new version
-  with its data intact:
+  with its data intact. An operator runs platform releases from a floor
+  upward; a version below it is refused in the resource's status (phase
+  `Error`, the reason in the `MESSAGE` column) with nothing changed, and the
+  fix is the version or an operator release built for it:
 
   ```bash
   helm upgrade planton oci://ghcr.io/plantonhq/charts/planton \

@@ -28,7 +28,7 @@ Status uses two complementary mechanisms:
 
 1. **ComponentStatuses**: A structured object with one field per component. This provides clear `kubectl get -o yaml` output and type-safe access from the reconciler. We chose named fields over a map to avoid stringly-typed component names.
 
-2. **Conditions**: Standard `metav1.Condition` slice following Kubernetes API conventions. Three aggregate conditions (DataLayerReady, SupportingServicesReady, ApplicationReady) give users a quick health overview.
+2. **Conditions**: Standard `metav1.Condition` slice following Kubernetes API conventions. `Ready` aggregates every enabled component and its message is the `MESSAGE` column of `kubectl get plantonplatform`; `VersionSupported` says whether `spec.version` names a platform release this operator runs, and when it does not, its message names the oldest release the operator supports and the two ways forward.
 
 ### Phase Enums
 

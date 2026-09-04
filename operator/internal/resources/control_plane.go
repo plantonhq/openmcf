@@ -37,7 +37,7 @@ const (
 	// trust, so it only ever names a tag whose artifact set was verified
 	// live against the CDN (HEAD on the module zips, not inferred from the
 	// release existing).
-	controlPlaneModuleArtifactsVersion = "v0.5.14"
+	controlPlaneModuleArtifactsVersion = "v0.5.29"
 )
 
 // ControlPlaneConfig bundles all inputs needed to build the ControlPlane

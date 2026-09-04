@@ -34,6 +34,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	plantonaiv1 "github.com/plantonhq/planton/operator/api/v1"
+	"github.com/plantonhq/planton/operator/internal/platformversion"
+	"github.com/plantonhq/planton/operator/internal/status"
 )
 
 var _ = Describe("PlantonPlatform Controller", func() {
@@ -431,6 +433,113 @@ var _ = Describe("PlantonPlatform Controller", func() {
 			Expect(result.RequeueAfter).To(Equal(30*time.Second), "should requeue after interval")
 		})
 	})
+	Context("When spec.version names a platform this operator cannot run", func() {
+		// The floor runs in the reconciler (an operator upgrade can outgrow a
+		// running platform, which no admission rule sees); the shape rule
+		// runs in the API server. Both are pinned here against the real CRD.
+		reconcileTwice := func(name types.NamespacedName) reconcile.Result {
+			reconciler := &PlantonPlatformReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: name}) // initializes status
+			Expect(err).NotTo(HaveOccurred())
+			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: name}) // judges the version
+			Expect(err).NotTo(HaveOccurred())
+			return result
+		}
+
+		It("should refuse a release below the floor before creating anything, and explain it where kubectl get shows it", func() {
+			name := types.NamespacedName{Name: "below-floor", Namespace: namespace}
+			resource := &plantonaiv1.PlantonPlatform{
+				ObjectMeta: metav1.ObjectMeta{Name: name.Name, Namespace: name.Namespace},
+				Spec:       plantonaiv1.PlantonPlatformSpec{Version: "v0.0.41-selfhosted-preview"},
+			}
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			defer func() { Expect(k8sClient.Delete(ctx, resource)).To(Succeed()) }()
+
+			result := reconcileTwice(name)
+			Expect(result.Requeue).To(BeFalse(), "nothing to watch until the spec changes")
+			Expect(result.RequeueAfter).To(BeZero())
+
+			var updated plantonaiv1.PlantonPlatform
+			Expect(k8sClient.Get(ctx, name, &updated)).To(Succeed())
+			Expect(updated.Status.Phase).To(Equal(plantonaiv1.PhaseError))
+			Expect(updated.Status.Version).To(Equal("v0.0.41-selfhosted-preview"), "the column echoes what was declared")
+
+			supported := findCondition(updated.Status.Conditions, plantonaiv1.ConditionVersionSupported)
+			Expect(supported).NotTo(BeNil())
+			Expect(supported.Status).To(Equal(metav1.ConditionFalse))
+			Expect(supported.Reason).To(Equal(platformversion.ReasonBelowOperatorMinimum))
+
+			ready := findCondition(updated.Status.Conditions, plantonaiv1.ConditionReady)
+			Expect(ready).NotTo(BeNil())
+			Expect(ready.Status).To(Equal(metav1.ConditionFalse))
+			Expect(ready.Reason).To(Equal(status.ReasonPlatformVersionUnsupported))
+			Expect(ready.Message).To(Equal(supported.Message), "the Ready message is the one the Message column prints")
+			Expect(ready.Message).To(ContainSubstring(platformversion.MinimumSupported))
+			Expect(ready.Message).To(ContainSubstring("Nothing running was changed"))
+
+			var deployments appsv1.DeploymentList
+			Expect(k8sClient.List(ctx, &deployments)).To(Succeed())
+			for i := range deployments.Items {
+				for _, owner := range deployments.Items[i].OwnerReferences {
+					Expect(owner.Name).NotTo(Equal(name.Name), "a refused platform must own no objects")
+				}
+			}
+
+			// A refusal already recorded costs nothing more.
+			before := updated.ResourceVersion
+			reconciler := &PlantonPlatformReconciler{Client: k8sClient, Scheme: k8sClient.Scheme()}
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: name})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Get(ctx, name, &updated)).To(Succeed())
+			Expect(updated.ResourceVersion).To(Equal(before), "an unchanged refusal must not write status again")
+		})
+
+		It("should resume the moment the version moves to the floor", func() {
+			name := types.NamespacedName{Name: "moves-to-floor", Namespace: namespace}
+			resource := &plantonaiv1.PlantonPlatform{
+				ObjectMeta: metav1.ObjectMeta{Name: name.Name, Namespace: name.Namespace},
+				Spec:       plantonaiv1.PlantonPlatformSpec{Version: "v0.0.41-selfhosted-preview"},
+			}
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			defer func() { Expect(k8sClient.Delete(ctx, resource)).To(Succeed()) }()
+			reconcileTwice(name)
+
+			var current plantonaiv1.PlantonPlatform
+			Expect(k8sClient.Get(ctx, name, &current)).To(Succeed())
+			current.Spec.Version = platformversion.MinimumSupported
+			Expect(k8sClient.Update(ctx, &current)).To(Succeed())
+
+			result := reconcileTwice(name) // the version echo re-initializes, then components run
+			Expect(result.RequeueAfter).To(Equal(30*time.Second), "back on the component cadence")
+
+			var updated plantonaiv1.PlantonPlatform
+			Expect(k8sClient.Get(ctx, name, &updated)).To(Succeed())
+			Expect(updated.Status.Phase).NotTo(Equal(plantonaiv1.PhaseError))
+			supported := findCondition(updated.Status.Conditions, plantonaiv1.ConditionVersionSupported)
+			Expect(supported).NotTo(BeNil())
+			Expect(supported.Status).To(Equal(metav1.ConditionTrue))
+			Expect(supported.Reason).To(Equal(platformversion.ReasonSupported))
+		})
+
+		It("should refuse a version that is not a release at apply time, and accept a pre-release form", func() {
+			notARelease := &plantonaiv1.PlantonPlatform{
+				ObjectMeta: metav1.ObjectMeta{Name: "cel-version-local", Namespace: namespace},
+				Spec:       plantonaiv1.PlantonPlatformSpec{Version: "local"},
+			}
+			err := k8sClient.Create(ctx, notARelease)
+			Expect(err).To(HaveOccurred(), "a version that names no release cannot be placed on the release line")
+			Expect(err.Error()).To(ContainSubstring("vMAJOR.MINOR.PATCH"), "the rejection must explain itself, got: %v", err)
+			Expect(err.Error()).To(ContainSubstring("image.tag"), "the rejection must name the way to run a custom build, got: %v", err)
+
+			preRelease := &plantonaiv1.PlantonPlatform{
+				ObjectMeta: metav1.ObjectMeta{Name: "cel-version-prerelease", Namespace: namespace},
+				Spec:       plantonaiv1.PlantonPlatformSpec{Version: platformversion.MinimumSupported + "-rc.1"},
+			}
+			Expect(k8sClient.Create(ctx, preRelease)).To(Succeed(), "a pre-release suffix is a release form")
+			Expect(k8sClient.Delete(ctx, preRelease)).To(Succeed())
+		})
+	})
+
 })
 
 func findCondition(conditions []metav1.Condition, condType string) *metav1.Condition {

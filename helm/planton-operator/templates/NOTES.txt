@@ -1,5 +1,5 @@
 The Planton operator is installed. It deploys nothing until you apply a
-PlantonPlatform resource -- the minimal one is three lines:
+PlantonPlatform resource -- the minimal one names a platform release:
 
   kubectl apply -f - <<EOF
   apiVersion: planton.ai/v1
@@ -8,10 +8,15 @@ PlantonPlatform resource -- the minimal one is three lines:
     name: planton
     namespace: {{ .Release.Namespace }}
   spec:
-    version: {{ .Chart.AppVersion }}
+    version: <platform release, vMAJOR.MINOR.PATCH>
   EOF
 
   kubectl get plantonplatform planton -n {{ .Release.Namespace }} -w
+
+The operator runs platform releases from a floor upward and refuses older ones
+before creating anything; the MESSAGE column above says which release is the
+oldest it runs, and the operator's first log line ("Platform version floor")
+names it too.
 
 Prefer the platform as a Helm release with proven defaults and per-cloud
 values files? The `planton` chart declares it:
