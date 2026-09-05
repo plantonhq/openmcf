@@ -55,8 +55,10 @@
 // this gate's -- absence is skipped here so one defect reports in one place.
 //
 // The CI lane is .github/workflows/lint.catalog-logo.yaml. Provenance and
-// sharing carry a burn-down baseline (baseline.yaml, anatomy's shape) for the
-// providers whose logo sets have not yet been judged; malformed-svg never does.
+// sharing carried a burn-down baseline (baseline.yaml, anatomy's shape) for
+// the providers whose logo sets predated the law; it only ever shrank and is
+// empty now that every provider is judged, so it stays as the shape a future
+// provider's debt would take and nothing else. malformed-svg never had one.
 // A judged provider is pinned at zero by the test's judged-provider list.
 //
 // The gate proves bytes and provenance; whether a glyph READS is judged by a
