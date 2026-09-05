@@ -1,9 +1,12 @@
-# The baseline install: the operator alone, chart defaults. Installing the
-# operator alone deploys NO platform (the verifier asserts exactly that);
-# platforms are declared separately with KubernetesPlantonPlatform
-# resources. The chart owns its definitions and keeps them on uninstall by
-# default, so destroy leaves the PlantonPlatform CRD on the cluster (the
-# verifier asserts it survives) and the reinstall lane adopts it.
+# The baseline install and the chart upgrade: the operator alone, pinned to
+# the previous published chart, then moved to the current one in place
+# (minimal.to.yaml, the second act). Installing the operator alone deploys
+# NO platform (the verifier asserts exactly that); platforms are declared
+# separately with KubernetesPlantonPlatform resources. The chart owns its
+# definitions: the upgrade rolls the manager to the new image and leaves the
+# definitions where they are (the verifier proves they predate the manager
+# that serves them), and destroy keeps them by default (the verifier asserts
+# they survive), so the reinstall lane adopts them.
 #
 # EVERY scenario of this kind installs into namespace "planton-operator":
 # the release name is fixed (one operator per cluster), and Helm binds kept
@@ -14,8 +17,12 @@ kind: KubernetesPlantonOperator
 metadata:
   name: e2e-planton-operator-minimal
   annotations:
+    planton.dev/e2e-upgrade-manifest: minimal.to.yaml
     planton.dev/e2e-reinstall: "true"
 spec:
   namespace:
     value: planton-operator
   create_namespace: true
+  # The previous published chart, pinned explicitly: the first act must not
+  # follow the default, or the second act would have nothing to move to.
+  chart_version: 0.8.0

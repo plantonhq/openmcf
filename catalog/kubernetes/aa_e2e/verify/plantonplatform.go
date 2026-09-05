@@ -49,7 +49,7 @@ type PlantonOperatorInstallVerifier struct {
 // plantonOperatorDefaultChartVersion mirrors the module's default pin; the
 // refusal check names the version a scenario pinned, so only a scenario
 // that leaves it unset relies on this.
-const plantonOperatorDefaultChartVersion = "0.8.0"
+const plantonOperatorDefaultChartVersion = "0.8.1"
 
 // newPlantonOperatorInstallVerifier reads the scenario manifest's chart
 // version and crds dials, defaulting to the chart's own defaults when a dial
@@ -78,11 +78,24 @@ func (v *PlantonOperatorInstallVerifier) VerifyExists(ctx context.Context, kubec
 		"condition=Available", 3*time.Minute); err != nil {
 		return errors.Wrap(err, "planton-operator deployment not available (a sibling operator on the cluster makes the startup guard refuse — read the pod log)")
 	}
+	// Available is not enough: during a chart upgrade the previous manager
+	// stays available while the new one starts. The chart and the operator
+	// image share one version line (chart X.Y.Z runs operator vX.Y.Z), so the
+	// manager must have finished rolling out at the pinned version's tag —
+	// on the first act that pins the install, on an upgrade act it is what
+	// makes the upgrade an upgrade.
+	operatorTag := "v" + v.ChartVersion
+	if err := waitForDeploymentRolledOut(ctx, kubeconfig, v.Namespace, plantonOperatorDeployment, operatorTag, 3*time.Minute); err != nil {
+		return errors.Wrapf(err, "planton-operator did not roll out at image tag %s (chart %s)", operatorTag, v.ChartVersion)
+	}
 	for _, crd := range []string{plantonPlatformCrd, plantonIdentityProviderCrd} {
 		if err := kubectlWait(ctx, kubeconfig, "crd", crd, "",
 			"condition=Established", 2*time.Minute); err != nil {
 			return errors.Wrapf(err, "CRD %s not established (the chart renders it as a release resource behind crds.enabled)", crd)
 		}
+	}
+	if err := v.verifyDefinitionsPredateManager(ctx, kubeconfig); err != nil {
+		return err
 	}
 
 	// THE DESIGN INVARIANT: installing the operator alone deploys no
@@ -98,6 +111,52 @@ func (v *PlantonOperatorInstallVerifier) VerifyExists(ctx context.Context, kubec
 		return errors.Errorf("a PlantonPlatform exists after installing the operator alone — the operator must never auto-create a platform (found: %s)", strings.TrimSpace(string(out)))
 	}
 	fmt.Printf("  [verify] INVARIANT: no PlantonPlatform after install — platforms are always deliberate declarations\n")
+	return nil
+}
+
+// verifyDefinitionsPredateManager proves the definitions moved IN PLACE: each
+// CRD is owned by the chart's release and is no younger than the manager
+// Deployment, the release's install epoch. A chart upgrade patches the
+// Deployment (its creationTimestamp stays the install's) and rolls its pods;
+// a definition the upgrade recreated would be created minutes after that
+// epoch, and every PlantonPlatform on the cluster would have gone with it.
+// On a fresh install the definitions and the Deployment land in the same
+// apply (Helm orders definitions first), so "no younger" holds there too.
+// The pod's start time is deliberately NOT the anchor: it is stamped in the
+// same second as the definitions on a fresh install, and it moves on every
+// rollout, so it cannot tell a survived definition from a recreated one. No
+// state is carried across acts; the same check tells the truth on both.
+func (v *PlantonOperatorInstallVerifier) verifyDefinitionsPredateManager(ctx context.Context, kubeconfig string) error {
+	installed, err := kubectlGetJSONPath(ctx, kubeconfig, "deployment", plantonOperatorDeployment, v.Namespace, `{.metadata.creationTimestamp}`)
+	if err != nil {
+		return errors.Wrap(err, "reading the planton-operator Deployment's creation time")
+	}
+	epoch, err := time.Parse(time.RFC3339, strings.TrimSpace(installed))
+	if err != nil {
+		return errors.Wrapf(err, "planton-operator Deployment creationTimestamp %q", installed)
+	}
+	for _, crd := range []string{plantonPlatformCrd, plantonIdentityProviderCrd} {
+		out, err := kubectlGetJSONPath(ctx, kubeconfig, "crd", crd, "",
+			`{.metadata.creationTimestamp} {.metadata.annotations.meta\.helm\.sh/release-name}`)
+		if err != nil {
+			return errors.Wrapf(err, "reading CRD %s", crd)
+		}
+		fields := strings.Fields(out)
+		if len(fields) != 2 {
+			return errors.Errorf("CRD %s carries no Helm release ownership (got %q) -- the chart must own its definitions as release resources", crd, strings.TrimSpace(out))
+		}
+		created, err := time.Parse(time.RFC3339, fields[0])
+		if err != nil {
+			return errors.Wrapf(err, "CRD %s creationTimestamp %q", crd, fields[0])
+		}
+		if fields[1] != v.SourceLabel {
+			return errors.Errorf("CRD %s is owned by Helm release %q, not %q", crd, fields[1], v.SourceLabel)
+		}
+		if created.After(epoch) {
+			return errors.Errorf("CRD %s was created at %s, after the operator was installed at %s -- the definition was recreated under the operator instead of upgraded in place", crd, created.Format(time.RFC3339), epoch.Format(time.RFC3339))
+		}
+	}
+	fmt.Printf("  [verify] IN PLACE: both definitions are owned by release %q and are no younger than the operator's install\n", v.SourceLabel)
 	return nil
 }
 
