@@ -101,7 +101,7 @@ var _ = Describe("PlantonPlatform ingress", func() {
 			Expect(ing.Spec.Rules[0].Host).To(Equal("planton.example.com"))
 			paths := ing.Spec.Rules[0].HTTP.Paths
 			Expect(paths).To(HaveLen(4))
-			Expect(paths[0].Path).To(Equal("/ai.planton."), "one rule must cover the whole API surface")
+			Expect(paths[0].Path).To(Equal(resources.APIPathPrefix), "one plain prefix rule covers the whole API surface")
 			Expect(paths[0].Backend.Service.Port.Name).To(Equal("grpc-web"), "the browser dialect port, never raw gRPC")
 			Expect(paths[1].Path).To(Equal("/storage"), "the storage relay rides the control plane's API port")
 			Expect(paths[2].Path).To(Equal("/idp"), "the identity server rides the same hostname")
@@ -341,8 +341,8 @@ var _ = Describe("PlantonPlatform ingress", func() {
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name: resources.GatewayConfigMapName(p.Name), Namespace: namespace,
 			}, &cm)).To(Succeed())
-			Expect(cm.Data[resources.GatewayConfigKey]).To(ContainSubstring("/ai\\.planton\\."),
-				"the API path must route by string prefix, mirroring the ingress layout")
+			Expect(cm.Data[resources.GatewayConfigKey]).To(ContainSubstring("location "+resources.APIPathPrefix+" {"),
+				"the API routes by the plain path namespace, the same rule the Ingress carries")
 			var svc corev1.Service
 			Expect(k8sClient.Get(ctx, types.NamespacedName{
 				Name: resources.GatewayServiceName(p.Name), Namespace: namespace,

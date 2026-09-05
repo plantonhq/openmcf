@@ -43,9 +43,10 @@ func TestConsoleDeployment_APIEndpoint(t *testing.T) {
 				t.Errorf("API_ENDPOINT = %s, expected to contain planton-control-plane", e.Value)
 			}
 			// The console speaks gRPC-Web from the browser; it must target the
-			// control plane's gRPC-Web port, never the raw gRPC port.
-			if !strings.HasSuffix(e.Value, ":8081") {
-				t.Errorf("API_ENDPOINT = %s, expected the gRPC-Web port :8081", e.Value)
+			// control plane's gRPC-Web port, never the raw gRPC port, under the
+			// API path namespace the door is served at.
+			if !strings.HasSuffix(e.Value, ":8081"+APIPathPrefix) {
+				t.Errorf("API_ENDPOINT = %s, expected the gRPC-Web port :8081 under %s", e.Value, APIPathPrefix)
 			}
 		}
 	}
@@ -184,8 +185,8 @@ func TestConsoleDeployment_PublicURL(t *testing.T) {
 	for _, e := range deploy.Spec.Template.Spec.Containers[0].Env {
 		env[e.Name] = e.Value
 	}
-	if env["API_ENDPOINT"] != publicURL {
-		t.Errorf("API_ENDPOINT = %s, want the public URL", env["API_ENDPOINT"])
+	if env["API_ENDPOINT"] != publicURL+APIPathPrefix {
+		t.Errorf("API_ENDPOINT = %s, want the public URL under %s", env["API_ENDPOINT"], APIPathPrefix)
 	}
 	if env["NEXTAUTH_URL"] != publicURL {
 		t.Errorf("NEXTAUTH_URL = %s, want the public URL", env["NEXTAUTH_URL"])

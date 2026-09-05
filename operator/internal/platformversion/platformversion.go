@@ -35,11 +35,17 @@ import (
 //
 // Raise it when the environment rendered for a platform component changes
 // in a way an older platform image cannot tolerate -- a variable it requires,
-// a variable it needs removed -- to the first release that reads the new
-// shape. The boot-contract fixture test in internal/resources asks this
-// question whenever the rendered variable names change; a variable older
-// platforms simply ignore does not move the floor.
-const MinimumSupported = "v0.0.45"
+// a variable it needs removed, a value whose meaning changed -- to the first
+// release that reads the new shape. The boot-contract fixture test in
+// internal/resources asks this question whenever the rendered variable names
+// change; a variable older platforms simply ignore does not move the floor.
+//
+// v0.0.50: the control plane serves its browser-facing gRPC-Web API under the
+// front-door path namespace (resources.APIPathPrefix) instead of at the
+// origin root, and every front door this operator renders routes that
+// namespace. An older control plane answers only at the root, so under this
+// operator every console API call would 404.
+const MinimumSupported = "v0.0.50"
 
 // releaseForm is the only shape spec.version may take: a full semantic
 // version with the "v" prefix, optionally with a pre-release suffix and build

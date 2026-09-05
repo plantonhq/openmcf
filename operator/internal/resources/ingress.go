@@ -10,27 +10,10 @@ import (
 )
 
 const (
-	// grpcWebPathPrefix routes API traffic: every Planton gRPC service lives
-	// under the ai.planton.* proto package, so every gRPC-Web request path
-	// starts with this prefix. One rule covers the whole API surface; all
-	// other paths belong to the console. pathType ImplementationSpecific is
-	// deliberate -- service names are single path segments (no trailing "/"),
-	// which the Prefix pathType's segment-boundary matching would reject,
-	// while ImplementationSpecific string-prefix matching accepts.
-	grpcWebPathPrefix = "/ai.planton."
-
-	// StoragePathPrefix routes the storage relay: expiring transfer URLs
-	// (state-file download/upload) served by the control plane on its
-	// browser-API port. The path shape is the control plane's
-	// BlobRelayService.RELAY_PATH_PREFIX contract ("/storage/v1/relay/...");
-	// routing the "/storage" root keeps room for future storage surfaces
-	// without another edge change. Mirrored by the gateway's nginx config --
-	// the two front doors stay the same architecture at different addresses.
-	StoragePathPrefix = "/storage"
-
 	// NginxIngressController is the controller value ingress-nginx registers
-	// on its IngressClass. Used to apply nginx-specific defaults only where
-	// they mean something.
+	// on its IngressClass. Used to apply nginx-specific TUNING only where it
+	// means something; nothing about routing depends on the controller (see
+	// front_door_routes.go).
 	NginxIngressController = "k8s.io/ingress-nginx"
 
 	// certManagerIssuerAnnotation / certManagerClusterIssuerAnnotation ask
@@ -151,9 +134,11 @@ func PublicURL(hostname string, tls bool) string {
 	return fmt.Sprintf("%s://%s", scheme, hostname)
 }
 
-// Ingress builds the single Ingress serving Planton on one hostname: the
-// console on "/" and the control plane's browser-facing gRPC-Web endpoint on
-// the API path prefix. Same-origin by construction, so no CORS surface exists.
+// Ingress builds the single Ingress serving Planton on one hostname, one
+// rule per entry of the front-door route table (front_door_routes.go): API,
+// storage relay, identity server, console. Same-origin by construction, so
+// no CORS surface exists; every rule is pathType Prefix, so the object means
+// the same thing on every Ingress controller.
 func Ingress(cfg IngressConfig) *networkingv1.Ingress {
 	labels := map[string]string{
 		"app.kubernetes.io/name":       "ingress",
@@ -162,60 +147,23 @@ func Ingress(cfg IngressConfig) *networkingv1.Ingress {
 		"app.kubernetes.io/component":  "networking",
 	}
 
-	pathTypeImplementationSpecific := networkingv1.PathTypeImplementationSpecific
 	pathTypePrefix := networkingv1.PathTypePrefix
-
-	rule := networkingv1.IngressRuleValue{
-		HTTP: &networkingv1.HTTPIngressRuleValue{
-			Paths: []networkingv1.HTTPIngressPath{
-				{
-					Path:     grpcWebPathPrefix,
-					PathType: &pathTypeImplementationSpecific,
-					Backend: networkingv1.IngressBackend{
-						Service: &networkingv1.IngressServiceBackend{
-							Name: ControlPlaneServiceName(cfg.CRName),
-							Port: networkingv1.ServiceBackendPort{Name: "grpc-web"},
-						},
-					},
-				},
-				// The storage relay (expiring state-file transfer URLs) is
-				// served by the control plane on the same port as the API --
-				// same-origin for browsers, one more path rule for the edge.
-				{
-					Path:     StoragePathPrefix,
-					PathType: &pathTypePrefix,
-					Backend: networkingv1.IngressBackend{
-						Service: &networkingv1.IngressServiceBackend{
-							Name: ControlPlaneServiceName(cfg.CRName),
-							Port: networkingv1.ServiceBackendPort{Name: "grpc-web"},
-						},
-					},
-				},
-				// The identity server (sign-in pages, OIDC endpoints, admin
-				// console) on the same hostname: same-origin auth, one DNS
-				// record, one certificate.
-				{
-					Path:     IdentityPathPrefix,
-					PathType: &pathTypePrefix,
-					Backend: networkingv1.IngressBackend{
-						Service: &networkingv1.IngressServiceBackend{
-							Name: IdentityServiceName(cfg.CRName),
-							Port: networkingv1.ServiceBackendPort{Name: "http"},
-						},
-					},
-				},
-				{
-					Path:     "/",
-					PathType: &pathTypePrefix,
-					Backend: networkingv1.IngressBackend{
-						Service: &networkingv1.IngressServiceBackend{
-							Name: ConsoleServiceName(cfg.CRName),
-							Port: networkingv1.ServiceBackendPort{Name: "http"},
-						},
-					},
+	routes := FrontDoorRoutes()
+	paths := make([]networkingv1.HTTPIngressPath, 0, len(routes))
+	for _, route := range routes {
+		paths = append(paths, networkingv1.HTTPIngressPath{
+			Path:     route.PathPrefix,
+			PathType: &pathTypePrefix,
+			Backend: networkingv1.IngressBackend{
+				Service: &networkingv1.IngressServiceBackend{
+					Name: route.ServiceName(cfg.CRName),
+					Port: networkingv1.ServiceBackendPort{Name: route.ServicePortName()},
 				},
 			},
-		},
+		})
+	}
+	rule := networkingv1.IngressRuleValue{
+		HTTP: &networkingv1.HTTPIngressRuleValue{Paths: paths},
 	}
 
 	ing := &networkingv1.Ingress{
@@ -277,15 +225,6 @@ func ingressAnnotations(cfg IngressConfig) map[string]string {
 		annotations["nginx.ingress.kubernetes.io/proxy-buffering"] = "off"
 		annotations["nginx.ingress.kubernetes.io/proxy-read-timeout"] = "3600"
 		annotations["nginx.ingress.kubernetes.io/proxy-send-timeout"] = "3600"
-		// ingress-nginx renders ImplementationSpecific paths with Prefix
-		// (path-element) semantics -- "location /ai.planton./" plus an exact
-		// match -- so a gRPC-Web path like /ai.planton.iam...Service/Method
-		// matches neither (proven live: requests fell through to the
-		// console). Regex mode restores true string-prefix matching
-		// ("location ~* ^/ai.planton."). The unescaped "." overmatching as
-		// a regex wildcard is benign: no console route resembles the API
-		// package prefix.
-		annotations["nginx.ingress.kubernetes.io/use-regex"] = "true"
 		// nginx defaults the request-body cap to 1m, which would 413 any
 		// browser payload over a megabyte -- large manifest applies on the
 		// API path, state-file uploads on the storage path -- while both

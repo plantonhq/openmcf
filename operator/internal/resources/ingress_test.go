@@ -27,13 +27,15 @@ func TestIngress_RoutesAPIStorageIdentityAndConsole(t *testing.T) {
 	}
 
 	api := paths[0]
-	if api.Path != "/ai.planton." {
-		t.Errorf("API path = %s, want /ai.planton.", api.Path)
+	if api.Path != APIPathPrefix {
+		t.Errorf("API path = %s, want %s", api.Path, APIPathPrefix)
 	}
-	// Service names are single path segments, so segment-boundary Prefix
-	// matching would never match; string-prefix matching is required.
-	if *api.PathType != networkingv1.PathTypeImplementationSpecific {
-		t.Errorf("API pathType = %s, want ImplementationSpecific", *api.PathType)
+	// Every rule is a portable segment-prefix rule: the API has its own path
+	// namespace precisely so no controller-specific matching is needed.
+	for _, p := range paths {
+		if *p.PathType != networkingv1.PathTypePrefix {
+			t.Errorf("path %s pathType = %s, want Prefix", p.Path, *p.PathType)
+		}
 	}
 	if api.Backend.Service.Name != controlPlaneSvcName {
 		t.Errorf("API backend = %s, want %s", api.Backend.Service.Name, controlPlaneSvcName)
@@ -198,11 +200,9 @@ func TestIngress_NginxAnnotationsOnlyWhenDetected(t *testing.T) {
 	if ing.Annotations["nginx.ingress.kubernetes.io/proxy-read-timeout"] != "3600" {
 		t.Error("expected long nginx read timeout for gRPC-Web streaming")
 	}
-	// Without regex mode, ingress-nginx gives ImplementationSpecific paths
-	// Prefix (path-element) semantics and the API rule never matches a
-	// gRPC-Web path -- proven live; regression guard.
-	if ing.Annotations["nginx.ingress.kubernetes.io/use-regex"] != "true" {
-		t.Error("expected use-regex so the API path prefix string-matches on nginx")
+	// Routing never depends on nginx: the annotations above are tuning only.
+	if _, ok := ing.Annotations["nginx.ingress.kubernetes.io/use-regex"]; ok {
+		t.Error("use-regex must not be set; every rule is a plain Prefix rule")
 	}
 	// nginx's default 1m body cap would 413 large manifest applies and
 	// state-file uploads while both backend servers accept 100m.

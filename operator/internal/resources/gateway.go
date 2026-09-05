@@ -2,6 +2,7 @@ package resources
 
 import (
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -77,100 +78,78 @@ func GatewayPortForwardCommand(crName, namespace string, localPort int32) string
 		namespace, GatewayServiceName(crName), localPort, gatewayServicePort)
 }
 
-// GatewayNginxConfig renders the nginx server block that mirrors the ingress
-// path layout on one origin: the gRPC-Web API prefix to the control plane,
-// the identity path to the identity server, everything else to the console.
-// Keeping the layout identical to the Ingress rules means the two front-door
-// modes are the same architecture at different addresses -- URLs, sign-in
-// callbacks, and docs carry over unchanged when an install graduates from
-// port-forward to ingress.
+// GatewayNginxConfig renders the nginx server block from the front-door
+// route table (front_door_routes.go): one location per route, in table order.
+// Rendering from the same table the Ingress and HTTPRoute builders use is what
+// makes the port-forward door and the public doors the same architecture at
+// different addresses -- URLs, sign-in callbacks, and docs carry over
+// unchanged when an install graduates from port-forward to a real hostname.
+//
+// Notes on the directives:
+//   - Upstreams are variables + a resolver, NOT literal proxy_pass hosts:
+//     nginx resolves literal upstreams once at startup and refuses to
+//     boot if any is absent -- but the gateway deliberately starts before
+//     the platform Services exist (it is the front door, like an ingress
+//     controller). Variables defer resolution to request time, so missing
+//     backends are an honest 502, never a crash loop. The resolver is the
+//     cluster DNS server, injected by the nginx image's own entrypoint
+//     (${NGINX_LOCAL_RESOLVERS} from the pod's resolv.conf) -- which is
+//     also why this renders as an entrypoint TEMPLATE, not a literal
+//     conf.d file. Upstream names are FQDNs because request-time
+//     resolution bypasses resolv.conf search domains.
+//   - A plain prefix location per route (nginx picks the longest match),
+//     the same segment-prefix meaning the Ingress and HTTPRoute rules carry.
+//   - Control-plane routes: proxy_buffering off + long read timeout, because
+//     gRPC-Web server-streaming (deploy progress, log tails) is a long-lived
+//     chunked response; client_max_body_size raised to the server's own
+//     100m limit because nginx's 1m default would 413 large manifest applies
+//     and state-file uploads (the relay additionally enforces its 50MB
+//     transfer cap itself).
+//   - Identity and console routes: proxy_set_header Host preserves the
+//     browser's localhost:port origin, from which the identity server's
+//     sign-in pages and OIDC responses derive URLs (KC_PROXY_HEADERS=
+//     xforwarded) and the console its callbacks.
 func GatewayNginxConfig(crName, namespace string) string {
-	controlPlaneUpstream := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d",
-		ControlPlaneServiceName(crName), namespace, controlPlaneGrpcWebPort)
-	identityUpstream := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d",
-		IdentityServiceName(crName), namespace, identityServicePort)
-	consoleUpstream := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d",
-		ConsoleServiceName(crName), namespace, consoleServicePort)
+	var b strings.Builder
+	fmt.Fprintf(&b, "resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;\n\nserver {\n    listen %d;\n\n", gatewayContainerPort)
 
-	// Notes on the directives:
-	//   - Upstreams are variables + a resolver, NOT literal proxy_pass hosts:
-	//     nginx resolves literal upstreams once at startup and refuses to
-	//     boot if any is absent -- but the gateway deliberately starts before
-	//     the platform Services exist (it is the front door, like an ingress
-	//     controller). Variables defer resolution to request time, so missing
-	//     backends are an honest 502, never a crash loop. The resolver is the
-	//     cluster DNS server, injected by the nginx image's own entrypoint
-	//     (${NGINX_LOCAL_RESOLVERS} from the pod's resolv.conf) -- which is
-	//     also why this renders as an entrypoint TEMPLATE, not a literal
-	//     conf.d file. Upstream names are FQDNs because request-time
-	//     resolution bypasses resolv.conf search domains.
-	//   - The API location matches by string prefix (regex): gRPC-Web request
-	//     paths are single segments like /ai.planton.iam...Service/Method, so
-	//     path-element prefix matching would reject them (the same nuance the
-	//     Ingress builder handles with use-regex on nginx controllers).
-	//   - proxy_buffering off + long read timeout: gRPC-Web server-streaming
-	//     (deploy progress, log tails) is a long-lived chunked response.
-	//   - proxy_set_header Host preserves the browser's localhost:port origin
-	//     for the identity server, whose sign-in pages and OIDC responses
-	//     derive URLs from forwarded headers (KC_PROXY_HEADERS=xforwarded).
-	//   - client_max_body_size: nginx defaults to 1m, which would 413 any
-	//     browser payload over a megabyte while BOTH backend servers accept
-	//     100m -- large manifest applies and state-file uploads are real
-	//     traffic on these paths. The API and storage locations raise the
-	//     cap to the servers' own limit; the servers stay the authority
-	//     (the relay additionally enforces its 50MB transfer cap itself).
-	return fmt.Sprintf(`resolver ${NGINX_LOCAL_RESOLVERS} valid=10s;
+	routes := FrontDoorRoutes()
+	upstreamVar := func(r FrontDoorRoute) string {
+		switch r.Backend {
+		case BackendIdentity:
+			return "$identity_upstream"
+		case BackendConsole:
+			return "$console_upstream"
+		default:
+			return "$controlplane_upstream"
+		}
+	}
+	for _, r := range []FrontDoorRoute{
+		{Backend: BackendControlPlane}, {Backend: BackendIdentity}, {Backend: BackendConsole},
+	} {
+		fmt.Fprintf(&b, "    set %s http://%s.%s.svc.cluster.local:%d;\n",
+			upstreamVar(r), r.ServiceName(crName), namespace, r.ServicePort())
+	}
 
-server {
-    listen %d;
-
-    set $controlplane_upstream %s;
-    set $identity_upstream %s;
-    set $console_upstream %s;
-
-    # Browser-facing gRPC-Web API -> the control plane's gRPC-Web port.
-    location ~* ^/ai\.planton\. {
-        proxy_pass $controlplane_upstream;
-        proxy_http_version 1.1;
-        proxy_buffering off;
-        proxy_request_buffering off;
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-        client_max_body_size 100m;
-    }
-
-    # Storage relay: expiring transfer URLs (state files) served by the
-    # control plane on the same port as the API.
-    location /storage/ {
-        proxy_pass $controlplane_upstream;
-        proxy_http_version 1.1;
-        proxy_buffering off;
-        proxy_request_buffering off;
-        client_max_body_size 100m;
-    }
-
-    # Sign-in: the identity server's pages and OIDC endpoints.
-    location %s {
-        proxy_pass $identity_upstream;
-        proxy_http_version 1.1;
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $http_host;
-        proxy_buffering off;
-    }
-
-    # Everything else is the web console.
-    location / {
-        proxy_pass $console_upstream;
-        proxy_http_version 1.1;
-        proxy_set_header Host $http_host;
-        proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_buffering off;
-    }
-}
-`, gatewayContainerPort, controlPlaneUpstream, identityUpstream, consoleUpstream, IdentityPathPrefix)
+	for _, r := range routes {
+		fmt.Fprintf(&b, "\n    location %s {\n        proxy_pass %s;\n        proxy_http_version 1.1;\n",
+			r.PathPrefix, upstreamVar(r))
+		switch r.Backend {
+		case BackendControlPlane:
+			b.WriteString("        proxy_buffering off;\n        proxy_request_buffering off;\n" +
+				"        proxy_read_timeout 3600s;\n        proxy_send_timeout 3600s;\n" +
+				"        client_max_body_size 100m;\n")
+		default:
+			b.WriteString("        proxy_set_header Host $http_host;\n" +
+				"        proxy_set_header X-Forwarded-For $remote_addr;\n" +
+				"        proxy_set_header X-Forwarded-Proto $scheme;\n" +
+				"        proxy_set_header X-Forwarded-Host $http_host;\n" +
+				"        proxy_buffering off;\n")
+		}
+		b.WriteString("    }\n")
+	}
+	b.WriteString("}\n")
+	return b.String()
 }
 
 // GatewayConfigMap builds the ConfigMap carrying the rendered nginx config

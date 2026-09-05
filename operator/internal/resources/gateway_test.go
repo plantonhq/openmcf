@@ -10,12 +10,14 @@ import (
 func TestGatewayNginxConfig_MirrorsIngressLayout(t *testing.T) {
 	config := GatewayNginxConfig("planton", "planton-ns")
 
-	// The API path routes by STRING prefix (regex): gRPC-Web request paths
-	// are single segments (/ai.planton.iam...Service/Method), which
-	// path-element prefix matching would reject -- the exact nuance the
-	// Ingress builder handles with use-regex on nginx controllers.
-	if !strings.Contains(config, `location ~* ^/ai\.planton\.`) {
-		t.Error("the API location must be a string-prefix regex match")
+	// The API routes by the plain path namespace the control plane serves
+	// its gRPC-Web door under -- the same prefix rule every front door
+	// carries (front_door_routes.go); no regex, no controller-specific syntax.
+	if !strings.Contains(config, "location "+APIPathPrefix+" {") {
+		t.Errorf("the API location must be the plain %s prefix:\n%s", APIPathPrefix, config)
+	}
+	if strings.Contains(config, "~*") || strings.Contains(config, "ai.planton") {
+		t.Error("no regex location and no gRPC package name may remain in the gateway config")
 	}
 	if !strings.Contains(config, "http://planton-control-plane.planton-ns.svc.cluster.local:8081") {
 		t.Errorf("the API path must route to the control plane's gRPC-Web port:\n%s", config)
@@ -62,7 +64,7 @@ func TestGatewayNginxConfig_MirrorsIngressLayout(t *testing.T) {
 
 	// The storage relay (expiring state-file transfer URLs) is served by the
 	// control plane on the API port and must be routed like the Ingress does.
-	if !strings.Contains(config, "location /storage/") {
+	if !strings.Contains(config, "location "+StoragePathPrefix+" {") {
 		t.Error("the storage relay path must be routed to the control plane")
 	}
 }

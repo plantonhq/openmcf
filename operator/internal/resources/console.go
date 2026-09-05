@@ -114,16 +114,19 @@ func ConsoleDeployment(cfg ConsoleConfig) *appsv1.Deployment {
 	}
 
 	// The console's connect client speaks gRPC-Web from the browser, so it
-	// must point at the control plane's gRPC-Web port -- the raw gRPC port
+	// must point at the control plane's gRPC-Web door -- the raw gRPC port
 	// would refuse the browser dialect. The browser reaches the API through
-	// the front-door URL (ingress or gateway routes the API path prefix);
-	// the in-cluster fallback only covers the transient window before the
-	// front-door URL resolves.
-	apiEndpoint := fmt.Sprintf("http://%s:%d",
+	// the front-door URL, under the API path namespace every front door
+	// routes (APIPathPrefix); the client appends "/<service>/<method>". The
+	// in-cluster fallback only covers the transient window before the
+	// front-door URL resolves, and carries the same prefix because the
+	// control plane serves its door under it everywhere.
+	apiOrigin := fmt.Sprintf("http://%s:%d",
 		ControlPlaneServiceFQDN(cfg.CRName, cfg.Namespace), controlPlaneGrpcWebPort)
 	if cfg.PublicURL != "" {
-		apiEndpoint = cfg.PublicURL
+		apiOrigin = cfg.PublicURL
 	}
+	apiEndpoint := APIURL(apiOrigin)
 
 	envVars := []corev1.EnvVar{
 		{Name: "API_ENDPOINT", Value: apiEndpoint},
