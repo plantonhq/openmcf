@@ -29,7 +29,7 @@
 #        cards were converged onto the shared sensitivity-aware picker (and the
 #        4 with no console UI were annotated to secure the CLI/manifest path), so
 #        none dead-ends; and
-#   (FK) AzureVirtualMachine.admin_password -- the wizard now renders the DD-006
+#   (FK) AzureVirtualMachine.admin_password -- the wizard now renders the
 #        dual-mode "managed secret | reference AzureKeyVault" picker.
 #
 # The fields below ARE real secrets, deliberately deferred (not yet annotated) for
@@ -47,10 +47,9 @@ gaps:
   - KubernetesSecret:spec.basic_auth.password
   - KubernetesSecret:spec.docker_config_json.password
   - KubernetesSecret:spec.ssh_auth.ssh_private_key
-violations:
-  # Sensitive fields still carrying a value-content rule, found when the check was
-  # introduced (the Azure catalog's two instances were fixed in the same change;
-  # the GCP catalog's four were fixed subsequently). Owner: cloudflare -> the
-  # Cloudflare catalog maintainers. Fix = drop the rule, teach the shape in the
-  # field comment.
-  - CloudflareZeroTrustTunnel:spec.tunnel_secret
+violations: []
+  # Sensitive fields still carrying a value-content rule are listed here by
+  # `Kind:spec.path`. The list is empty: the Azure, GCP, and Cloudflare instances
+  # found when the check was introduced have all been fixed (drop the rule, teach
+  # the shape in the field comment). The gate fails on a stale entry as loudly as
+  # on a missing one, so the table can only shrink honestly.

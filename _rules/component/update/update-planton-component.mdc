@@ -551,6 +551,39 @@ Based on scenario:
   companion deployment (the plugin), it belongs on the OPERATOR kind as a
   typed arm, and its external dependencies (cert-manager for plugin TLS)
   are documented — never hidden.
+- **A chart move re-reads the chart's CRD posture, and two invariants hold
+  through every update of a chart-backed kind.** The forge rule's CRD
+  decision tree (its Post-Forge Live E2E Validation section) placed the
+  kind on one of three branches by reading the chart AT THE PIN; a
+  `chart_version` move is a new pin, so read the new chart the same way
+  before touching a module. A branch-1 kind (the chart owns its CRD
+  lifecycle behind an install switch and a keep switch) stays branch 1 only
+  while the new chart still templates its CRDs behind the SAME switches
+  the module maps `crds.install` and `crds.keep_on_uninstall` onto; a
+  derive-branch kind re-derives from the new pin and never gains a staged
+  copy. The two invariants, both machine-enforced and never relaxed for a
+  "small" bump: (1) **a module is its directory** — nothing outside
+  `iac/tf/` or `iac/pulumi/` is ever read, because release packaging zips
+  exactly that directory and the Pulumi binary lane runs from a generated
+  workspace holding only `Pulumi.yaml`, so a relative read of a sibling
+  path passes in the source tree and fails in every release (the anatomy
+  gate forbids `iac/crds/`; the self-containment guard forbids parent-path
+  reads in either engine); (2) **a module derives, never copies, what a
+  pinned artifact already carries** — a vendored CRD is frozen at one
+  version while `chart_version` moves with the user, so the schema silently
+  stops matching the operator it serves, and no count guard fixes that;
+  only derivation does. When the kind's DEFAULT chart version moves, every
+  copy of the default moves in the same change — the proto field default,
+  the Pulumi module's default, the Terraform module's default, the presets,
+  the docs, and any client that seeds the field — and the kind's e2e
+  install scenario advances with it: the first act pins the PREVIOUS
+  published chart explicitly (a first act that follows the default has
+  nothing to move to) and the `e2e-upgrade-manifest` second act carries
+  the new default, so every catalog release re-proves the chart upgrade in
+  place on both engines. The kind's MINIMUM chart version is a different
+  number with a different reason (the first chart on which the module's
+  dials mean anything) and moves only when an older chart would silently
+  drop a dial — never merely because the default moved.
 - **Custom resources apply through `kubectl_manifest` (alekc/kubectl), not
   the hashicorp provider's `kubernetes_manifest`**: `kubernetes_manifest`
   requires a reachable cluster AND the CRD's OpenAPI schema at PLAN time,

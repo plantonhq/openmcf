@@ -11,7 +11,7 @@ func TestLooksSensitiveByName(t *testing.T) {
 		// Positives -- genuine secret-bearing names.
 		{"password", true, "bare secret word"},
 		{"db_password", true, "secret word in a segment"},
-		{"registry_password", true, "the T01 pilot field shape"},
+		{"registry_password", true, "a qualified secret word: the registry-credential field shape"},
 		{"client_secret", true, "secret segment"},
 		{"app_secret", true, "secret segment"},
 		{"secret_access_key", true, "AWS secret access key is a real secret"},
