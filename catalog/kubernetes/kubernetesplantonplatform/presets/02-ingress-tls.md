@@ -38,3 +38,5 @@ sign-in, and cert-manager issues (and renews) the certificate.
 
 - **01-zero-config** — no ingress; the port-forward door
 - **03-eks** — the EKS-shaped variant (ALB annotations, gp3, IRSA)
+- **04-gateway-api** — the same URL through a Gateway API Gateway
+  instead of an Ingress controller

@@ -183,6 +183,10 @@ spec:
 | `spec.ingress.tls.issuer` | `KubernetesPlantonPlatformCertManagerIssuer` |  |  |  |
 | `spec.ingress.tls.issuer.name` | `string` | yes |  |  |
 | `spec.ingress.tls.issuer.kind` | `string` |  | `Issuer` |  |
+| `spec.ingress.gatewayRef` | `KubernetesPlantonPlatformGatewayRef` |  |  |  |
+| `spec.ingress.gatewayRef.name` | `string` | yes |  |  |
+| `spec.ingress.gatewayRef.namespace` | `string` |  |  |  |
+| `spec.ingress.gatewayRef.sectionName` | `string` |  |  |  |
 | `spec.gateway` | `KubernetesPlantonPlatformGateway` |  |  |  |
 | `spec.gateway.localPort` | `int32` |  | `8080` |  |
 | `spec.identity` | `KubernetesPlantonPlatformIdentity` |  |  |  |
@@ -419,21 +423,25 @@ StorageClass override for the cache volume.
 
 `KubernetesPlantonPlatformIngress`
 
-Expose the platform at a real URL through the cluster's ingress
-controller. Off by default — the built-in gateway plus port-forward
-is the zero-config door. `hostname` serves your own domain;
-`tls` adds HTTPS (bring a certificate Secret or name a cert-manager
-issuer).
+Expose the platform at a real URL through the cluster's existing
+front door — an Ingress controller, or a Gateway API Gateway
+(`gateway_ref`). Off by default — the built-in gateway plus
+port-forward is the zero-config door. `hostname` serves your own
+domain; `tls` adds HTTPS (bring a certificate Secret or name a
+cert-manager issuer).
 
 - rule: tls requires hostname: a certificate cannot be brought or issued for an auto-derived hostname
+- rule: gateway_ref and ingress_class_name name two different front doors; set one — gateway_ref attaches to a Gateway API Gateway, ingress_class_name renders an Ingress
+- rule: with gateway_ref the Gateway's HTTPS listener owns the certificate: attach to a listener that already serves the hostname, or set tls.issuer to have a certificate issued for the listener to reference
 
 ### spec.ingress.enabled
 
 `bool`
 
-Expose the platform through the cluster's ingress controller. With
-no hostname, the operator derives a working URL from the
-controller's published address (magic DNS).
+Expose the platform through the cluster's front door. With no
+hostname, the operator derives a working URL from the front door's
+published address (magic DNS) — the Ingress controller's, or the
+Gateway's.
 
 ### spec.ingress.hostname
 
@@ -447,21 +455,26 @@ realm at first boot — set it before the first sign-in.
 
 `string`
 
-IngressClass to use. Unset = the cluster's default.
+IngressClass to use. Unset = the cluster's default. Names one front
+door; never combined with gateway_ref.
 
 ### spec.ingress.annotations
 
 `map<string, string>`
 
 Extra annotations on the Ingress (controller-specific tuning —
-ALB schemes, proxy budgets).
+ALB schemes, proxy budgets). Ignored with gateway_ref: the Gateway
+API expresses behavior in typed fields, not annotations.
 
 ### spec.ingress.tls
 
 `KubernetesPlantonPlatformIngressTls`
 
 HTTPS. Requires hostname. Exactly one of secret_name (bring your own
-certificate) or issuer (cert-manager issues one).
+certificate) or issuer (cert-manager issues one) — except with
+gateway_ref, where the route attaches to whichever listener matches
+the hostname and HTTPS is inferred from that listener; only issuer
+applies there.
 
 - rule: exactly one of secret_name or issuer must be set — bring a certificate or have cert-manager issue one, never both
 
@@ -494,6 +507,44 @@ Issuer kind.
 
 - default: `Issuer`
 - rule: {"string":{"in":["","Issuer","ClusterIssuer"]}}
+
+### spec.ingress.gatewayRef
+
+`KubernetesPlantonPlatformGatewayRef`
+
+Serve Planton through a Gateway API Gateway the cluster already runs
+(Istio, Envoy Gateway, Cilium, a cloud Gateway) instead of an Ingress
+controller: the operator attaches an HTTPRoute for the hostname to
+that Gateway. The Gateway is the cluster team's object and is never
+modified — its listeners decide which hostnames are admitted, which
+namespaces may attach routes, and how HTTPS is terminated; the
+operator reads those facts and explains any mismatch in the
+platform's status. Requires a planton-operator chart that knows this
+field (0.9.0 or newer); an older definition refuses the declaration.
+
+### spec.ingress.gatewayRef.name
+
+`string` · required
+
+Name of the Gateway.
+
+- rule: {"string":{"minLen":"1"}}
+
+### spec.ingress.gatewayRef.namespace
+
+`string`
+
+Namespace of the Gateway. Defaults to the platform's own namespace.
+A Gateway in another namespace must allow routes from this one
+(spec.listeners[].allowedRoutes.namespaces).
+
+### spec.ingress.gatewayRef.sectionName
+
+`string`
+
+Pins the route to one named listener of the Gateway. When empty, the
+route attaches to every listener whose hostname admits the
+platform's hostname.
 
 ### spec.gateway
 

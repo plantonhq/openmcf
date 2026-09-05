@@ -15,6 +15,8 @@ func TestKubernetesPlantonPlatformSpec(t *testing.T) {
 	ginkgo.RunSpecs(t, "KubernetesPlantonPlatformSpec Validation Tests")
 }
 
+func strPtr(value string) *string { return &value }
+
 func literalRef(value string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
 		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
@@ -89,6 +91,40 @@ var _ = ginkgo.Describe("KubernetesPlantonPlatformSpec Validation Tests", func()
 		ginkgo.It("should accept a magic-DNS ingress (enabled, no hostname, no tls)", func() {
 			input := minimalValidPlatform()
 			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{Enabled: true}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		// The Gateway API front door: the Gateway's listener already serves
+		// the hostname over HTTPS, so no tls block is needed.
+		ginkgo.It("should accept a Gateway API front door pinned to one listener, no tls", func() {
+			input := minimalValidPlatform()
+			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
+				Enabled:  true,
+				Hostname: "planton.example.com",
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{
+					Name:        "main",
+					Namespace:   "istio-ingress",
+					SectionName: "https",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a Gateway API front door with a cert-manager issuer", func() {
+			input := minimalValidPlatform()
+			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
+				Enabled:    true,
+				Hostname:   "planton.example.com",
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Name: "main"},
+				Tls: &KubernetesPlantonPlatformIngressTls{
+					Issuer: &KubernetesPlantonPlatformCertManagerIssuer{
+						Name: "letsencrypt",
+						Kind: strPtr("ClusterIssuer"),
+					},
+				},
+			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).To(gomega.BeNil())
 		})
@@ -187,6 +223,43 @@ var _ = ginkgo.Describe("KubernetesPlantonPlatformSpec Validation Tests", func()
 						Name: "letsencrypt",
 					},
 				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		// The two Gateway rules mirror the operator's CRD word for word, so a
+		// declaration the catalog accepts is one the API server accepts.
+		ginkgo.It("should fail when gateway_ref and ingress_class_name name two front doors", func() {
+			input := minimalValidPlatform()
+			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
+				Enabled:          true,
+				Hostname:         "planton.example.com",
+				IngressClassName: "nginx",
+				GatewayRef:       &KubernetesPlantonPlatformGatewayRef{Name: "main"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail on gateway_ref with a brought certificate Secret (the listener owns it)", func() {
+			input := minimalValidPlatform()
+			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
+				Enabled:    true,
+				Hostname:   "planton.example.com",
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Name: "main"},
+				Tls:        &KubernetesPlantonPlatformIngressTls{SecretName: "planton-tls"},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail on a gateway_ref without a name", func() {
+			input := minimalValidPlatform()
+			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
+				Enabled:    true,
+				Hostname:   "planton.example.com",
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Namespace: "istio-ingress"},
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())

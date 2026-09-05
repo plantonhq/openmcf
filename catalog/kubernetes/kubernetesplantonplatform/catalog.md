@@ -19,7 +19,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 - **The Planton operator** — a deployed Planton Operator resource (one per cluster serves every platform). Without it the declaration is never reconciled.
 - **A default StorageClass that can actually provision volumes** (or set `storage.storageClassName`) — the operator verifies this before deploying and its status explains any storage problem in plain language.
-- **An ingress controller** (only for `ingress`) and **cert-manager** (only for `ingress.tls.issuer`).
+- **An ingress controller or a Gateway API Gateway** (only for `ingress` — an IngressClass, or a Gateway named by `ingress.gatewayRef`) and **cert-manager** (only for `ingress.tls.issuer`).
 
 ## Deploy
 
@@ -76,6 +76,8 @@ These are the most important decisions when configuring a Planton Platform. Expl
 
 **Set the URL before the first sign-in** — the identity server bakes the platform URL into its realm at first boot. For port-forward platforms that URL includes `gateway.localPort` (default 8080; two port-forward platforms on one machine need distinct ports); for ingress platforms it is `ingress.hostname`. Deciding exposure after the first visit means re-doing identity setup. `ingress.tls` requires a hostname (a certificate cannot be issued for an auto-derived address) and takes exactly one of `secretName` or a cert-manager `issuer`.
 
+**Pick the front door the cluster already runs** — `ingress` serves the platform through either an Ingress controller (`ingressClassName`, or the cluster's default class) or a Gateway API Gateway (`gatewayRef`: Istio, Envoy Gateway, Cilium, a cloud Gateway); never both. On the Gateway door the operator attaches one route for the hostname and reads the Gateway's listeners — an HTTPS listener that already serves the hostname means `https://` with no `tls` block, and `tls.issuer` has cert-manager issue a certificate for the listener to reference (`tls.secretName` does not apply there). Never route a Gateway of your own to the platform's port-forward Service: pages load, but the platform still advertises `http://localhost:8080` and sign-in goes there.
+
 **The runner's cloud identity is yours, never the platform's** — the platform stores no cloud credentials. Give the runner workload-identity annotations (`runner.serviceAccountAnnotations` — IRSA on EKS, Workload Identity on GKE/AKS) or name a customer-owned Secret in `runner.cloudCredentialsSecretName`; rotate by updating YOUR Secret. Disabling the runner leaves a platform that can model infrastructure but not deploy it.
 
 **One build-enabled platform per cluster** — Tekton allows exactly one cluster-wide build-events sink, so builds can feed only one platform per cluster. When several platforms share a cluster, set `build.enabled: false` on all but one.
@@ -115,6 +117,8 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 **Zero config** — a version-only platform behind the built-in gateway: one port-forward opens console, API, and sign-in, and the first visitor becomes the admin. The right start on any cluster, including laptops. Start from the **Zero Config** preset.
 
 **Real hostname with in-cluster TLS** — the platform at your own domain through the cluster's ingress controller, with cert-manager issuing and renewing the certificate. Set the hostname before the first sign-in. Start from the **Ingress + TLS** preset.
+
+**Real hostname through a Gateway API Gateway** — the platform behind the Gateway the cluster already runs (Istio, Envoy Gateway, Cilium, a cloud Gateway); the Gateway's HTTPS listener serves the hostname, so no in-cluster `tls` block is needed. Start from the **Gateway API Front Door** preset.
 
 **EKS-shaped platform** — gp3 storage for every volume, the AWS Load Balancer Controller serving the hostname with an ACM certificate at the edge (no in-cluster `tls` block), and IRSA giving the runner keyless AWS identity. Start from the **EKS** preset.
 

@@ -103,6 +103,22 @@ func platformSpecBody(locals *Locals) map[string]interface{} {
 		if i.GetIngressClassName() != "" {
 			ingress["ingressClassName"] = i.GetIngressClassName()
 		}
+		// The Gateway API front door: the fork's other arm (the CRD refuses
+		// it beside ingressClassName). Rendered only when the manifest named
+		// a Gateway; the operator reads the Gateway's listeners for
+		// everything else.
+		if g := i.GetGatewayRef(); g != nil {
+			gatewayRef := map[string]interface{}{
+				"name": g.GetName(),
+			}
+			if g.GetNamespace() != "" {
+				gatewayRef["namespace"] = g.GetNamespace()
+			}
+			if g.GetSectionName() != "" {
+				gatewayRef["sectionName"] = g.GetSectionName()
+			}
+			ingress["gatewayRef"] = gatewayRef
+		}
 		if len(i.GetAnnotations()) > 0 {
 			ingress["annotations"] = stringMapToInterface(i.GetAnnotations())
 		}

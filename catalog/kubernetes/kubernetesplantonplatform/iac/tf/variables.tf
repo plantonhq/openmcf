@@ -43,7 +43,12 @@ variable "spec" {
       enabled            = optional(bool, false)
       hostname           = optional(string, "")
       ingress_class_name = optional(string, "")
-      annotations        = optional(map(string), {})
+      gateway_ref = optional(object({
+        name         = string
+        namespace    = optional(string, "")
+        section_name = optional(string, "")
+      }))
+      annotations = optional(map(string), {})
       tls = optional(object({
         secret_name = optional(string, "")
         issuer = optional(object({

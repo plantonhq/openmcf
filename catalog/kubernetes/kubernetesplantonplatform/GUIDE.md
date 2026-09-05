@@ -10,8 +10,9 @@ bakes at first boot.
 
 The identity server bakes the platform's URL into its realm at first
 boot. That makes exactly two fields effectively first-boot-sticky:
-`ingress.hostname` (when you know the platform will live at a real URL,
-set it before anyone signs in) and `gateway.local_port` (two
+`ingress.hostname` (when you know the platform will live at a real URL —
+through an Ingress controller or a Gateway API Gateway — set it before
+anyone signs in) and `gateway.local_port` (two
 port-forward platforms on one laptop need distinct ports, chosen before
 the first visit). Everything else — storage, replicas, the runner's
 cloud identity, the opt-in components — changes cleanly on a running

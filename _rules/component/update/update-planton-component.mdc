@@ -584,6 +584,26 @@ Based on scenario:
   number with a different reason (the first chart on which the module's
   dials mean anything) and moves only when an older chart would silently
   drop a dial — never merely because the default moved.
+- **A field added to a kind whose definition ANOTHER catalog resource
+  installs lands with its refusal explained.** When a kind declares a
+  custom resource (`kubectl_manifest` / `apiextensions.NewCustomResource`)
+  whose CRD comes from a different kind's chart (KubernetesPlantonPlatform
+  under KubernetesPlantonOperator is the pattern), a new spec field reaches
+  the API server before every cluster's definition knows it: the catalog
+  release ships the field, the chart that installed the definition is
+  whatever version the adopter pinned, and nothing upgrades that chart
+  implicitly. Server-side apply refuses such a field outright (never a
+  silent prune) — but with the mechanism's sentence only (`.spec.x.y: field
+  not declared in schema`). The recognizer in `pkg/failure` turns it into
+  the three parts, naming the resource that installs the definition; the
+  same update that adds the field (a) confirms the kind is in
+  `definitionOwners` (`pkg/failure/kubernetes.go`) so the next step names
+  the owning kind and its version field, and (b) states the minimum
+  owning-chart version in the field's proto comment and the preset that
+  uses it, because the module cannot read the installed definition at plan
+  time and must not try (a live read in a module is the divergence the two
+  invariants above exist to prevent). Never add a module-side precondition
+  for this class; the explanation belongs where the engine output is read.
 - **Custom resources apply through `kubectl_manifest` (alekc/kubectl), not
   the hashicorp provider's `kubernetes_manifest`**: `kubernetes_manifest`
   requires a reachable cluster AND the CRD's OpenAPI schema at PLAN time,

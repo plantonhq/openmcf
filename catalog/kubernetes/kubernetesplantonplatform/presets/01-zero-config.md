@@ -45,3 +45,4 @@ None — this preset deploys as-is.
 - **02-ingress-tls** — a real hostname over HTTPS via cert-manager
 - **03-eks** — EKS posture: gp3 storage, ALB ingress, IRSA runner
   identity
+- **04-gateway-api** — a real hostname through a Gateway API Gateway

@@ -37,6 +37,7 @@ resource's outputs.
   and all) on an ordinary re-apply. Upgrading is a deliberate one-line
   edit.
 - **Everything else is opt-in refinement** — a real hostname and TLS
+  through the cluster's Ingress controller or its Gateway API Gateway
   (`ingress`), storage classes and sizes (`storage` + per-component
   overrides), database HA (`database.postgresql.replicas: 2` grows a
   streaming-replication pair LIVE), cloud identity for the runner
@@ -56,7 +57,7 @@ resource's outputs.
 |---|---|---|---|
 | `namespace` | yes | — | The platform's namespace (literal or KubernetesNamespace reference) |
 | `version` | yes | — | The platform version — THE deliberate choice |
-| `ingress` | no | off | Real URL via the cluster's ingress controller; `tls` takes a Secret XOR a cert-manager issuer and requires `hostname` |
+| `ingress` | no | off | Real URL via the cluster's front door — an Ingress controller (`ingress_class_name`) XOR a Gateway API Gateway (`gateway_ref`); `tls` takes a Secret XOR a cert-manager issuer and requires `hostname` (with `gateway_ref` the listener owns the certificate, so only `issuer` applies) |
 | `gateway.local_port` | no | `8080` | The port-forward door's port — baked into sign-in at first boot |
 | `storage` | no | cluster default | Platform-wide class + size; every component can override |
 | `database.postgresql.replicas` | no | `1` | 2+ = streaming replication with automatic failover, live |

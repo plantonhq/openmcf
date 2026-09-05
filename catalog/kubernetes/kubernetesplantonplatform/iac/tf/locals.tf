@@ -104,11 +104,22 @@ locals {
       issuer     = local.ingress_tls_issuer
     } : k => v if v != null
   }
+  # The Gateway API front door: the fork's other arm (the CRD refuses it
+  # beside ingressClassName). Rendered only when the manifest named a
+  # Gateway; the operator reads the Gateway's listeners for everything else.
+  ingress_gateway_ref = try(var.spec.ingress.gateway_ref, null) == null ? null : {
+    for k, v in {
+      name        = var.spec.ingress.gateway_ref.name
+      namespace   = try(var.spec.ingress.gateway_ref.namespace, "") != "" ? var.spec.ingress.gateway_ref.namespace : null
+      sectionName = try(var.spec.ingress.gateway_ref.section_name, "") != "" ? var.spec.ingress.gateway_ref.section_name : null
+    } : k => v if v != null
+  }
   ingress_body = {
     for k, v in {
       enabled          = try(var.spec.ingress.enabled, false) ? true : null
       hostname         = try(var.spec.ingress.hostname, "") != "" ? var.spec.ingress.hostname : null
       ingressClassName = try(var.spec.ingress.ingress_class_name, "") != "" ? var.spec.ingress.ingress_class_name : null
+      gatewayRef       = local.ingress_gateway_ref
       annotations      = length(try(var.spec.ingress.annotations, {})) > 0 ? var.spec.ingress.annotations : null
       tls              = local.ingress_tls
     } : k => v if v != null

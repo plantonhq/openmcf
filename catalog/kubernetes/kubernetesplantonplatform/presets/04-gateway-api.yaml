@@ -1,0 +1,23 @@
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonPlatform
+metadata:
+  name: planton
+spec:
+  namespace:
+    value: planton
+  create_namespace: true
+  version: v0.0.50
+  ingress:
+    enabled: true
+    # One hostname serves console AND API. The identity server bakes this
+    # URL into its realm at first boot — set it before the first sign-in.
+    hostname: planton.example.com
+    # The Gateway API Gateway the cluster already runs (Istio, Envoy
+    # Gateway, Cilium, a cloud Gateway). Planton never edits it: it
+    # attaches one route for the hostname and reads the listeners. Pinning
+    # section_name to the HTTPS listener that already serves the hostname
+    # means the platform advertises https:// with no tls block at all.
+    gateway_ref:
+      name: main
+      namespace: istio-ingress
+      section_name: https

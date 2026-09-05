@@ -130,6 +130,69 @@ func TestExplainForbiddenOnAnyResource(t *testing.T) {
 	}
 }
 
+// Recorded from a Kind API server holding the PlantonPlatform definition of
+// planton-operator chart 0.8.1 while a declaration named the Gateway API
+// front door the 0.9.0 definition introduced. The first is the kubectl
+// provider's server-side apply (the shape both engines produce); the second
+// is a strict create through kubectl.
+const tofuFieldNotInSchema = `
+╷
+│ Error: planton failed to run apply: failed to create typed patch object (planton-gw/planton; planton.ai/v1, Kind=PlantonPlatform): .spec.ingress.gatewayRef: field not declared in schema
+│ 
+│   with kubectl_manifest.planton_platform,
+│   on main.tf line 31, in resource "kubectl_manifest" "planton_platform":
+│   31: resource "kubectl_manifest" "planton_platform" {
+│ 
+╵
+`
+
+const kubectlStrictUnknownField = `Error from server (BadRequest): error when creating "STDIN": PlantonPlatform in version "v1" cannot be handled as a PlantonPlatform: strict decoding error: unknown field "spec.ingress.gatewayRef"`
+
+func TestExplainFieldNotInDefinitionUnderServerSideApply(t *testing.T) {
+	failures := Explain(tofuFieldNotInSchema)
+	if len(failures) != 1 {
+		t.Fatalf("expected one explanation, got %d", len(failures))
+	}
+	f := failures[0]
+	requireParts(t, f)
+	for _, want := range []string{"spec.ingress.gatewayRef", "PlantonPlatform", "field not declared in schema"} {
+		if !strings.Contains(f.Observed, want) {
+			t.Errorf("observation lacks %q: %s", want, f.Observed)
+		}
+	}
+	if !strings.Contains(f.Meaning, "predates spec.ingress.gatewayRef") {
+		t.Errorf("meaning must name the field the definition predates: %s", f.Meaning)
+	}
+	if !strings.Contains(f.NextStep, "KubernetesPlantonOperator (spec.chart_version)") {
+		t.Errorf("next step must name the resource that installs the PlantonPlatform definition: %s", f.NextStep)
+	}
+}
+
+func TestExplainFieldNotInDefinitionUnderStrictDecoding(t *testing.T) {
+	failures := Explain(kubectlStrictUnknownField)
+	if len(failures) != 1 {
+		t.Fatalf("expected one explanation, got %d", len(failures))
+	}
+	f := failures[0]
+	requireParts(t, f)
+	if !strings.Contains(f.Observed, "the API server rejected spec.ingress.gatewayRef on PlantonPlatform") {
+		t.Errorf("observation: %s", f.Observed)
+	}
+}
+
+func TestExplainFieldNotInDefinitionGenericOwner(t *testing.T) {
+	raw := `failed to create typed patch object (shop/web; example.com/v1, Kind=Widget): .spec.color: field not declared in schema`
+	failures := Explain(raw)
+	if len(failures) != 1 {
+		t.Fatalf("expected one explanation, got %d", len(failures))
+	}
+	f := failures[0]
+	requireParts(t, f)
+	if !strings.Contains(f.NextStep, "upgrade the resource that installs the Widget definition") {
+		t.Errorf("a kind with no known owner gets the generic next step: %s", f.NextStep)
+	}
+}
+
 func TestExplainHelmTexts(t *testing.T) {
 	cases := []struct {
 		name, raw, observedHas, nextStepHas string

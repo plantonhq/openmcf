@@ -103,6 +103,7 @@ var explainers = []explainer{
 	{signature: signatureHelmVersionNotPublished, explain: explainHelmVersionNotPublished},
 	{signature: signatureHelmRepositoryUnreachable, explain: explainHelmRepositoryUnreachable},
 	{signature: signatureKubernetesForbidden, explain: explainKubernetesForbidden},
+	{signature: signatureKubernetesFieldNotInDefinition, explain: explainKubernetesFieldNotInDefinition},
 }
 
 // collapse removes the engines' presentation from a diagnostic: OpenTofu and
@@ -191,4 +192,25 @@ func explainKubernetesForbidden(text string) *Failure {
 		return nil
 	}
 	return KubernetesForbidden(m[1], m[2], m[3], m[4], m[5], m[0])
+}
+
+// The API server's refusal of a field the kind's installed definition does
+// not declare, in the two shapes it takes. Server-side apply (the kubectl
+// provider, Pulumi's kubernetes provider) fails the typed conversion:
+// failed to create typed patch object (planton/planton; planton.ai/v1, Kind=PlantonPlatform): .spec.ingress.gatewayRef: field not declared in schema
+// A create or update with strict field validation fails the decoder:
+// PlantonPlatform in version "v1" cannot be handled as a PlantonPlatform: strict decoding error: unknown field "spec.ingress.gatewayRef"
+var (
+	kubernetesFieldNotInSchemaPattern    = regexp.MustCompile(`failed to create typed patch object \([^;]+; [^,]+, Kind=(\w+)\): \.([\w.\[\]]+): field not declared in schema`)
+	kubernetesStrictUnknownFieldPattern = regexp.MustCompile(`(\w+) in version "[^"]+" cannot be handled as a \w+: strict decoding error: unknown field "([^"]+)"`)
+)
+
+func explainKubernetesFieldNotInDefinition(text string) *Failure {
+	if m := kubernetesFieldNotInSchemaPattern.FindStringSubmatch(text); m != nil {
+		return KubernetesFieldNotInDefinition(m[1], m[2], m[0])
+	}
+	if m := kubernetesStrictUnknownFieldPattern.FindStringSubmatch(text); m != nil {
+		return KubernetesFieldNotInDefinition(m[1], m[2], m[0])
+	}
+	return nil
 }

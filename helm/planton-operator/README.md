@@ -87,11 +87,39 @@ spec:
       #   kind: ClusterIssuer
 ```
 
-One hostname serves the web console and the API the browser calls. The platform
-reports its URL in `status.consoleUrl` (the `URL` column of
-`kubectl get plantonplatform`), and the ingress component's status explains any
-misconfiguration in plain language (missing class, missing TLS secret,
-cert-manager not installed).
+**If your cluster's front door is a Gateway API Gateway** (Istio, Envoy Gateway,
+Cilium, a cloud Gateway), point the platform at it instead of an Ingress class:
+
+```yaml
+spec:
+  ingress:
+    enabled: true
+    hostname: planton.corp.com
+    gatewayRef:
+      name: main                 # your Gateway
+      namespace: gateways        # its namespace (defaults to the platform's)
+      sectionName: https         # optional: pin one listener
+```
+
+The Gateway stays yours; Planton never edits it. It attaches one route for the
+hostname and reads your listeners: if an HTTPS listener already serves the
+hostname, the platform advertises `https://` with no `tls` block. To have
+Planton obtain the certificate instead, add `tls.issuer`: Planton issues it into
+its own namespace, grants your Gateway's namespace permission to use it, and the
+resource's status tells you the one `certificateRefs` line to add to your
+listener (`tls.secretName` does not apply on this door). Until the Gateway
+accepts the route, the status relays your Gateway controller's own reason.
+
+Never route a Gateway of your own to the platform's port-forward Service: pages
+load, but the platform still believes it lives at `http://localhost:8080` and
+sign-in sends the browser there. Declare the Gateway on the platform instead.
+
+One hostname serves the web console and the API the browser calls (the API lives
+under the `/rpc` path of that origin). The platform reports its URL in
+`status.consoleUrl` (the `URL` column of `kubectl get plantonplatform`), and the
+ingress component's status explains any misconfiguration in plain language
+(missing class, missing TLS secret, cert-manager not installed, a Gateway that
+does not admit the hostname or the namespace).
 
 ## Configuration
 
