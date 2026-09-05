@@ -71,11 +71,49 @@ type WorkloadPod struct {
 	// ordinary app workloads), true forces the mount.
 	AutomountServiceAccountToken *bool `protobuf:"varint,2,opt,name=automount_service_account_token,json=automountServiceAccountToken,proto3,oneof" json:"automount_service_account_token,omitempty"`
 	// *
-	// Docker-registry secret names the kubelet uses to pull this workload's images.
-	// Each entry accepts a literal secret name or a reference to a KubernetesSecret.
-	// Prefer attaching pull secrets to the ServiceAccount when several workloads share
-	// a registry; use this field for workload-specific registries.
+	// Docker-registry Secrets, declared BESIDE this workload, that the kubelet pulls
+	// its images with. Each entry is a literal Secret name or a reference: by default a
+	// KubernetesSecret (its `docker_config_json` arm) resolved at `spec.name`; a
+	// KubernetesExternalSecret fed from a cloud secrets manager is named with an
+	// explicit `kind` and `fieldPath: status.outputs.secret_name` (the name the
+	// operator materializes).
+	//
+	// Three ways a private image gets pulled, and when to use each:
+	//   - Nothing declared — the cluster's own identity reaches the registry (EKS nodes
+	//     to ECR, GKE nodes to Artifact Registry, AKS kubelet identity to ACR, DOKS
+	//     registry integration). No Secret, no field.
+	//   - `image_registries` — the login belongs to this workload alone; the module owns
+	//     the Secret.
+	//   - `image_pull_secrets` — the login is a resource beside the workload: share one
+	//     Secret across workloads, or attach it once on the KubernetesServiceAccount the
+	//     pods run as (then no entry is needed here).
 	ImagePullSecrets []*v1.StringValueOrRef `protobuf:"bytes,3,rep,name=image_pull_secrets,json=imagePullSecrets,proto3" json:"image_pull_secrets,omitempty"`
+	// *
+	// Image registries this workload pulls from that need a login, with the login,
+	// declared on the workload itself. List a registry here ONLY when it needs one: a
+	// registry the cluster's own identity reaches (EKS nodes to ECR, GKE nodes to
+	// Artifact Registry, AKS kubelet identity to ACR, DOKS registry integration) is not
+	// listed at all.
+	//
+	// The module materializes the logins into ONE docker-registry Secret named
+	// `<workload>-image-pull` in the workload's namespace — the twin of the
+	// `<workload>-env-secrets` Secret it builds from the containers' `env.secrets` —
+	// and attaches it to the pod beside `image_pull_secrets`. The Secret is created,
+	// rolled, and destroyed with the workload and follows it into preview
+	// environments. Use this when the login belongs to this workload alone; when
+	// several workloads share a registry, declare the credential once (a
+	// KubernetesSecret or a KubernetesExternalSecret) and name it in
+	// `image_pull_secrets` or on the shared KubernetesServiceAccount.
+	//
+	// Example (YAML):
+	// ```yaml
+	// imageRegistries:
+	//   - server: ghcr.io
+	//     username: acme-pull-bot
+	//     password: $secret/ghcr-pull-token
+	//
+	// ```
+	ImageRegistries []*WorkloadImageRegistry `protobuf:"bytes,17,rep,name=image_registries,json=imageRegistries,proto3" json:"image_registries,omitempty"`
 	// *
 	// Init containers, run to completion in order before app containers start.
 	// Standard uses: schema migrations, config templating, waiting on dependencies.
@@ -194,6 +232,13 @@ func (x *WorkloadPod) GetImagePullSecrets() []*v1.StringValueOrRef {
 	return nil
 }
 
+func (x *WorkloadPod) GetImageRegistries() []*WorkloadImageRegistry {
+	if x != nil {
+		return x.ImageRegistries
+	}
+	return nil
+}
+
 func (x *WorkloadPod) GetInitContainers() []*WorkloadContainer {
 	if x != nil {
 		return x.InitContainers
@@ -286,6 +331,92 @@ func (x *WorkloadPod) GetRuntimeClassName() string {
 }
 
 // *
+// **WorkloadImageRegistry** is one image registry a workload pulls from and how it
+// logs in. Every entry lands in the same `<workload>-image-pull` Secret as one
+// docker-config `auths` record, keyed by `server` — which is why a server may appear
+// only once per workload. The kubelet matches an image reference to a login by that
+// server, so a pod may pull from several private registries with several entries.
+type WorkloadImageRegistry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// *
+	// Registry host as it appears in the image reference — "ghcr.io", "quay.io",
+	// "123456789012.dkr.ecr.us-east-1.amazonaws.com". Docker Hub's login is keyed by
+	// "https://index.docker.io/v1/", the one exception to the bare-host rule.
+	Server string `protobuf:"bytes,1,opt,name=server,proto3" json:"server,omitempty"`
+	// Registry username — for GitHub Container Registry, the GitHub login of the token's owner.
+	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	// *
+	// Password or access token for `username`. Never plaintext in a manifest: only a
+	// `$secret/<slug>` reference to an organization secret is accepted, and the
+	// runner resolves it inside your infrastructure at deploy time before the module
+	// writes the Secret. Prefer a scoped read-only token (GHCR `read:packages`) over an
+	// account password.
+	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
+	// Optional email some registries record on the login; most ignore it.
+	Email         string `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkloadImageRegistry) Reset() {
+	*x = WorkloadImageRegistry{}
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkloadImageRegistry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkloadImageRegistry) ProtoMessage() {}
+
+func (x *WorkloadImageRegistry) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkloadImageRegistry.ProtoReflect.Descriptor instead.
+func (*WorkloadImageRegistry) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *WorkloadImageRegistry) GetServer() string {
+	if x != nil {
+		return x.Server
+	}
+	return ""
+}
+
+func (x *WorkloadImageRegistry) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *WorkloadImageRegistry) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *WorkloadImageRegistry) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+// *
 // **WorkloadScheduling** groups every control over WHERE pods run. The four
 // mechanisms compose: nodeSelector/affinity choose candidate nodes, tolerations
 // unlock tainted ones, and topology spread constraints distribute replicas across
@@ -329,7 +460,7 @@ type WorkloadScheduling struct {
 
 func (x *WorkloadScheduling) Reset() {
 	*x = WorkloadScheduling{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -341,7 +472,7 @@ func (x *WorkloadScheduling) String() string {
 func (*WorkloadScheduling) ProtoMessage() {}
 
 func (x *WorkloadScheduling) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -354,7 +485,7 @@ func (x *WorkloadScheduling) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadScheduling.ProtoReflect.Descriptor instead.
 func (*WorkloadScheduling) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{1}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *WorkloadScheduling) GetNodeSelector() map[string]string {
@@ -433,7 +564,7 @@ type WorkloadToleration struct {
 
 func (x *WorkloadToleration) Reset() {
 	*x = WorkloadToleration{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -445,7 +576,7 @@ func (x *WorkloadToleration) String() string {
 func (*WorkloadToleration) ProtoMessage() {}
 
 func (x *WorkloadToleration) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -458,7 +589,7 @@ func (x *WorkloadToleration) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadToleration.ProtoReflect.Descriptor instead.
 func (*WorkloadToleration) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{2}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *WorkloadToleration) GetKey() string {
@@ -513,7 +644,7 @@ type WorkloadNodeAffinity struct {
 
 func (x *WorkloadNodeAffinity) Reset() {
 	*x = WorkloadNodeAffinity{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[3]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -525,7 +656,7 @@ func (x *WorkloadNodeAffinity) String() string {
 func (*WorkloadNodeAffinity) ProtoMessage() {}
 
 func (x *WorkloadNodeAffinity) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[3]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -538,7 +669,7 @@ func (x *WorkloadNodeAffinity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadNodeAffinity.ProtoReflect.Descriptor instead.
 func (*WorkloadNodeAffinity) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{3}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *WorkloadNodeAffinity) GetRequired() []*WorkloadNodeSelectorTerm {
@@ -566,7 +697,7 @@ type WorkloadNodeSelectorTerm struct {
 
 func (x *WorkloadNodeSelectorTerm) Reset() {
 	*x = WorkloadNodeSelectorTerm{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[4]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -578,7 +709,7 @@ func (x *WorkloadNodeSelectorTerm) String() string {
 func (*WorkloadNodeSelectorTerm) ProtoMessage() {}
 
 func (x *WorkloadNodeSelectorTerm) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[4]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -591,7 +722,7 @@ func (x *WorkloadNodeSelectorTerm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadNodeSelectorTerm.ProtoReflect.Descriptor instead.
 func (*WorkloadNodeSelectorTerm) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{4}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *WorkloadNodeSelectorTerm) GetMatchExpressions() []*WorkloadNodeSelectorRequirement {
@@ -615,7 +746,7 @@ type WorkloadPreferredNodeSelectorTerm struct {
 
 func (x *WorkloadPreferredNodeSelectorTerm) Reset() {
 	*x = WorkloadPreferredNodeSelectorTerm{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[5]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -627,7 +758,7 @@ func (x *WorkloadPreferredNodeSelectorTerm) String() string {
 func (*WorkloadPreferredNodeSelectorTerm) ProtoMessage() {}
 
 func (x *WorkloadPreferredNodeSelectorTerm) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[5]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -640,7 +771,7 @@ func (x *WorkloadPreferredNodeSelectorTerm) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use WorkloadPreferredNodeSelectorTerm.ProtoReflect.Descriptor instead.
 func (*WorkloadPreferredNodeSelectorTerm) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{5}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *WorkloadPreferredNodeSelectorTerm) GetWeight() int32 {
@@ -677,7 +808,7 @@ type WorkloadNodeSelectorRequirement struct {
 
 func (x *WorkloadNodeSelectorRequirement) Reset() {
 	*x = WorkloadNodeSelectorRequirement{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[6]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -689,7 +820,7 @@ func (x *WorkloadNodeSelectorRequirement) String() string {
 func (*WorkloadNodeSelectorRequirement) ProtoMessage() {}
 
 func (x *WorkloadNodeSelectorRequirement) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[6]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -702,7 +833,7 @@ func (x *WorkloadNodeSelectorRequirement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadNodeSelectorRequirement.ProtoReflect.Descriptor instead.
 func (*WorkloadNodeSelectorRequirement) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{6}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *WorkloadNodeSelectorRequirement) GetKey() string {
@@ -741,7 +872,7 @@ type WorkloadPodAffinity struct {
 
 func (x *WorkloadPodAffinity) Reset() {
 	*x = WorkloadPodAffinity{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[7]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -753,7 +884,7 @@ func (x *WorkloadPodAffinity) String() string {
 func (*WorkloadPodAffinity) ProtoMessage() {}
 
 func (x *WorkloadPodAffinity) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[7]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -766,7 +897,7 @@ func (x *WorkloadPodAffinity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadPodAffinity.ProtoReflect.Descriptor instead.
 func (*WorkloadPodAffinity) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{7}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *WorkloadPodAffinity) GetRequired() []*WorkloadPodAffinityTerm {
@@ -804,7 +935,7 @@ type WorkloadPodAffinityTerm struct {
 
 func (x *WorkloadPodAffinityTerm) Reset() {
 	*x = WorkloadPodAffinityTerm{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[8]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -816,7 +947,7 @@ func (x *WorkloadPodAffinityTerm) String() string {
 func (*WorkloadPodAffinityTerm) ProtoMessage() {}
 
 func (x *WorkloadPodAffinityTerm) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[8]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -829,7 +960,7 @@ func (x *WorkloadPodAffinityTerm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadPodAffinityTerm.ProtoReflect.Descriptor instead.
 func (*WorkloadPodAffinityTerm) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{8}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *WorkloadPodAffinityTerm) GetMatchLabels() map[string]string {
@@ -866,7 +997,7 @@ type WorkloadWeightedPodAffinityTerm struct {
 
 func (x *WorkloadWeightedPodAffinityTerm) Reset() {
 	*x = WorkloadWeightedPodAffinityTerm{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[9]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -878,7 +1009,7 @@ func (x *WorkloadWeightedPodAffinityTerm) String() string {
 func (*WorkloadWeightedPodAffinityTerm) ProtoMessage() {}
 
 func (x *WorkloadWeightedPodAffinityTerm) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[9]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -891,7 +1022,7 @@ func (x *WorkloadWeightedPodAffinityTerm) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadWeightedPodAffinityTerm.ProtoReflect.Descriptor instead.
 func (*WorkloadWeightedPodAffinityTerm) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{9}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *WorkloadWeightedPodAffinityTerm) GetWeight() int32 {
@@ -936,7 +1067,7 @@ type WorkloadTopologySpreadConstraint struct {
 
 func (x *WorkloadTopologySpreadConstraint) Reset() {
 	*x = WorkloadTopologySpreadConstraint{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[10]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -948,7 +1079,7 @@ func (x *WorkloadTopologySpreadConstraint) String() string {
 func (*WorkloadTopologySpreadConstraint) ProtoMessage() {}
 
 func (x *WorkloadTopologySpreadConstraint) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[10]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -961,7 +1092,7 @@ func (x *WorkloadTopologySpreadConstraint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadTopologySpreadConstraint.ProtoReflect.Descriptor instead.
 func (*WorkloadTopologySpreadConstraint) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{10}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *WorkloadTopologySpreadConstraint) GetMaxSkew() int32 {
@@ -1029,7 +1160,7 @@ type WorkloadPodSecurityContext struct {
 
 func (x *WorkloadPodSecurityContext) Reset() {
 	*x = WorkloadPodSecurityContext{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[11]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1041,7 +1172,7 @@ func (x *WorkloadPodSecurityContext) String() string {
 func (*WorkloadPodSecurityContext) ProtoMessage() {}
 
 func (x *WorkloadPodSecurityContext) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[11]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1054,7 +1185,7 @@ func (x *WorkloadPodSecurityContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadPodSecurityContext.ProtoReflect.Descriptor instead.
 func (*WorkloadPodSecurityContext) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{11}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *WorkloadPodSecurityContext) GetRunAsUser() int64 {
@@ -1127,7 +1258,7 @@ type WorkloadSysctl struct {
 
 func (x *WorkloadSysctl) Reset() {
 	*x = WorkloadSysctl{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[12]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1139,7 +1270,7 @@ func (x *WorkloadSysctl) String() string {
 func (*WorkloadSysctl) ProtoMessage() {}
 
 func (x *WorkloadSysctl) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[12]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1152,7 +1283,7 @@ func (x *WorkloadSysctl) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadSysctl.ProtoReflect.Descriptor instead.
 func (*WorkloadSysctl) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{12}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *WorkloadSysctl) GetName() string {
@@ -1185,7 +1316,7 @@ type WorkloadPodDnsConfig struct {
 
 func (x *WorkloadPodDnsConfig) Reset() {
 	*x = WorkloadPodDnsConfig{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[13]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1197,7 +1328,7 @@ func (x *WorkloadPodDnsConfig) String() string {
 func (*WorkloadPodDnsConfig) ProtoMessage() {}
 
 func (x *WorkloadPodDnsConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[13]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1210,7 +1341,7 @@ func (x *WorkloadPodDnsConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadPodDnsConfig.ProtoReflect.Descriptor instead.
 func (*WorkloadPodDnsConfig) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{13}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *WorkloadPodDnsConfig) GetNameservers() []string {
@@ -1246,7 +1377,7 @@ type WorkloadPodDnsConfigOption struct {
 
 func (x *WorkloadPodDnsConfigOption) Reset() {
 	*x = WorkloadPodDnsConfigOption{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[14]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1258,7 +1389,7 @@ func (x *WorkloadPodDnsConfigOption) String() string {
 func (*WorkloadPodDnsConfigOption) ProtoMessage() {}
 
 func (x *WorkloadPodDnsConfigOption) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[14]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1271,7 +1402,7 @@ func (x *WorkloadPodDnsConfigOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadPodDnsConfigOption.ProtoReflect.Descriptor instead.
 func (*WorkloadPodDnsConfigOption) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{14}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *WorkloadPodDnsConfigOption) GetName() string {
@@ -1302,7 +1433,7 @@ type WorkloadHostAlias struct {
 
 func (x *WorkloadHostAlias) Reset() {
 	*x = WorkloadHostAlias{}
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[15]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1314,7 +1445,7 @@ func (x *WorkloadHostAlias) String() string {
 func (*WorkloadHostAlias) ProtoMessage() {}
 
 func (x *WorkloadHostAlias) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[15]
+	mi := &file_catalog_kubernetes_workload_pod_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1327,7 +1458,7 @@ func (x *WorkloadHostAlias) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadHostAlias.ProtoReflect.Descriptor instead.
 func (*WorkloadHostAlias) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{15}
+	return file_catalog_kubernetes_workload_pod_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *WorkloadHostAlias) GetIp() string {
@@ -1348,11 +1479,13 @@ var File_catalog_kubernetes_workload_pod_proto protoreflect.FileDescriptor
 
 const file_catalog_kubernetes_workload_pod_proto_rawDesc = "" +
 	"\n" +
-	"%catalog/kubernetes/workload_pod.proto\x12\x16dev.planton.kubernetes\x1a\x1bbuf/validate/validate.proto\x1a+catalog/kubernetes/workload_container.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\x8c\r\n" +
+	"%catalog/kubernetes/workload_pod.proto\x12\x16dev.planton.kubernetes\x1a\x1bbuf/validate/validate.proto\x1a+catalog/kubernetes/workload_container.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xb9\x0f\n" +
 	"\vWorkloadPod\x12\x89\x01\n" +
 	"\x0fservice_account\x18\x01 \x01(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefB,\x88\xd4a\xab\x1f\x92\xd4a#status.outputs.service_account_nameR\x0eserviceAccount\x12J\n" +
 	"\x1fautomount_service_account_token\x18\x02 \x01(\bH\x00R\x1cautomountServiceAccountToken\x88\x01\x01\x12\xc6\x01\n" +
-	"\x12image_pull_secrets\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBd\xaa\xa6\x1dNNames of Kubernetes Secret objects to attach, never the secret material itself\x88\xd4a\xa7\x1f\x92\xd4a\tspec.nameR\x10imagePullSecrets\x12R\n" +
+	"\x12image_pull_secrets\x18\x03 \x03(\v22.dev.planton.shared.foreignkey.v1.StringValueOrRefBd\xaa\xa6\x1dNNames of Kubernetes Secret objects to attach, never the secret material itself\x88\xd4a\xa7\x1f\x92\xd4a\tspec.nameR\x10imagePullSecrets\x12\xaa\x02\n" +
+	"\x10image_registries\x18\x11 \x03(\v2-.dev.planton.kubernetes.WorkloadImageRegistryB\xcf\x01\xbaH\xcb\x01\xba\x01\xc7\x01\n" +
+	"\"pod.image_registries.server.unique\x12\x80\x01Two imageRegistries entries name the same registry server — a workload holds one login per registry; merge them into one entry\x1a\x1ethis.map(r, r.server).unique()R\x0fimageRegistries\x12R\n" +
 	"\x0finit_containers\x18\x04 \x03(\v2).dev.planton.kubernetes.WorkloadContainerR\x0einitContainers\x12G\n" +
 	"\x06labels\x18\x05 \x03(\v2/.dev.planton.kubernetes.WorkloadPod.LabelsEntryR\x06labels\x12V\n" +
 	"\vannotations\x18\x06 \x03(\v24.dev.planton.kubernetes.WorkloadPod.AnnotationsEntryR\vannotations\x12J\n" +
@@ -1379,7 +1512,14 @@ const file_catalog_kubernetes_workload_pod_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\"\n" +
 	" _automount_service_account_tokenB#\n" +
-	"!_termination_grace_period_seconds\"\xa3\x05\n" +
+	"!_termination_grace_period_seconds\"\xa5\x01\n" +
+	"\x15WorkloadImageRegistry\x12\"\n" +
+	"\x06server\x18\x01 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\x06server\x12&\n" +
+	"\busername\x18\x02 \x01(\tB\n" +
+	"\xbaH\a\xc8\x01\x01r\x02\x10\x01R\busername\x12*\n" +
+	"\bpassword\x18\x03 \x01(\tB\x0e\xbaH\a\xc8\x01\x01r\x02\x10\x01\xa0\xa6\x1d\x01R\bpassword\x12\x14\n" +
+	"\x05email\x18\x04 \x01(\tR\x05email\"\xa3\x05\n" +
 	"\x12WorkloadScheduling\x12a\n" +
 	"\rnode_selector\x18\x01 \x03(\v2<.dev.planton.kubernetes.WorkloadScheduling.NodeSelectorEntryR\fnodeSelector\x12L\n" +
 	"\vtolerations\x18\x02 \x03(\v2*.dev.planton.kubernetes.WorkloadTolerationR\vtolerations\x12Q\n" +
@@ -1481,66 +1621,68 @@ func file_catalog_kubernetes_workload_pod_proto_rawDescGZIP() []byte {
 	return file_catalog_kubernetes_workload_pod_proto_rawDescData
 }
 
-var file_catalog_kubernetes_workload_pod_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_catalog_kubernetes_workload_pod_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_catalog_kubernetes_workload_pod_proto_goTypes = []any{
 	(*WorkloadPod)(nil),                       // 0: dev.planton.kubernetes.WorkloadPod
-	(*WorkloadScheduling)(nil),                // 1: dev.planton.kubernetes.WorkloadScheduling
-	(*WorkloadToleration)(nil),                // 2: dev.planton.kubernetes.WorkloadToleration
-	(*WorkloadNodeAffinity)(nil),              // 3: dev.planton.kubernetes.WorkloadNodeAffinity
-	(*WorkloadNodeSelectorTerm)(nil),          // 4: dev.planton.kubernetes.WorkloadNodeSelectorTerm
-	(*WorkloadPreferredNodeSelectorTerm)(nil), // 5: dev.planton.kubernetes.WorkloadPreferredNodeSelectorTerm
-	(*WorkloadNodeSelectorRequirement)(nil),   // 6: dev.planton.kubernetes.WorkloadNodeSelectorRequirement
-	(*WorkloadPodAffinity)(nil),               // 7: dev.planton.kubernetes.WorkloadPodAffinity
-	(*WorkloadPodAffinityTerm)(nil),           // 8: dev.planton.kubernetes.WorkloadPodAffinityTerm
-	(*WorkloadWeightedPodAffinityTerm)(nil),   // 9: dev.planton.kubernetes.WorkloadWeightedPodAffinityTerm
-	(*WorkloadTopologySpreadConstraint)(nil),  // 10: dev.planton.kubernetes.WorkloadTopologySpreadConstraint
-	(*WorkloadPodSecurityContext)(nil),        // 11: dev.planton.kubernetes.WorkloadPodSecurityContext
-	(*WorkloadSysctl)(nil),                    // 12: dev.planton.kubernetes.WorkloadSysctl
-	(*WorkloadPodDnsConfig)(nil),              // 13: dev.planton.kubernetes.WorkloadPodDnsConfig
-	(*WorkloadPodDnsConfigOption)(nil),        // 14: dev.planton.kubernetes.WorkloadPodDnsConfigOption
-	(*WorkloadHostAlias)(nil),                 // 15: dev.planton.kubernetes.WorkloadHostAlias
-	nil,                                       // 16: dev.planton.kubernetes.WorkloadPod.LabelsEntry
-	nil,                                       // 17: dev.planton.kubernetes.WorkloadPod.AnnotationsEntry
-	nil,                                       // 18: dev.planton.kubernetes.WorkloadScheduling.NodeSelectorEntry
-	nil,                                       // 19: dev.planton.kubernetes.WorkloadPodAffinityTerm.MatchLabelsEntry
-	nil,                                       // 20: dev.planton.kubernetes.WorkloadTopologySpreadConstraint.MatchLabelsEntry
-	(*v1.StringValueOrRef)(nil),               // 21: dev.planton.shared.foreignkey.v1.StringValueOrRef
-	(*WorkloadContainer)(nil),                 // 22: dev.planton.kubernetes.WorkloadContainer
-	(*WorkloadSeccompProfile)(nil),            // 23: dev.planton.kubernetes.WorkloadSeccompProfile
+	(*WorkloadImageRegistry)(nil),             // 1: dev.planton.kubernetes.WorkloadImageRegistry
+	(*WorkloadScheduling)(nil),                // 2: dev.planton.kubernetes.WorkloadScheduling
+	(*WorkloadToleration)(nil),                // 3: dev.planton.kubernetes.WorkloadToleration
+	(*WorkloadNodeAffinity)(nil),              // 4: dev.planton.kubernetes.WorkloadNodeAffinity
+	(*WorkloadNodeSelectorTerm)(nil),          // 5: dev.planton.kubernetes.WorkloadNodeSelectorTerm
+	(*WorkloadPreferredNodeSelectorTerm)(nil), // 6: dev.planton.kubernetes.WorkloadPreferredNodeSelectorTerm
+	(*WorkloadNodeSelectorRequirement)(nil),   // 7: dev.planton.kubernetes.WorkloadNodeSelectorRequirement
+	(*WorkloadPodAffinity)(nil),               // 8: dev.planton.kubernetes.WorkloadPodAffinity
+	(*WorkloadPodAffinityTerm)(nil),           // 9: dev.planton.kubernetes.WorkloadPodAffinityTerm
+	(*WorkloadWeightedPodAffinityTerm)(nil),   // 10: dev.planton.kubernetes.WorkloadWeightedPodAffinityTerm
+	(*WorkloadTopologySpreadConstraint)(nil),  // 11: dev.planton.kubernetes.WorkloadTopologySpreadConstraint
+	(*WorkloadPodSecurityContext)(nil),        // 12: dev.planton.kubernetes.WorkloadPodSecurityContext
+	(*WorkloadSysctl)(nil),                    // 13: dev.planton.kubernetes.WorkloadSysctl
+	(*WorkloadPodDnsConfig)(nil),              // 14: dev.planton.kubernetes.WorkloadPodDnsConfig
+	(*WorkloadPodDnsConfigOption)(nil),        // 15: dev.planton.kubernetes.WorkloadPodDnsConfigOption
+	(*WorkloadHostAlias)(nil),                 // 16: dev.planton.kubernetes.WorkloadHostAlias
+	nil,                                       // 17: dev.planton.kubernetes.WorkloadPod.LabelsEntry
+	nil,                                       // 18: dev.planton.kubernetes.WorkloadPod.AnnotationsEntry
+	nil,                                       // 19: dev.planton.kubernetes.WorkloadScheduling.NodeSelectorEntry
+	nil,                                       // 20: dev.planton.kubernetes.WorkloadPodAffinityTerm.MatchLabelsEntry
+	nil,                                       // 21: dev.planton.kubernetes.WorkloadTopologySpreadConstraint.MatchLabelsEntry
+	(*v1.StringValueOrRef)(nil),               // 22: dev.planton.shared.foreignkey.v1.StringValueOrRef
+	(*WorkloadContainer)(nil),                 // 23: dev.planton.kubernetes.WorkloadContainer
+	(*WorkloadSeccompProfile)(nil),            // 24: dev.planton.kubernetes.WorkloadSeccompProfile
 }
 var file_catalog_kubernetes_workload_pod_proto_depIdxs = []int32{
-	21, // 0: dev.planton.kubernetes.WorkloadPod.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	21, // 1: dev.planton.kubernetes.WorkloadPod.image_pull_secrets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
-	22, // 2: dev.planton.kubernetes.WorkloadPod.init_containers:type_name -> dev.planton.kubernetes.WorkloadContainer
-	16, // 3: dev.planton.kubernetes.WorkloadPod.labels:type_name -> dev.planton.kubernetes.WorkloadPod.LabelsEntry
-	17, // 4: dev.planton.kubernetes.WorkloadPod.annotations:type_name -> dev.planton.kubernetes.WorkloadPod.AnnotationsEntry
-	1,  // 5: dev.planton.kubernetes.WorkloadPod.scheduling:type_name -> dev.planton.kubernetes.WorkloadScheduling
-	11, // 6: dev.planton.kubernetes.WorkloadPod.security_context:type_name -> dev.planton.kubernetes.WorkloadPodSecurityContext
-	13, // 7: dev.planton.kubernetes.WorkloadPod.dns_config:type_name -> dev.planton.kubernetes.WorkloadPodDnsConfig
-	15, // 8: dev.planton.kubernetes.WorkloadPod.host_aliases:type_name -> dev.planton.kubernetes.WorkloadHostAlias
-	18, // 9: dev.planton.kubernetes.WorkloadScheduling.node_selector:type_name -> dev.planton.kubernetes.WorkloadScheduling.NodeSelectorEntry
-	2,  // 10: dev.planton.kubernetes.WorkloadScheduling.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
-	3,  // 11: dev.planton.kubernetes.WorkloadScheduling.node_affinity:type_name -> dev.planton.kubernetes.WorkloadNodeAffinity
-	7,  // 12: dev.planton.kubernetes.WorkloadScheduling.pod_affinity:type_name -> dev.planton.kubernetes.WorkloadPodAffinity
-	7,  // 13: dev.planton.kubernetes.WorkloadScheduling.pod_anti_affinity:type_name -> dev.planton.kubernetes.WorkloadPodAffinity
-	10, // 14: dev.planton.kubernetes.WorkloadScheduling.topology_spread_constraints:type_name -> dev.planton.kubernetes.WorkloadTopologySpreadConstraint
-	4,  // 15: dev.planton.kubernetes.WorkloadNodeAffinity.required:type_name -> dev.planton.kubernetes.WorkloadNodeSelectorTerm
-	5,  // 16: dev.planton.kubernetes.WorkloadNodeAffinity.preferred:type_name -> dev.planton.kubernetes.WorkloadPreferredNodeSelectorTerm
-	6,  // 17: dev.planton.kubernetes.WorkloadNodeSelectorTerm.match_expressions:type_name -> dev.planton.kubernetes.WorkloadNodeSelectorRequirement
-	4,  // 18: dev.planton.kubernetes.WorkloadPreferredNodeSelectorTerm.term:type_name -> dev.planton.kubernetes.WorkloadNodeSelectorTerm
-	8,  // 19: dev.planton.kubernetes.WorkloadPodAffinity.required:type_name -> dev.planton.kubernetes.WorkloadPodAffinityTerm
-	9,  // 20: dev.planton.kubernetes.WorkloadPodAffinity.preferred:type_name -> dev.planton.kubernetes.WorkloadWeightedPodAffinityTerm
-	19, // 21: dev.planton.kubernetes.WorkloadPodAffinityTerm.match_labels:type_name -> dev.planton.kubernetes.WorkloadPodAffinityTerm.MatchLabelsEntry
-	8,  // 22: dev.planton.kubernetes.WorkloadWeightedPodAffinityTerm.term:type_name -> dev.planton.kubernetes.WorkloadPodAffinityTerm
-	20, // 23: dev.planton.kubernetes.WorkloadTopologySpreadConstraint.match_labels:type_name -> dev.planton.kubernetes.WorkloadTopologySpreadConstraint.MatchLabelsEntry
-	12, // 24: dev.planton.kubernetes.WorkloadPodSecurityContext.sysctls:type_name -> dev.planton.kubernetes.WorkloadSysctl
-	23, // 25: dev.planton.kubernetes.WorkloadPodSecurityContext.seccomp_profile:type_name -> dev.planton.kubernetes.WorkloadSeccompProfile
-	14, // 26: dev.planton.kubernetes.WorkloadPodDnsConfig.options:type_name -> dev.planton.kubernetes.WorkloadPodDnsConfigOption
-	27, // [27:27] is the sub-list for method output_type
-	27, // [27:27] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	22, // 0: dev.planton.kubernetes.WorkloadPod.service_account:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	22, // 1: dev.planton.kubernetes.WorkloadPod.image_pull_secrets:type_name -> dev.planton.shared.foreignkey.v1.StringValueOrRef
+	1,  // 2: dev.planton.kubernetes.WorkloadPod.image_registries:type_name -> dev.planton.kubernetes.WorkloadImageRegistry
+	23, // 3: dev.planton.kubernetes.WorkloadPod.init_containers:type_name -> dev.planton.kubernetes.WorkloadContainer
+	17, // 4: dev.planton.kubernetes.WorkloadPod.labels:type_name -> dev.planton.kubernetes.WorkloadPod.LabelsEntry
+	18, // 5: dev.planton.kubernetes.WorkloadPod.annotations:type_name -> dev.planton.kubernetes.WorkloadPod.AnnotationsEntry
+	2,  // 6: dev.planton.kubernetes.WorkloadPod.scheduling:type_name -> dev.planton.kubernetes.WorkloadScheduling
+	12, // 7: dev.planton.kubernetes.WorkloadPod.security_context:type_name -> dev.planton.kubernetes.WorkloadPodSecurityContext
+	14, // 8: dev.planton.kubernetes.WorkloadPod.dns_config:type_name -> dev.planton.kubernetes.WorkloadPodDnsConfig
+	16, // 9: dev.planton.kubernetes.WorkloadPod.host_aliases:type_name -> dev.planton.kubernetes.WorkloadHostAlias
+	19, // 10: dev.planton.kubernetes.WorkloadScheduling.node_selector:type_name -> dev.planton.kubernetes.WorkloadScheduling.NodeSelectorEntry
+	3,  // 11: dev.planton.kubernetes.WorkloadScheduling.tolerations:type_name -> dev.planton.kubernetes.WorkloadToleration
+	4,  // 12: dev.planton.kubernetes.WorkloadScheduling.node_affinity:type_name -> dev.planton.kubernetes.WorkloadNodeAffinity
+	8,  // 13: dev.planton.kubernetes.WorkloadScheduling.pod_affinity:type_name -> dev.planton.kubernetes.WorkloadPodAffinity
+	8,  // 14: dev.planton.kubernetes.WorkloadScheduling.pod_anti_affinity:type_name -> dev.planton.kubernetes.WorkloadPodAffinity
+	11, // 15: dev.planton.kubernetes.WorkloadScheduling.topology_spread_constraints:type_name -> dev.planton.kubernetes.WorkloadTopologySpreadConstraint
+	5,  // 16: dev.planton.kubernetes.WorkloadNodeAffinity.required:type_name -> dev.planton.kubernetes.WorkloadNodeSelectorTerm
+	6,  // 17: dev.planton.kubernetes.WorkloadNodeAffinity.preferred:type_name -> dev.planton.kubernetes.WorkloadPreferredNodeSelectorTerm
+	7,  // 18: dev.planton.kubernetes.WorkloadNodeSelectorTerm.match_expressions:type_name -> dev.planton.kubernetes.WorkloadNodeSelectorRequirement
+	5,  // 19: dev.planton.kubernetes.WorkloadPreferredNodeSelectorTerm.term:type_name -> dev.planton.kubernetes.WorkloadNodeSelectorTerm
+	9,  // 20: dev.planton.kubernetes.WorkloadPodAffinity.required:type_name -> dev.planton.kubernetes.WorkloadPodAffinityTerm
+	10, // 21: dev.planton.kubernetes.WorkloadPodAffinity.preferred:type_name -> dev.planton.kubernetes.WorkloadWeightedPodAffinityTerm
+	20, // 22: dev.planton.kubernetes.WorkloadPodAffinityTerm.match_labels:type_name -> dev.planton.kubernetes.WorkloadPodAffinityTerm.MatchLabelsEntry
+	9,  // 23: dev.planton.kubernetes.WorkloadWeightedPodAffinityTerm.term:type_name -> dev.planton.kubernetes.WorkloadPodAffinityTerm
+	21, // 24: dev.planton.kubernetes.WorkloadTopologySpreadConstraint.match_labels:type_name -> dev.planton.kubernetes.WorkloadTopologySpreadConstraint.MatchLabelsEntry
+	13, // 25: dev.planton.kubernetes.WorkloadPodSecurityContext.sysctls:type_name -> dev.planton.kubernetes.WorkloadSysctl
+	24, // 26: dev.planton.kubernetes.WorkloadPodSecurityContext.seccomp_profile:type_name -> dev.planton.kubernetes.WorkloadSeccompProfile
+	15, // 27: dev.planton.kubernetes.WorkloadPodDnsConfig.options:type_name -> dev.planton.kubernetes.WorkloadPodDnsConfigOption
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_catalog_kubernetes_workload_pod_proto_init() }
@@ -1550,15 +1692,15 @@ func file_catalog_kubernetes_workload_pod_proto_init() {
 	}
 	file_catalog_kubernetes_workload_container_proto_init()
 	file_catalog_kubernetes_workload_pod_proto_msgTypes[0].OneofWrappers = []any{}
-	file_catalog_kubernetes_workload_pod_proto_msgTypes[2].OneofWrappers = []any{}
-	file_catalog_kubernetes_workload_pod_proto_msgTypes[11].OneofWrappers = []any{}
+	file_catalog_kubernetes_workload_pod_proto_msgTypes[3].OneofWrappers = []any{}
+	file_catalog_kubernetes_workload_pod_proto_msgTypes[12].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_workload_pod_proto_rawDesc), len(file_catalog_kubernetes_workload_pod_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

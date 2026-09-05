@@ -19,7 +19,7 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 
 func validContainer() *kubernetes.WorkloadContainer {
 	return &kubernetes.WorkloadContainer{
-		Image: &kubernetes.ContainerImage{
+		Image: &kubernetes.WorkloadContainerImage{
 			Repo: "ghcr.io/acme/backup",
 			Tag:  "v1.2.0",
 		},
@@ -74,7 +74,7 @@ var _ = ginkgo.Describe("KubernetesCronJobSpec validations", func() {
 						Sidecars: []*kubernetes.WorkloadContainer{
 							{
 								Name: "log-shipper",
-								Image: &kubernetes.ContainerImage{
+								Image: &kubernetes.WorkloadContainerImage{
 									Repo: "ghcr.io/acme/fluent-bit",
 									Tag:  "2.2.0",
 								},
@@ -211,7 +211,7 @@ var _ = ginkgo.Describe("KubernetesCronJobSpec validations", func() {
 
 		ginkgo.It("rejects an app image without a tag", func() {
 			spec := validSpec()
-			spec.JobTemplate.Container.App.Image = &kubernetes.ContainerImage{Repo: "ghcr.io/acme/backup"}
+			spec.JobTemplate.Container.App.Image = &kubernetes.WorkloadContainerImage{Repo: "ghcr.io/acme/backup"}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
@@ -220,7 +220,7 @@ var _ = ginkgo.Describe("KubernetesCronJobSpec validations", func() {
 			spec := validSpec()
 			spec.JobTemplate.Container.Sidecars = []*kubernetes.WorkloadContainer{
 				{
-					Image: &kubernetes.ContainerImage{Repo: "busybox", Tag: "1.36"},
+					Image: &kubernetes.WorkloadContainerImage{Repo: "busybox", Tag: "1.36"},
 				},
 			}
 			err := protovalidate.Validate(spec)

@@ -25,7 +25,9 @@ const (
 // KubernetesJobStackInput defines the input to the IaC modules (Pulumi/Terraform)
 // for deploying a KubernetesJob. This message aggregates all information needed
 // by the IaC module including the target resource, provider configuration,
-// and any resolved values from the orchestrator.
+// and any resolved values from the orchestrator. The image-pull Secret for a
+// private registry is derived from the target's own spec
+// (`spec.pod.image_registries`), never from an input filled on the job's behalf.
 type KubernetesJobStackInput struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The target KubernetesJob resource to deploy
@@ -36,12 +38,8 @@ type KubernetesJobStackInput struct {
 	// This is populated by the orchestrator after resolving any references
 	// in spec.namespace (e.g., from a KubernetesNamespace resource).
 	KubernetesNamespace string `protobuf:"bytes,3,opt,name=kubernetes_namespace,json=kubernetesNamespace,proto3" json:"kubernetes_namespace,omitempty"`
-	// Docker config JSON for image pull secrets.
-	// This is populated if the container image requires authentication
-	// to pull from a private registry.
-	DockerConfigJson string `protobuf:"bytes,4,opt,name=docker_config_json,json=dockerConfigJson,proto3" json:"docker_config_json,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *KubernetesJobStackInput) Reset() {
@@ -95,23 +93,15 @@ func (x *KubernetesJobStackInput) GetKubernetesNamespace() string {
 	return ""
 }
 
-func (x *KubernetesJobStackInput) GetDockerConfigJson() string {
-	if x != nil {
-		return x.DockerConfigJson
-	}
-	return ""
-}
-
 var File_catalog_kubernetes_kubernetesjob_v1alpha1_input_proto protoreflect.FileDescriptor
 
 const file_catalog_kubernetes_kubernetesjob_v1alpha1_input_proto_rawDesc = "" +
 	"\n" +
-	"5catalog/kubernetes/kubernetesjob/v1alpha1/input.proto\x12-dev.planton.kubernetes.kubernetesjob.v1alpha1\x1a3catalog/kubernetes/kubernetesjob/v1alpha1/api.proto\x1a!catalog/kubernetes/provider.proto\"\xab\x02\n" +
+	"5catalog/kubernetes/kubernetesjob/v1alpha1/input.proto\x12-dev.planton.kubernetes.kubernetesjob.v1alpha1\x1a3catalog/kubernetes/kubernetesjob/v1alpha1/api.proto\x1a!catalog/kubernetes/provider.proto\"\xfd\x01\n" +
 	"\x17KubernetesJobStackInput\x12T\n" +
 	"\x06target\x18\x01 \x01(\v2<.dev.planton.kubernetes.kubernetesjob.v1alpha1.KubernetesJobR\x06target\x12Y\n" +
 	"\x0fprovider_config\x18\x02 \x01(\v20.dev.planton.kubernetes.KubernetesProviderConfigR\x0eproviderConfig\x121\n" +
-	"\x14kubernetes_namespace\x18\x03 \x01(\tR\x13kubernetesNamespace\x12,\n" +
-	"\x12docker_config_json\x18\x04 \x01(\tR\x10dockerConfigJsonB\xf6\x02\n" +
+	"\x14kubernetes_namespace\x18\x03 \x01(\tR\x13kubernetesNamespaceB\xf6\x02\n" +
 	"1com.dev.planton.kubernetes.kubernetesjob.v1alpha1B\n" +
 	"InputProtoP\x01Z\\github.com/plantonhq/planton/catalog/kubernetes/kubernetesjob/v1alpha1;kubernetesjobv1alpha1\xa2\x02\x04DPKK\xaa\x02-Dev.Planton.Kubernetes.Kubernetesjob.V1alpha1\xca\x02-Dev\\Planton\\Kubernetes\\Kubernetesjob\\V1alpha1\xe2\x029Dev\\Planton\\Kubernetes\\Kubernetesjob\\V1alpha1\\GPBMetadata\xea\x021Dev::Planton::Kubernetes::Kubernetesjob::V1alpha1b\x06proto3"
 

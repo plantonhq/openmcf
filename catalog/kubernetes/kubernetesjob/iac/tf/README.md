@@ -8,7 +8,7 @@ The module creates the following Kubernetes resources:
 
 1. **Namespace** (optional) - Created if `create_namespace: true`
 2. **Secret** (optional) - For environment secrets with direct values
-3. **Image Pull Secret** (optional) - If Docker credentials are provided
+3. **Image Pull Secret** (optional) - From the registry logins declared on `spec.pod.image_registries`
 4. **Job** - The main batch workload
 
 The module never creates ServiceAccounts, RBAC objects, or ConfigMaps -- pods run as the ServiceAccount referenced in `spec.pod.service_account` (composed through KubernetesServiceAccount and KubernetesRbac resources), and configuration composes through KubernetesConfigMap resources. The Kubernetes permissions the IaC runner needs are declared in `../permissions.yaml`.
@@ -139,7 +139,6 @@ module "kubernetes_job" {
 |------|-------------|------|----------|
 | metadata | Resource metadata including name, org, env | object | yes |
 | spec | Job specification | object | yes |
-| docker_config_json | Docker credentials for private registries | string | no |
 
 ## Outputs
 

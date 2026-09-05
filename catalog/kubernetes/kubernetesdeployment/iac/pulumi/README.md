@@ -60,7 +60,7 @@ to apply the resource on your cluster.
 ## Module Structure
 
 1. **Initialization**  
-   Reads your `KubernetesDeploymentStackInput` (containing cluster creds, Docker config, resource definitions), sets
+   Reads your `KubernetesDeploymentStackInput` (containing cluster creds and the resource definition), sets
    up local variables, and merges labels.
 
 2. **Provider Setup**  
@@ -72,8 +72,10 @@ to apply the resource on your cluster.
    - **`create_namespace: false`**: The module uses an existing namespace (which must already exist in the cluster)
 
 4. **Image Pull Secret (Optional)**  
-   If Docker credentials (`docker_config_json`) are provided, creates a `kubernetes.io/dockerconfigjson` secret and
-   configures it in the Deployment’s Pod spec.
+   When the pod declares registry logins on `pod.imageRegistries`, materializes them into ONE
+   `kubernetes.io/dockerconfigjson` Secret named `<workload>-image-pull` and attaches it to the Deployment’s Pod spec
+   beside any Secrets named in `pod.imagePullSecrets`. Nothing outside the manifest feeds it: a public image, or a
+   same-cloud registry the cluster’s own identity reaches, needs no Secret at all.
 
 5. **Deployment Configuration**  
    Generates the Deployment with the main container and any sidecars specified. Injects environment variables, secrets,

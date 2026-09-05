@@ -89,9 +89,13 @@ func initializeLocals(ctx *pulumi.Context, stackInput *kubernetesserviceaccountv
 	locals.Annotations = buildAnnotations(locals, workloadIdentityAnnotations)
 
 	// Each image-pull-secret entry is a StringValueOrRef resolved to the secret's
-	// name in the same namespace.
+	// name in the same namespace. An entry that resolved to nothing is dropped
+	// rather than rendered as `{name: ""}` — the API server rejects the empty
+	// name, and a reference that did not resolve is refused upstream, not here.
 	for _, secretRef := range locals.Spec.ImagePullSecrets {
-		locals.ImagePullSecretNames = append(locals.ImagePullSecretNames, secretRef.GetValue())
+		if name := secretRef.GetValue(); name != "" {
+			locals.ImagePullSecretNames = append(locals.ImagePullSecretNames, name)
+		}
 	}
 
 	// Preserve the tri-state as-is: nil (unset) must NOT collapse to false, because

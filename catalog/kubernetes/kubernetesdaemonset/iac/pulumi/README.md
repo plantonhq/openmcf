@@ -9,7 +9,7 @@ The module creates the following Kubernetes resources:
 - **Namespace** (optional): Created when `create_namespace` is true
 - **DaemonSet**: The main workload controller
 - **Secret**: Contains environment secrets
-- **Secret**: Image pull secret for private registries (optional)
+- **Secret**: Image pull secret built from the registry logins declared on `spec.pod.imageRegistries` (optional)
 
 ## Usage
 

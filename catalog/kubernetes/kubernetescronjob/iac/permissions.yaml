@@ -48,4 +48,4 @@ spec:
           - delete
         cluster_scoped: false
         provenance: derived
-        notes: Covers kubernetes_secret_v1.env_secrets (rendered only when containers declare literal secret env values, materialized into one Opaque Secret) and kubernetes_secret_v1.image_pull (rendered only when the platform injects a dockerconfigjson at deploy time); secret.go and image_pull_secret.go in the Pulumi module.
+        notes: Covers kubernetes_secret_v1.env_secrets (rendered only when containers declare literal secret env values, materialized into one Opaque Secret) and kubernetes_secret_v1.image_pull (rendered only when the pod declares registry logins on pod.image_registries, materialized into one dockerconfigjson Secret); secret.go and image_pull_secret.go in the Pulumi module.

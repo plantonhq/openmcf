@@ -103,6 +103,13 @@ spec:
       automount_service_account_token: false
       image_pull_secrets:
         - value: hack-registry-secret
+      # A login declared on the workload itself; the module materializes it into the
+      # <workload>-image-pull Secret. A real manifest carries a $secret/ reference here
+      # -- this offline-proof file uses a literal so the plan renders without a backend.
+      image_registries:
+        - server: ghcr.io
+          username: hack-pull-bot
+          password: hack-pull-token
       init_containers:
         - name: init-marker
           image:

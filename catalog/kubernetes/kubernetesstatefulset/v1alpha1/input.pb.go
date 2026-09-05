@@ -22,44 +22,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesStatefulSetStackInput is the input for the IaC modules that deploy a KubernetesStatefulSet.
+// KubernetesStatefulSetStackInput is the input for the IaC modules that deploy a
+// KubernetesStatefulSet: the target resource and the provider configuration. The
+// image-pull Secret for a private registry is derived from the target's own spec
+// (`spec.pod.image_registries`), never from an input filled on the workload's behalf.
 type KubernetesStatefulSetStackInput struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Target cloud-resource
 	Target *KubernetesStatefulSet `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
 	// Provider-config for Kubernetes
 	ProviderConfig *kubernetes.KubernetesProviderConfig `protobuf:"bytes,2,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"`
-	// docker-config-json to be used for setting up image-pull-secret
-	//
-	// why is this field important?
-	// kubernetes needs authentication credentials to pull images from private container registries.
-	// an image pull secret is a kubernetes secret that stores docker registry credentials,
-	// allowing the kubelet to pull private images for your pods.
-	//
-	// when is an image pull secret needed?
-	// - standard kubernetes clusters: required for all private registries (gcr, ecr, docker hub, etc.)
-	// - self-hosted registries: required for any private container registry
-	// - multi-cloud deployments: needed when pulling images across cloud boundaries
-	//
-	// when is an image pull secret NOT needed?
-	// - gke with workload identity: uses IAM bindings instead of explicit credentials
-	// - eks with irsa (iam roles for service accounts): uses AWS IAM roles for authentication
-	// - aks with workload identity: uses azure managed identities
-	// - public images: no authentication required for public registries
-	//
-	// priority order:
-	// 1. if this field is set, it takes precedence (used by Planton)
-	// 2. if not set, check metadata.annotations["kubernetes.planton.dev/docker-config-json-file"] for file path
-	// 3. if neither set, no image pull secret is created (assumes workload identity or public images)
-	//
-	// example docker-config-json:
-	// {"auths":{"registry.example.com":{"username":"user","password":"pass","auth":"dXNlcjpwYXNz"}}}
-	//
-	// for more details on image pull secrets, see:
-	// https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-	DockerConfigJson string `protobuf:"bytes,3,opt,name=docker_config_json,json=dockerConfigJson,proto3" json:"docker_config_json,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *KubernetesStatefulSetStackInput) Reset() {
@@ -106,22 +80,14 @@ func (x *KubernetesStatefulSetStackInput) GetProviderConfig() *kubernetes.Kubern
 	return nil
 }
 
-func (x *KubernetesStatefulSetStackInput) GetDockerConfigJson() string {
-	if x != nil {
-		return x.DockerConfigJson
-	}
-	return ""
-}
-
 var File_catalog_kubernetes_kubernetesstatefulset_v1alpha1_input_proto protoreflect.FileDescriptor
 
 const file_catalog_kubernetes_kubernetesstatefulset_v1alpha1_input_proto_rawDesc = "" +
 	"\n" +
-	"=catalog/kubernetes/kubernetesstatefulset/v1alpha1/input.proto\x125dev.planton.kubernetes.kubernetesstatefulset.v1alpha1\x1a;catalog/kubernetes/kubernetesstatefulset/v1alpha1/api.proto\x1a!catalog/kubernetes/provider.proto\"\x90\x02\n" +
+	"=catalog/kubernetes/kubernetesstatefulset/v1alpha1/input.proto\x125dev.planton.kubernetes.kubernetesstatefulset.v1alpha1\x1a;catalog/kubernetes/kubernetesstatefulset/v1alpha1/api.proto\x1a!catalog/kubernetes/provider.proto\"\xe2\x01\n" +
 	"\x1fKubernetesStatefulSetStackInput\x12d\n" +
 	"\x06target\x18\x01 \x01(\v2L.dev.planton.kubernetes.kubernetesstatefulset.v1alpha1.KubernetesStatefulSetR\x06target\x12Y\n" +
-	"\x0fprovider_config\x18\x02 \x01(\v20.dev.planton.kubernetes.KubernetesProviderConfigR\x0eproviderConfig\x12,\n" +
-	"\x12docker_config_json\x18\x03 \x01(\tR\x10dockerConfigJsonB\xae\x03\n" +
+	"\x0fprovider_config\x18\x02 \x01(\v20.dev.planton.kubernetes.KubernetesProviderConfigR\x0eproviderConfigB\xae\x03\n" +
 	"9com.dev.planton.kubernetes.kubernetesstatefulset.v1alpha1B\n" +
 	"InputProtoP\x01Zlgithub.com/plantonhq/planton/catalog/kubernetes/kubernetesstatefulset/v1alpha1;kubernetesstatefulsetv1alpha1\xa2\x02\x04DPKK\xaa\x025Dev.Planton.Kubernetes.Kubernetesstatefulset.V1alpha1\xca\x025Dev\\Planton\\Kubernetes\\Kubernetesstatefulset\\V1alpha1\xe2\x02ADev\\Planton\\Kubernetes\\Kubernetesstatefulset\\V1alpha1\\GPBMetadata\xea\x029Dev::Planton::Kubernetes::Kubernetesstatefulset::V1alpha1b\x06proto3"
 

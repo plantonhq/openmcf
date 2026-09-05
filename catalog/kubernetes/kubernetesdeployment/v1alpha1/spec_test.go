@@ -19,7 +19,7 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 
 func validContainer() *kubernetes.WorkloadContainer {
 	return &kubernetes.WorkloadContainer{
-		Image: &kubernetes.ContainerImage{
+		Image: &kubernetes.WorkloadContainerImage{
 			Repo: "ghcr.io/acme/api",
 			Tag:  "v1.0.0",
 		},
@@ -64,7 +64,7 @@ var _ = ginkgo.Describe("KubernetesDeploymentSpec validations", func() {
 					Sidecars: []*kubernetes.WorkloadContainer{
 						{
 							Name: "log-shipper",
-							Image: &kubernetes.ContainerImage{
+							Image: &kubernetes.WorkloadContainerImage{
 								Repo: "ghcr.io/acme/fluent-bit",
 								Tag:  "2.2.0",
 							},
@@ -76,7 +76,7 @@ var _ = ginkgo.Describe("KubernetesDeploymentSpec validations", func() {
 					InitContainers: []*kubernetes.WorkloadContainer{
 						{
 							Name: "init-migrate",
-							Image: &kubernetes.ContainerImage{
+							Image: &kubernetes.WorkloadContainerImage{
 								Repo: "ghcr.io/acme/migrator",
 								Tag:  "v1.0.0",
 							},
@@ -220,14 +220,14 @@ var _ = ginkgo.Describe("KubernetesDeploymentSpec validations", func() {
 
 		ginkgo.It("rejects an image without a repo", func() {
 			spec := validSpec()
-			spec.Container.App.Image = &kubernetes.ContainerImage{Tag: "v1.0.0"}
+			spec.Container.App.Image = &kubernetes.WorkloadContainerImage{Tag: "v1.0.0"}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
 		ginkgo.It("rejects an image without a tag", func() {
 			spec := validSpec()
-			spec.Container.App.Image = &kubernetes.ContainerImage{Repo: "ghcr.io/acme/api"}
+			spec.Container.App.Image = &kubernetes.WorkloadContainerImage{Repo: "ghcr.io/acme/api"}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
@@ -257,7 +257,7 @@ var _ = ginkgo.Describe("KubernetesDeploymentSpec validations", func() {
 			spec := validSpec()
 			spec.Container.Sidecars = []*kubernetes.WorkloadContainer{
 				{
-					Image: &kubernetes.ContainerImage{Repo: "ghcr.io/acme/proxy", Tag: "1.0"},
+					Image: &kubernetes.WorkloadContainerImage{Repo: "ghcr.io/acme/proxy", Tag: "1.0"},
 				},
 			}
 			err := protovalidate.Validate(spec)
@@ -269,7 +269,7 @@ var _ = ginkgo.Describe("KubernetesDeploymentSpec validations", func() {
 			spec.Container.Sidecars = []*kubernetes.WorkloadContainer{
 				{
 					Name:  "Log_Shipper",
-					Image: &kubernetes.ContainerImage{Repo: "ghcr.io/acme/proxy", Tag: "1.0"},
+					Image: &kubernetes.WorkloadContainerImage{Repo: "ghcr.io/acme/proxy", Tag: "1.0"},
 				},
 			}
 			err := protovalidate.Validate(spec)
@@ -404,6 +404,48 @@ var _ = ginkgo.Describe("KubernetesDeploymentSpec validations", func() {
 			}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+	})
+
+	// The pull login declared on the workload itself: each entry needs a server,
+	// a username, and a password (a $secret/ reference in a real manifest), and a
+	// server may appear only once — every entry lands in the same docker-config.
+	ginkgo.Context("When image registries are declared on the pod", func() {
+
+		ginkgo.It("accepts one login per private registry", func() {
+			spec := validSpec()
+			spec.Pod = &kubernetes.WorkloadPod{
+				ImageRegistries: []*kubernetes.WorkloadImageRegistry{
+					{Server: "ghcr.io", Username: "acme-pull-bot", Password: "$secret/ghcr-pull-token"},
+					{Server: "quay.io", Username: "acme+robot", Password: "$secret/quay-robot-token", Email: "ops@acme.io"},
+				},
+			}
+			gomega.Expect(protovalidate.Validate(spec)).To(gomega.BeNil())
+		})
+
+		ginkgo.It("rejects two entries naming the same registry server, saying so", func() {
+			spec := validSpec()
+			spec.Pod = &kubernetes.WorkloadPod{
+				ImageRegistries: []*kubernetes.WorkloadImageRegistry{
+					{Server: "ghcr.io", Username: "a", Password: "$secret/a"},
+					{Server: "ghcr.io", Username: "b", Password: "$secret/b"},
+				},
+			}
+			err := protovalidate.Validate(spec)
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err.Error()).To(gomega.ContainSubstring("one login per registry"))
+		})
+
+		ginkgo.It("rejects an entry without a server, a username, or a password", func() {
+			for _, entry := range []*kubernetes.WorkloadImageRegistry{
+				{Username: "a", Password: "$secret/a"},
+				{Server: "ghcr.io", Password: "$secret/a"},
+				{Server: "ghcr.io", Username: "a"},
+			} {
+				spec := validSpec()
+				spec.Pod = &kubernetes.WorkloadPod{ImageRegistries: []*kubernetes.WorkloadImageRegistry{entry}}
+				gomega.Expect(protovalidate.Validate(spec)).ToNot(gomega.BeNil())
+			}
 		})
 	})
 })

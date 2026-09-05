@@ -22,44 +22,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// KubernetesDaemonSetStackInput is the input for the Kubernetes DaemonSet IaC module.
+// KubernetesDaemonSetStackInput is the input for the Kubernetes DaemonSet IaC module:
+// the target resource and the provider configuration. The image-pull Secret for a
+// private registry is derived from the target's own spec
+// (`spec.pod.image_registries`), never from an input filled on the workload's behalf.
 type KubernetesDaemonSetStackInput struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Target cloud-resource
 	Target *KubernetesDaemonSet `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
 	// Provider configuration for Kubernetes
 	ProviderConfig *kubernetes.KubernetesProviderConfig `protobuf:"bytes,2,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"`
-	// Docker-config-json to be used for setting up image-pull-secret
-	//
-	// Why is this field important?
-	// Kubernetes needs authentication credentials to pull images from private container registries.
-	// An image pull secret is a Kubernetes secret that stores Docker registry credentials,
-	// allowing the kubelet to pull private images for your pods.
-	//
-	// When is an image pull secret needed?
-	// - Standard Kubernetes clusters: required for all private registries (GCR, ECR, Docker Hub, etc.)
-	// - Self-hosted registries: required for any private container registry
-	// - Multi-cloud deployments: needed when pulling images across cloud boundaries
-	//
-	// When is an image pull secret NOT needed?
-	// - GKE with Workload Identity: uses IAM bindings instead of explicit credentials
-	// - EKS with IRSA (IAM Roles for Service Accounts): uses AWS IAM roles for authentication
-	// - AKS with Workload Identity: uses Azure Managed Identities
-	// - Public images: no authentication required for public registries
-	//
-	// Priority order:
-	// 1. If this field is set, it takes precedence (used by Planton)
-	// 2. If not set, check metadata.annotations["kubernetes.planton.dev/docker-config-json-file"] for file path
-	// 3. If neither set, no image pull secret is created (assumes Workload Identity or public images)
-	//
-	// Example docker-config-json:
-	// {"auths":{"registry.example.com":{"username":"user","password":"pass","auth":"dXNlcjpwYXNz"}}}
-	//
-	// For more details on image pull secrets, see:
-	// https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-	DockerConfigJson string `protobuf:"bytes,3,opt,name=docker_config_json,json=dockerConfigJson,proto3" json:"docker_config_json,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *KubernetesDaemonSetStackInput) Reset() {
@@ -106,22 +80,14 @@ func (x *KubernetesDaemonSetStackInput) GetProviderConfig() *kubernetes.Kubernet
 	return nil
 }
 
-func (x *KubernetesDaemonSetStackInput) GetDockerConfigJson() string {
-	if x != nil {
-		return x.DockerConfigJson
-	}
-	return ""
-}
-
 var File_catalog_kubernetes_kubernetesdaemonset_v1alpha1_input_proto protoreflect.FileDescriptor
 
 const file_catalog_kubernetes_kubernetesdaemonset_v1alpha1_input_proto_rawDesc = "" +
 	"\n" +
-	";catalog/kubernetes/kubernetesdaemonset/v1alpha1/input.proto\x123dev.planton.kubernetes.kubernetesdaemonset.v1alpha1\x1a9catalog/kubernetes/kubernetesdaemonset/v1alpha1/api.proto\x1a!catalog/kubernetes/provider.proto\"\x8a\x02\n" +
+	";catalog/kubernetes/kubernetesdaemonset/v1alpha1/input.proto\x123dev.planton.kubernetes.kubernetesdaemonset.v1alpha1\x1a9catalog/kubernetes/kubernetesdaemonset/v1alpha1/api.proto\x1a!catalog/kubernetes/provider.proto\"\xdc\x01\n" +
 	"\x1dKubernetesDaemonSetStackInput\x12`\n" +
 	"\x06target\x18\x01 \x01(\v2H.dev.planton.kubernetes.kubernetesdaemonset.v1alpha1.KubernetesDaemonSetR\x06target\x12Y\n" +
-	"\x0fprovider_config\x18\x02 \x01(\v20.dev.planton.kubernetes.KubernetesProviderConfigR\x0eproviderConfig\x12,\n" +
-	"\x12docker_config_json\x18\x03 \x01(\tR\x10dockerConfigJsonB\xa0\x03\n" +
+	"\x0fprovider_config\x18\x02 \x01(\v20.dev.planton.kubernetes.KubernetesProviderConfigR\x0eproviderConfigB\xa0\x03\n" +
 	"7com.dev.planton.kubernetes.kubernetesdaemonset.v1alpha1B\n" +
 	"InputProtoP\x01Zhgithub.com/plantonhq/planton/catalog/kubernetes/kubernetesdaemonset/v1alpha1;kubernetesdaemonsetv1alpha1\xa2\x02\x04DPKK\xaa\x023Dev.Planton.Kubernetes.Kubernetesdaemonset.V1alpha1\xca\x023Dev\\Planton\\Kubernetes\\Kubernetesdaemonset\\V1alpha1\xe2\x02?Dev\\Planton\\Kubernetes\\Kubernetesdaemonset\\V1alpha1\\GPBMetadata\xea\x027Dev::Planton::Kubernetes::Kubernetesdaemonset::V1alpha1b\x06proto3"
 

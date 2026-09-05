@@ -21,9 +21,14 @@ resource "kubernetes_secret_v1" "env_secrets" {
   depends_on = [kubernetes_namespace.this]
 }
 
-# Docker-registry credential for private image pulls, materialized when the
-# platform injects a dockerconfigjson at deploy time. Pods reference it through
-# the pod-level image pull secret list (see locals.image_pull_secret_names).
+# image-pull secret: the registry logins the workload declares on
+# pod.image_registries, materialized into ONE kubernetes.io/dockerconfigjson
+# Secret named <workload>-image-pull — the twin of the env secret above. Pods
+# reference it through the pod-level image pull secret list (see
+# locals.image_pull_secret_names). Nothing outside the spec feeds it: a public
+# image, a same-cloud registry the cluster's own identity reaches, or a Secret
+# declared beside the workload and named in pod.image_pull_secrets all leave it
+# uncreated.
 resource "kubernetes_secret_v1" "image_pull" {
   count = local.create_image_pull_secret ? 1 : 0
 
@@ -35,7 +40,7 @@ resource "kubernetes_secret_v1" "image_pull" {
 
   type = "kubernetes.io/dockerconfigjson"
   data = {
-    ".dockerconfigjson" = var.docker_config_json
+    ".dockerconfigjson" = local.image_pull_docker_config_json
   }
 
   depends_on = [kubernetes_namespace.this]

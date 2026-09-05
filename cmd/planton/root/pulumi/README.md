@@ -738,7 +738,6 @@ These flags inject provider credentials into the stack input (alternative to env
 - **`--azure-credential <file>`**: Path to Azure credential YAML
 - **`--gcp-credential <file>`**: Path to GCP credential YAML
 - **`--kubernetes-cluster <file>`**: Path to Kubernetes cluster credential YAML
-- **`--docker-credential <file>`**: Path to Docker registry credential YAML
 
 **Example**:
 

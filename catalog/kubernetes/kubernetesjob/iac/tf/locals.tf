@@ -83,15 +83,37 @@ locals {
     for vm in local.volume_mounts_flat : vm.name => vm...
   }
 
-  # Pod-level image pull secrets: spec-listed names plus the module-created
-  # docker-config secret when configured. ServiceAccount-attached pull secrets
-  # need no entry here.
+  # Registry logins the workload declares on pod.image_registries, rendered as the
+  # .dockerconfigjson document of the module-owned image-pull Secret: one `auths`
+  # record per server, with the base64 "user:password" pair the kubelet reads.
+  # The same shape the kubernetessecret module's locals.tf renders for its docker
+  # arm (and the Go twin, pkg/kubernetes/dockerconfigjson). The password arrives
+  # already resolved from its $secret/ reference. A server named twice is refused
+  # by the spec's own validation rule before any plan runs.
+  image_registries = try(var.spec.pod.image_registries, [])
+
+  image_pull_docker_config_json = jsonencode({
+    auths = {
+      for r in local.image_registries : r.server => merge(
+        {
+          username = r.username
+          password = r.password
+          auth     = base64encode("${r.username}:${r.password}")
+        },
+        try(r.email, "") != "" ? { email = r.email } : {}
+      )
+    }
+  })
+
+  create_image_pull_secret = length(local.image_registries) > 0
+
+  # Pod-level image pull secrets: Secrets declared beside the workload and named in
+  # pod.image_pull_secrets, plus the module-owned Secret when the pod declares
+  # registries. ServiceAccount-attached pull secrets need no entry here.
   image_pull_secret_names = concat(
     try(var.spec.pod.image_pull_secrets, []),
     local.create_image_pull_secret ? [local.image_pull_secret_name] : []
   )
-
-  create_image_pull_secret = try(var.docker_config_json, "") != ""
 
   # Pod template labels: controller labels win over user pod labels so a user
   # label can never break pod location.
@@ -105,10 +127,4 @@ locals {
   # Selector labels rendered as a deterministic sorted "k=v,k=v" string — the
   # exact syntax kubectl -l and NetworkPolicy tooling accept.
   selector_labels_string = join(",", [for k in sort(keys(local.selector_labels)) : "${k}=${local.selector_labels[k]}"])
-}
-
-variable "docker_config_json" {
-  description = "Docker registry credential (dockerconfigjson) injected by the platform at deploy time; empty when pulling public images or when pull secrets are attached to the ServiceAccount."
-  type        = string
-  default     = ""
 }

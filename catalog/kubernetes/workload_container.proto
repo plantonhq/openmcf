@@ -30,6 +30,23 @@ import "catalog/kubernetes/volume_mount.proto";
 // =============================================================================
 
 /**
+ * **WorkloadContainerImage** is a workload container's image reference, split into
+ * repository and tag. It deliberately has no per-container pull-secret leaf: in
+ * Kubernetes, pull secrets belong to the pod (`imagePullSecrets` on the PodSpec) and
+ * apply to every container in it, so a private registry's login lives on
+ * `WorkloadPod` — `image_registries` or `image_pull_secrets` — never on one container.
+ * Kinds that render a chart's or operator's per-image pull secret use the shared
+ * `ContainerImage` message instead; that leaf is that message's, not this one's.
+ */
+message WorkloadContainerImage {
+  // The repository of the image (e.g. "nginx" or "ghcr.io/acme/checkout").
+  string repo = 1;
+
+  // The tag of the image (e.g. "1.27.1"). Pin a version; "latest" cannot be rolled back.
+  string tag = 2;
+}
+
+/**
  * **WorkloadContainer** is the complete, typed configuration of one container in a
  * workload's pod. It is used for the app container, each sidecar, and each init
  * container.
@@ -74,11 +91,13 @@ message WorkloadContainer {
 
   /**
    * The container image, split into repository and tag so deployment pipelines can
-   * inject a freshly built tag without rewriting the whole reference. The optional
-   * `pull_secret_name` names an existing docker-registry secret; prefer attaching pull
-   * secrets on the ServiceAccount (or `pod.image_pull_secrets`) so they apply pod-wide.
+   * inject a freshly built tag without rewriting the whole reference. A container
+   * carries no pull credential of its own: the kubelet pulls every image in a pod
+   * with the pod's pull secrets, so a private registry's login is declared once,
+   * pod-wide — on `pod.image_registries` (the login itself) or `pod.image_pull_secrets`
+   * (a Secret declared beside the workload), or on the ServiceAccount the pod runs as.
    */
-  ContainerImage image = 2 [
+  WorkloadContainerImage image = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).cel = {
       id: "container.image.repo"

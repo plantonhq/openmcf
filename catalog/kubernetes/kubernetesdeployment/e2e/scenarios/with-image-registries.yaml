@@ -1,0 +1,38 @@
+# A private-registry login declared on the workload itself: the module materializes
+# pod.image_registries into the e2e-dep-registries-image-pull Secret and attaches it
+# to the pod. The image is public, so the pod becomes Ready while the Secret proves
+# the declared-on-spec pull path end to end (the kubelet only presents a login to
+# the registry it is keyed by). The password is a literal ONLY because this lane
+# has no backend to resolve a $secret/ reference; a real manifest never carries one.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesDeployment
+metadata:
+  name: e2e-dep-registries
+spec:
+  namespace:
+    value: e2e-dep-registries-ns
+  create_namespace: true
+  version: main
+  container:
+    app:
+      image:
+        repo: nginx
+        tag: "1.27-alpine"
+      resources:
+        requests:
+          cpu: "10m"
+          memory: "32Mi"
+        limits:
+          cpu: "100m"
+          memory: "64Mi"
+      ports:
+        - name: http
+          container_port: 80
+          network_protocol: TCP
+          app_protocol: http
+          service_port: 80
+  pod:
+    image_registries:
+      - server: ghcr.io
+        username: e2e-pull-bot
+        password: e2e-pull-token

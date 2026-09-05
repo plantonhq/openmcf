@@ -10,9 +10,11 @@ resource "kubernetes_service_account_v1" "service_account" {
     annotations = local.annotations
   }
 
-  # Name-only references to dockerconfigjson secrets in the same namespace.
+  # Name-only references to dockerconfigjson secrets in the same namespace. An
+  # entry that resolved to nothing is dropped rather than rendered as an empty
+  # name the API server rejects (the Pulumi twin filters the same way).
   dynamic "image_pull_secret" {
-    for_each = var.spec.image_pull_secrets
+    for_each = [for name in var.spec.image_pull_secrets : name if name != ""]
     content {
       name = image_pull_secret.value
     }

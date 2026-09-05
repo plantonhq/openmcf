@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "dockerconfigjson",
+    srcs = ["dockerconfigjson.go"],
+    importpath = "github.com/plantonhq/planton/pkg/kubernetes/dockerconfigjson",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "dockerconfigjson_test",
+    srcs = ["dockerconfigjson_test.go"],
+    embed = [":dockerconfigjson"],
+)

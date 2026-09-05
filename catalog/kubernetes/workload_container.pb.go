@@ -23,6 +23,68 @@ const (
 )
 
 // *
+// **WorkloadContainerImage** is a workload container's image reference, split into
+// repository and tag. It deliberately has no per-container pull-secret leaf: in
+// Kubernetes, pull secrets belong to the pod (`imagePullSecrets` on the PodSpec) and
+// apply to every container in it, so a private registry's login lives on
+// `WorkloadPod` — `image_registries` or `image_pull_secrets` — never on one container.
+// Kinds that render a chart's or operator's per-image pull secret use the shared
+// `ContainerImage` message instead; that leaf is that message's, not this one's.
+type WorkloadContainerImage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The repository of the image (e.g. "nginx" or "ghcr.io/acme/checkout").
+	Repo string `protobuf:"bytes,1,opt,name=repo,proto3" json:"repo,omitempty"`
+	// The tag of the image (e.g. "1.27.1"). Pin a version; "latest" cannot be rolled back.
+	Tag           string `protobuf:"bytes,2,opt,name=tag,proto3" json:"tag,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WorkloadContainerImage) Reset() {
+	*x = WorkloadContainerImage{}
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WorkloadContainerImage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WorkloadContainerImage) ProtoMessage() {}
+
+func (x *WorkloadContainerImage) ProtoReflect() protoreflect.Message {
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WorkloadContainerImage.ProtoReflect.Descriptor instead.
+func (*WorkloadContainerImage) Descriptor() ([]byte, []int) {
+	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *WorkloadContainerImage) GetRepo() string {
+	if x != nil {
+		return x.Repo
+	}
+	return ""
+}
+
+func (x *WorkloadContainerImage) GetTag() string {
+	if x != nil {
+		return x.Tag
+	}
+	return ""
+}
+
+// *
 // **WorkloadContainer** is the complete, typed configuration of one container in a
 // workload's pod. It is used for the app container, each sidecar, and each init
 // container.
@@ -70,10 +132,12 @@ type WorkloadContainer struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// *
 	// The container image, split into repository and tag so deployment pipelines can
-	// inject a freshly built tag without rewriting the whole reference. The optional
-	// `pull_secret_name` names an existing docker-registry secret; prefer attaching pull
-	// secrets on the ServiceAccount (or `pod.image_pull_secrets`) so they apply pod-wide.
-	Image *ContainerImage `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
+	// inject a freshly built tag without rewriting the whole reference. A container
+	// carries no pull credential of its own: the kubelet pulls every image in a pod
+	// with the pod's pull secrets, so a private registry's login is declared once,
+	// pod-wide — on `pod.image_registries` (the login itself) or `pod.image_pull_secrets`
+	// (a Secret declared beside the workload), or on the ServiceAccount the pod runs as.
+	Image *WorkloadContainerImage `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
 	// *
 	// When the kubelet pulls the image. "IfNotPresent" (the Kubernetes default for tagged
 	// images) reuses a cached copy; "Always" re-resolves the tag on every pod start —
@@ -148,7 +212,7 @@ type WorkloadContainer struct {
 
 func (x *WorkloadContainer) Reset() {
 	*x = WorkloadContainer{}
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[0]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -160,7 +224,7 @@ func (x *WorkloadContainer) String() string {
 func (*WorkloadContainer) ProtoMessage() {}
 
 func (x *WorkloadContainer) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[0]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -173,7 +237,7 @@ func (x *WorkloadContainer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadContainer.ProtoReflect.Descriptor instead.
 func (*WorkloadContainer) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{0}
+	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *WorkloadContainer) GetName() string {
@@ -183,7 +247,7 @@ func (x *WorkloadContainer) GetName() string {
 	return ""
 }
 
-func (x *WorkloadContainer) GetImage() *ContainerImage {
+func (x *WorkloadContainer) GetImage() *WorkloadContainerImage {
 	if x != nil {
 		return x.Image
 	}
@@ -323,7 +387,7 @@ type WorkloadContainerPort struct {
 
 func (x *WorkloadContainerPort) Reset() {
 	*x = WorkloadContainerPort{}
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -335,7 +399,7 @@ func (x *WorkloadContainerPort) String() string {
 func (*WorkloadContainerPort) ProtoMessage() {}
 
 func (x *WorkloadContainerPort) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[1]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -348,7 +412,7 @@ func (x *WorkloadContainerPort) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadContainerPort.ProtoReflect.Descriptor instead.
 func (*WorkloadContainerPort) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{1}
+	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *WorkloadContainerPort) GetName() string {
@@ -416,7 +480,7 @@ type WorkloadContainerLifecycle struct {
 
 func (x *WorkloadContainerLifecycle) Reset() {
 	*x = WorkloadContainerLifecycle{}
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -428,7 +492,7 @@ func (x *WorkloadContainerLifecycle) String() string {
 func (*WorkloadContainerLifecycle) ProtoMessage() {}
 
 func (x *WorkloadContainerLifecycle) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[2]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -441,7 +505,7 @@ func (x *WorkloadContainerLifecycle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadContainerLifecycle.ProtoReflect.Descriptor instead.
 func (*WorkloadContainerLifecycle) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{2}
+	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *WorkloadContainerLifecycle) GetPostStart() *WorkloadLifecycleHandler {
@@ -476,7 +540,7 @@ type WorkloadLifecycleHandler struct {
 
 func (x *WorkloadLifecycleHandler) Reset() {
 	*x = WorkloadLifecycleHandler{}
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[3]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -488,7 +552,7 @@ func (x *WorkloadLifecycleHandler) String() string {
 func (*WorkloadLifecycleHandler) ProtoMessage() {}
 
 func (x *WorkloadLifecycleHandler) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[3]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -501,7 +565,7 @@ func (x *WorkloadLifecycleHandler) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadLifecycleHandler.ProtoReflect.Descriptor instead.
 func (*WorkloadLifecycleHandler) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{3}
+	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *WorkloadLifecycleHandler) GetHandler() isWorkloadLifecycleHandler_Handler {
@@ -593,7 +657,7 @@ type SleepAction struct {
 
 func (x *SleepAction) Reset() {
 	*x = SleepAction{}
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[4]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -605,7 +669,7 @@ func (x *SleepAction) String() string {
 func (*SleepAction) ProtoMessage() {}
 
 func (x *SleepAction) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[4]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -618,7 +682,7 @@ func (x *SleepAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SleepAction.ProtoReflect.Descriptor instead.
 func (*SleepAction) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{4}
+	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *SleepAction) GetSeconds() int64 {
@@ -672,7 +736,7 @@ type WorkloadContainerSecurityContext struct {
 
 func (x *WorkloadContainerSecurityContext) Reset() {
 	*x = WorkloadContainerSecurityContext{}
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[5]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -684,7 +748,7 @@ func (x *WorkloadContainerSecurityContext) String() string {
 func (*WorkloadContainerSecurityContext) ProtoMessage() {}
 
 func (x *WorkloadContainerSecurityContext) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[5]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -697,7 +761,7 @@ func (x *WorkloadContainerSecurityContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadContainerSecurityContext.ProtoReflect.Descriptor instead.
 func (*WorkloadContainerSecurityContext) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{5}
+	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *WorkloadContainerSecurityContext) GetPrivileged() bool {
@@ -770,7 +834,7 @@ type WorkloadCapabilities struct {
 
 func (x *WorkloadCapabilities) Reset() {
 	*x = WorkloadCapabilities{}
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[6]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -782,7 +846,7 @@ func (x *WorkloadCapabilities) String() string {
 func (*WorkloadCapabilities) ProtoMessage() {}
 
 func (x *WorkloadCapabilities) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[6]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -795,7 +859,7 @@ func (x *WorkloadCapabilities) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadCapabilities.ProtoReflect.Descriptor instead.
 func (*WorkloadCapabilities) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{6}
+	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *WorkloadCapabilities) GetAdd() []string {
@@ -832,7 +896,7 @@ type WorkloadSeccompProfile struct {
 
 func (x *WorkloadSeccompProfile) Reset() {
 	*x = WorkloadSeccompProfile{}
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[7]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -844,7 +908,7 @@ func (x *WorkloadSeccompProfile) String() string {
 func (*WorkloadSeccompProfile) ProtoMessage() {}
 
 func (x *WorkloadSeccompProfile) ProtoReflect() protoreflect.Message {
-	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[7]
+	mi := &file_catalog_kubernetes_workload_container_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -857,7 +921,7 @@ func (x *WorkloadSeccompProfile) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WorkloadSeccompProfile.ProtoReflect.Descriptor instead.
 func (*WorkloadSeccompProfile) Descriptor() ([]byte, []int) {
-	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{7}
+	return file_catalog_kubernetes_workload_container_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *WorkloadSeccompProfile) GetType() string {
@@ -878,11 +942,14 @@ var File_catalog_kubernetes_workload_container_proto protoreflect.FileDescriptor
 
 const file_catalog_kubernetes_workload_container_proto_rawDesc = "" +
 	"\n" +
-	"+catalog/kubernetes/workload_container.proto\x12\x16dev.planton.kubernetes\x1a\x1bbuf/validate/validate.proto\x1a&catalog/kubernetes/container_env.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a\x1ecatalog/kubernetes/probe.proto\x1a%catalog/kubernetes/volume_mount.proto\"\xe8\f\n" +
+	"+catalog/kubernetes/workload_container.proto\x12\x16dev.planton.kubernetes\x1a\x1bbuf/validate/validate.proto\x1a&catalog/kubernetes/container_env.proto\x1a#catalog/kubernetes/kubernetes.proto\x1a\x1ecatalog/kubernetes/probe.proto\x1a%catalog/kubernetes/volume_mount.proto\">\n" +
+	"\x16WorkloadContainerImage\x12\x12\n" +
+	"\x04repo\x18\x01 \x01(\tR\x04repo\x12\x10\n" +
+	"\x03tag\x18\x02 \x01(\tR\x03tag\"\xf0\f\n" +
 	"\x11WorkloadContainer\x12\xf8\x01\n" +
 	"\x04name\x18\x01 \x01(\tB\xe3\x01\xbaH\xdf\x01\xba\x01\xdb\x01\n" +
-	"\x18container.name.dns_label\x12{Container name must be a lowercase DNS label (alphanumeric and hyphens, starting and ending with an alphanumeric character)\x1aBthis == '' || this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')R\x04name\x12\x97\x03\n" +
-	"\x05image\x18\x02 \x01(\v2&.dev.planton.kubernetes.ContainerImageB\xd8\x02\xbaH\xd4\x02\xba\x01\xa5\x01\n" +
+	"\x18container.name.dns_label\x12{Container name must be a lowercase DNS label (alphanumeric and hyphens, starting and ending with an alphanumeric character)\x1aBthis == '' || this.matches('^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$')R\x04name\x12\x9f\x03\n" +
+	"\x05image\x18\x02 \x01(\v2..dev.planton.kubernetes.WorkloadContainerImageB\xd8\x02\xbaH\xd4\x02\xba\x01\xa5\x01\n" +
 	"\x14container.image.repo\x12jImage repo is required — the repository half of the image reference (e.g. \"nginx\" or \"ghcr.io/acme/api\")\x1a!has(this.repo) && this.repo != ''\xba\x01\xa4\x01\n" +
 	"\x13container.image.tag\x12lImage tag is required — pin a version (e.g. \"1.27.1\"); avoid \"latest\" for anything you intend to roll back\x1a\x1fhas(this.tag) && this.tag != ''\xc8\x01\x01R\x05image\x12\xd4\x01\n" +
 	"\x11image_pull_policy\x18\x03 \x01(\tB\xa7\x01\xbaH\xa3\x01\xba\x01\x9f\x01\n" +
@@ -964,17 +1031,17 @@ func file_catalog_kubernetes_workload_container_proto_rawDescGZIP() []byte {
 	return file_catalog_kubernetes_workload_container_proto_rawDescData
 }
 
-var file_catalog_kubernetes_workload_container_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_catalog_kubernetes_workload_container_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
 var file_catalog_kubernetes_workload_container_proto_goTypes = []any{
-	(*WorkloadContainer)(nil),                // 0: dev.planton.kubernetes.WorkloadContainer
-	(*WorkloadContainerPort)(nil),            // 1: dev.planton.kubernetes.WorkloadContainerPort
-	(*WorkloadContainerLifecycle)(nil),       // 2: dev.planton.kubernetes.WorkloadContainerLifecycle
-	(*WorkloadLifecycleHandler)(nil),         // 3: dev.planton.kubernetes.WorkloadLifecycleHandler
-	(*SleepAction)(nil),                      // 4: dev.planton.kubernetes.SleepAction
-	(*WorkloadContainerSecurityContext)(nil), // 5: dev.planton.kubernetes.WorkloadContainerSecurityContext
-	(*WorkloadCapabilities)(nil),             // 6: dev.planton.kubernetes.WorkloadCapabilities
-	(*WorkloadSeccompProfile)(nil),           // 7: dev.planton.kubernetes.WorkloadSeccompProfile
-	(*ContainerImage)(nil),                   // 8: dev.planton.kubernetes.ContainerImage
+	(*WorkloadContainerImage)(nil),           // 0: dev.planton.kubernetes.WorkloadContainerImage
+	(*WorkloadContainer)(nil),                // 1: dev.planton.kubernetes.WorkloadContainer
+	(*WorkloadContainerPort)(nil),            // 2: dev.planton.kubernetes.WorkloadContainerPort
+	(*WorkloadContainerLifecycle)(nil),       // 3: dev.planton.kubernetes.WorkloadContainerLifecycle
+	(*WorkloadLifecycleHandler)(nil),         // 4: dev.planton.kubernetes.WorkloadLifecycleHandler
+	(*SleepAction)(nil),                      // 5: dev.planton.kubernetes.SleepAction
+	(*WorkloadContainerSecurityContext)(nil), // 6: dev.planton.kubernetes.WorkloadContainerSecurityContext
+	(*WorkloadCapabilities)(nil),             // 7: dev.planton.kubernetes.WorkloadCapabilities
+	(*WorkloadSeccompProfile)(nil),           // 8: dev.planton.kubernetes.WorkloadSeccompProfile
 	(*ContainerEnv)(nil),                     // 9: dev.planton.kubernetes.ContainerEnv
 	(*ContainerResources)(nil),               // 10: dev.planton.kubernetes.ContainerResources
 	(*Probe)(nil),                            // 11: dev.planton.kubernetes.Probe
@@ -984,24 +1051,24 @@ var file_catalog_kubernetes_workload_container_proto_goTypes = []any{
 	(*TCPSocketAction)(nil),                  // 15: dev.planton.kubernetes.TCPSocketAction
 }
 var file_catalog_kubernetes_workload_container_proto_depIdxs = []int32{
-	8,  // 0: dev.planton.kubernetes.WorkloadContainer.image:type_name -> dev.planton.kubernetes.ContainerImage
-	1,  // 1: dev.planton.kubernetes.WorkloadContainer.ports:type_name -> dev.planton.kubernetes.WorkloadContainerPort
+	0,  // 0: dev.planton.kubernetes.WorkloadContainer.image:type_name -> dev.planton.kubernetes.WorkloadContainerImage
+	2,  // 1: dev.planton.kubernetes.WorkloadContainer.ports:type_name -> dev.planton.kubernetes.WorkloadContainerPort
 	9,  // 2: dev.planton.kubernetes.WorkloadContainer.env:type_name -> dev.planton.kubernetes.ContainerEnv
 	10, // 3: dev.planton.kubernetes.WorkloadContainer.resources:type_name -> dev.planton.kubernetes.ContainerResources
 	11, // 4: dev.planton.kubernetes.WorkloadContainer.liveness_probe:type_name -> dev.planton.kubernetes.Probe
 	11, // 5: dev.planton.kubernetes.WorkloadContainer.readiness_probe:type_name -> dev.planton.kubernetes.Probe
 	11, // 6: dev.planton.kubernetes.WorkloadContainer.startup_probe:type_name -> dev.planton.kubernetes.Probe
 	12, // 7: dev.planton.kubernetes.WorkloadContainer.volume_mounts:type_name -> dev.planton.kubernetes.VolumeMount
-	2,  // 8: dev.planton.kubernetes.WorkloadContainer.lifecycle:type_name -> dev.planton.kubernetes.WorkloadContainerLifecycle
-	5,  // 9: dev.planton.kubernetes.WorkloadContainer.security_context:type_name -> dev.planton.kubernetes.WorkloadContainerSecurityContext
-	3,  // 10: dev.planton.kubernetes.WorkloadContainerLifecycle.post_start:type_name -> dev.planton.kubernetes.WorkloadLifecycleHandler
-	3,  // 11: dev.planton.kubernetes.WorkloadContainerLifecycle.pre_stop:type_name -> dev.planton.kubernetes.WorkloadLifecycleHandler
+	3,  // 8: dev.planton.kubernetes.WorkloadContainer.lifecycle:type_name -> dev.planton.kubernetes.WorkloadContainerLifecycle
+	6,  // 9: dev.planton.kubernetes.WorkloadContainer.security_context:type_name -> dev.planton.kubernetes.WorkloadContainerSecurityContext
+	4,  // 10: dev.planton.kubernetes.WorkloadContainerLifecycle.post_start:type_name -> dev.planton.kubernetes.WorkloadLifecycleHandler
+	4,  // 11: dev.planton.kubernetes.WorkloadContainerLifecycle.pre_stop:type_name -> dev.planton.kubernetes.WorkloadLifecycleHandler
 	13, // 12: dev.planton.kubernetes.WorkloadLifecycleHandler.exec:type_name -> dev.planton.kubernetes.ExecAction
 	14, // 13: dev.planton.kubernetes.WorkloadLifecycleHandler.http_get:type_name -> dev.planton.kubernetes.HTTPGetAction
 	15, // 14: dev.planton.kubernetes.WorkloadLifecycleHandler.tcp_socket:type_name -> dev.planton.kubernetes.TCPSocketAction
-	4,  // 15: dev.planton.kubernetes.WorkloadLifecycleHandler.sleep:type_name -> dev.planton.kubernetes.SleepAction
-	6,  // 16: dev.planton.kubernetes.WorkloadContainerSecurityContext.capabilities:type_name -> dev.planton.kubernetes.WorkloadCapabilities
-	7,  // 17: dev.planton.kubernetes.WorkloadContainerSecurityContext.seccomp_profile:type_name -> dev.planton.kubernetes.WorkloadSeccompProfile
+	5,  // 15: dev.planton.kubernetes.WorkloadLifecycleHandler.sleep:type_name -> dev.planton.kubernetes.SleepAction
+	7,  // 16: dev.planton.kubernetes.WorkloadContainerSecurityContext.capabilities:type_name -> dev.planton.kubernetes.WorkloadCapabilities
+	8,  // 17: dev.planton.kubernetes.WorkloadContainerSecurityContext.seccomp_profile:type_name -> dev.planton.kubernetes.WorkloadSeccompProfile
 	18, // [18:18] is the sub-list for method output_type
 	18, // [18:18] is the sub-list for method input_type
 	18, // [18:18] is the sub-list for extension type_name
@@ -1018,20 +1085,20 @@ func file_catalog_kubernetes_workload_container_proto_init() {
 	file_catalog_kubernetes_kubernetes_proto_init()
 	file_catalog_kubernetes_probe_proto_init()
 	file_catalog_kubernetes_volume_mount_proto_init()
-	file_catalog_kubernetes_workload_container_proto_msgTypes[3].OneofWrappers = []any{
+	file_catalog_kubernetes_workload_container_proto_msgTypes[4].OneofWrappers = []any{
 		(*WorkloadLifecycleHandler_Exec)(nil),
 		(*WorkloadLifecycleHandler_HttpGet)(nil),
 		(*WorkloadLifecycleHandler_TcpSocket)(nil),
 		(*WorkloadLifecycleHandler_Sleep)(nil),
 	}
-	file_catalog_kubernetes_workload_container_proto_msgTypes[5].OneofWrappers = []any{}
+	file_catalog_kubernetes_workload_container_proto_msgTypes[6].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_catalog_kubernetes_workload_container_proto_rawDesc), len(file_catalog_kubernetes_workload_container_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   9,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

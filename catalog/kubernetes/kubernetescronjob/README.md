@@ -57,7 +57,7 @@ After deployment, the following outputs are available in `status.outputs`:
 This component includes both **Pulumi** (Go) and **Terraform** (HCL) modules that:
 
 1. Resolve the target namespace (literal value or resolved reference), creating it when `create_namespace` is true
-2. Materialize literal secret env values into a workload-scoped Kubernetes Secret and docker-registry credentials into an image-pull Secret
+2. Materialize literal secret env values into a workload-scoped Kubernetes Secret and the registry logins declared on `spec.job_template.pod.image_registries` into an image-pull Secret
 3. Build the Job template from the shared workload container/pod core plus the full batch-control surface
 4. Create the batch/v1 CronJob with the scheduling controls
 5. Export the namespace, CronJob name, and effective schedule

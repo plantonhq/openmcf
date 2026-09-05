@@ -45,7 +45,6 @@ gaps:
   # (C) service env-var secret maps
   # (D) secret-holder kinds
   - KubernetesSecret:spec.basic_auth.password
-  - KubernetesSecret:spec.docker_config_json.password
   - KubernetesSecret:spec.ssh_auth.ssh_private_key
 violations: []
   # Sensitive fields still carrying a value-content rule are listed here by

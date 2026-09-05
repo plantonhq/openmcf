@@ -1,11 +1,10 @@
 package module
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 
 	kubernetessecretv1alpha1 "github.com/plantonhq/planton/catalog/kubernetes/kubernetessecret/v1alpha1"
+	"github.com/plantonhq/planton/pkg/kubernetes/dockerconfigjson"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -158,7 +157,17 @@ func computeSecretTypeAndData(spec *kubernetessecretv1alpha1.KubernetesSecretSpe
 		}, nil
 
 	case *kubernetessecretv1alpha1.KubernetesSecretSpec_DockerConfigJson:
-		dockerConfigJSON, err := buildDockerConfigJSON(data.DockerConfigJson)
+		// One registry login, rendered by the catalog's single docker-config encoder
+		// (the same one the workload kinds use for `pod.image_registries`), so the
+		// document shape is defined once. The password arrives already resolved from
+		// its `$secret/` reference.
+		d := data.DockerConfigJson
+		dockerConfigJSON, err := dockerconfigjson.Encode([]dockerconfigjson.Auth{{
+			Server:   d.GetRegistryServer(),
+			Username: d.GetUsername(),
+			Password: d.GetPassword(),
+			Email:    d.GetEmail(),
+		}})
 		if err != nil {
 			return nil, fmt.Errorf("failed to build docker config json: %w", err)
 		}
@@ -199,42 +208,4 @@ func computeSecretTypeAndData(spec *kubernetessecretv1alpha1.KubernetesSecretSpe
 	default:
 		return nil, fmt.Errorf("no secret data variant set in spec")
 	}
-}
-
-// dockerConfigAuth represents the auth entry for a single registry
-type dockerConfigAuth struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email,omitempty"`
-	Auth     string `json:"auth"`
-}
-
-// dockerConfigJSON represents the top-level .dockerconfigjson structure
-type dockerConfigJSON struct {
-	Auths map[string]dockerConfigAuth `json:"auths"`
-}
-
-// buildDockerConfigJSON constructs the .dockerconfigjson JSON string from structured fields
-func buildDockerConfigJSON(data *kubernetessecretv1alpha1.KubernetesSecretDockerConfigJsonData) (string, error) {
-	auth := base64.StdEncoding.EncodeToString(
-		[]byte(data.Username + ":" + data.Password),
-	)
-
-	config := dockerConfigJSON{
-		Auths: map[string]dockerConfigAuth{
-			data.RegistryServer: {
-				Username: data.Username,
-				Password: data.Password,
-				Email:    data.Email,
-				Auth:     auth,
-			},
-		},
-	}
-
-	jsonBytes, err := json.Marshal(config)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal docker config json: %w", err)
-	}
-
-	return string(jsonBytes), nil
 }

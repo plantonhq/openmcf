@@ -5,7 +5,9 @@ package dev.planton.kubernetes.kubernetescronjob.v1alpha1;
 import "catalog/kubernetes/kubernetescronjob/v1alpha1/api.proto";
 import "catalog/kubernetes/provider.proto";
 
-//cron-job-kubernetes stack-input
+//cron-job-kubernetes stack-input. The image-pull Secret for a private registry is
+//derived from the target's own spec (`spec.job_template.pod.image_registries`),
+//never from an input filled on the cron job's behalf.
 message KubernetesCronJobStackInput {
   //target cloud-resource
   KubernetesCronJob target = 1;
@@ -13,6 +15,4 @@ message KubernetesCronJobStackInput {
   dev.planton.kubernetes.KubernetesProviderConfig provider_config = 2;
   //kubernetes namespace
   string kubernetes_namespace = 3;
-  //docker-config-json to be used for setting up image-pull-secret
-  string docker_config_json = 4;
 }

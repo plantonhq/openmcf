@@ -4,7 +4,7 @@
 
 - **Conditional Namespace Management**: Control whether to create a new namespace or use an existing one via the `create_namespace` flag
 - **Automated Resource Creation**: Creates CronJob, ServiceAccount, and Secrets based on the specification
-- **Private Registry Support**: Automatic image pull secret creation when Docker credentials are provided
+- **Private Registry Support**: Image pull Secret materialized from the registry logins declared on `spec.job_template.pod.image_registries`
 - **Flexible Scheduling**: Support for all standard cron expressions and concurrency policies
 - **Resource Management**: Configure CPU/memory requests and limits for optimal cluster utilization
 

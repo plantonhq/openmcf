@@ -8,7 +8,9 @@ import "catalog/kubernetes/provider.proto";
 // KubernetesJobStackInput defines the input to the IaC modules (Pulumi/Terraform)
 // for deploying a KubernetesJob. This message aggregates all information needed
 // by the IaC module including the target resource, provider configuration,
-// and any resolved values from the orchestrator.
+// and any resolved values from the orchestrator. The image-pull Secret for a
+// private registry is derived from the target's own spec
+// (`spec.pod.image_registries`), never from an input filled on the job's behalf.
 message KubernetesJobStackInput {
   // The target KubernetesJob resource to deploy
   KubernetesJob target = 1;
@@ -20,9 +22,4 @@ message KubernetesJobStackInput {
   // This is populated by the orchestrator after resolving any references
   // in spec.namespace (e.g., from a KubernetesNamespace resource).
   string kubernetes_namespace = 3;
-
-  // Docker config JSON for image pull secrets.
-  // This is populated if the container image requires authentication
-  // to pull from a private registry.
-  string docker_config_json = 4;
 }

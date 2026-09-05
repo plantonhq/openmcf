@@ -4,7 +4,15 @@ metadata:
   name: kubernetesdeployment
 spec:
   tier: 1
-  status: green
+  # pending_proof: the image-pull Secret is now built from the login the workload
+  # declares on pod.image_registries (both engines; the platform-filled input and
+  # the operator-laptop file annotation are gone). Every offline gate is green --
+  # spec/CEL tests, both engine builds, tofu validate, secret coverage, the
+  # regenerated variables.tf -- but the new arm has not run live. Unblock: run the
+  # kubernetes lane; watch that <workload>-image-pull materializes keyed by the
+  # declared server and the pod becomes Ready (the image stays public, so the
+  # login is presented to no registry the pull actually needs).
+  status: pending_proof
   validated_provisioners:
     - pulumi
     - terraform

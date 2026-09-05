@@ -10,7 +10,7 @@ A single manifest produces:
 - **Service** (ClusterIP) — created when the app container declares ports; skipped entirely for port-less workers
 - **HorizontalPodAutoscaler** — when `availability.horizontalPodAutoscaling.enabled` is true
 - **PodDisruptionBudget** — when `availability.podDisruptionBudget.enabled` is true
-- **Satellite Secrets** — one Opaque Secret materializing literal secret env values (collected across the app container, sidecars, and init containers), and one `kubernetes.io/dockerconfigjson` pull Secret when registry credentials are supplied
+- **Satellite Secrets** — one Opaque Secret materializing literal secret env values (collected across the app container, sidecars, and init containers), and one `kubernetes.io/dockerconfigjson` pull Secret built from the registry logins the pod declares on `pod.imageRegistries`
 - **Namespace** — only when `createNamespace` is true
 
 ## Composition, Not Bundling

@@ -19,7 +19,7 @@ func literal(value string) *foreignkeyv1.StringValueOrRef {
 
 func validContainer() *kubernetes.WorkloadContainer {
 	return &kubernetes.WorkloadContainer{
-		Image: &kubernetes.ContainerImage{
+		Image: &kubernetes.WorkloadContainerImage{
 			Repo: "docker.io/library/postgres",
 			Tag:  "16.2",
 		},
@@ -70,7 +70,7 @@ var _ = ginkgo.Describe("KubernetesStatefulSetSpec validations", func() {
 					Sidecars: []*kubernetes.WorkloadContainer{
 						{
 							Name: "metrics-exporter",
-							Image: &kubernetes.ContainerImage{
+							Image: &kubernetes.WorkloadContainerImage{
 								Repo: "quay.io/prometheuscommunity/postgres-exporter",
 								Tag:  "v0.15.0",
 							},
@@ -82,7 +82,7 @@ var _ = ginkgo.Describe("KubernetesStatefulSetSpec validations", func() {
 					InitContainers: []*kubernetes.WorkloadContainer{
 						{
 							Name: "init-permissions",
-							Image: &kubernetes.ContainerImage{
+							Image: &kubernetes.WorkloadContainerImage{
 								Repo: "busybox",
 								Tag:  "1.36",
 							},
@@ -223,7 +223,7 @@ var _ = ginkgo.Describe("KubernetesStatefulSetSpec validations", func() {
 
 		ginkgo.It("rejects an app image without a tag", func() {
 			spec := validSpec()
-			spec.Container.App.Image = &kubernetes.ContainerImage{Repo: "postgres"}
+			spec.Container.App.Image = &kubernetes.WorkloadContainerImage{Repo: "postgres"}
 			err := protovalidate.Validate(spec)
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
@@ -232,7 +232,7 @@ var _ = ginkgo.Describe("KubernetesStatefulSetSpec validations", func() {
 			spec := validSpec()
 			spec.Container.Sidecars = []*kubernetes.WorkloadContainer{
 				{
-					Image: &kubernetes.ContainerImage{Repo: "busybox", Tag: "1.36"},
+					Image: &kubernetes.WorkloadContainerImage{Repo: "busybox", Tag: "1.36"},
 				},
 			}
 			err := protovalidate.Validate(spec)

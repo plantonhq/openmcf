@@ -22,7 +22,6 @@ variable "spec" {
         image = object({
           repo = optional(string, "")
           tag = optional(string, "")
-          pull_secret_name = optional(string, "")
         })
         image_pull_policy = optional(string, "")
         command = optional(list(string), [])
@@ -284,7 +283,6 @@ variable "spec" {
         image = object({
           repo = optional(string, "")
           tag = optional(string, "")
-          pull_secret_name = optional(string, "")
         })
         image_pull_policy = optional(string, "")
         command = optional(list(string), [])
@@ -546,12 +544,17 @@ variable "spec" {
       service_account = optional(string, "")
       automount_service_account_token = optional(bool)
       image_pull_secrets = optional(list(string), [])
+      image_registries = optional(list(object({
+        server = string
+        username = string
+        password = string
+        email = optional(string, "")
+      })), [])
       init_containers = optional(list(object({
         name = optional(string, "")
         image = object({
           repo = optional(string, "")
           tag = optional(string, "")
-          pull_secret_name = optional(string, "")
         })
         image_pull_policy = optional(string, "")
         command = optional(list(string), [])

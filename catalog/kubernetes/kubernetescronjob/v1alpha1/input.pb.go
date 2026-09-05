@@ -22,7 +22,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// cron-job-kubernetes stack-input
+// cron-job-kubernetes stack-input. The image-pull Secret for a private registry is
+// derived from the target's own spec (`spec.job_template.pod.image_registries`),
+// never from an input filled on the cron job's behalf.
 type KubernetesCronJobStackInput struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// target cloud-resource
@@ -31,10 +33,8 @@ type KubernetesCronJobStackInput struct {
 	ProviderConfig *kubernetes.KubernetesProviderConfig `protobuf:"bytes,2,opt,name=provider_config,json=providerConfig,proto3" json:"provider_config,omitempty"`
 	// kubernetes namespace
 	KubernetesNamespace string `protobuf:"bytes,3,opt,name=kubernetes_namespace,json=kubernetesNamespace,proto3" json:"kubernetes_namespace,omitempty"`
-	// docker-config-json to be used for setting up image-pull-secret
-	DockerConfigJson string `protobuf:"bytes,4,opt,name=docker_config_json,json=dockerConfigJson,proto3" json:"docker_config_json,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *KubernetesCronJobStackInput) Reset() {
@@ -88,23 +88,15 @@ func (x *KubernetesCronJobStackInput) GetKubernetesNamespace() string {
 	return ""
 }
 
-func (x *KubernetesCronJobStackInput) GetDockerConfigJson() string {
-	if x != nil {
-		return x.DockerConfigJson
-	}
-	return ""
-}
-
 var File_catalog_kubernetes_kubernetescronjob_v1alpha1_input_proto protoreflect.FileDescriptor
 
 const file_catalog_kubernetes_kubernetescronjob_v1alpha1_input_proto_rawDesc = "" +
 	"\n" +
-	"9catalog/kubernetes/kubernetescronjob/v1alpha1/input.proto\x121dev.planton.kubernetes.kubernetescronjob.v1alpha1\x1a7catalog/kubernetes/kubernetescronjob/v1alpha1/api.proto\x1a!catalog/kubernetes/provider.proto\"\xb7\x02\n" +
+	"9catalog/kubernetes/kubernetescronjob/v1alpha1/input.proto\x121dev.planton.kubernetes.kubernetescronjob.v1alpha1\x1a7catalog/kubernetes/kubernetescronjob/v1alpha1/api.proto\x1a!catalog/kubernetes/provider.proto\"\x89\x02\n" +
 	"\x1bKubernetesCronJobStackInput\x12\\\n" +
 	"\x06target\x18\x01 \x01(\v2D.dev.planton.kubernetes.kubernetescronjob.v1alpha1.KubernetesCronJobR\x06target\x12Y\n" +
 	"\x0fprovider_config\x18\x02 \x01(\v20.dev.planton.kubernetes.KubernetesProviderConfigR\x0eproviderConfig\x121\n" +
-	"\x14kubernetes_namespace\x18\x03 \x01(\tR\x13kubernetesNamespace\x12,\n" +
-	"\x12docker_config_json\x18\x04 \x01(\tR\x10dockerConfigJsonB\x92\x03\n" +
+	"\x14kubernetes_namespace\x18\x03 \x01(\tR\x13kubernetesNamespaceB\x92\x03\n" +
 	"5com.dev.planton.kubernetes.kubernetescronjob.v1alpha1B\n" +
 	"InputProtoP\x01Zdgithub.com/plantonhq/planton/catalog/kubernetes/kubernetescronjob/v1alpha1;kubernetescronjobv1alpha1\xa2\x02\x04DPKK\xaa\x021Dev.Planton.Kubernetes.Kubernetescronjob.V1alpha1\xca\x021Dev\\Planton\\Kubernetes\\Kubernetescronjob\\V1alpha1\xe2\x02=Dev\\Planton\\Kubernetes\\Kubernetescronjob\\V1alpha1\\GPBMetadata\xea\x025Dev::Planton::Kubernetes::Kubernetescronjob::V1alpha1b\x06proto3"
 

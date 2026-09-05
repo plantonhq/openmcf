@@ -7,18 +7,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// imagePullSecret creates a Kubernetes secret for pulling private container images.
+// imagePullSecret materializes the registry logins the workload declares on
+// pod.image_registries into ONE kubernetes.io/dockerconfigjson Secret named
+// <workload>-image-pull, in the workload's namespace — the twin of the
+// <workload>-env-secrets Secret built from the containers' env.secrets. The pod
+// references it beside any spec-listed pod.image_pull_secrets.
 //
-// The docker config JSON can be provided in two ways (checked in priority order):
-// 1. stackInput.DockerConfigJson - Takes precedence (used by Planton)
-//   - If present, annotation is completely ignored
-//
-// 2. metadata.annotations["kubernetes.planton.io/docker-config-json-file"] - File path (for open-source users)
-//   - Only checked if stackInput.DockerConfigJson is empty
-//   - Path can be relative, absolute, or use ~/ for home directory
-//   - File must exist and contain valid JSON
-//
-// Returns nil if no docker config is configured (e.g., using GKE Workload Identity).
+// Returns nil when the pod declares no registry: a public image, a same-cloud
+// registry the cluster's own identity reaches, or a Secret declared beside the
+// workload need nothing from here. The data itself is built by
+// workloadpod.BuildImagePullSecretData (see locals), so this file only owns the
+// resource.
 func imagePullSecret(ctx *pulumi.Context, locals *Locals,
 	kubernetesProvider pulumi.ProviderResource, namespaceDeps []pulumi.ResourceOption) (*kubernetescorev1.Secret, error) {
 

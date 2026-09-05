@@ -1,9 +1,10 @@
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "workloadpod",
     srcs = [
         "container.go",
+        "image_registries.go",
         "pod.go",
     ],
     importpath = "github.com/plantonhq/planton/pkg/iac/pulumi/pulumimodule/provider/kubernetes/workloadpod",
@@ -11,8 +12,17 @@ go_library(
     deps = [
         "//catalog/kubernetes",
         "//pkg/iac/pulumi/pulumimodule/provider/kubernetes/containerenv",
+        "//pkg/kubernetes/dockerconfigjson",
+        "@com_github_pkg_errors//:errors",
         "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/core/v1:core",
         "@com_github_pulumi_pulumi_kubernetes_sdk_v4//go/kubernetes/meta/v1:meta",
         "@com_github_pulumi_pulumi_sdk_v3//go/pulumi",
     ],
+)
+
+go_test(
+    name = "workloadpod_test",
+    srcs = ["image_registries_test.go"],
+    embed = [":workloadpod"],
+    deps = ["//catalog/kubernetes"],
 )

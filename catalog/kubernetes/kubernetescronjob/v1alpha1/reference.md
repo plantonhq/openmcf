@@ -133,6 +133,13 @@ spec:
       automount_service_account_token: false
       image_pull_secrets:
         - value: hack-registry-secret
+      # A login declared on the workload itself; the module materializes it into the
+      # <workload>-image-pull Secret. A real manifest carries a $secret/ reference here
+      # -- this offline-proof file uses a literal so the plan renders without a backend.
+      image_registries:
+        - server: ghcr.io
+          username: hack-pull-bot
+          password: hack-pull-token
       init_containers:
         - name: init-marker
           image:
@@ -241,10 +248,9 @@ spec:
 | `spec.jobTemplate.container` | `KubernetesCronJobContainer` | yes |  |  |
 | `spec.jobTemplate.container.app` | `WorkloadContainer` | yes |  |  |
 | `spec.jobTemplate.container.app.name` | `string` |  |  |  |
-| `spec.jobTemplate.container.app.image` | `ContainerImage` | yes |  |  |
+| `spec.jobTemplate.container.app.image` | `WorkloadContainerImage` | yes |  |  |
 | `spec.jobTemplate.container.app.image.repo` | `string` |  |  |  |
 | `spec.jobTemplate.container.app.image.tag` | `string` |  |  |  |
-| `spec.jobTemplate.container.app.image.pullSecretName` | `string` |  |  |  |
 | `spec.jobTemplate.container.app.imagePullPolicy` | `string` |  |  |  |
 | `spec.jobTemplate.container.app.command` | `[]string` |  |  |  |
 | `spec.jobTemplate.container.app.args` | `[]string` |  |  |  |
@@ -456,10 +462,9 @@ spec:
 | `spec.jobTemplate.container.app.securityContext.seccompProfile.localhostProfile` | `string` |  |  |  |
 | `spec.jobTemplate.container.sidecars` | `[]WorkloadContainer` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].name` | `string` |  |  |  |
-| `spec.jobTemplate.container.sidecars[].image` | `ContainerImage` | yes |  |  |
+| `spec.jobTemplate.container.sidecars[].image` | `WorkloadContainerImage` | yes |  |  |
 | `spec.jobTemplate.container.sidecars[].image.repo` | `string` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].image.tag` | `string` |  |  |  |
-| `spec.jobTemplate.container.sidecars[].image.pullSecretName` | `string` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].imagePullPolicy` | `string` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].command` | `[]string` |  |  |  |
 | `spec.jobTemplate.container.sidecars[].args` | `[]string` |  |  |  |
@@ -673,12 +678,16 @@ spec:
 | `spec.jobTemplate.pod.serviceAccount` | `string \| valueFrom` |  |  | KubernetesServiceAccount (`status.outputs.service_account_name`) |
 | `spec.jobTemplate.pod.automountServiceAccountToken` | `bool` |  |  |  |
 | `spec.jobTemplate.pod.imagePullSecrets` | `[]string \| valueFrom` |  |  | KubernetesSecret (`spec.name`) |
+| `spec.jobTemplate.pod.imageRegistries` | `[]WorkloadImageRegistry` |  |  |  |
+| `spec.jobTemplate.pod.imageRegistries[].server` | `string` | yes |  |  |
+| `spec.jobTemplate.pod.imageRegistries[].username` | `string` | yes |  |  |
+| `spec.jobTemplate.pod.imageRegistries[].password` | `string` (sensitive) | yes |  |  |
+| `spec.jobTemplate.pod.imageRegistries[].email` | `string` |  |  |  |
 | `spec.jobTemplate.pod.initContainers` | `[]WorkloadContainer` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].name` | `string` |  |  |  |
-| `spec.jobTemplate.pod.initContainers[].image` | `ContainerImage` | yes |  |  |
+| `spec.jobTemplate.pod.initContainers[].image` | `WorkloadContainerImage` | yes |  |  |
 | `spec.jobTemplate.pod.initContainers[].image.repo` | `string` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].image.tag` | `string` |  |  |  |
-| `spec.jobTemplate.pod.initContainers[].image.pullSecretName` | `string` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].imagePullPolicy` | `string` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].command` | `[]string` |  |  |  |
 | `spec.jobTemplate.pod.initContainers[].args` | `[]string` |  |  |  |
@@ -1134,12 +1143,14 @@ DNS label: lowercase alphanumeric and hyphens, starting and ending alphanumeric.
 
 ### spec.jobTemplate.container.app.image
 
-`ContainerImage` · required
+`WorkloadContainerImage` · required
 
 The container image, split into repository and tag so deployment pipelines can
-inject a freshly built tag without rewriting the whole reference. The optional
-`pull_secret_name` names an existing docker-registry secret; prefer attaching pull
-secrets on the ServiceAccount (or `pod.image_pull_secrets`) so they apply pod-wide.
+inject a freshly built tag without rewriting the whole reference. A container
+carries no pull credential of its own: the kubelet pulls every image in a pod
+with the pod's pull secrets, so a private registry's login is declared once,
+pod-wide — on `pod.image_registries` (the login itself) or `pod.image_pull_secrets`
+(a Secret declared beside the workload), or on the ServiceAccount the pod runs as.
 
 - rule: Image repo is required — the repository half of the image reference (e.g. "nginx" or "ghcr.io/acme/api")
 - rule: Image tag is required — pin a version (e.g. "1.27.1"); avoid "latest" for anything you intend to roll back
@@ -1149,19 +1160,13 @@ secrets on the ServiceAccount (or `pod.image_pull_secrets`) so they apply pod-wi
 
 `string`
 
-The repository of the image (e.g., "gcr.io/project/image").
+The repository of the image (e.g. "nginx" or "ghcr.io/acme/checkout").
 
 ### spec.jobTemplate.container.app.image.tag
 
 `string`
 
-The tag of the image (e.g., "latest" or "1.0.0").
-
-### spec.jobTemplate.container.app.image.pullSecretName
-
-`string`
-
-The name of the image pull secret for private image repositories.
+The tag of the image (e.g. "1.27.1"). Pin a version; "latest" cannot be rolled back.
 
 ### spec.jobTemplate.container.app.imagePullPolicy
 
@@ -4096,12 +4101,14 @@ DNS label: lowercase alphanumeric and hyphens, starting and ending alphanumeric.
 
 ### spec.jobTemplate.container.sidecars[].image
 
-`ContainerImage` · required
+`WorkloadContainerImage` · required
 
 The container image, split into repository and tag so deployment pipelines can
-inject a freshly built tag without rewriting the whole reference. The optional
-`pull_secret_name` names an existing docker-registry secret; prefer attaching pull
-secrets on the ServiceAccount (or `pod.image_pull_secrets`) so they apply pod-wide.
+inject a freshly built tag without rewriting the whole reference. A container
+carries no pull credential of its own: the kubelet pulls every image in a pod
+with the pod's pull secrets, so a private registry's login is declared once,
+pod-wide — on `pod.image_registries` (the login itself) or `pod.image_pull_secrets`
+(a Secret declared beside the workload), or on the ServiceAccount the pod runs as.
 
 - rule: Image repo is required — the repository half of the image reference (e.g. "nginx" or "ghcr.io/acme/api")
 - rule: Image tag is required — pin a version (e.g. "1.27.1"); avoid "latest" for anything you intend to roll back
@@ -4111,19 +4118,13 @@ secrets on the ServiceAccount (or `pod.image_pull_secrets`) so they apply pod-wi
 
 `string`
 
-The repository of the image (e.g., "gcr.io/project/image").
+The repository of the image (e.g. "nginx" or "ghcr.io/acme/checkout").
 
 ### spec.jobTemplate.container.sidecars[].image.tag
 
 `string`
 
-The tag of the image (e.g., "latest" or "1.0.0").
-
-### spec.jobTemplate.container.sidecars[].image.pullSecretName
-
-`string`
-
-The name of the image pull secret for private image repositories.
+The tag of the image (e.g. "1.27.1"). Pin a version; "latest" cannot be rolled back.
 
 ### spec.jobTemplate.container.sidecars[].imagePullPolicy
 
@@ -7065,13 +7066,91 @@ ordinary app workloads), true forces the mount.
 
 `[]string | valueFrom`
 
-Docker-registry secret names the kubelet uses to pull this workload's images.
-Each entry accepts a literal secret name or a reference to a KubernetesSecret.
-Prefer attaching pull secrets to the ServiceAccount when several workloads share
-a registry; use this field for workload-specific registries.
+Docker-registry Secrets, declared BESIDE this workload, that the kubelet pulls
+its images with. Each entry is a literal Secret name or a reference: by default a
+KubernetesSecret (its `docker_config_json` arm) resolved at `spec.name`; a
+KubernetesExternalSecret fed from a cloud secrets manager is named with an
+explicit `kind` and `fieldPath: status.outputs.secret_name` (the name the
+operator materializes).
+
+Three ways a private image gets pulled, and when to use each:
+- Nothing declared — the cluster's own identity reaches the registry (EKS nodes
+  to ECR, GKE nodes to Artifact Registry, AKS kubelet identity to ACR, DOKS
+  registry integration). No Secret, no field.
+- `image_registries` — the login belongs to this workload alone; the module owns
+  the Secret.
+- `image_pull_secrets` — the login is a resource beside the workload: share one
+  Secret across workloads, or attach it once on the KubernetesServiceAccount the
+  pods run as (then no entry is needed here).
 
 - references: KubernetesSecret (`spec.name`)
 - rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesSecret, name: <that resource's name>, fieldPath: spec.name}} -- a bare string does not parse
+
+### spec.jobTemplate.pod.imageRegistries
+
+`[]WorkloadImageRegistry`
+
+Image registries this workload pulls from that need a login, with the login,
+declared on the workload itself. List a registry here ONLY when it needs one: a
+registry the cluster's own identity reaches (EKS nodes to ECR, GKE nodes to
+Artifact Registry, AKS kubelet identity to ACR, DOKS registry integration) is not
+listed at all.
+
+The module materializes the logins into ONE docker-registry Secret named
+`<workload>-image-pull` in the workload's namespace — the twin of the
+`<workload>-env-secrets` Secret it builds from the containers' `env.secrets` —
+and attaches it to the pod beside `image_pull_secrets`. The Secret is created,
+rolled, and destroyed with the workload and follows it into preview
+environments. Use this when the login belongs to this workload alone; when
+several workloads share a registry, declare the credential once (a
+KubernetesSecret or a KubernetesExternalSecret) and name it in
+`image_pull_secrets` or on the shared KubernetesServiceAccount.
+
+Example (YAML):
+```yaml
+imageRegistries:
+  - server: ghcr.io
+    username: acme-pull-bot
+    password: $secret/ghcr-pull-token
+```
+
+- rule: Two imageRegistries entries name the same registry server — a workload holds one login per registry; merge them into one entry
+
+### spec.jobTemplate.pod.imageRegistries[].server
+
+`string` · required
+
+Registry host as it appears in the image reference — "ghcr.io", "quay.io",
+"123456789012.dkr.ecr.us-east-1.amazonaws.com". Docker Hub's login is keyed by
+"https://index.docker.io/v1/", the one exception to the bare-host rule.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.jobTemplate.pod.imageRegistries[].username
+
+`string` · required
+
+Registry username — for GitHub Container Registry, the GitHub login of the token's owner.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.jobTemplate.pod.imageRegistries[].password
+
+`string` · required · sensitive
+
+Password or access token for `username`. Never plaintext in a manifest: only a
+`$secret/<slug>` reference to an organization secret is accepted, and the
+runner resolves it inside your infrastructure at deploy time before the module
+writes the Secret. Prefer a scoped read-only token (GHCR `read:packages`) over an
+account password.
+
+- rule: {"required":true,"string":{"minLen":"1"}}
+
+### spec.jobTemplate.pod.imageRegistries[].email
+
+`string`
+
+Optional email some registries record on the login; most ignore it.
 
 ### spec.jobTemplate.pod.initContainers
 
@@ -7094,12 +7173,14 @@ DNS label: lowercase alphanumeric and hyphens, starting and ending alphanumeric.
 
 ### spec.jobTemplate.pod.initContainers[].image
 
-`ContainerImage` · required
+`WorkloadContainerImage` · required
 
 The container image, split into repository and tag so deployment pipelines can
-inject a freshly built tag without rewriting the whole reference. The optional
-`pull_secret_name` names an existing docker-registry secret; prefer attaching pull
-secrets on the ServiceAccount (or `pod.image_pull_secrets`) so they apply pod-wide.
+inject a freshly built tag without rewriting the whole reference. A container
+carries no pull credential of its own: the kubelet pulls every image in a pod
+with the pod's pull secrets, so a private registry's login is declared once,
+pod-wide — on `pod.image_registries` (the login itself) or `pod.image_pull_secrets`
+(a Secret declared beside the workload), or on the ServiceAccount the pod runs as.
 
 - rule: Image repo is required — the repository half of the image reference (e.g. "nginx" or "ghcr.io/acme/api")
 - rule: Image tag is required — pin a version (e.g. "1.27.1"); avoid "latest" for anything you intend to roll back
@@ -7109,19 +7190,13 @@ secrets on the ServiceAccount (or `pod.image_pull_secrets`) so they apply pod-wi
 
 `string`
 
-The repository of the image (e.g., "gcr.io/project/image").
+The repository of the image (e.g. "nginx" or "ghcr.io/acme/checkout").
 
 ### spec.jobTemplate.pod.initContainers[].image.tag
 
 `string`
 
-The tag of the image (e.g., "latest" or "1.0.0").
-
-### spec.jobTemplate.pod.initContainers[].image.pullSecretName
-
-`string`
-
-The name of the image pull secret for private image repositories.
+The tag of the image (e.g. "1.27.1"). Pin a version; "latest" cannot be rolled back.
 
 ### spec.jobTemplate.pod.initContainers[].imagePullPolicy
 

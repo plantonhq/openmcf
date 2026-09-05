@@ -499,8 +499,10 @@ func buildDnsConfig(dc *kubernetesv1.WorkloadPodDnsConfig) *corev1.PodDNSConfigA
 
 // ResolveImagePullSecretNames flattens the pod's image_pull_secrets references
 // into plain names (the orchestrator resolves refs to literals before IaC runs),
-// appending any module-created secret name (e.g. the docker-config secret a kind
-// materializes from its stack input).
+// appending the module-created secret name when the kind materialized one — the
+// <workload>-image-pull Secret built from pod.image_registries. Empty names are
+// dropped on both sides so an unresolved reference never becomes a pull secret
+// with no name.
 func ResolveImagePullSecretNames(pod *kubernetesv1.WorkloadPod, moduleCreated ...string) []string {
 	names := make([]string, 0)
 	if pod != nil {

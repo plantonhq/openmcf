@@ -23,7 +23,7 @@ When you deploy this Cloud Resource, the IaC module provisions:
 
 ### Kubernetes Cluster
 
-- **A container registry** accessible from the cluster for pulling the application image. If the registry is private, provide pull-secret names on the pod (or attach them to the referenced ServiceAccount).
+- **A container registry** accessible from the cluster for pulling the application image. If the registry is private and the cluster's own identity does not reach it, declare the login on `pod.imageRegistries` (the module materializes the pull Secret), or name a Secret declared beside the workload in `pod.imagePullSecrets` (or attach it to the referenced ServiceAccount).
 
 ## Deploy
 

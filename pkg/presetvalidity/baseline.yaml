@@ -26,4 +26,3 @@ violations:
   - catalog/gcp/gcpvertexaiendpoint/presets/03-private-psc.yaml:invalid-preset
   - catalog/kubernetes/kubernetesjenkins/presets/01-standard.yaml:invalid-preset
   - catalog/kubernetes/kubernetessecret/presets/02-tls.yaml:invalid-preset
-  - catalog/kubernetes/kubernetessecret/presets/03-docker-registry.yaml:invalid-preset

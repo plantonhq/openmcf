@@ -9,7 +9,7 @@ The module creates the following Kubernetes resources:
 1. **Namespace** (optional) - Created if `createNamespace: true`
 2. **ConfigMaps** - From `spec.configMaps`
 3. **Secret** - For environment secrets with direct values
-4. **Image Pull Secret** (optional) - If Docker credentials are provided
+4. **Image Pull Secret** (optional) - From the registry logins declared on `spec.pod.imageRegistries`
 5. **Job** - The main batch workload
 
 ## Usage
@@ -45,7 +45,6 @@ The stack input includes:
 - `target` - The KubernetesJob resource definition
 - `provider_config` - Kubernetes provider configuration (kubeconfig, context)
 - `kubernetes_namespace` - Resolved namespace name
-- `docker_config_json` - Docker credentials for private registries (optional)
 
 ## Pulumi Plugins
 
@@ -104,8 +103,8 @@ pulumi/
 ### Image Pull Errors
 
 1. Verify the image repository and tag
-2. Check if image pull secret is correctly configured
-3. Ensure the secret has access to the registry
+2. Check the login declared on `spec.pod.imageRegistries` (server, username, and the referenced secret), or the Secret named in `spec.pod.imagePullSecrets`
+3. Ensure that login has read access to the registry -- or, on a same-cloud registry, that the node identity does
 
 ## Development
 

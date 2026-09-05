@@ -4,6 +4,7 @@ package dev.planton.kubernetes.kubernetessecret.v1alpha1;
 
 import "buf/validate/validate.proto";
 import "shared/foreignkey/v1/foreign_key.proto";
+import "shared/options/options.proto";
 
 /**
  * **KubernetesSecretSpec** defines the configuration for creating and managing a Kubernetes Secret.
@@ -158,8 +159,10 @@ message KubernetesSecretTlsData {
 
 /**
  * **KubernetesSecretDockerConfigJsonData** defines data for a Docker registry secret.
- * Used for authenticating with container registries during image pulls.
- * The IaC module constructs the .dockerconfigjson JSON from these fields.
+ * Used for authenticating with container registries during image pulls: a workload
+ * names this Secret in its `pod.image_pull_secrets`, or a KubernetesServiceAccount
+ * attaches it for every pod that runs as it. The IaC module constructs the
+ * .dockerconfigjson JSON from these fields.
  */
 message KubernetesSecretDockerConfigJsonData {
   /**
@@ -173,9 +176,14 @@ message KubernetesSecretDockerConfigJsonData {
   string username = 2 [(buf.validate.field).string.min_len = 1];
 
   /**
-   * Password or access token for registry authentication.
+   * Password or access token for registry authentication. Never plaintext in a
+   * manifest: only a `$secret/<slug>` reference to an organization secret is
+   * accepted, and the runner resolves it inside your infrastructure at deploy time.
    */
-  string password = 3 [(buf.validate.field).string.min_len = 1];
+  string password = 3 [
+    (buf.validate.field).string.min_len = 1,
+    (dev.planton.shared.options.sensitive) = true
+  ];
 
   /**
    * Optional email associated with the registry account.

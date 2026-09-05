@@ -60,7 +60,7 @@ spec:
 | `spec.dockerConfigJson` | `KubernetesSecretDockerConfigJsonData` |  |  |  |
 | `spec.dockerConfigJson.registryServer` | `string` | yes |  |  |
 | `spec.dockerConfigJson.username` | `string` | yes |  |  |
-| `spec.dockerConfigJson.password` | `string` | yes |  |  |
+| `spec.dockerConfigJson.password` | `string` (sensitive) | yes |  |  |
 | `spec.dockerConfigJson.email` | `string` |  |  |  |
 | `spec.basicAuth` | `KubernetesSecretBasicAuthData` |  |  |  |
 | `spec.basicAuth.username` | `string` | yes |  |  |
@@ -194,9 +194,11 @@ Username for registry authentication.
 
 ### spec.dockerConfigJson.password
 
-`string` · required
+`string` · required · sensitive
 
-Password or access token for registry authentication.
+Password or access token for registry authentication. Never plaintext in a
+manifest: only a `$secret/<slug>` reference to an organization secret is
+accepted, and the runner resolves it inside your infrastructure at deploy time.
 
 - rule: {"string":{"minLen":"1"}}
 

@@ -74,8 +74,8 @@ GitHub's container registry, tightly integrated with GitHub Actions and GitHub P
 4. **Provide the provider-specific credentials** listed above.
 5. **Create the connection**.
 
-<!-- SCREENSHOT: Docker registry connection form
-  Page: /resource/connect/docker-credential/create
+<!-- SCREENSHOT: Container registry connection form
+  Page: /resource/connect/container-registry-connection/create
   Action: Show the registry provider selector with all five options
   Focus: The provider selection dropdown and provider-specific form fields
   Alt: Docker registry connection form with provider selection showing GCP Artifact Registry, AWS ECR, and other options

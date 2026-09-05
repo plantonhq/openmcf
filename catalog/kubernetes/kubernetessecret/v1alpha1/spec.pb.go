@@ -9,6 +9,7 @@ package kubernetessecretv1alpha1
 import (
 	_ "buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/buf/validate"
 	v1 "github.com/plantonhq/planton/shared/foreignkey/v1"
+	_ "github.com/plantonhq/planton/shared/options"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -380,8 +381,10 @@ func (x *KubernetesSecretTlsData) GetTlsKey() string {
 
 // *
 // **KubernetesSecretDockerConfigJsonData** defines data for a Docker registry secret.
-// Used for authenticating with container registries during image pulls.
-// The IaC module constructs the .dockerconfigjson JSON from these fields.
+// Used for authenticating with container registries during image pulls: a workload
+// names this Secret in its `pod.image_pull_secrets`, or a KubernetesServiceAccount
+// attaches it for every pod that runs as it. The IaC module constructs the
+// .dockerconfigjson JSON from these fields.
 type KubernetesSecretDockerConfigJsonData struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// *
@@ -391,7 +394,9 @@ type KubernetesSecretDockerConfigJsonData struct {
 	// Username for registry authentication.
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
 	// *
-	// Password or access token for registry authentication.
+	// Password or access token for registry authentication. Never plaintext in a
+	// manifest: only a `$secret/<slug>` reference to an organization secret is
+	// accepted, and the runner resolves it inside your infrastructure at deploy time.
 	Password string `protobuf:"bytes,3,opt,name=password,proto3" json:"password,omitempty"`
 	// *
 	// Optional email associated with the registry account.
@@ -630,7 +635,7 @@ var File_catalog_kubernetes_kubernetessecret_v1alpha1_spec_proto protoreflect.Fi
 
 const file_catalog_kubernetes_kubernetessecret_v1alpha1_spec_proto_rawDesc = "" +
 	"\n" +
-	"7catalog/kubernetes/kubernetessecret/v1alpha1/spec.proto\x120dev.planton.kubernetes.kubernetessecret.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\"\xe9\r\n" +
+	"7catalog/kubernetes/kubernetessecret/v1alpha1/spec.proto\x120dev.planton.kubernetes.kubernetessecret.v1alpha1\x1a\x1bbuf/validate/validate.proto\x1a&shared/foreignkey/v1/foreign_key.proto\x1a\x1cshared/options/options.proto\"\xe9\r\n" +
 	"\x14KubernetesSecretSpec\x12\xe5\x01\n" +
 	"\x04name\x18\x02 \x01(\tB\xd0\x01\xbaH\xcc\x01\xba\x01\xc1\x01\n" +
 	"\x12name.dns_subdomain\x12sName must be a valid DNS subdomain (lowercase alphanumeric, hyphens, and dots, no leading/trailing dots or hyphens)\x1a6this.matches('^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$')r\x05\x10\x01\x18\xfd\x01R\x04name\x12d\n" +
@@ -668,11 +673,11 @@ const file_catalog_kubernetes_kubernetessecret_v1alpha1_spec_proto_rawDesc = "" 
 	"\x14data_keys_no_overlap\x122data and binary_data must not contain the same key\x1a*this.data.all(k, !(k in this.binary_data))\"]\n" +
 	"\x17KubernetesSecretTlsData\x12 \n" +
 	"\atls_crt\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06tlsCrt\x12 \n" +
-	"\atls_key\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06tlsKey\"\xb8\x01\n" +
+	"\atls_key\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x06tlsKey\"\xbc\x01\n" +
 	"$KubernetesSecretDockerConfigJsonData\x120\n" +
 	"\x0fregistry_server\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\x0eregistryServer\x12#\n" +
-	"\busername\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\busername\x12#\n" +
-	"\bpassword\x18\x03 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\bpassword\x12\x14\n" +
+	"\busername\x18\x02 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\busername\x12'\n" +
+	"\bpassword\x18\x03 \x01(\tB\v\xbaH\x04r\x02\x10\x01\xa0\xa6\x1d\x01R\bpassword\x12\x14\n" +
 	"\x05email\x18\x04 \x01(\tR\x05email\"i\n" +
 	"\x1dKubernetesSecretBasicAuthData\x12#\n" +
 	"\busername\x18\x01 \x01(\tB\a\xbaH\x04r\x02\x10\x01R\busername\x12#\n" +

@@ -8,8 +8,8 @@
   across all environments.
 
 - **Automated Kubernetes Resource Creation**  
-  Automatically creates Namespaces, CronJobs, and (if needed) image pull secrets for private registries, based on the
-  provided specifications. Simplifies repetitive tasks and configuration sprawl.
+  Automatically creates Namespaces, CronJobs, and (when the pod declares registry logins) the image pull Secret, based
+  on the provided specification alone. Simplifies repetitive tasks and configuration sprawl.
 
 - **Configurable Schedules and Policies**  
   Enables fine-grained control over concurrency (e.g., Forbid, Replace), automatic retries (backoff limits), and
@@ -26,8 +26,9 @@
   environment variables, you keep credentials out of code and container images.
 
 - **Optional Image Pull Secrets**  
-  Seamlessly integrates Docker registry credentials if your images are stored in private repositories, creating
-  `kubernetes.io/dockerconfigjson` secrets and referencing them in your CronJob.
+  Registry logins declared on `spec.jobTemplate.pod.imageRegistries` are materialized into one
+  `kubernetes.io/dockerconfigjson` Secret and referenced from the CronJob's pod, beside any Secrets named in
+  `pod.imagePullSecrets`. A same-cloud registry the cluster's own identity reaches needs neither.
 
 - **Flexible Namespace Management**  
   Control namespace creation with the `create_namespace` boolean flag. Set to `true` to automatically create and manage
@@ -67,7 +68,7 @@ to deploy your CronJob to the specified Kubernetes cluster.
 ## Module Structure
 
 1. **Initialization**  
-   Reads the `CronJobKubernetesStackInput` fields (cluster credentials, Docker config, specification metadata, etc.) and
+   Reads the `KubernetesCronJobStackInput` fields (cluster credentials, the resolved namespace, the specification) and
    sets up local references and labels.
 
 2. **Provider Setup**  
@@ -82,8 +83,8 @@ to deploy your CronJob to the specified Kubernetes cluster.
    out of plain text or container images.
 
 5. **Image Pull Secret (Optional)**  
-   If Docker credentials are provided, creates a secret of type `kubernetes.io/dockerconfigjson` and attaches it to the
-   CronJob’s Pod specification.
+   When `spec.jobTemplate.pod.imageRegistries` declares registry logins, creates ONE secret of type
+   `kubernetes.io/dockerconfigjson` named `<workload>-image-pull` and attaches it to the CronJob’s Pod specification.
 
 6. **CronJob Configuration**  
    Defines a Kubernetes CronJob with your specified schedule, concurrency policy, backoff limit, container image,
@@ -105,8 +106,8 @@ to deploy your CronJob to the specified Kubernetes cluster.
   resource manifests.
 
 - **Security and Compliance**  
-  Safely handle secrets, ensuring sensitive information remains encrypted at rest in Kubernetes. Optional image pull
-  secrets ensure you can pull from private registries securely.
+  Safely handle secrets, ensuring sensitive information remains encrypted at rest in Kubernetes. The image pull Secret is
+  built only from logins the manifest declares, and its password is always a reference the runner resolves in place.
 
 - **Consistency Across Environments**  
   A single resource definition drives scheduled tasks across dev, staging, and production. Eliminates guesswork and

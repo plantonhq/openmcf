@@ -7,6 +7,8 @@ spec:
   namespace:
     value: "<your-namespace>"
   dockerConfigJson:
-    server: "<your-registry-server>"
+    registryServer: "<your-registry-server>"
     username: "<your-registry-username>"
-    password: "<your-registry-password>"
+    # The password is a reference to an organization secret, never a literal:
+    # the runner resolves it inside your infrastructure at deploy time.
+    password: $secret/replace-with-your-registry-token-secret
