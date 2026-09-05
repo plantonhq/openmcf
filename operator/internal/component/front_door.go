@@ -25,13 +25,17 @@ func frontDoorURL(planton *v1.PlantonPlatform) (url string, resolved bool) {
 		return fmt.Sprintf("http://localhost:%d", gatewayLocalPort(planton)), true
 	}
 	spec := planton.Spec.Ingress
-	if spec.Hostname != "" {
-		// Explicit hostname: the URL is known statically -- render the
-		// public endpoints immediately, independent of ingress health.
+	if spec.Hostname != "" && spec.GatewayRef == nil {
+		// Explicit hostname on the Ingress edge: the URL is known statically
+		// (the tls block decides the scheme) -- render the public endpoints
+		// immediately, independent of ingress health.
 		return resources.PublicURL(spec.Hostname, spec.TLS != nil), true
 	}
-	// Auto-derived hostname, resolved by the Ingress component (which
-	// reconciles earlier in the same pass) and published in status.
+	// Otherwise the URL is resolved by the Ingress component, which
+	// reconciles earlier in the same pass and publishes it in status: an
+	// auto-derived hostname on either edge, or -- on the Gateway API edge --
+	// the scheme, which follows the listener the route attaches to rather
+	// than the tls block.
 	if planton.Status.ConsoleURL != "" {
 		return planton.Status.ConsoleURL, true
 	}

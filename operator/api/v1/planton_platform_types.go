@@ -491,30 +491,38 @@ type RedisSpec struct {
 }
 
 // IngressSpec configures external access to Planton through the cluster's
-// ingress controller. One hostname serves both the web console and the API the
-// browser calls (same origin -- no cross-site concerns, and auth callback URLs
-// are derived from it rather than configured).
+// existing front door -- an Ingress controller, or a Gateway API Gateway. One
+// hostname serves the web console, the API the browser calls, and sign-in
+// (same origin -- no cross-site concerns, and auth callback URLs are derived
+// from it rather than configured).
 //
 // The fields form a friction ladder -- each is one step up from the previous,
 // and every step is a working deployment:
 //
-//	enabled: true                     -> a URL derived from the ingress
-//	                                     controller's public address (no DNS
-//	                                     setup needed), plain HTTP
+//	enabled: true                     -> a URL derived from the front door's
+//	                                     public address (no DNS setup needed),
+//	                                     plain HTTP
 //	+ hostname                        -> your own hostname, plain HTTP
 //	+ tls.secretName                  -> HTTPS with a cert you bring
 //	+ tls.issuer                      -> HTTPS issued/renewed by cert-manager
 //
+// Which front door serves the platform is the one fork: ingressClassName (or
+// the cluster's default IngressClass) renders an Ingress object; gatewayRef
+// renders an HTTPRoute attached to the named Gateway. Both carry the same
+// route table.
+//
 // +kubebuilder:validation:XValidation:rule="!has(self.tls) || (has(self.hostname) && self.hostname != \"\")",message="tls requires hostname: a certificate cannot be brought or issued for an auto-derived hostname"
+// +kubebuilder:validation:XValidation:rule="!has(self.gatewayRef) || !has(self.ingressClassName) || self.ingressClassName == \"\"",message="gatewayRef and ingressClassName name two different front doors; set one -- gatewayRef attaches to a Gateway API Gateway, ingressClassName renders an Ingress"
+// +kubebuilder:validation:XValidation:rule="!has(self.gatewayRef) || !has(self.tls) || !has(self.tls.secretName)",message="with gatewayRef the Gateway's HTTPS listener owns the certificate: attach to a listener that already serves the hostname, or set tls.issuer to have a certificate issued for the listener to reference"
 type IngressSpec struct {
-	// enabled controls whether an Ingress resource is created.
+	// enabled controls whether a front-door route is created.
 	// When false, use kubectl port-forward for access.
 	// +kubebuilder:default=false
 	// +optional
 	Enabled bool `json:"enabled,omitempty"`
 
 	// hostname is the domain Planton is served at (e.g., "planton.example.com").
-	// When empty, the operator derives a hostname from the ingress controller's
+	// When empty, the operator derives a hostname from the front door's
 	// published address (an IP becomes a sslip.io magic-DNS name; a load
 	// balancer DNS name is used directly) and reports it in status.consoleUrl.
 	// The derived hostname is a zero-setup convenience for evaluation, not a
@@ -523,24 +531,65 @@ type IngressSpec struct {
 	Hostname string `json:"hostname,omitempty"`
 
 	// ingressClassName selects which ingress controller serves Planton.
-	// When empty, the cluster's default IngressClass is used.
+	// When empty (and gatewayRef is unset), the cluster's default
+	// IngressClass is used.
 	// +optional
 	IngressClassName string `json:"ingressClassName,omitempty"`
 
+	// gatewayRef serves Planton through a Gateway API Gateway the cluster
+	// already runs (Istio, Envoy Gateway, Cilium, a cloud Gateway) instead
+	// of an Ingress controller: the operator attaches an HTTPRoute for the
+	// hostname to that Gateway. The Gateway is the cluster team's object and
+	// is never modified -- its listeners decide which hostnames are admitted,
+	// which namespaces may attach routes, and how HTTPS is terminated; the
+	// operator reads those facts and explains any mismatch in this
+	// component's status.
+	// +optional
+	GatewayRef *GatewayParentRef `json:"gatewayRef,omitempty"`
+
 	// annotations are added to the Ingress resource for controller-specific
 	// behavior. They take precedence over the operator's own defaults.
+	// Ignored with gatewayRef (the Gateway API expresses behavior in typed
+	// fields, not annotations).
 	// +optional
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// tls enables HTTPS. When absent, Planton is served over plain HTTP and
-	// the ingress component's status notes the connection is unencrypted.
+	// the ingress component's status notes the connection is unencrypted --
+	// except with gatewayRef, where the route attaches to whichever listener
+	// matches the hostname and HTTPS is inferred from that listener.
 	// +optional
 	TLS *IngressTLSSpec `json:"tls,omitempty"`
+}
+
+// GatewayParentRef names the Gateway API Gateway an HTTPRoute attaches to.
+type GatewayParentRef struct {
+	// name of the Gateway.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+
+	// namespace of the Gateway. Defaults to the platform's own namespace.
+	// A Gateway in another namespace must allow routes from this one
+	// (spec.listeners[].allowedRoutes.namespaces).
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
+
+	// sectionName pins the route to one named listener of the Gateway. When
+	// empty, the route attaches to every listener whose hostname admits the
+	// platform's hostname.
+	// +optional
+	SectionName string `json:"sectionName,omitempty"`
 }
 
 // IngressTLSSpec configures how the TLS certificate for the hostname is
 // obtained. Exactly one of secretName (bring your own) or issuer
 // (cert-manager) must be set.
+//
+// With gatewayRef, only issuer applies: the operator asks cert-manager for the
+// certificate in the platform's namespace and grants the Gateway's namespace
+// permission to reference the resulting Secret (a ReferenceGrant); the
+// Gateway's HTTPS listener names that Secret in its certificateRefs. A
+// certificate the listener already serves needs no tls block at all.
 // +kubebuilder:validation:XValidation:rule="has(self.secretName) != has(self.issuer)",message="exactly one of secretName or issuer must be set"
 type IngressTLSSpec struct {
 	// secretName references an existing kubernetes.io/tls Secret in the same

@@ -70,7 +70,7 @@ var _ = BeforeSuite(func() {
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "..", "config", "crd", "bases"),
 			// Minimal fixtures for EXTERNAL CRDs the operator only reads
-			// (cert-manager's Certificate) -- see testdata/crds.
+			// (cert-manager's Certificate) and the Gateway API's real CRDs -- see testdata/crds.
 			filepath.Join("testdata", "crds"),
 		},
 		ErrorIfCRDPathMissing: true,
