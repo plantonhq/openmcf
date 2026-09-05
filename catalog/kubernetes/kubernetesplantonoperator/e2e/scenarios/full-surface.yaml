@@ -16,7 +16,7 @@ spec:
   namespace:
     value: planton-operator
   create_namespace: true
-  chart_version: 0.8.0
+  chart_version: 0.8.1
   crds:
     install: true
     keep_on_uninstall: false

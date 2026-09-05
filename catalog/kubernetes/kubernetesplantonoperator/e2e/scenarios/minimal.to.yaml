@@ -1,0 +1,15 @@
+# The upgrade act of the minimal scenario: the same operator, the next chart.
+# Only `chart_version` differs from minimal.yaml; the release rolls the
+# manager to the new image and the definitions stay in place.
+apiVersion: kubernetes.planton.dev/v1alpha1
+kind: KubernetesPlantonOperator
+metadata:
+  name: e2e-planton-operator-minimal
+  annotations:
+    # The second act of minimal.yaml, not a scenario of its own.
+    planton.dev/e2e-second-act: minimal.yaml
+spec:
+  namespace:
+    value: planton-operator
+  create_namespace: true
+  chart_version: 0.8.1
