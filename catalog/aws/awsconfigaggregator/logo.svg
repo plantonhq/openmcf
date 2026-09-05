@@ -1,6 +1,5 @@
-<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="80" height="80" fill="#E7157B"/>
-<g fill="#FFFFFF">
+<svg viewBox="10 10 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><desc>Planton-drawn glyph: a Config aggregator: findings from several accounts gathered into one view</desc>
+<g fill="#E7157B">
 <rect x="16" y="16" width="12" height="12" rx="1"/>
 <rect x="34" y="16" width="12" height="12" rx="1"/>
 <rect x="52" y="16" width="12" height="12" rx="1"/>

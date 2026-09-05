@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
-    <title>AWS OpenSearch Serverless Collection</title>
+<svg viewBox="10 10 60 60" version="1.1" xmlns="http://www.w3.org/2000/svg"><desc>Planton-drawn glyph: an OpenSearch Serverless collection: a lens over indexed documents with no nodes beneath</desc>
     <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-        <rect fill="#8C4FFF" x="0" y="0" width="80" height="80"></rect>
-        <g fill="#FFFFFF">
+        <g fill="#8C4FFF">
             <!-- magnifier lens -->
             <path d="M37,18 C46.94,18 55,26.06 55,36 C55,45.94 46.94,54 37,54 C27.06,54 19,45.94 19,36 C19,26.06 27.06,18 37,18 Z M37,21 C28.72,21 22,27.72 22,36 C22,44.28 28.72,51 37,51 C45.28,51 52,44.28 52,36 C52,27.72 45.28,21 37,21 Z"></path>
             <!-- handle -->

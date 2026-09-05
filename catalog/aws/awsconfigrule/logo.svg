@@ -1,6 +1,5 @@
-<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="80" height="80" fill="#E7157B"/>
-<g fill="#FFFFFF">
+<svg viewBox="10 10 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><desc>Planton-drawn glyph: a Config rule: a sheet of checks</desc>
+<g fill="#E7157B">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M24 18h32a2 2 0 0 1 2 2v40a2 2 0 0 1-2 2H24a2 2 0 0 1-2-2V20a2 2 0 0 1 2-2zm2 4v36h28V22H26z"/>
 <path d="M30 30l2.5 2.5 4.5-4.5 2 2-6.5 6.5L28 32l2-2z"/>
 <rect x="42" y="30" width="10" height="3"/>

@@ -3,7 +3,7 @@
 // actually draws an icon at, on a light and a dark paper wash, the kind folder
 // under each -- so a logo set can be judged glyph by glyph before it is kept.
 // It is the visual half of the pkg/cataloglogo gate: the gate proves no two
-// kinds share bytes and every file names its provenance; this sheet is where a
+// kinds share a drawing and every file names its provenance; this sheet is where a
 // person decides whether each glyph reads as its concept, distinct from its
 // siblings, at the smallest size the product renders it. It is a REPORT, not a
 // gate: run it from the repository root any time
@@ -17,9 +17,13 @@
 // console renders a logo as an image element from a CDN URL, never inline,
 // so a stylesheet cannot reach into it; the sheet renders it the same way, and
 // a glyph that leans on `currentColor` or an outer stylesheet fails here as it
-// would in the product. Why a neutral wash: the console's plinth is the kind's
-// family color, which only the platform knows; the sheet uses a neutral wash
-// and leaves the family-colored judgment to the platform's specimen sheet.
+// would in the product. Why a neutral wash by default: the console's plinth is
+// the kind's family color, which only the platform knows, so the sheet's
+// built-in washes are neutral and the family-colored judgment belongs to the
+// platform's specimen sheet. When a kind has no card yet (a logo set judged
+// before its provider's diagram identities exist), the platform supplies its
+// family washes through -washes instead -- the color knowledge stays on the
+// platform's side; this tool only knows how to paint what it is handed.
 package main
 
 import (
@@ -40,7 +44,8 @@ import (
 const perRow = 9
 
 // wash is one background the glyphs are judged on: the paper the console's
-// plinth stands on in one theme, with a quiet neutral tint over it.
+// plinth stands on in one theme, with a tint over it -- neutral by default,
+// or a family accent at the plinth's alpha when the platform supplies one.
 type wash struct {
 	name  string
 	paper string
@@ -48,10 +53,15 @@ type wash struct {
 	label string
 }
 
-var washes = []wash{
+var defaultWashes = []wash{
 	{name: "light", paper: "#ffffff", tint: "rgba(96, 96, 96, 0.10)", label: "#444"},
 	{name: "dark", paper: "#121212", tint: "rgba(200, 200, 200, 0.16)", label: "#bbb"},
 }
+
+// washSyntax is what -washes accepts: washes separated by ";", each
+// "<name>=<paper>/<tint>". A CSS color may contain commas and parentheses
+// (rgba), so the separators are ones no color uses.
+const washSyntax = `-washes takes "<name>=<paper>/<tint>" entries separated by ";", e.g. "light=#ffffff/rgba(96,96,96,.10);dark=#121212/rgba(200,200,200,.16)"`
 
 type entry struct {
 	kindDir string
@@ -63,6 +73,7 @@ func main() {
 	provider := flag.String("provider", "", "provider whose logo set to render (catalog directory or enum name, e.g. cloudflare, digital_ocean)")
 	out := flag.String("out", "", "HTML file to write (default /tmp/catalog-logo-sheet-<provider>.html)")
 	sizes := flag.String("sizes", "18,26,34,48", "comma-separated pixel sizes to render each glyph at")
+	washSpec := flag.String("washes", "", "backgrounds to judge on instead of the neutral light and dark pair; "+washSyntax)
 	flag.Parse()
 
 	if *provider == "" {
@@ -80,6 +91,12 @@ func main() {
 	if err != nil {
 		fail(err.Error())
 	}
+	washes := defaultWashes
+	if *washSpec != "" {
+		if washes, err = parseWashes(*washSpec); err != nil {
+			fail(err.Error())
+		}
+	}
 	if *out == "" {
 		*out = filepath.Join(os.TempDir(), "catalog-logo-sheet-"+providerDir+".html")
 	}
@@ -88,7 +105,7 @@ func main() {
 	if len(entries) == 0 {
 		fail(fmt.Sprintf("no registered kinds carry provider %s", providerDir))
 	}
-	if err := os.WriteFile(*out, []byte(render(providerDir, entries, px)), 0o644); err != nil {
+	if err := os.WriteFile(*out, []byte(render(providerDir, entries, px, washes)), 0o644); err != nil {
 		fail(err.Error())
 	}
 
@@ -98,7 +115,11 @@ func main() {
 			missing++
 		}
 	}
-	fmt.Printf("%s: %d kinds on the sheet (%d without a logo file) at %s px -> %s\n", providerDir, len(entries), missing, *sizes, *out)
+	names := make([]string, 0, len(washes))
+	for _, w := range washes {
+		names = append(names, w.name)
+	}
+	fmt.Printf("%s: %d kinds on the sheet (%d without a logo file) at %s px on %s -> %s\n", providerDir, len(entries), missing, *sizes, strings.Join(names, ", "), *out)
 }
 
 // collect walks the kind registry the way the gate does, so the sheet shows
@@ -131,7 +152,7 @@ func collect(prov cloudresourcekind.CloudResourceProvider, providerDir string) [
 
 // render writes one section per (size, wash): a grid of plinth tiles with the
 // glyph centered on each and the kind folder beneath, nine to a row.
-func render(providerDir string, entries []entry, px []int) string {
+func render(providerDir string, entries []entry, px []int, washes []wash) string {
 	var b strings.Builder
 	b.WriteString("<!doctype html><html><head><meta charset=\"utf-8\"><title>")
 	b.WriteString(html.EscapeString(providerDir))
@@ -187,6 +208,52 @@ func parseSizes(s string) ([]int, error) {
 		return nil, fmt.Errorf("-sizes names no size")
 	}
 	return px, nil
+}
+
+// parseWashes reads the -washes flag (washSyntax). The label color is chosen
+// from the paper: dark text on a light paper, light text on a dark one, so a
+// caller names only the two things the console's plinth is made of.
+func parseWashes(spec string) ([]wash, error) {
+	var ws []wash
+	for _, part := range strings.Split(spec, ";") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		name, colors, ok := strings.Cut(part, "=")
+		if !ok {
+			return nil, fmt.Errorf("wash %q has no \"=\"; %s", part, washSyntax)
+		}
+		paper, tint, ok := strings.Cut(colors, "/")
+		name, paper, tint = strings.TrimSpace(name), strings.TrimSpace(paper), strings.TrimSpace(tint)
+		if !ok || name == "" || paper == "" || tint == "" {
+			return nil, fmt.Errorf("wash %q must be <name>=<paper>/<tint>; %s", part, washSyntax)
+		}
+		ws = append(ws, wash{name: name, paper: paper, tint: tint, label: labelFor(paper)})
+	}
+	if len(ws) == 0 {
+		return nil, fmt.Errorf("-washes names no wash; %s", washSyntax)
+	}
+	return ws, nil
+}
+
+// labelFor picks the caption color that reads on a paper given as a six-digit
+// hex color; anything else (a named or functional color) gets the dark label,
+// since the console's papers are hex.
+func labelFor(paper string) string {
+	hex := strings.TrimPrefix(paper, "#")
+	if len(hex) != 6 {
+		return "#444"
+	}
+	rgb, err := strconv.ParseUint(hex, 16, 32)
+	if err != nil {
+		return "#444"
+	}
+	r, g, b := float64(rgb>>16&0xff), float64(rgb>>8&0xff), float64(rgb&0xff)
+	if 0.2126*r+0.7152*g+0.0722*b < 128 {
+		return "#bbb"
+	}
+	return "#444"
 }
 
 func providerDirNames() []string {

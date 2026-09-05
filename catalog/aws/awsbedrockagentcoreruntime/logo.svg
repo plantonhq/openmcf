@@ -1,13 +1,1 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
-    <title>AWS Bedrock AgentCore Runtime</title>
-    <defs>
-        <linearGradient id="acrtGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#0EA5E9"/>
-            <stop offset="100%" stop-color="#0C4A6E"/>
-        </linearGradient>
-    </defs>
-    <rect width="80" height="80" rx="16" fill="url(#acrtGradient)"/>
-    <rect x="18" y="18" width="44" height="44" rx="8" fill="none" stroke="#FFFFFF" stroke-width="4"/>
-    <polygon points="34,30 52,40 34,50" fill="#FFFFFF"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><desc>Planton-drawn glyph: an AgentCore runtime: an agent spark inside a running-process frame</desc><g fill="none" stroke="#01A88D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="8" width="36" height="32" rx="3"/><path d="M6 16h36M11 12h2M16 12h2"/><path d="M24 21q1.05 5.25 7 7q-5.95 1.75 -7 7q-1.05-5.25-7-7q5.95-1.75 7-7z"/></g></svg>

@@ -1,8 +1,6 @@
 package cataloglogo
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -58,7 +56,7 @@ func TestCatalogLogoGate(t *testing.T) {
 // provenance, with no baseline entry. A provider joins this list in the same
 // change that empties its baseline entries, and never leaves it. Adding a
 // provider's directory name here is the whole act of pinning it.
-var judgedProviders = []string{"gcp", "cloudflare", "kubernetes", "auth0", "openfga"}
+var judgedProviders = []string{"gcp", "cloudflare", "kubernetes", "auth0", "openfga", "aws"}
 
 // TestJudgedProviderLogoSets pins every judged provider at zero: no violation
 // under its catalog directory, no entry for it in baseline.yaml. An entry
@@ -107,8 +105,7 @@ func TestSharedGlyphAndProvenanceDeliberateReds(t *testing.T) {
 	const official = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><desc>Official Google Cloud product icon: legacy/cloud_sql.svg</desc><path d="M1 1h1v1H1z"/></svg>`
 
 	mk := func(provider, kind, content string) logo {
-		sum := sha256.Sum256([]byte(content))
-		return logo{provider: provider, kind: kind, path: "catalog/" + provider + "/" + kind + "/logo.svg", hash: hex.EncodeToString(sum[:]), class: provenanceClass([]byte(content))}
+		return logo{provider: provider, kind: kind, path: "catalog/" + provider + "/" + kind + "/logo.svg", hash: glyphHash([]byte(content)), class: provenanceClass([]byte(content))}
 	}
 
 	// Provenance classes read from the file.
@@ -135,6 +132,27 @@ func TestSharedGlyphAndProvenanceDeliberateReds(t *testing.T) {
 			t.Fatalf("unexpected violation %+v", v)
 		}
 	}
+	// A copied icon does not become its own glyph by describing itself
+	// differently: the same drawing under two <desc>s, a vendor <title>, a
+	// comment, and other indentation is still one glyph, and fails at both.
+	// This is the case that would have let an official icon copied onto a
+	// product's child pass the moment each copy received its provenance line.
+	const drawing = `<path d="M3 3h18v18H3z"/><circle cx="12" cy="12" r="4"/>`
+	asProduct := `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><desc>Official Example product icon: lib/bucket.svg</desc><title>Arch_Bucket_64</title>` + drawing + `</svg>`
+	asChild := "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">\n  <desc>Official Example product icon: lib/bucket.svg (worn by the bucket's object set)</desc>\n  <!-- copied from the bucket -->\n  " + drawing + "\n</svg>"
+	if glyphHash([]byte(asProduct)) != glyphHash([]byte(asChild)) {
+		t.Fatalf("two files that differ only in <desc>, <title>, a comment, and whitespace must hash as one glyph")
+	}
+	vs = sharedGlyphViolations([]logo{mk("aws", "awsbucket", asProduct), mk("aws", "awsobjectset", asChild)})
+	if len(vs) != 2 {
+		t.Fatalf("a copied icon under its own <desc> must fail at both kinds, got %d: %+v", len(vs), vs)
+	}
+	// ...while a genuinely different drawing under the same <desc> is its own glyph.
+	redrawn := strings.Replace(asChild, `<circle cx="12" cy="12" r="4"/>`, `<circle cx="12" cy="12" r="7"/>`, 1)
+	if vs := sharedGlyphViolations([]logo{mk("aws", "awsbucket", asProduct), mk("aws", "awsobjectset", redrawn)}); len(vs) != 0 {
+		t.Fatalf("a different drawing must not fire, got %+v", vs)
+	}
+
 	// The same glyph on two PROVIDERS is not sharing: the gate is per provider.
 	if vs := sharedGlyphViolations([]logo{mk("gcp", "gcpa", drawnA), mk("aws", "awsa", drawnA)}); len(vs) != 0 {
 		t.Fatalf("cross-provider sharing must not fire, got %+v", vs)
@@ -143,13 +161,10 @@ func TestSharedGlyphAndProvenanceDeliberateReds(t *testing.T) {
 	if vs := sharedGlyphViolations([]logo{mk("kubernetes", "kubernetesplantonrunner", brand), mk("kubernetes", "kubernetesplantonoperator", brand)}); len(vs) != 0 {
 		t.Fatalf("brand marks may share, got %+v", vs)
 	}
-	// ...but a brand mark copied onto a non-Planton kind is still sharing.
-	if vs := sharedGlyphViolations([]logo{mk("kubernetes", "kubernetesplantonrunner", brand), mk("kubernetes", "kubernetesredis", strings.Replace(brand, "Planton brand mark", "Planton-drawn glyph: not really", 1))}); len(vs) != 0 {
-		// different content, different hash: no sharing -- the point is the next case
-		t.Fatalf("unexpected %+v", vs)
-	}
-	brandOnRedis := logo{provider: "kubernetes", kind: "kubernetesredis", path: "catalog/kubernetes/kubernetesredis/logo.svg", hash: mk("kubernetes", "x", brand).hash, class: ProvenanceDrawn}
-	if vs := sharedGlyphViolations([]logo{mk("kubernetes", "kubernetesplantonrunner", brand), brandOnRedis}); len(vs) != 2 {
+	// ...but the brand tile copied onto a non-Planton kind is still sharing,
+	// even when the copy relabels itself as a drawn glyph: the label is not
+	// the drawing.
+	if vs := sharedGlyphViolations([]logo{mk("kubernetes", "kubernetesplantonrunner", brand), mk("kubernetes", "kubernetesredis", strings.Replace(brand, "Planton brand mark", "Planton-drawn glyph: not really", 1))}); len(vs) != 2 {
 		t.Fatalf("a brand mark on a non-Planton kind must fire at both kinds, got %+v", vs)
 	}
 

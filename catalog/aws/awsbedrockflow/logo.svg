@@ -1,16 +1,1 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
-    <title>AWS Bedrock Flow</title>
-    <defs>
-        <linearGradient id="brflwGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#7C3AED"/>
-            <stop offset="100%" stop-color="#4C1D95"/>
-        </linearGradient>
-    </defs>
-    <rect width="80" height="80" rx="16" fill="url(#brflwGradient)"/>
-    <circle cx="22" cy="40" r="7" fill="none" stroke="#FFFFFF" stroke-width="4"/>
-    <circle cx="58" cy="22" r="7" fill="none" stroke="#FFFFFF" stroke-width="4"/>
-    <circle cx="58" cy="58" r="7" fill="none" stroke="#FFFFFF" stroke-width="4"/>
-    <path d="M28 36 Q40 28 51 24" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
-    <path d="M28 44 Q40 52 51 56" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><desc>Planton-drawn glyph: a Bedrock flow: prompt and model nodes wired left to right</desc><g fill="none" stroke="#01A88D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="18" width="10" height="12" rx="2"/><path d="M24 18q0.8999999999999999 4.5 6 6q-5.1 1.5 -6 6q-0.8999999999999999-4.5-6-6q5.1-1.5 6-6z"/><rect x="34" y="18" width="10" height="12" rx="2"/><path d="M14 24h4M30 24h4"/></g></svg>

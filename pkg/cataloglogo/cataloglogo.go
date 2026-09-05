@@ -22,7 +22,12 @@
 //     WHICH thing -- so a chart built from one product's family (an instance,
 //     its database, its user) must not read as a row of identical marks. The
 //     one intended sharing is Planton's own kinds wearing the Planton brand
-//     mark, and the files say so themselves.
+//     mark, and the files say so themselves. Two files are one glyph when
+//     their DRAWING is the same: the comparison ignores <desc>, <title>,
+//     comments, and whitespace, so a copied icon cannot pass as its own by
+//     carrying a different description -- the provenance rule asks every
+//     file to describe itself, and that description must not be the thing
+//     that tells two copies apart.
 //
 // The law behind the last two rules, in the words the forge and update flows
 // use: one kind, one glyph. A kind wears an official mark only when it IS a
@@ -58,7 +63,8 @@
 // person on the contact sheet tools/catalog-logo-sheet renders -- every logo
 // of one provider at the sizes the console draws an icon (18px on an
 // attachment plate, 26px on a chip or globe, 34px on a card), on a light and a
-// dark wash -- before the set is kept.
+// dark wash, and on the console's family washes when the platform hands them
+// to the tool -- before the set is kept.
 package cataloglogo
 
 import (
@@ -69,6 +75,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -144,8 +151,7 @@ func Check(repoRoot string) ([]Violation, error) {
 			vs = append(vs, Violation{Path: rel, Rule: RuleMalformedSVG, Detail: detail})
 			continue // a file browsers cannot draw has no glyph to compare
 		}
-		sum := sha256.Sum256(data)
-		l := logo{provider: providerDir, kind: kindDir, path: rel, hash: hex.EncodeToString(sum[:]), class: provenanceClass(data)}
+		l := logo{provider: providerDir, kind: kindDir, path: rel, hash: glyphHash(data), class: provenanceClass(data)}
 		if l.class == "" {
 			vs = append(vs, Violation{Path: rel, Rule: RuleMissingProvenance, Detail: "no provenance: open the <desc> with one of \"Official <provider> product icon: <library>/<file>\" (or \"Official <provider> resource icon: ...\" for a provider's own object icon set), \"Planton-drawn glyph: <what it depicts>\" (or \"Planton-drawn glyph on the <provider> ... base: ...\" where a provider's icon set is licensed for derivatives), or \"Planton brand mark\", so the update flow, this gate, and the next reader know what this file is"})
 		}
@@ -156,8 +162,44 @@ func Check(repoRoot string) ([]Violation, error) {
 	return vs, nil
 }
 
+// Metadata that says something ABOUT a drawing without being part of it. A
+// <desc> is the provenance line the law asks for, a <title> is an editor's or
+// a vendor library's label, a comment is a note to the next reader; none of
+// them reaches the pixels, so none of them may make two copies of one icon
+// count as two glyphs. Matched on the raw bytes, after validateSVG has proven
+// the document well-formed, so a lazy match up to the first closing tag is
+// exact.
+var glyphMetadata = []*regexp.Regexp{
+	regexp.MustCompile(`(?s)<desc\b[^>]*/>`),
+	regexp.MustCompile(`(?s)<desc\b[^>]*>.*?</desc>`),
+	regexp.MustCompile(`(?s)<title\b[^>]*/>`),
+	regexp.MustCompile(`(?s)<title\b[^>]*>.*?</title>`),
+	regexp.MustCompile(`(?s)<!--.*?-->`),
+}
+
+var (
+	whitespaceRun         = regexp.MustCompile(`\s+`)
+	whitespaceBetweenTags = regexp.MustCompile(`>\s+<`)
+)
+
+// glyphHash is the identity of what a logo DRAWS: the file's bytes with its
+// <desc>, <title>, and comments removed, whitespace between tags dropped, and
+// every other whitespace run collapsed to one space, hashed. Two files that
+// differ only in what they say about themselves, or in indentation, are one
+// glyph.
+func glyphHash(data []byte) string {
+	stripped := data
+	for _, re := range glyphMetadata {
+		stripped = re.ReplaceAll(stripped, nil)
+	}
+	stripped = whitespaceRun.ReplaceAll(stripped, []byte(" "))
+	stripped = whitespaceBetweenTags.ReplaceAll(stripped, []byte("><"))
+	sum := sha256.Sum256([]byte(strings.TrimSpace(string(stripped))))
+	return hex.EncodeToString(sum[:])
+}
+
 // sharedGlyphViolations reports, at each kind, the other kinds of the same
-// provider wearing byte-identical logo content -- except when every wearer is
+// provider drawing the same glyph (glyphHash) -- except when every wearer is
 // the Planton brand mark, the law's one intended sharing.
 func sharedGlyphViolations(logos []logo) []Violation {
 	byProviderHash := map[string][]logo{}

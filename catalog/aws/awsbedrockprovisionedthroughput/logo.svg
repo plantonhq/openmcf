@@ -1,14 +1,1 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
-    <title>AWS Bedrock Provisioned Throughput</title>
-    <defs>
-        <linearGradient id="brptGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#F59E0B"/>
-            <stop offset="100%" stop-color="#B45309"/>
-        </linearGradient>
-    </defs>
-    <rect width="80" height="80" rx="16" fill="url(#brptGradient)"/>
-    <path d="M18 56 V44 M30 56 V36 M42 56 V28 M54 56 V20" stroke="#FFFFFF" stroke-width="6"
-          stroke-linecap="round"/>
-    <path d="M16 64 H64" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><desc>Planton-drawn glyph: Bedrock provisioned throughput: a model spark with reserved capacity bars</desc><g fill="none" stroke="#01A88D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 12q1.2 6.0 8 8q-6.8 2.0 -8 8q-1.2-6.0-8-8q6.8-2.0 8-8z"/><path d="M28 40V30M34 40V22M40 40V14M24 44h20"/></g></svg>
