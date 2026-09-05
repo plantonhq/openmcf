@@ -1,15 +1,1 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
-    <title>AWS Bedrock Model Access</title>
-    <defs>
-        <linearGradient id="brmaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#EC4899"/>
-            <stop offset="100%" stop-color="#9D174D"/>
-        </linearGradient>
-    </defs>
-    <rect width="80" height="80" rx="16" fill="url(#brmaGradient)"/>
-    <rect x="18" y="36" width="32" height="26" rx="6" fill="none" stroke="#FFFFFF" stroke-width="4"/>
-    <path d="M26 36 V28 C26 21 31 17 34 17 C37 17 42 21 42 28 V36" fill="none" stroke="#FFFFFF" stroke-width="4"/>
-    <path d="M50 49 H66 M59 42 L66 49 L59 56" fill="none" stroke="#FFFFFF" stroke-width="4"
-          stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><desc>Planton-drawn glyph: Bedrock model access: a model spark behind an opened latch</desc><g fill="none" stroke="#01A88D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 15q1.3499999999999999 6.75 9 9q-7.6499999999999995 2.25 -9 9q-1.3499999999999999-6.75-9-9q7.6499999999999995-2.25 9-9z"/><path d="M30 30V20a6 6 0 0 1 12 0"/><rect x="28" y="30" width="14" height="10" rx="2"/><circle cx="35" cy="35" r="1.5"/></g></svg>

@@ -1,6 +1,5 @@
-<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="80" height="80" fill="#2E27AD"/>
-<g fill="none" stroke="#FFFFFF" stroke-width="3">
+<svg viewBox="10 10 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><desc>Planton-drawn glyph: Aurora DSQL: two relational cylinders joined by a synchronous and an asynchronous link</desc>
+<g fill="none" stroke="#C925D1" stroke-width="3">
 <ellipse cx="28" cy="26" rx="8" ry="4"/>
 <path d="M20 26 V38 C20 40.2 23.6 42 28 42 C32.4 42 36 40.2 36 38 V26"/>
 <ellipse cx="52" cy="42" rx="8" ry="4"/>

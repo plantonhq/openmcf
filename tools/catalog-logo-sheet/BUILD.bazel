@@ -1,4 +1,4 @@
-load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 go_library(
     name = "catalog-logo-sheet_lib",
@@ -15,4 +15,10 @@ go_binary(
     name = "catalog-logo-sheet",
     embed = [":catalog-logo-sheet_lib"],
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "catalog-logo-sheet_test",
+    srcs = ["main_test.go"],
+    embed = [":catalog-logo-sheet_lib"],
 )

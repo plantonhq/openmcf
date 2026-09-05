@@ -1,14 +1,1 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg">
-    <title>AWS Bedrock AgentCore Memory</title>
-    <defs>
-        <linearGradient id="acmemGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#F59E0B"/>
-            <stop offset="100%" stop-color="#92400E"/>
-        </linearGradient>
-    </defs>
-    <rect width="80" height="80" rx="16" fill="url(#acmemGradient)"/>
-    <ellipse cx="40" cy="26" rx="20" ry="8" fill="none" stroke="#FFFFFF" stroke-width="4"/>
-    <path d="M20 26 V54 C20 58.4 29 62 40 62 C51 62 60 58.4 60 54 V26" fill="none" stroke="#FFFFFF" stroke-width="4"/>
-    <path d="M20 40 C20 44.4 29 48 40 48 C51 48 60 44.4 60 40" fill="none" stroke="#FFFFFF" stroke-width="4"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><desc>Planton-drawn glyph: AgentCore memory: a stack of remembered turns behind an agent spark</desc><g fill="none" stroke="#01A88D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 23q1.05 5.25 7 7q-5.95 1.75 -7 7q-1.05-5.25-7-7q5.95-1.75 7-7z"/><rect x="24" y="8" width="18" height="6" rx="1.5"/><rect x="24" y="17" width="18" height="6" rx="1.5"/><rect x="24" y="26" width="18" height="6" rx="1.5"/><path d="M28 38h10"/></g></svg>

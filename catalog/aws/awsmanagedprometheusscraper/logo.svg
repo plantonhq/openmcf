@@ -1,6 +1,5 @@
-<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="80" height="80" fill="#E7157B"/>
-<g fill="none" stroke="#FFFFFF" stroke-width="3">
+<svg viewBox="10 10 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><desc>Planton-drawn glyph: a Prometheus scraper: a collector pulling metrics from a cluster</desc>
+<g fill="none" stroke="#E7157B" stroke-width="3">
 <circle cx="30" cy="30" r="14"/>
 <path d="M40 40l14 14"/>
 <path d="M24 30c0-5 2-6 2-10c2 2 1.5 4 4 4c0-3 1-5 4-7c-1 4 3 6 3 11"/>

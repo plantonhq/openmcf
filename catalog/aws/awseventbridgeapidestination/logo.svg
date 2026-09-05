@@ -1,9 +1,8 @@
-<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="80" height="80" fill="#E7157B"/>
-<g fill="none" stroke="#FFFFFF" stroke-width="3">
+<svg viewBox="10 10 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><desc>Planton-drawn glyph: an EventBridge API destination: an event sent out to an external endpoint</desc>
+<g fill="none" stroke="#E7157B" stroke-width="3">
 <path d="M10 40h16"/>
 <path d="M54 28l12 12-12 12"/>
 </g>
-<rect x="30" y="36" width="14" height="12" rx="2" fill="#FFFFFF"/>
-<path d="M33.5 36v-4.5a3.5 3.5 0 0 1 7 0V36" stroke="#FFFFFF" stroke-width="2.5" fill="none"/>
+<rect x="30" y="36" width="14" height="12" rx="2" fill="#E7157B"/>
+<path d="M33.5 36v-4.5a3.5 3.5 0 0 1 7 0V36" stroke="#E7157B" stroke-width="2.5" fill="none"/>
 </svg>

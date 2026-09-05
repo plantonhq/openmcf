@@ -1,6 +1,5 @@
-<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="80" height="80" fill="#7AA116"/>
-<g fill="#FFFFFF">
+<svg viewBox="10 10 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><desc>Planton-drawn glyph: AWS Backup account settings: a gear over the services opted into backup</desc>
+<g fill="#7AA116">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M46.7 20.6l-1.3-4.6h-10.8l-1.3 4.6a17.9 17.9 0 0 0-4.4 2.6l-4.5-1.5-5.4 9.4 3.4 3.2a18.3 18.3 0 0 0 0 5.4l-3.4 3.2 5.4 9.4 4.5-1.5a17.9 17.9 0 0 0 4.4 2.6l1.3 4.6h10.8l1.3-4.6a17.9 17.9 0 0 0 4.4-2.6l4.5 1.5 5.4-9.4-3.4-3.2a18.3 18.3 0 0 0 0-5.4l3.4-3.2-5.4-9.4-4.5 1.5a17.9 17.9 0 0 0-4.4-2.6zM40 30a10 10 0 1 1 0 20 10 10 0 0 1 0-20z"/>
 <path d="M40 34a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"/>
 <path d="M56 52h12v4H56v-4zm0 8h12v4H56v-4z" fill="#7AA116"/>

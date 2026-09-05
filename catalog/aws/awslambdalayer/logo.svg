@@ -1,6 +1,5 @@
-<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="80" height="80" fill="#ED7100"/>
-<g fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round">
+<svg viewBox="10 10 60 60" fill="none" xmlns="http://www.w3.org/2000/svg"><desc>Planton-drawn glyph: a Lambda layer: stacked layers a function is built on</desc>
+<g fill="none" stroke="#ED7100" stroke-width="3" stroke-linejoin="round">
 <path d="M40 16 L64 28 L40 40 L16 28 Z"/>
 <path d="M16 40 L40 52 L64 40"/>
 <path d="M16 52 L40 64 L64 52"/>
