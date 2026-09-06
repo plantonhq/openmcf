@@ -116,9 +116,39 @@ When a Service Hub pipeline runs:
 
 1. The build stage compiles your code and produces a container image.
 2. The image is tagged with the commit SHA and pushed to the connected registry.
-3. The deployment stage pulls the image from the registry and deploys it to the target environment.
+3. The deployment stage writes that image reference into your deployment manifests and applies them. The cluster or runtime then pulls the image itself — see the next section for how it signs in.
 
 The image path follows the convention: `<registry-host>/<repository-path>:<commit-sha>`. Planton constructs this path automatically from the registry connection configuration.
+
+### Pulling Private Images
+
+A registry connection is how Planton reaches a registry: builds push with it. Pulling is the workload's own affair, because a pull has a different lifetime — a build signs in once and is done, while a cluster signs in every time a pod starts, for as long as the workload runs. Planton never copies a person's sign-in or a short-lived token into a cluster, so a Kubernetes workload pulls in one of three ways, all visible in its own manifest:
+
+- **Declare nothing** when the cluster's own cloud identity reaches the registry: an EKS node role with the ECR read policy, a GKE node service account with the storage read scope, an AKS kubelet identity holding `AcrPull`, a DOKS cluster with registry integration on. No Secret, no field.
+- **`pod.imageRegistries`** — the login declared on the workload itself: the registry server, the account, and a password that is only ever a `$secret/<slug>` reference. The workload module builds one `kubernetes.io/dockerconfigjson` Secret from it, in the workload's namespace, created and destroyed with the workload. One entry per registry server.
+- **`pod.imagePullSecrets`** — a `KubernetesSecret` (its docker-registry arm) or a `KubernetesExternalSecret` (the **Docker Registry Pull Secret** preset, fed from your secrets manager) declared beside the workload, for a login many workloads share or for deploys that run without a Planton backend.
+
+**The deploy fills the common case for you.** When a service deploys to a Kubernetes target, Planton looks at the service's registry connection and, when it holds a login a cluster can keep, writes that login onto the workload's `pod.imageRegistries` as a reference — in the open, beside the image it injected. The run's environment row says what it did or why it filled nothing:
+
+| Registry connection | What the deploy fills |
+|---|---|
+| GHCR with a **pull token** (either credential arm) | The pull token — a read-only login is what a cluster should hold |
+| GHCR with a stored personal access token | That token, by reference |
+| GHCR through a GitHub connection, no pull token | Nothing — *add a read-only pull token to the registry connection, or declare the login on the workload's imageRegistries* |
+| Artifact Registry with a stored service-account key | The key, by reference |
+| Artifact Registry through a GCP connection | Nothing — a GKE cluster pulls with its node service account when granted on the repository |
+| ACR with a stored service principal | The principal, by reference |
+| ACR through an Azure connection | Nothing — an AKS cluster pulls with its kubelet identity when it holds `AcrPull` |
+| ECR, on any arm | Nothing, ever — ECR issues only twelve-hour tokens; the cluster pulls with its own AWS identity or through a pull-through cache |
+| JFrog Artifactory | The access token, by reference |
+
+The fill yields to one thing only: an `imageRegistries` entry the workload already declares for the same server. A Secret named in `imagePullSecrets` never suppresses it. The password that lands on the manifest is a reference the runner resolves inside the cluster's own account; the value never touches Planton's records.
+
+**The GHCR pull token.** A GHCR connection that pushes through your GitHub sign-in has no long-lived login to hand a cluster. Give it a **pull token** — a bot account's personal access token with only `read:packages`, stored as an organization secret — under `spec.githubContainerRegistry.pullToken` (the connection wizard's **Pull Token** step, the connection page's **Pull Token** section, or `planton apply`). Builds keep pushing through the sign-in; clusters pull with the token.
+
+**Targets that pull only from their own cloud's registry.** Cloud Run and Cloud Run Jobs pull private images only from Artifact Registry (public Docker Hub and GHCR images excepted); App Runner only from ECR or ECR Public; Lambda container images only from ECR in the same Region. No field on the target changes that. Push to the provider's registry, or declare a pull-through repository that proxies the registry your image lives in: a `GcpArtifactRegistryRepo` in `REMOTE_REPOSITORY` mode, or `AwsEcrRegistrySettings.pullThroughCacheRules`. ECS pulls from ECR with the task execution role and from any other registry with the Secrets Manager credential the task definition declares.
+
+**When it cannot work, it says so.** A workload referencing a Secret that has no value yet is refused before a stack job is created, naming the field and the resource. A literal password is refused at apply, naming the `$secret/` grammar. A pod that still cannot pull shows the kubelet's own `ImagePullBackOff` line followed by the remedy: declare the login on the workload, or a pull secret beside it, or pull from a registry the cluster's own identity reaches.
 
 ---
 
@@ -180,9 +210,9 @@ This connection appears under the DevOps Pipeline category as **Wrangler** in th
 
 If you're starting fresh and choosing which registry to use, a practical guideline:
 
-- **Deploying to AWS (EKS, ECS)?** Use ECR — it integrates natively with AWS IAM and avoids cross-cloud network transfer costs.
-- **Deploying to GCP (GKE, Cloud Run)?** Use GCP Artifact Registry — same benefits for the GCP ecosystem.
-- **Deploying to multiple clouds?** Use GitHub Container Registry or JFrog Artifactory for a cloud-neutral registry.
+- **Deploying to AWS (EKS, ECS)?** Use ECR — the cluster pulls with its own identity, no pull login needed, and you avoid cross-cloud network transfer costs.
+- **Deploying to GCP (GKE, Cloud Run)?** Use GCP Artifact Registry — same benefits for the GCP ecosystem, and the only registry Cloud Run pulls private images from.
+- **Deploying to multiple clouds?** Use GitHub Container Registry or JFrog Artifactory for a cloud-neutral registry — clusters pull with a stored login (for GHCR, a read-only pull token) the deploy fills onto the workload for you.
 - **Already using JFrog?** Continue using it — Planton connects to it the same way your existing tooling does.
 - **Already connected a cloud or GitHub?** Its registry is one click away with nothing to paste — GHCR through your GitHub sign-in, ECR / Artifact Registry / ACR through the cloud connection you already have.
 

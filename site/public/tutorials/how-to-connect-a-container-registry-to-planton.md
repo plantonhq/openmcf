@@ -13,7 +13,7 @@ tags:
   - "artifact-registry"
   - "getting-started"
 category: "connect"
-excerpt: "Connect your container registry -- through a connection you already trust with nothing to paste, or with stored keys -- so Planton can push built images during CI and pull them during deployment."
+excerpt: "Connect your container registry -- through a connection you already trust with nothing to paste, or with stored keys -- so Planton can push built images during CI, and give clusters the read-only login they pull with."
 ---
 
 # How to Connect a Container Registry to Planton
@@ -41,7 +41,7 @@ A registry connection signs in one of two ways, and this tutorial covers both. *
 
 ## How Registry Connections Work
 
-A container registry connection tells Planton where to push images that pipelines build and where Kubernetes clusters pull images from for deployment. It describes how to sign in and never holds the result: on the trusted-connection arm it names another connection and the runner derives a short-lived registry token from it at push time; on the stored-keys arm it references a secret by slug. For more details, see the [container registry connections documentation](/docs/connections/container-registries).
+A container registry connection tells Planton where pipelines push the images they build and how to sign in. It never holds the result: on the trusted-connection arm it names another connection and the runner derives a short-lived registry token from it at push time; on the stored-keys arm it references a secret by slug. Pulling is the workload's own affair -- a Kubernetes workload declares its login on its own manifest, and the deploy fills that login from the registry connection when the connection holds a login a cluster can keep (a stored key or token, or GHCR's read-only pull token; never a token minted from a sign-in, and never anything for ECR, whose tokens last twelve hours). For more details, see the [container registry connections documentation](/docs/connections/container-registries).
 
 ### Supported Providers
 
@@ -92,7 +92,7 @@ Choose the path that matches your registry provider. Each stores the registry's 
 
 #### Step 1: Create a GCP Service Account
 
-In your GCP project, create a service account with the **Artifact Registry Writer** role. This role allows both pushing images during builds and pulling images during deployments.
+In your GCP project, create a service account with the **Artifact Registry Writer** role. Builds push with it; because a stored key is a login a cluster can keep, a Kubernetes deploy also fills the workload's pull login from it, by reference.
 
 ```bash
 gcloud iam service-accounts create planton-registry \
@@ -287,6 +287,25 @@ Replace the placeholder values:
 ```bash
 planton apply -f container-registry.yaml
 ```
+
+#### Step 5: Give Clusters a Read-Only Pull Token
+
+Whichever GHCR path you took, a Kubernetes cluster needs a login it can keep: a build signs in once, but a pod signs in every time it starts. A token minted from your GitHub sign-in lasts an hour and is never copied into a cluster, so on the trusted path a deploy fills no pull login until you add one -- and on the stored-keys path the cluster would otherwise hold your write-capable token.
+
+Create a personal access token on a bot account with only the `read:packages` scope, store it as an organization secret (say `github-ghcr-pull-token`), and add it to the connection -- in the wizard's **Pull Token** step, the connection page's **Pull Token** section, or the record itself:
+
+```yaml
+spec:
+  github_container_registry:
+    github_connection: github-account-priya-dev   # or the stored PAT fields
+    pull_token:
+      username:
+        value: acme-pull-bot
+      token:
+        secret: github-ghcr-pull-token
+```
+
+From then on a Kubernetes deploy writes that login onto the workload's `pod.imageRegistries` as a reference, and the run says so: *Pull login for ghcr.io filled from registry connection 'ghcr-account-priya-dev' (the connection's pull token)*. Clusters that pull from their own cloud's registry -- EKS from ECR, GKE from Artifact Registry, AKS from ACR -- need nothing of the kind.
 
 ## Verifying Your Connection
 

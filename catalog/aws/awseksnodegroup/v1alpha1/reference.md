@@ -150,8 +150,12 @@ The IAM role every node assumes. It must trust ec2.amazonaws.com and
 carry the worker policies (AmazonEKSWorkerNodePolicy,
 AmazonEC2ContainerRegistryReadOnly, AmazonEKS_CNI_Policy) -- attach
 them on the AwsIamRole itself; this component never modifies a role it
-merely references. Reference an AwsIamRole's role_arn output or pass a
-literal ARN. Create-only in AWS.
+merely references. AmazonEC2ContainerRegistryReadOnly is what lets the
+kubelet pull private images from ECR in this account with no pull
+secret: ECR issues only twelve-hour tokens, so the node's own identity
+(or IRSA on the pod) is the only way a cluster ever pulls from ECR.
+Reference an AwsIamRole's role_arn output or pass a literal ARN.
+Create-only in AWS.
 
 - references: AwsIamRole (`status.outputs.role_arn`)
 - rule: {"required":true}

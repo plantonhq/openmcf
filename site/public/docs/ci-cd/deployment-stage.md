@@ -174,6 +174,16 @@ For each resolved manifest (excluding the local overlay), the deployment stage c
 4. **Stack Job creation** — Each task provisions the cloud resource manifest through a [Stack Job](/docs/infrastructure/stack-jobs). The Stack Job applies the infrastructure changes and reports completion.
 5. **Failure handling** — If a deployment task fails, all subsequent tasks are cancelled. No partial rollouts across environments.
 
+## How the Image Is Pulled
+
+The deployment stage injects the built image into every manifest that receives one — a blank container image is the slot; explicitly authored sidecar images are left alone. The pull is the cluster's or runtime's own act, and the stage prepares for it in the open:
+
+- **Kubernetes workloads** get their registry login filled onto `pod.imageRegistries` from the service's registry connection when that connection holds a login a cluster can keep — a stored token or key, or GHCR's read-only pull token — with the password as a `$secret/` reference the runner resolves inside the cluster's account. The run's environment row states what was filled, or why nothing was (*ECR issues only twelve-hour tokens — the cluster pulls with its own AWS identity*; *add a read-only pull token to the registry connection, or declare the login on the workload's imageRegistries*). A login you already declared for the same registry is never overwritten.
+- **Cloud Run** pulls private images only from Artifact Registry; the service wizard warns at authoring time when the registry is anything else. **ECS** pulls from ECR with the task execution role and from other registries with the Secrets Manager credential the task definition declares.
+- **A reference that has no value yet** — a pull secret named in `pod.imagePullSecrets` that was never deployed — is refused before the stack job is created, naming the field and the resource, instead of producing a pod stuck in `ImagePullBackOff`.
+
+The three ways a workload can pull, and when to use each, are in [Pulling Private Images](/docs/connections/container-registries#pulling-private-images).
+
 <!-- SCREENSHOT: Pipeline deployment stage
   Page: /{org}/service/{slug}/pipelines/runs/{id}
   Action: Show a pipeline run with the deployment stage in progress or completed

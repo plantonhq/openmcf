@@ -134,4 +134,4 @@ Browse the [Presets](#presets) tab for ready-to-deploy configurations.
 - [**Secret Store**](/cloud-catalog/kubernetes-secret-store) -- the namespaced connection this sync reads through; deploy one first
 - [**Cluster Secret Store**](/cloud-catalog/kubernetes-cluster-secret-store) -- the cluster-scoped alternative when many namespaces share one backend connection
 - [**External Secrets Operator**](/cloud-catalog/kubernetes-external-secrets-operator) -- the machinery that does the syncing
-- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- the typical consumer: wire env and volumes to this resource's `secret_name` output instead of hardcoding
+- [**Kubernetes Deployment**](/cloud-catalog/kubernetes-deployment) -- the typical consumer: wire env and volumes to this resource's `secret_name` output instead of hardcoding; a registry pull secret rendered here is named in the workload's `pod.imagePullSecrets` with an explicit `kind: KubernetesExternalSecret` and `fieldPath: status.outputs.secret_name` -- the pull route that works without a Planton backend, because the cluster reads the credential from your secrets manager

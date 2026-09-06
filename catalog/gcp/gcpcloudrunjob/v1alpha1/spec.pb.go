@@ -462,6 +462,14 @@ type GcpCloudRunJobContainer struct {
 	// container (depends_on refers to these names).
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Container image URL, e.g. "us-docker.pkg.dev/project/repo/worker:1.0.0".
+	//
+	// Cloud Run pulls PRIVATE images only from Artifact Registry (or the
+	// legacy Container Registry) in a project its service agent can read;
+	// public Docker Hub and GHCR images run directly. There is no field here
+	// for a registry login and Google accepts none. For a private image in
+	// another registry, push it to Artifact Registry, or declare a
+	// GcpArtifactRegistryRepo in REMOTE_REPOSITORY mode that proxies that
+	// registry and point this URL at it.
 	Image string `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
 	// Entrypoint array — overrides the image's ENTRYPOINT.
 	Command []string `protobuf:"bytes,3,rep,name=command,proto3" json:"command,omitempty"`

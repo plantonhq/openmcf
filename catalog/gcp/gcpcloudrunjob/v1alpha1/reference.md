@@ -286,6 +286,14 @@ container (depends_on refers to these names).
 
 Container image URL, e.g. "us-docker.pkg.dev/project/repo/worker:1.0.0".
 
+Cloud Run pulls PRIVATE images only from Artifact Registry (or the
+legacy Container Registry) in a project its service agent can read;
+public Docker Hub and GHCR images run directly. There is no field here
+for a registry login and Google accepts none. For a private image in
+another registry, push it to Artifact Registry, or declare a
+GcpArtifactRegistryRepo in REMOTE_REPOSITORY mode that proxies that
+registry and point this URL at it.
+
 - rule: {"required":true,"string":{"minLen":"1"}}
 
 ### spec.template.containers[].command

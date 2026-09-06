@@ -75,6 +75,12 @@ type AwsLambdaSpec struct {
 	// defines the runtime and entrypoint, so runtime and handler must
 	// stay empty; image_config below can override the entrypoint. Images
 	// may be up to 10 GB -- the right choice for heavy dependency trees.
+	//
+	// Lambda pulls only from a private ECR repository in the same account
+	// and Region as the function; there is no registry-login field and AWS
+	// accepts none. For an image that lives elsewhere (GHCR, Docker Hub,
+	// another Region), push it to ECR or declare a pull-through cache rule on
+	// AwsEcrRegistrySettings and point this URI at the cached repository.
 	ImageUri string `protobuf:"bytes,5,opt,name=image_uri,json=imageUri,proto3" json:"image_uri,omitempty"`
 	// Base64-encoded SHA256 of the deployment package. Set it (usually
 	// from your build pipeline) to make code updates declarative: a new

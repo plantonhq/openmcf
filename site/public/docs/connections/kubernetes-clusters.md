@@ -96,6 +96,17 @@ Once connected, external clusters become deployment targets:
 - **Cloud Ops** — You can browse pods, stream logs, and exec into containers on connected clusters through the Cloud Ops interface, as long as a Runner with access to the cluster is configured.
 - **Infra Hub** — Cloud resources with Kubernetes deployment components (Helm charts, operators, custom resources) can target connected clusters.
 
+## How a Cluster Pulls Images
+
+A cluster connection is how Planton reaches the cluster; how the cluster reaches a container registry is the cluster's own identity, and it decides whether a private image needs a login at all:
+
+- **EKS** pulls from ECR with the node role (the `AmazonEC2ContainerRegistryReadOnly` policy) or with IRSA. ECR issues only twelve-hour tokens, so this is the only way an EKS cluster pulls from ECR — a registry connection's keys are never written to the cluster.
+- **GKE** pulls from Artifact Registry with the node service account when that account is granted on the repository (the default node scope `devstorage.read_only` is what allows it).
+- **AKS** pulls from Azure Container Registry with the kubelet identity when it holds `AcrPull` on the registry.
+- **DOKS** pulls from the DigitalOcean Container Registry cluster-wide when the cluster's registry integration is on.
+
+For any other registry — GHCR, Docker Hub, a registry in another cloud, a self-managed cluster — the workload declares its login on its own manifest (`pod.imageRegistries`, or a Secret named in `pod.imagePullSecrets`), and the service deploy fills it from the registry connection when that connection holds a login a cluster can keep. See [Pulling Private Images](/docs/connections/container-registries#pulling-private-images).
+
 ## Practical Guidance
 
 ### Cluster Naming

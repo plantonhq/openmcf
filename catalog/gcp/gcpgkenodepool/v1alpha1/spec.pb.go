@@ -1146,7 +1146,12 @@ type GcpGkeNodePoolNodeConfig struct {
 	// (devstorage.read_only, logging.write, monitoring). With Workload
 	// Identity (the Planton cluster default), workload permissions come from
 	// IAM on Kubernetes service accounts — node scopes only gate node-level
-	// agents, so the defaults are usually right.
+	// agents, so the defaults are usually right. One node-level agent that
+	// matters: the kubelet pulls images from Artifact Registry with the node
+	// service account under devstorage.read_only, so a private image in a
+	// repository that account is granted on needs no pull secret at all.
+	// Dropping that scope, or a repository the account is not granted on, is
+	// why a pod would need a login declared on the workload instead.
 	OauthScopes []string `protobuf:"bytes,6,rep,name=oauth_scopes,json=oauthScopes,proto3" json:"oauth_scopes,omitempty"`
 	// Kubernetes labels applied to every node in the pool — what nodeSelector
 	// and affinity rules match on. Example: {"workload-class": "batch"}.

@@ -893,7 +893,12 @@ OAuth scopes on the node VMs. Empty applies GKE's defaults
 (devstorage.read_only, logging.write, monitoring). With Workload
 Identity (the Planton cluster default), workload permissions come from
 IAM on Kubernetes service accounts — node scopes only gate node-level
-agents, so the defaults are usually right.
+agents, so the defaults are usually right. One node-level agent that
+matters: the kubelet pulls images from Artifact Registry with the node
+service account under devstorage.read_only, so a private image in a
+repository that account is granted on needs no pull secret at all.
+Dropping that scope, or a repository the account is not granted on, is
+why a pod would need a login declared on the workload instead.
 
 - rule: {"ignore":"IGNORE_IF_ZERO_VALUE"}
 

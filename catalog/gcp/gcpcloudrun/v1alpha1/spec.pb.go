@@ -646,6 +646,14 @@ type GcpCloudRunContainer struct {
 	// Pin a digest or immutable tag for repeatable deploys — Cloud Run
 	// resolves the image to a digest at revision creation, so a moving tag
 	// only takes effect on the NEXT deploy anyway.
+	//
+	// Cloud Run pulls PRIVATE images only from Artifact Registry (or the
+	// legacy Container Registry) in a project its service agent can read;
+	// public Docker Hub and GHCR images deploy directly. There is no field
+	// here for a registry login and Google accepts none. For a private image
+	// in another registry, push it to Artifact Registry, or declare a
+	// GcpArtifactRegistryRepo in REMOTE_REPOSITORY mode that proxies that
+	// registry and point this URL at it.
 	Image string `protobuf:"bytes,2,opt,name=image,proto3" json:"image,omitempty"`
 	// Entrypoint array — overrides the image's ENTRYPOINT. Not executed in a
 	// shell; variable references are not expanded.
