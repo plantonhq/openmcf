@@ -14,6 +14,7 @@ This is a DIFFERENT instrument from `valueFrom` (`dependencies.md`):
 | Another resource's deployment output (an id, ARN, endpoint the platform creates) | `valueFrom` — see `dependencies.md` |
 | An operator-managed config value (a region-independent setting, a team-owned constant) | `$var/...` |
 | A credential or any sensitive value (password, API key, token, private key) | `$secret/...` — the ONLY thing a sensitive field accepts |
+| A registry login a Kubernetes workload pulls with (`spec.pod.imageRegistries[].password`, a `KubernetesSecret`'s docker-registry password, a GHCR connection's `pullToken.token`) | `$secret/...` — and for the service's own registry, usually nothing: the deploy fills it from the registry connection (`references/service.pulling-private-images.md`) |
 
 ## The grammar
 

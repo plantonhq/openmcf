@@ -38,10 +38,11 @@ Relay these verbatim; each names its remedy, and the fix is on the machine, neve
 
 ## Container registries: two credential arms
 
-A registry connection describes how Planton signs in to a registry; it never holds the result.
+A registry connection is how Planton reaches a registry: builds push with it, and where its credential is a stored login a cluster can keep, clusters that cannot pull on their own pull with it too — by reference, never by copy. It describes how to sign in and never holds the result.
 
-- **A connection you already trust** — the record names a sibling connection: a GitHub connection for **GHCR** (the sign-in must carry `write:packages`), an AWS connection for **ECR**, a GCP connection for **Artifact Registry**, an Azure connection for **ACR**. No key is stored; the runner derives a short-lived registry token from the sibling at the moment a build pushes. A GitHub **App** connection is never offered for GHCR — the trusted arm is a sign-in a machine holds.
-- **Stored keys** — the record references organization secrets (a service account key, IAM keys, a service principal, a PAT). The arm for **JFrog**, and for any registry outside the connections the organization has.
+- **A connection you already trust** — the record names a sibling connection: a GitHub connection for **GHCR** (the sign-in must carry `write:packages`), an AWS connection for **ECR**, a GCP connection for **Artifact Registry**, an Azure connection for **ACR**. No key is stored; the runner derives a short-lived registry token from the sibling at the moment a build pushes. A GitHub **App** connection is never offered for GHCR — the trusted arm is a sign-in a machine holds. A token minted this way lasts minutes to an hour, so a cluster can never keep one: on this arm a Kubernetes deploy fills no pull login from the connection — except GHCR with a **pull token** (below).
+- **Stored keys** — the record references organization secrets (a service account key, IAM keys, a service principal, a PAT). The arm for **JFrog**, and for any registry outside the connections the organization has. A stored login is also what a cluster can keep, so on this arm a Kubernetes deploy fills the workload's pull login from it — except ECR, whose tokens last twelve hours on every arm.
+- **The GHCR pull token** — optional, with either arm: `spec.githubContainerRegistry.pullToken` is a bot account's `read:packages` token as an organization-secret reference. With it, builds push through the sign-in and clusters pull with the read-only token. Ask for it whenever a GHCR registry connected through a sign-in will serve a Kubernetes deploy — on the **You Already Trust These** card (**Add Pull Token**), the wizard's **Pull Token** step, or the connection page's **Pull Token** section. The whole pull story is `references/service.pulling-private-images.md`.
 
 ### Connecting a registry
 

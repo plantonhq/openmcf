@@ -64,6 +64,8 @@ deploy stage `skipped` with `No runner picked up the build`. Nothing but a runne
 
 After a code fix: a NEW commit (the push starts the run). After a credential or egress fix: `rerun` is right — the stamped pipeline and the same params, re-minted secrets.
 
+**Not a build failure, though it looks like one**: a DEPLOYED pod in `ImagePullBackOff` / `ErrImagePull` — the build pushed fine; the cluster cannot pull. The rollout verdict carries the kubelet's line and the platform's remedy (*declare the registry login on the workload, or a pull secret beside it, or pull from a registry the cluster's own identity reaches*); the run's environment row says whether the deploy filled a login from the registry connection and, if not, why (a GHCR connection through a sign-in with no pull token; ECR on any arm). A rerun changes nothing until that is fixed — `references/service.pulling-private-images.md` has the diagnosis order and each case's fix.
+
 ## 6. Never finalized — the outcome could not be read
 
 `status.build_stage.status_reason`:

@@ -427,8 +427,7 @@ backend configured, `planton service deploy --env <env>` deploys the
 repository's own kustomize tree entirely offline through the open-source
 engine -- preflight report first, dependency-ordered deploys, honest exit
 codes -- and the same published GitHub Action serves both postures, the
-mode inferred from its inputs. The complete offline journey -- authoring offline-clean trees,
-wiring GitHub Actions keylessly, verifying everything before declaring ready -- is `references/service.offline-deploy.md`.
+mode inferred from its inputs. The complete offline journey -- authoring offline-clean trees, wiring GitHub Actions keylessly, verifying everything before declaring ready -- is `references/service.offline-deploy.md`.
 
 ## References
 
@@ -477,6 +476,7 @@ memory what a reference answers precisely.
 | `references/service.org-publishing.md` | Sharing a pipeline or a task across services: the `TektonPipeline`/`TektonTask` record shapes, the name law, publish order and the publish check, consuming by one line or a plain `taskRef`, what an update changes, the delete guards, listing what the organization published |
 | `references/service.delivery-verbs.md` | Deploying an image built anywhere, promoting between environments, rolling back, tag releases, feature-branch deploys, explaining a refused delivery |
 | `references/service.urls-and-rollout-verification.md` | Where a deployed service answers: URLs on the deployment record, reading the rollout verdict accurately |
+| `references/service.pulling-private-images.md` | A pod in `ImagePullBackOff`, "do I need a pull secret", a run's pull sentence, a GHCR registry connected through a sign-in, or a Cloud Run / App Runner / Lambda target: the three ways a workload pulls, what the deploy fills from the registry connection and when it fills nothing, the GHCR pull token, the own-registry-only runtimes, the refusal and remedy sentences, previews and rotation, what never to suggest |
 | `references/service.serving-domains.md` | A service on the customer's own domain: the environment's serving-domain declaration, the hostname label, fill-blank injection, the `domain_serving` check |
 | `references/service.serving-domains-targets.md` | Per-target carrier truths (worker, ingress, HTTPRoute, Cloud Run domain mapping, ECS/ALB) and the remediation ladder for a failed `domain_serving` check |
 | `references/service.serving-domains-custom.md` | Anything outside `{label}.{env-domain}`: apex, arbitrary FQDNs, multi-host, CDN fronting -- composed-infrastructure recipes with `valueFrom` bridges |
