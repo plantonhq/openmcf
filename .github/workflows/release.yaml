@@ -145,6 +145,7 @@ jobs:
       CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
       CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
       CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+      SKILLS_DISTRIBUTION_GITHUB_TOKEN: ${{ secrets.SKILLS_DISTRIBUTION_GITHUB_TOKEN }}
 
   # ============================================================================
   # Stigmer Skills - push the same deterministic skill archives to the hosted

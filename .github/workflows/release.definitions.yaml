@@ -36,6 +36,20 @@
 #                            job, so the DAG itself enforces that neither the
 #                            pointer nor the index ever names a release whose
 #                            artifacts are not yet retrievable
+#   distribution-repo        writes the verified exploded skill trees into
+#                            github.com/plantonhq/skills -- the repository
+#                            coding agents (Cursor, Claude Code, Codex, ...)
+#                            install the skills from -- as one commit tagged
+#                            with this release's tag. It runs AFTER
+#                            publish-manifest, so that repository can never
+#                            carry a release the stable channel does not.
+#
+# Distribution repository push credential: SKILLS_DISTRIBUTION_GITHUB_TOKEN,
+# a fine-grained token scoped to plantonhq/skills with contents read/write
+# (the default workflow token cannot push to another repository). Without
+# the secret every CDN upload still lands and the job fails with the exact
+# fix in its log: degraded, never silent -- the same posture as the
+# auto-heal workflow's AUTO_HEAL_PUSH_TOKEN.
 #
 # Upload path: s3://downloads-dot-planton-dot-dev-bucket/releases/{tag}/definitions/{file}
 # Public URL:  https://downloads.planton.dev/releases/{tag}/definitions/{file}
@@ -73,6 +87,11 @@ on:
         required: true
       CLOUDFLARE_R2_ENDPOINT:
         required: true
+      # Optional at the workflow-call boundary so a missing secret fails the
+      # distribution-repo job with a readable message instead of failing the
+      # whole workflow before any CDN upload runs.
+      SKILLS_DISTRIBUTION_GITHUB_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -257,6 +276,18 @@ jobs:
           fi
           echo "verified ${actual} exploded file(s) against the browse manifest"
 
+      # The verified tree (and its checklist) is handed to distribution-repo
+      # as an artifact, so that job re-checks the same bytes it commits
+      # instead of exploding the archives a second time.
+      - name: Share the verified exploded tree with distribution-repo
+        uses: actions/upload-artifact@v4
+        with:
+          name: definitions-exploded
+          path: |
+            exploded/
+            exploded.sha256
+          if-no-files-found: error
+
       - name: Upload exploded layout and browse manifest to R2
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
@@ -339,3 +370,88 @@ jobs:
             --content-type application/json \
             --cache-control "no-cache"
           echo "  releases index += ${TAG} (https://downloads.planton.dev/${INDEX_KEY})"
+
+  # The coding-agent lane. github.com/plantonhq/skills is a distribution
+  # repository: its skills/ tree is release output (this job's writes and
+  # nothing else -- a guard workflow there refuses pull requests touching
+  # it), every commit is a Planton release, and every commit carries the
+  # release's tag. Installers (`npx skills add plantonhq/skills`, Claude
+  # Code's `/plugin marketplace add plantonhq/skills`) clone that repository,
+  # so coding agents run exactly the skill bytes the stable channel points
+  # to -- which is why this job needs publish-manifest, never just exploded.
+  distribution-repo:
+    needs: publish-manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require the distribution repository token
+        env:
+          TOKEN: ${{ secrets.SKILLS_DISTRIBUTION_GITHUB_TOKEN }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            cat <<'EOF'
+          ERROR: SKILLS_DISTRIBUTION_GITHUB_TOKEN is not set on this repository.
+
+          The release is complete on the CDN and the stable channel already
+          points to it; only the coding-agent distribution repository
+          (github.com/plantonhq/skills) was not updated.
+
+          Fix: create a fine-grained GitHub token scoped to plantonhq/skills
+          with Contents: read and write, store it as the Actions secret
+          SKILLS_DISTRIBUTION_GITHUB_TOKEN on plantonhq/planton, then re-run
+          this job.
+          EOF
+            exit 1
+          fi
+
+      - name: Download the verified exploded tree
+        uses: actions/download-artifact@v4
+        with:
+          name: definitions-exploded
+
+      - name: Re-verify the tree against its checklist
+        # The checklist was written by the exploded job from
+        # definitions-browse.json; checking it again here means the bytes
+        # committed below are proven, not assumed, to be the release's.
+        run: sha256sum --check --quiet exploded.sha256
+
+      - name: Check out plantonhq/skills
+        uses: actions/checkout@v4
+        with:
+          repository: plantonhq/skills
+          token: ${{ secrets.SKILLS_DISTRIBUTION_GITHUB_TOKEN }}
+          path: distribution
+          fetch-depth: 1
+
+      - name: Write the release into the distribution repository
+        # skills/ is replaced wholesale (a skill removed from a release
+        # disappears here too); the plugin manifests are stamped with the
+        # release tag as their version, which is what tells Claude Code an
+        # installed plugin has an update. Re-run safe: a tag already on the
+        # remote means this release was published before, and nothing is
+        # pushed twice.
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          cd distribution
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "release ${TAG} is already published to plantonhq/skills; nothing to do"
+            exit 0
+          fi
+          rm -rf skills
+          mkdir skills
+          cp -R ../exploded/. skills/
+          jq --arg v "$TAG" '(.plugins[] | select(.name == "planton") | .version) = $v' \
+            .claude-plugin/marketplace.json > marketplace.next.json
+          mv marketplace.next.json .claude-plugin/marketplace.json
+          jq --arg v "$TAG" '.version = $v' .claude-plugin/plugin.json > plugin.next.json
+          mv plugin.next.json .claude-plugin/plugin.json
+          git config user.name "planton-release"
+          git config user.email "release@planton.ai"
+          git add -A
+          git commit --allow-empty -m "release: ${TAG}" \
+            -m "Skill trees are the checksum-verified exploded archives of definitions release ${TAG} (https://downloads.planton.dev/releases/${TAG}/definitions/definitions-manifest.json)."
+          git tag "$TAG"
+          git push origin HEAD:main "refs/tags/${TAG}"
+          echo "published: https://github.com/plantonhq/skills/tree/${TAG}"

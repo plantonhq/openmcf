@@ -1,11 +1,13 @@
 ---
-title: The Three Workspace Postures — What This Folder IS
-description: The full protocol behind the folder-identity check — composing in your own workspace (charts as top-level subfolders, checkouts, loose manifests and manifest SETS, the canvas rules), working a deployed project's working copy, and composing when the folder itself is the chart. Read when the identity check's one-line answers need their complete choreography — where files go, how checkouts land, when a set beats a chart, and how the canvas follows your writes.
+title: The Four Workspace Postures — What This Folder IS
+description: The full protocol behind the folder-identity check — composing in your own workspace (charts as top-level subfolders, checkouts, loose manifests and manifest SETS, the canvas rules), working a deployed project's working copy, composing when the folder itself is the chart, and working as a coding agent inside an application repository (infrastructure under `infrastructure/`, no canvas, no `.planton/`). Read when the identity check's one-line answers need their complete choreography — where files go, how checkouts land, when a set beats a chart, how the canvas follows your writes, and what changes when there is no canvas at all.
 ---
 
-# The Three Workspace Postures — What This Folder IS
+# The Four Workspace Postures — What This Folder IS
 
-The identity check (`ls .planton/ 2>/dev/null` — its files never appear in the workspace tree) gives three answers. This is each answer's complete choreography.
+The identity check takes two looks: `ls .planton/ 2>/dev/null` (a hidden directory the HOST writes — its files never appear in the workspace tree), then whether `Chart.yaml` sits at the folder's root. Four answers. This is each answer's complete choreography.
+
+The first three postures are Planton surfaces — the desktop's studio, the web console, the assistant's rooms — where a canvas renders the folder live and the host's own choreography applies: your shell starts in the host application's directory (so `cd` to the folder you were given before your first file-writing command), and every writing turn opens with the composing declaration (`mkdir -p .planton && printf 'state: composing\n' > .planton/composing.yaml`) and closes by rewriting it to `state: done`. The fourth posture is a coding agent inside a developer's repository: no canvas, no host-written files, a shell that already starts at the root. The craft is identical across all four; only the choreography around it changes.
 
 ## `.planton/workspace.yaml` — this is YOUR WORKSPACE
 
@@ -21,6 +23,22 @@ A plain working folder, like a colleague's directory: you fill it with whatever 
 
 The folder is bound to a running deployment: your edits target THAT project, saving starts a real deployment pipeline, and the workflow bends — read `references/infra.deployed-projects.md` before doing anything.
 
-## Neither exists — the folder itself is the chart
+## No marker, `Chart.yaml` at the root — the folder itself is the chart
 
-A chart pulled from git or with `planton chart checkout`, a scaffold, a folder the user picked: compose in place at its root, exactly as the chart anatomy shows.
+A chart pulled from git or with `planton chart checkout`, a scaffold, a chart folder the user opened in the studio: compose in place at its root, exactly as the chart anatomy shows. `Chart.yaml` is the chart's identity file, which is why its presence settles this answer without a marker.
+
+## No marker, no `Chart.yaml` — an APPLICATION REPOSITORY
+
+You are a coding agent (Cursor, Claude Code, or any other host that loads this skill) working inside a developer's own repository. The repository is the workspace you were given and the whole of the filesystem you may touch. Nobody provisioned a folder for you, nothing renders your writes live, and nothing hides files from the tree — so the choreography changes while the craft does not.
+
+**Where infrastructure lives.** All of it goes under `infrastructure/` at the repository root, never among the application's own files and never as chart files at the root. Inside that folder the same judgment applies as in a workspace: one thing gets ONE manifest (`infrastructure/orders-db.yaml`), several resources wired together are a SET (a folder of manifests, applied as one with `planton apply -f infrastructure/`, preflight first, then dependency order), and a parameterized architecture that wants per-environment templating is a chart in its own subfolder (`infrastructure/platform/Chart.yaml`, built with `planton chart build infrastructure/platform`). When the folder already exists, read what is there first and add to it — the developer's earlier manifests are the estate you build on, exactly like an existing green cluster.
+
+**Your shell already starts at the repository root.** Write repository-relative paths (`infrastructure/orders-db.yaml`); no `cd` is needed before the first write. This is the opposite of the Planton surfaces, and the reason the rule is stated per posture rather than once.
+
+**No canvas, so no declaration.** The composing declaration exists so a live canvas can hold interim build errors out of the user's view; here nothing is watching, and a `.planton/` directory would be an unexplained artifact in the developer's repository. Never create `.planton/` in this posture, and never write `composing.yaml`. Progressive, one-complete-resource-at-a-time writes still apply — they keep every commit reviewable.
+
+**Grounding without a standing context.** No profile fact sheet or standing context is injected here. Read the person from their words and the repository (its language, its framework, its existing infrastructure), take the defaults the skill already names for absent signals, and put every default in the assumption register. The organization and environment come from the CLI: `planton context get` answers both when a context is set; when it is not, ask ONE question that covers both, then set it on the user's confirmation (`planton context set --org <org> -e <env>` is a mutation with the usual one confirmation). Never guess an organization slug.
+
+**The instruments are the CLI arm, or the platform-tools arm through an API key.** `planton` on the PATH is the CLI arm exactly as the skill describes it — `planton validate <file>` and `planton explain <Kind>` need no login; `planton chart build`, `planton apply`, and every lookup need `planton login` once. When the host carries the platform's tools instead (a Planton MCP server configured with an API key), you are on the platform-tools arm and the same rules apply over the wire. Neither present: compose from the skill, the catalog research layer, and the repository, and say at the end what could not be verified — never refuse to compose. A missing login or tool is a fact you adapt to, not a problem you report; when the user asks how to get one, `planton login` and the API-key MCP configuration are the two answers.
+
+**What the developer sees.** Files under `infrastructure/` they can diff and commit, validated before you hand them over, with the cost picture and the assumption register in the same reply. Applying is a mutation: offer it, perform it only on the explicit ask with one confirmation, and narrate the preflight report and the deploys in the developer's own vocabulary. The repository's version control is theirs — commit only when asked, and never touch files outside `infrastructure/` unless the request names them.

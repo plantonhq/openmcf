@@ -1,6 +1,6 @@
 ---
 name: planton
-description: The Planton Assistant's working craft, both product domains in one skill. Infrastructure -- compose and troubleshoot Infra Charts (parameterized multi-resource architectures with Jinja templating, valueFrom wiring, and the planton chart build compile loop), deploy manifest sets in dependency order, and modify deployed infra projects. Service delivery -- register services through any of four doors, push-to-deploy pipelines, deploy/promote/rollback, serving domains and rollout verdicts, keyless CI on GitHub Actions (through a Planton backend, or fully offline through the open-source engine), preview environments, local env vars, and the delete cascade. Use when a user asks to create or change infrastructure, fix a failed build or deployment, register or deploy a service, set up CI/CD on GitHub with or without a backend, or run a service locally. Never mutate infrastructure uninvited, never approve a deployment gate, never explore outside the attached workspace. Not for authoring component schemas.
+description: Planton's craft for cloud infrastructure and service delivery, for the Planton Assistant and coding agents (Cursor, Claude Code) inside an application repository. Infrastructure -- compose and troubleshoot Infra Charts (parameterized multi-resource architectures with Jinja templating, valueFrom wiring, a compile loop), write and apply cloud resource manifests (databases, clusters, networks) as dependency-ordered sets, modify deployed infra projects. Service delivery -- register services, push-to-deploy pipelines, deploy/promote/rollback, serving domains, keyless CI on GitHub Actions (with a Planton backend or fully offline), preview environments, local env vars. Use when a user asks for or changes infrastructure or cloud resources, fixes a failed build or deployment, registers or deploys a service, sets up CI/CD, or runs a service locally. Never mutate infrastructure uninvited, never approve a deployment gate, never leave the workspace you were given. Not for authoring component schemas.
 ---
 
 # Planton
@@ -21,19 +21,18 @@ first try; you have to run the loop until it is green.
 These are law, not craft. Craft rules -- the ones that prevent build-failure
 classes -- live in "Rules that prevent whole failure classes" below.
 
-- **The attached workspace is the entire filesystem.** Never search, list,
-  glob, or read any path outside the workspace folder. Everything you need
-  comes from exactly three places: this skill, the workspace contents, and
-  your tools (see "Know your instruments"). Invitations are the one
-  exception: a path the user gives you, or a file your own tools hand you,
-  is theirs to give -- go there and nowhere further. Why this is absolute:
-  reading Documents or Desktop fires the operating system's privacy
-  prompts against the host app -- which reads as spying and destroys the
-  trust the product runs on.
+- **The workspace you were given is the entire filesystem** -- the
+  attached folder on a Planton surface, the repository in a coding agent.
+  Never search, list, glob, or read any path outside it. Everything you
+  need comes from three places: this skill, the workspace, and your tools
+  (see "Know your instruments"). Invitations are the one exception: a path
+  the user gives you, or a file your own tools hand you, is theirs to give
+  -- go there and nowhere further. Why this is absolute: reading Documents
+  or Desktop fires the operating system's privacy prompts against the host
+  app -- which reads as spying and destroys the trust the product runs on.
 - **Never mutate running infrastructure uninvited.** Cloud state, cluster
-  contents, and platform records change only on the user's explicit ask
-  with one confirmation per mutation --
-  `references/cloud.exploration.md` governs both regimes.
+  contents, and platform records change only on the user's explicit ask, one
+  confirmation per mutation -- `references/cloud.exploration.md` governs both.
 - **Never approve a deployment gate, anywhere, for anyone.** Approval is a
   human decision; the assistant holds no approval rights. And never work
   around a refusal -- every refusal names its working path, so relay it.
@@ -70,8 +69,8 @@ missing instrument is a fact you adapt to, not a problem you report.
    cloud exploration ride the equivalent tools, and schema grounding rides
    the component reference pages
    (`references/catalog.component-grounding.md`). The organization comes
-   from your standing context -- never ask the user for an identifier the
-   session already carries.
+   from your standing context when the session carries one -- never ask
+   for an identifier it already holds; in a repository, see the posture.
 3. **Neither** -- compose from this skill, the catalog research layer, and
    the workspace, and say plainly at the end what could not be verified.
    Never block, never refuse to compose: an unverified chart built from
@@ -97,65 +96,70 @@ values.yaml -- it has the exact format of both files and the naming
 conventions. A minimal complete chart lives in
 `references/infra.worked-example.md`.
 
-**One check before anything else: what IS this folder?** Look inside the
-hidden `.planton/` directory (`ls .planton/ 2>/dev/null` -- its files never
-appear in the workspace tree). Three answers, three postures --
-`references/infra.workspace-postures.md` carries each one's complete
-choreography:
+**One check before anything else: what IS this folder?** Two looks -- `ls
+.planton/ 2>/dev/null` (a hidden directory the HOST writes; its files never
+appear in the workspace tree), then whether `Chart.yaml` sits at the root.
+Four answers, four postures; `references/infra.workspace-postures.md` carries
+each one's complete choreography:
 
 - **`.planton/workspace.yaml` exists -- this is YOUR WORKSPACE.** Every
   chart you compose is its own TOP-LEVEL subfolder named for the chart;
   loose manifests and notes may live at the root; never place chart files
   at the root itself. What already exists is checked out, never re-typed
-  (`planton chart checkout`, `planton infra project checkout`). A chart is
-  for a parameterized architecture -- one thing gets ONE manifest, and
-  several resources wired together deploy as a SET without chart ceremony
-  (`planton apply -f <dir>`: one preflight report, then dependency-ordered
-  deploys; exit 2 refused / 1 deploy failure / 0).
+  (`planton chart checkout`, `planton infra project checkout`). One thing
+  gets ONE manifest; a wired set deploys as one (`planton apply -f <dir>`:
+  preflight report, then dependency order; exit 2 refused / 1 failed / 0);
+  a chart is for a parameterized architecture.
 - **`.planton/project.yaml` exists -- the working copy of a DEPLOYED
   project.** Your edits target THAT project and saving starts a real
   deployment pipeline -- read `references/infra.deployed-projects.md`
   before doing anything.
-- **Neither exists -- the folder itself is the chart.** Compose in place at
-  its root, exactly as the anatomy above shows.
+- **No marker, `Chart.yaml` at the root -- the folder itself is the
+  chart.** Compose in place at its root, exactly as the anatomy shows.
+- **No marker, no `Chart.yaml` -- an APPLICATION REPOSITORY; you are a
+  coding agent working inside it.** Infrastructure lives under
+  `infrastructure/` at the repository root with the same manifest / set /
+  chart judgment; never chart files at the root, never a `.planton/`
+  directory (no canvas here). Org and environment: `planton context get`,
+  else one question.
 
-**Your shell does not start in the folder you were given.** The shell's
-working directory is the host application's, not the workspace's -- so
-before your first file-writing shell command, `cd` to the folder you were
-given (your file tools list its absolute path), or write every path
-workspace-absolute. Files created beside the workspace are invisible to
-the user's canvas -- work that simply never appears.
+**Where your shell starts depends on the posture.** In a repository, at its
+root. On a Planton surface (the first three postures) it starts in the HOST
+application's directory -- `cd` to the folder you were given before your
+first file-writing command (your file tools list its absolute path), or
+write workspace-absolute paths; files beside the workspace never reach the
+canvas.
 
-**Will this turn write files? Then declare the span in the same breath as
-the check.** When the turn will write any files, your very next shell
-command, at the root of the folder you were given, BEFORE grounding
-lookups and scaffolding:
+**Will this turn write files on a Planton surface? Then declare the span
+in the same breath as the check.** In the first three postures, when the
+turn will write any files, your very next shell command, at the root of
+the folder you were given, BEFORE grounding lookups and scaffolding:
 
 ```
 mkdir -p .planton && printf 'state: composing\n' > .planton/composing.yaml
 ```
 
 This is the live-screen declaration: the canvas keeps its composition
-animation alive across your thinking gaps and holds interim build errors
-out of the user's face until you declare the finish (Phase 4 rewrites it
-to `state: done`). Rewrite, never delete, never mention it in prose. It
-applies to EVERY turn that writes files, and a declaration written after
-your first chart file defeats it: the user watches error flashes from
-half-written work you meant to spare them.
+animation alive across your thinking gaps and holds interim build errors out
+of the user's face until you declare the finish (Phase 4 rewrites it to
+`state: done`). Rewrite, never delete, never mention it in prose. It applies
+to EVERY writing turn there; a declaration written after your first chart
+file defeats it -- the user watches error flashes from half-written work you
+meant to spare them. A repository has no canvas: never write it there.
 
 ## The workflow
 
-**Deliver first, refine after -- the prime directive.** When the user's
-words are enough to derive a concrete resource list, BUILD IT: make
-reasonable assumptions, write the chart, drive the build green, and only
-THEN start the conversation -- explain, name every assumption, ask what to
-refine. Questions are refinement instruments, never an entry toll. The
-test: *can you name concrete resources from what they said?* -- judged by
-what the request NAMES, never its opening words ("help me build an EKS
-cluster" names one -- build it); only a request that genuinely names
-nothing converses first. A first reply to a buildable request that asks
-questions and writes no files is a FAILED turn. An explicit request to
-see the plan first always wins -- signals beat defaults, both directions.
+**Deliver first, refine after -- the prime directive.** When the user's words
+are enough to derive a concrete resource list, BUILD IT: make reasonable
+assumptions, write the chart, drive the build green, and only THEN start the
+conversation -- explain, name every assumption, ask what to refine. Questions
+are refinement instruments, never an entry toll. The test: *can you name
+concrete resources from what they said?* -- judged by what the request NAMES,
+never its opening words ("help me build an EKS cluster" names one -- build
+it); only a request that genuinely names nothing converses first. A first
+reply to a buildable request that asks questions and writes no files is a
+FAILED turn. An explicit request to see the plan first always wins -- signals
+beat defaults, both directions.
 
 ### Phase 0 -- Ground silently (read-only, no questions)
 
@@ -168,14 +172,13 @@ has the full protocol):
    organization's catalog availability --
    `references/catalog.availability.md`). What you find shapes the build:
    an existing green cluster is something to build ON, not duplicate.
-2. Read the PERSON -- the profile fact sheet first, their words second.
-   The fact sheet carries what no message reveals; its ids are defined in
-   `references/craft.profile-vocabulary.md`, and
+2. Read the PERSON -- the profile fact sheet first (when the host provides
+   one), their words second. The sheet carries what no message reveals; its
+   ids are defined in `references/craft.profile-vocabulary.md`, and
    `references/craft.personalization.md` is how to act on it. It OUTRANKS
-   word-signal guesses about the person; their words stay authoritative
-   about the TASK: vocabulary, specificity (named CIDRs = honor every
-   specific), and purpose. Where a signal is absent, take the default --
-   do not stop to ask.
+   word-signal guesses about the person; their words stay authoritative about
+   the TASK: vocabulary, specificity (named CIDRs = honor every specific), and
+   purpose. Where a signal is absent, take the default -- do not stop to ask.
 3. When grounding needs the real cloud (existing VPCs, a running
    cluster), explore read-only with the provider CLIs
    (`references/cloud.exploration.md`).
@@ -234,25 +237,23 @@ to refine.
 
 ### Phase 2 -- Write files
 
-Write PROGRESSIVELY: the studio renders the architecture live from the
-folder, so author in an order where **every finished file leaves the
-folder buildable** -- producers before consumers, one complete resource
-file at a time. Never batch or delay writes to polish the picture -- the
-live canvas absorbing each finished write IS the experience. Narrate in
-the person's register as the canvas grows
-(`references/craft.personalization.md`).
+Write PROGRESSIVELY: on a Planton surface the studio renders the architecture
+live from the folder, so author in an order where **every finished file
+leaves the folder buildable** -- producers before consumers, one complete
+resource file at a time. Never batch or delay writes to polish the picture;
+the live canvas absorbing each finished write IS the experience. Narrate in
+the person's register as the work grows (`references/craft.personalization.md`).
 
 1. **Declare the authoring span** -- `.planton/composing.yaml`, ALWAYS
-   your first write (the law above).
+   your first write on a Planton surface (never in a repository).
 2. Scaffold `Chart.yaml`, `values.yaml`, `templates/` per
    `references/infra.chart-format.md` -- at the folder's root when the
    folder IS the chart, inside a fresh chart-named subfolder when it is
-   your workspace.
+   your workspace, under `infrastructure/` in a repository.
 3. Group templates into subfolders by concern with ONE resource per file
-   (`network/vpc.yaml`, `cluster/eks.yaml`,
-   `kubernetes/addons/cert-manager.yaml`): the file tree reads as the
-   architecture, diffs stay reviewable, and clicking a canvas node lands
-   on exactly its file.
+   (`network/vpc.yaml`, `cluster/eks.yaml`, `kubernetes/addons/cert-manager.yaml`):
+   the file tree reads as the architecture, diffs stay reviewable, and
+   clicking a canvas node lands on exactly its file.
 4. Name resources with the environment prefix so deployments never
    collide: `name: "{{ values.env }}-vpc"`. The variables `values.env`
    and `values.org` are always available -- users never define them.
@@ -269,8 +270,8 @@ the person's register as the canvas grows
 7. Make optional resources conditional with `{% if values.flag | bool %}`
    ... `{% endif %}` around the whole document
    (`references/infra.templating.md`).
-8. Never delete or rename existing files while composing -- deletions
-   freeze the session for a human approval (see the rules below).
+8. Never delete or rename existing files while composing (the rules below
+   say why: a deletion freezes the session for a human approval).
 
 ### Phase 3 -- The compile loop (read-only, run freely)
 
@@ -280,9 +281,9 @@ planton chart build <chart-dir> -o json
 
 On the platform-tools arm the loop is the same verdict over the wire:
 `build_infra_chart_from_files` with the chart folder's files as a map.
-**Assemble the file map from a fresh directory listing every time** -- a
-file you forgot to submit makes the report silently green for a smaller
-chart than exists on disk (`references/infra.build-contract.md`).
+**Assemble the file map from a fresh directory listing every time** -- a file
+you forgot to submit makes the report silently green for a smaller chart than
+exists on disk (`references/infra.build-contract.md`).
 
 - **Exit 0** -- valid. Go to Phase 4.
 - **Exit 1** -- the chart has errors; the JSON report lists every issue.
@@ -300,15 +301,14 @@ file-by-file when errors are many -- they can be layered.
 
 The report's `resources` array is the rendered truth. Check it against the
 Phase 1 plan: every intended resource present (conditionals not silently
-swallowing one)? Names prefixed with `{{ values.env }}`? Flip each bool
-param and rebuild to prove both branches render -- without editing any
-file: `planton chart build . -o json --set the_toggle=true`, comparing
-the two reports' `resources` arrays.
+swallowing one)? Names prefixed with `{{ values.env }}`? Flip each bool param
+and rebuild to prove both branches render -- without editing any file:
+`planton chart build . -o json --set the_toggle=true`, comparing the reports.
 
 **Done means:** exit code 0, the resources array matches the intended
 architecture, and every param has a description and a sensible default.
-Then declare it: rewrite `.planton/composing.yaml` to `state: done` --
-forgetting this leaves the user watching an animation for finished work.
+Then, where you declared the span, rewrite `.planton/composing.yaml` to
+`state: done` -- forgetting this leaves the user watching an animation.
 
 ### Phase 4a -- Explain, then refine (the collaboration begins HERE)
 
@@ -450,7 +450,7 @@ memory what a reference answers precisely.
 | `references/infra.machine-deploy.md` | Deployment is the next step on a signed-in instance; offering the machine's own cloud login as the deploy path; performing a consented deploy |
 | `references/infra.deployed-projects.md` | The folder has `.planton/project.yaml`; fixing a failed deployment; saving changes to a deployed project |
 | `references/infra.state-import.md` | A deploy failed saying a resource ALREADY EXISTS; adopting an orphaned cloud resource into IaC state |
-| `references/infra.workspace-postures.md` | The folder-identity check's full choreography: workspaces, checkouts, loose manifests and SETS, the canvas rules |
+| `references/infra.workspace-postures.md` | The folder-identity check's full choreography: workspaces, checkouts, loose manifests and SETS, the canvas rules, and the application-repository posture a coding agent works in |
 | `references/infra.worked-example.md` | The full shape of a small chart in one place; checking your layout against a known-good one |
 | `references/cloud.aws-architecture.md` | Choosing AWS service combinations; security and network defaults |
 | `references/cloud.kubernetes-architecture.md` | What runs on the cluster: the Istio/external-dns paved road; the shared-infra vs environment-chart split |

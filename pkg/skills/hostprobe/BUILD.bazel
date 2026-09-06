@@ -1,0 +1,17 @@
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "hostprobe",
+    srcs = ["hostprobe.go"],
+    importpath = "github.com/plantonhq/planton/pkg/skills/hostprobe",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "hostprobe_test",
+    srcs = [
+        "hostprobe_test.go",
+        "judge_test.go",
+    ],
+    embed = [":hostprobe"],
+)

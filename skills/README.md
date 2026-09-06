@@ -30,6 +30,17 @@ craft of its own. A new skill is justified only by BOTH properties —
 machine-assembled bulk plus consumed-by-reference — never by a domain
 feeling big enough to deserve its own directory.
 
+The same doctrine holds across HOSTS. One skill serves every host that
+loads it — the Planton Assistant on the desktop and web surfaces, and
+coding agents such as Cursor, Claude Code, or Codex working inside a
+developer's own repository. Where a host changes the choreography (the
+folder it hands the agent, where the shell starts, whether a canvas is
+watching), the skill resolves that inside its own instructions — the
+`planton` skill's workspace-posture check is the pattern — and never forks
+into a per-host variant. A per-host copy is the same drift hazard as a
+per-domain split, with the added cost that the two hosts would then
+disagree about what the platform does.
+
 ## The specification
 
 The [Agent Skills specification](https://agentskills.io/specification) is
@@ -146,6 +157,16 @@ index at `definitions/releases/index.json` naming every complete release.
 The exploded files are the archive entries byte for byte (the archives are
 deterministic stored zips), verified against the browse manifest before
 upload — so browsing a release reads exactly what installers install.
+
+The third consumer is the coding-agent lane:
+[github.com/plantonhq/skills](https://github.com/plantonhq/skills) is a
+distribution repository whose `skills/` tree the release lane rewrites from
+the verified exploded trees after the stable pointer has moved, one commit
+per release tagged with the release's tag. Coding agents install from it
+(`npx skills add plantonhq/skills`, Claude Code's marketplace), so they run
+exactly the bytes the stable channel points to. Nothing under its `skills/`
+is authored by hand — a guard workflow there refuses pull requests that
+try — which keeps this tree the only place skill content is written.
 
 ## The authoring bar
 

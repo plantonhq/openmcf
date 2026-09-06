@@ -418,6 +418,7 @@ Now that you have the CLI installed:
 2. **[Platform Overview](/docs/platform)** - Understand how Planton works
 3. **[Infrastructure](/docs/infrastructure)** - Deploy cloud infrastructure via CLI
 4. **[Secrets](/docs/secrets)** - Manage secrets from the terminal (`planton secret set|get|describe|history|snippet|access`, `planton secret backend verify`)
+5. **[Coding Agents](/docs/coding-agents)** - Install the Planton skills so Cursor, Claude Code, or any coding agent drives this CLI for you
 
 For CLI command reference:
 

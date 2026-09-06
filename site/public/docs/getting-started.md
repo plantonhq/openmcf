@@ -28,6 +28,12 @@ Already set up? Choose a path based on what you want to do.
 3. [Push code and deploy](/docs/ci-cd/pipelines) — trigger automated builds and deployments
 4. [Configure ingress](/docs/ci-cd/ingress) — set up domains and routing for your service
 
+## Work From Your Coding Agent
+
+1. [Install the Planton skills](/docs/coding-agents) — one command for Cursor, Claude Code, Codex, and any Agent Skills host
+2. [Install the CLI](/docs/cli) — validation and schema lookups offline, deploys after one sign-in
+3. Ask your agent for what you need — it composes under `infrastructure/`, validates, and asks before applying
+
 ## Understand the Platform
 
 - [Platform Overview](/docs/platform) — what Planton is and how it is organized
@@ -48,3 +54,4 @@ Already set up? Choose a path based on what you want to do.
 | [Runner](/docs/runner) | Secure execution agent deployed in your infrastructure |
 | [Teams and Access](/docs/teams-and-access) | Team management, role-based permissions, and billing |
 | [CLI](/docs/cli) | Install and use the Planton command-line interface |
+| [Coding Agents](/docs/coding-agents) | Install the Planton skills into Cursor, Claude Code, and other coding agents |
