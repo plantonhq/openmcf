@@ -58,7 +58,7 @@ func (r *Redis) Reconcile(ctx context.Context, c client.Client, _ *runtime.Schem
 		return Result{}, fmt.Errorf("rendering Redis chart: %w", err)
 	}
 
-	if err := r.ApplyManifests(ctx, c, rendered); err != nil {
+	if err := r.ApplyManifests(ctx, c, planton, rendered); err != nil {
 		return Result{}, fmt.Errorf("applying Redis manifests: %w", err)
 	}
 

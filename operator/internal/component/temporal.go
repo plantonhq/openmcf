@@ -37,7 +37,7 @@ func (t *Temporal) Reconcile(ctx context.Context, c client.Client, _ *runtime.Sc
 		return Result{}, fmt.Errorf("rendering Temporal chart: %w", err)
 	}
 
-	if err := t.ApplyManifests(ctx, c, rendered); err != nil {
+	if err := t.ApplyManifests(ctx, c, planton, rendered); err != nil {
 		return Result{}, fmt.Errorf("applying Temporal manifests: %w", err)
 	}
 

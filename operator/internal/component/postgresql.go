@@ -89,7 +89,7 @@ func (p *PostgreSQL) Reconcile(ctx context.Context, c client.Client, scheme *run
 	// mutations -- a storage shrink, a malformed quantity -- and that
 	// rejection surfaces here as the component's own error message instead
 	// of a silent no-op.
-	if err := p.ApplyManifests(ctx, c, []*unstructured.Unstructured{cluster}); err != nil {
+	if err := p.ApplyManifests(ctx, c, planton, []*unstructured.Unstructured{cluster}); err != nil {
 		return Result{}, fmt.Errorf("applying PostgreSQL cluster: %w", err)
 	}
 

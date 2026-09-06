@@ -53,7 +53,7 @@ func (n *Neo4j) Reconcile(ctx context.Context, c client.Client, _ *runtime.Schem
 		return Result{}, fmt.Errorf("rendering Neo4j chart: %w", err)
 	}
 
-	if err := n.ApplyManifests(ctx, c, rendered); err != nil {
+	if err := n.ApplyManifests(ctx, c, planton, rendered); err != nil {
 		return Result{}, fmt.Errorf("applying Neo4j manifests: %w", err)
 	}
 

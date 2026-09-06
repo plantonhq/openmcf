@@ -75,7 +75,7 @@ func RenderHelmChart(chartData []byte, releaseName, namespace string, values map
 			return nil, fmt.Errorf("parsing rendered manifests: %w", err)
 		}
 		for _, obj := range objs {
-			if obj.GetNamespace() == "" && isNamespacedKind(obj.GetKind()) {
+			if obj.GetNamespace() == "" && IsNamespacedKind(obj.GetKind()) {
 				obj.SetNamespace(namespace)
 			}
 			result = append(result, obj)
@@ -103,13 +103,18 @@ func isTestHook(events []release.HookEvent) bool {
 	return slices.Contains(events, release.HookTest)
 }
 
-// isNamespacedKind returns true for resource kinds that require a namespace.
-// Cluster-scoped resources should not have a namespace set.
-func isNamespacedKind(kind string) bool {
+// IsNamespacedKind reports whether objects of this kind live in a namespace.
+// It is the operator's one list of the cluster-scoped kinds a chart or a
+// vendored manifest can render: the render step uses it to place namespaced
+// objects in the release namespace, and the platform-owned apply uses it to
+// refuse ownership of anything a namespaced owner cannot garbage-collect.
+func IsNamespacedKind(kind string) bool {
 	switch kind {
 	case "Namespace", "ClusterRole", "ClusterRoleBinding",
 		"CustomResourceDefinition", "PriorityClass",
-		"PersistentVolume", "StorageClass", "IngressClass":
+		"PersistentVolume", "StorageClass", "IngressClass",
+		"ValidatingWebhookConfiguration", "MutatingWebhookConfiguration",
+		"APIService", "CSIDriver", "RuntimeClass", "GatewayClass":
 		return false
 	default:
 		return true

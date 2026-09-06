@@ -142,10 +142,26 @@ func DependenciesReady(components *v1.ComponentStatuses, deps []string) (bool, s
 // component implementations.
 type Base struct{}
 
-// ApplyManifests applies a set of rendered Helm chart objects using
-// Server-Side Apply with force ownership.
-func (b *Base) ApplyManifests(ctx context.Context, c client.Client, objs []*unstructured.Unstructured) error {
+// ApplyManifests applies the platform's own objects -- rendered Helm chart
+// output and hand-built unstructured resources alike -- with Server-Side
+// Apply and force ownership, and makes every one of them the platform's:
+// each object's ownerReferences carry the PlantonPlatform, so deleting the
+// resource garbage-collects everything applied here. The operator has no
+// finalizers; owner-reference GC IS its destroy contract, and this is the one
+// seam that upholds it for chart-rendered objects (the typed builders set the
+// reference themselves). Shared sub-operators the platform must never own go
+// through ApplyOperatorManifests instead.
+//
+// Ownership has two preconditions Kubernetes enforces by deleting, not by
+// refusing: a namespaced owner cannot own a cluster-scoped object, and a
+// dependent whose owner lives in another namespace is treated as orphaned and
+// collected. Both are refused here in words before anything is applied.
+func (b *Base) ApplyManifests(ctx context.Context, c client.Client, planton *v1.PlantonPlatform, objs []*unstructured.Unstructured) error {
 	log := logf.FromContext(ctx)
+
+	if err := ownedByPlatform(planton, b.OwnerReferenceFor(planton), objs); err != nil {
+		return err
+	}
 
 	for _, obj := range objs {
 		opts := []client.PatchOption{
@@ -629,11 +645,38 @@ func (b *Base) ApplyTypedObject(ctx context.Context, c client.Client, obj client
 }
 
 func isNamespaced(obj *unstructured.Unstructured) bool {
-	switch obj.GetKind() {
-	case "CustomResourceDefinition", "ClusterRole", "ClusterRoleBinding",
-		"PriorityClass", "Namespace":
-		return false
-	default:
-		return true
+	return resources.IsNamespacedKind(obj.GetKind())
+}
+
+// ownedByPlatform stamps the platform's owner reference on every object,
+// merging with any reference the builder already set (matched by UID, so a
+// controller reference on a CloudNativePG Cluster is kept as-is), and refuses
+// the two shapes a namespaced owner cannot collect. It is pure so the
+// contract is unit-tested; the apply path is proven by envtest and the lab.
+func ownedByPlatform(planton *v1.PlantonPlatform, ownerRef *metav1.OwnerReference, objs []*unstructured.Unstructured) error {
+	for _, obj := range objs {
+		if !resources.IsNamespacedKind(obj.GetKind()) {
+			return fmt.Errorf("%s %q is cluster-scoped, and a PlantonPlatform in namespace %q cannot own it: "+
+				"a cluster-scoped object is never garbage-collected with the platform, so it must not be applied as the platform's own -- "+
+				"render it into the namespace or manage it as shared cluster infrastructure",
+				obj.GetKind(), obj.GetName(), planton.Namespace)
+		}
+		if obj.GetNamespace() != planton.Namespace {
+			return fmt.Errorf("%s %s/%s lives outside the platform's namespace %q, and Kubernetes treats an owner in another namespace as absent: "+
+				"the object would be garbage-collected immediately -- render it into the platform's namespace",
+				obj.GetKind(), obj.GetNamespace(), obj.GetName(), planton.Namespace)
+		}
+		refs := obj.GetOwnerReferences()
+		owned := false
+		for _, existing := range refs {
+			if existing.UID == ownerRef.UID {
+				owned = true
+				break
+			}
+		}
+		if !owned {
+			obj.SetOwnerReferences(append(refs, *ownerRef))
+		}
 	}
+	return nil
 }

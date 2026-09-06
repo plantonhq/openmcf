@@ -59,7 +59,7 @@ func (o *OpenFGA) Reconcile(ctx context.Context, c client.Client, _ *runtime.Sch
 		return Result{}, fmt.Errorf("rendering OpenFGA chart: %w", err)
 	}
 
-	if err := o.ApplyManifests(ctx, c, rendered); err != nil {
+	if err := o.ApplyManifests(ctx, c, planton, rendered); err != nil {
 		return Result{}, fmt.Errorf("applying OpenFGA manifests: %w", err)
 	}
 

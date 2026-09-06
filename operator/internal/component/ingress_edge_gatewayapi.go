@@ -3,6 +3,7 @@ package component
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -141,7 +142,7 @@ func (i *Ingress) reconcileGatewayEdge(ctx context.Context, c client.Client, pla
 		if gatewayNamespace != planton.Namespace {
 			objs = append(objs, resources.TLSReferenceGrant(planton.Name, planton.Namespace, gatewayNamespace, i.OwnerReferenceFor(planton)))
 		}
-		if err := i.ApplyManifests(ctx, c, objs); err != nil {
+		if err := i.ApplyManifests(ctx, c, planton, objs); err != nil {
 			return Result{}, err
 		}
 	}
@@ -156,7 +157,7 @@ func (i *Ingress) reconcileGatewayEdge(ctx context.Context, c client.Client, pla
 		GatewayNamespace: gatewayNamespace,
 		SectionName:      ref.SectionName,
 	})
-	if err := i.ApplyManifests(ctx, c, []*unstructured.Unstructured{route}); err != nil {
+	if err := i.ApplyManifests(ctx, c, planton, []*unstructured.Unstructured{route}); err != nil {
 		return Result{}, err
 	}
 
@@ -312,10 +313,8 @@ func (i *Ingress) certificateServedByListener(ctx context.Context, c client.Clie
 		if l.Protocol != "HTTPS" {
 			continue
 		}
-		for _, ref := range l.CertificateRefs {
-			if ref == want {
-				return "", nil
-			}
+		if slices.Contains(l.CertificateRefs, want) {
+			return "", nil
 		}
 	}
 	grant := ""
