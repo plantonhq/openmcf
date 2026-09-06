@@ -408,20 +408,40 @@ message KubernetesPlantonPlatformIngress {
 }
 
 /**
- * The Gateway API Gateway an HTTPRoute attaches to.
+ * The Gateway API Gateway the platform's HTTPRoute attaches to. `name` and
+ * `namespace` are foreign keys to KubernetesGateway: in an infra chart that
+ * also declares the Gateway, wire both with `valueFrom` against that resource
+ * and the platform deploys after (and follows renames of) its Gateway, with
+ * the dependency drawn in the resource graph. For a Gateway created outside
+ * Planton (a cluster team's Istio or Envoy Gateway), pass the literal names
+ * with `value:`. The rendered PlantonPlatform resource carries the resolved
+ * plain strings either way.
  */
 message KubernetesPlantonPlatformGatewayRef {
   /**
-   * Name of the Gateway.
+   * Name of the Gateway. Defaults to a KubernetesGateway foreign key
+   * (`status.outputs.gateway_name`): `valueFrom` for a Planton-managed
+   * Gateway, `value:` for one created outside Planton.
    */
-  string name = 1 [(buf.validate.field).string.min_len = 1];
+  dev.planton.shared.foreignkey.v1.StringValueOrRef name = 1 [
+    (buf.validate.field).required = true,
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.gateway_name",
+    (dev.planton.shared.options.diagram_label) = "attached to"
+  ];
 
   /**
-   * Namespace of the Gateway. Defaults to the platform's own namespace.
-   * A Gateway in another namespace must allow routes from this one
-   * (spec.listeners[].allowedRoutes.namespaces).
+   * Namespace of the Gateway. Defaults to the platform's own namespace when
+   * omitted. A Gateway in another namespace must allow routes from this one
+   * (spec.listeners[].allowedRoutes.namespaces). Defaults to the same
+   * KubernetesGateway foreign key as `name` (`status.outputs.namespace`), so
+   * one resource wires both; a Gateway created outside Planton takes the
+   * literal namespace with `value:`.
    */
-  string namespace = 2;
+  dev.planton.shared.foreignkey.v1.StringValueOrRef namespace = 2 [
+    (dev.planton.shared.foreignkey.v1.default_kind) = KubernetesGateway,
+    (dev.planton.shared.foreignkey.v1.default_kind_field_path) = "status.outputs.namespace"
+  ];
 
   /**
    * Pins the route to one named listener of the Gateway. When empty, the

@@ -17,7 +17,23 @@ spec:
     # attaches one route for the hostname and reads the listeners. Pinning
     # section_name to the HTTPS listener that already serves the hostname
     # means the platform advertises https:// with no tls block at all.
+    #
+    # name and namespace are foreign keys to KubernetesGateway. `value:`
+    # names a Gateway created outside Planton (shown here). When the
+    # Gateway is itself a Planton resource in the same infra chart, wire
+    # both with `valueFrom` and the platform deploys after it and follows
+    # a rename (kind and fieldPath come from the field's defaults):
+    #   name:
+    #     valueFrom:
+    #       kind: KubernetesGateway
+    #       name: <gateway-resource-name>
+    #   namespace:
+    #     valueFrom:
+    #       kind: KubernetesGateway
+    #       name: <gateway-resource-name>
     gateway_ref:
-      name: main
-      namespace: istio-ingress
+      name:
+        value: main
+      namespace:
+        value: istio-ingress
       section_name: https

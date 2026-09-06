@@ -33,6 +33,13 @@ Gateway stays yours and is never modified.
 - **`gateway_ref` is the fork** — set it INSTEAD of `ingress_class_name`
   (never both); `annotations` are ignored on this door because the Gateway
   API expresses behavior in typed fields
+- **`gateway_ref.name` and `namespace` are foreign keys to
+  KubernetesGateway** — `value:` for a Gateway created outside Planton (as
+  in this preset); `valueFrom:` naming a KubernetesGateway resource when the
+  Gateway is Planton's own, so an infra chart declares the Gateway and the
+  platform together, the platform deploys after its Gateway, and a renamed
+  Gateway carries the route with it. One `valueFrom` pair wires both fields
+  from the same resource (its `gateway_name` and `namespace` outputs)
 - **`section_name` pins one listener** — omit it to attach to every
   listener whose hostname admits the platform's
 - **HTTPS is the listener's** — when the listener already serves the
@@ -51,7 +58,9 @@ Gateway stays yours and is never modified.
 ## Placeholders to Replace
 
 - `planton.example.com` — your platform's hostname
-- `main` / `istio-ingress` — your Gateway's name and namespace
+- `main` / `istio-ingress` — your Gateway's name and namespace (or replace
+  both `value:` blocks with `valueFrom:` against your KubernetesGateway
+  resource)
 - `https` — the name of the listener serving the hostname (or omit)
 
 ## Related Presets

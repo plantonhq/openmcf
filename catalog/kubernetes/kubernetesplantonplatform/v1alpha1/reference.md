@@ -184,8 +184,8 @@ spec:
 | `spec.ingress.tls.issuer.name` | `string` | yes |  |  |
 | `spec.ingress.tls.issuer.kind` | `string` |  | `Issuer` |  |
 | `spec.ingress.gatewayRef` | `KubernetesPlantonPlatformGatewayRef` |  |  |  |
-| `spec.ingress.gatewayRef.name` | `string` | yes |  |  |
-| `spec.ingress.gatewayRef.namespace` | `string` |  |  |  |
+| `spec.ingress.gatewayRef.name` | `string \| valueFrom` | yes |  | KubernetesGateway (`status.outputs.gateway_name`) |
+| `spec.ingress.gatewayRef.namespace` | `string \| valueFrom` |  |  | KubernetesGateway (`status.outputs.namespace`) |
 | `spec.ingress.gatewayRef.sectionName` | `string` |  |  |  |
 | `spec.gateway` | `KubernetesPlantonPlatformGateway` |  |  |  |
 | `spec.gateway.localPort` | `int32` |  | `8080` |  |
@@ -524,19 +524,29 @@ field (0.9.0 or newer); an older definition refuses the declaration.
 
 ### spec.ingress.gatewayRef.name
 
-`string` · required
+`string | valueFrom` · required
 
-Name of the Gateway.
+Name of the Gateway. Defaults to a KubernetesGateway foreign key
+(`status.outputs.gateway_name`): `valueFrom` for a Planton-managed
+Gateway, `value:` for one created outside Planton.
 
-- rule: {"string":{"minLen":"1"}}
+- references: KubernetesGateway (`status.outputs.gateway_name`)
+- rule: {"required":true}
+- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesGateway, name: <that resource's name>, fieldPath: status.outputs.gateway_name}} -- a bare string does not parse
 
 ### spec.ingress.gatewayRef.namespace
 
-`string`
+`string | valueFrom`
 
-Namespace of the Gateway. Defaults to the platform's own namespace.
-A Gateway in another namespace must allow routes from this one
-(spec.listeners[].allowedRoutes.namespaces).
+Namespace of the Gateway. Defaults to the platform's own namespace when
+omitted. A Gateway in another namespace must allow routes from this one
+(spec.listeners[].allowedRoutes.namespaces). Defaults to the same
+KubernetesGateway foreign key as `name` (`status.outputs.namespace`), so
+one resource wires both; a Gateway created outside Planton takes the
+literal namespace with `value:`.
+
+- references: KubernetesGateway (`status.outputs.namespace`)
+- rule: write as {value: <literal>} or {valueFrom: {kind: KubernetesGateway, name: <that resource's name>, fieldPath: status.outputs.namespace}} -- a bare string does not parse
 
 ### spec.ingress.gatewayRef.sectionName
 
@@ -1101,6 +1111,8 @@ Fields that can point at another resource's outputs:
 | Field | Kind | Output |
 |---|---|---|
 | `spec.namespace` | KubernetesNamespace | `spec.name` |
+| `spec.ingress.gatewayRef.name` | KubernetesGateway | `status.outputs.gateway_name` |
+| `spec.ingress.gatewayRef.namespace` | KubernetesGateway | `status.outputs.namespace` |
 
 ## See Also
 

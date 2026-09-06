@@ -965,6 +965,8 @@ Fields on other kinds that can point at this resource:
 | KubernetesGrpcRoute | `spec.parentRefs[].name` | `status.outputs.gateway_name` |
 | KubernetesHttpRoute | `spec.parentRefs[].name` | `status.outputs.gateway_name` |
 | KubernetesListenerSet | `spec.parentRef.name` | `status.outputs.gateway_name` |
+| KubernetesPlantonPlatform | `spec.ingress.gatewayRef.name` | `status.outputs.gateway_name` |
+| KubernetesPlantonPlatform | `spec.ingress.gatewayRef.namespace` | `status.outputs.namespace` |
 | KubernetesRequestAuthentication | `spec.targetRefs[].name` | `status.outputs.gateway_name` |
 | KubernetesTcpRoute | `spec.parentRefs[].name` | `status.outputs.gateway_name` |
 | KubernetesTelemetry | `spec.targetRefs[].name` | `status.outputs.gateway_name` |

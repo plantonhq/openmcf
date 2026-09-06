@@ -43,6 +43,8 @@ variable "spec" {
       enabled            = optional(bool, false)
       hostname           = optional(string, "")
       ingress_class_name = optional(string, "")
+      # name and namespace are KubernetesGateway foreign keys in the spec;
+      # they arrive here already resolved to plain strings.
       gateway_ref = optional(object({
         name         = string
         namespace    = optional(string, "")

@@ -57,7 +57,7 @@ resource's outputs.
 |---|---|---|---|
 | `namespace` | yes | — | The platform's namespace (literal or KubernetesNamespace reference) |
 | `version` | yes | — | The platform version — THE deliberate choice |
-| `ingress` | no | off | Real URL via the cluster's front door — an Ingress controller (`ingress_class_name`) XOR a Gateway API Gateway (`gateway_ref`); `tls` takes a Secret XOR a cert-manager issuer and requires `hostname` (with `gateway_ref` the listener owns the certificate, so only `issuer` applies) |
+| `ingress` | no | off | Real URL via the cluster's front door — an Ingress controller (`ingress_class_name`) XOR a Gateway API Gateway (`gateway_ref`, whose `name` and `namespace` are KubernetesGateway references: `valueFrom` for a Planton-managed Gateway, `value:` for one created outside Planton); `tls` takes a Secret XOR a cert-manager issuer and requires `hostname` (with `gateway_ref` the listener owns the certificate, so only `issuer` applies) |
 | `gateway.local_port` | no | `8080` | The port-forward door's port — baked into sign-in at first boot |
 | `storage` | no | cluster default | Platform-wide class + size; every component can override |
 | `database.postgresql.replicas` | no | `1` | 2+ = streaming replication with automatic failover, live |

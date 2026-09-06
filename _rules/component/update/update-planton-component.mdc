@@ -144,6 +144,22 @@ Use update when you need to:
    - Checks for removed fields (preset references fields deleted from spec.proto)
    - Checks for new required fields (preset may need them added)
    - Checks for changed `StringValueOrRef` types (may need `value:` wrapper added or removed)
+   - **A field that BECOMES a `StringValueOrRef` is proven on both of its paths, and
+     the two proofs live in different places.** The literal path (`value:`) is the
+     tree's: `validate-manifest` on every preset, `planton validate-refs --check`
+     (the annotated `default_kind_field_path` must resolve on the target kind's
+     real outputs), the module's own read (`GetX().GetValue()` on Pulumi; the
+     Terraform variable stays `string` because tfvars generation flattens the
+     wrapper), and the offline plan/preview rendering the same object as before.
+     The reference path (`valueFrom:`) can only be proven through the set lane --
+     `planton apply -f <dir>` on a multi-document input -- because that is the one
+     lane that resolves references between nodes; and the set lane refuses
+     `--module-dir` and pulls each node's module from a PUBLISHED release. So the
+     reference-path live proof runs AFTER the release, against the released
+     modules (`--module-version vX.Y.Z`), with the CLI built from the tree (its
+     schema knows the new type) -- and it doubles as the release's published-form
+     verification. Plan the session in that order; a defect the released module
+     reveals ships as the next patch release (tags are immutable).
    - Checks for changed `recommended_default` / `default` annotations (preset values and comments may need updating)
    - Updates stale presets to match the new schema
    - **Mechanically validates every preset AND the e2e manifest** with the CLI built

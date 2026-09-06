@@ -7,6 +7,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"github.com/plantonhq/planton/shared"
+	"github.com/plantonhq/planton/shared/cloudresourcekind"
 	foreignkeyv1 "github.com/plantonhq/planton/shared/foreignkey/v1"
 )
 
@@ -20,6 +21,20 @@ func strPtr(value string) *string { return &value }
 func literalRef(value string) *foreignkeyv1.StringValueOrRef {
 	return &foreignkeyv1.StringValueOrRef{
 		LiteralOrRef: &foreignkeyv1.StringValueOrRef_Value{Value: value},
+	}
+}
+
+// gatewayRef is a valueFrom against a KubernetesGateway resource; an empty
+// fieldPath leans on the field's annotated default.
+func gatewayRef(name, fieldPath string) *foreignkeyv1.StringValueOrRef {
+	return &foreignkeyv1.StringValueOrRef{
+		LiteralOrRef: &foreignkeyv1.StringValueOrRef_ValueFrom{
+			ValueFrom: &foreignkeyv1.ValueFromRef{
+				Kind:      cloudresourcekind.CloudResourceKind_KubernetesGateway,
+				Name:      name,
+				FieldPath: fieldPath,
+			},
+		},
 	}
 }
 
@@ -103,8 +118,8 @@ var _ = ginkgo.Describe("KubernetesPlantonPlatformSpec Validation Tests", func()
 				Enabled:  true,
 				Hostname: "planton.example.com",
 				GatewayRef: &KubernetesPlantonPlatformGatewayRef{
-					Name:        "main",
-					Namespace:   "istio-ingress",
+					Name:        literalRef("main"),
+					Namespace:   literalRef("istio-ingress"),
 					SectionName: "https",
 				},
 			}
@@ -117,7 +132,7 @@ var _ = ginkgo.Describe("KubernetesPlantonPlatformSpec Validation Tests", func()
 			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
 				Enabled:    true,
 				Hostname:   "planton.example.com",
-				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Name: "main"},
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Name: literalRef("main")},
 				Tls: &KubernetesPlantonPlatformIngressTls{
 					Issuer: &KubernetesPlantonPlatformCertManagerIssuer{
 						Name: "letsencrypt",
@@ -236,7 +251,7 @@ var _ = ginkgo.Describe("KubernetesPlantonPlatformSpec Validation Tests", func()
 				Enabled:          true,
 				Hostname:         "planton.example.com",
 				IngressClassName: "nginx",
-				GatewayRef:       &KubernetesPlantonPlatformGatewayRef{Name: "main"},
+				GatewayRef:       &KubernetesPlantonPlatformGatewayRef{Name: literalRef("main")},
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())
@@ -247,7 +262,7 @@ var _ = ginkgo.Describe("KubernetesPlantonPlatformSpec Validation Tests", func()
 			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
 				Enabled:    true,
 				Hostname:   "planton.example.com",
-				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Name: "main"},
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Name: literalRef("main")},
 				Tls:        &KubernetesPlantonPlatformIngressTls{SecretName: "planton-tls"},
 			}
 			err := protovalidate.Validate(input)
@@ -259,7 +274,61 @@ var _ = ginkgo.Describe("KubernetesPlantonPlatformSpec Validation Tests", func()
 			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
 				Enabled:    true,
 				Hostname:   "planton.example.com",
-				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Namespace: "istio-ingress"},
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Namespace: literalRef("istio-ingress")},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		// The Gateway may be Planton's own: both fields are KubernetesGateway
+		// foreign keys, so an infra chart wires them with valueFrom and the
+		// platform deploys after the Gateway it attaches to.
+		ginkgo.It("should accept gateway_ref name and namespace as references to a KubernetesGateway", func() {
+			input := minimalValidPlatform()
+			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
+				Enabled:  true,
+				Hostname: "planton.example.com",
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{
+					Name:        gatewayRef("management-gateway", ""),
+					Namespace:   gatewayRef("management-gateway", ""),
+					SectionName: "https",
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should accept a referenced Gateway name beside a literal namespace", func() {
+			input := minimalValidPlatform()
+			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
+				Enabled:  true,
+				Hostname: "planton.example.com",
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{
+					Name:      gatewayRef("management-gateway", "status.outputs.gateway_name"),
+					Namespace: literalRef("istio-ingress"),
+				},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).To(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail on a gateway_ref name that is present but empty", func() {
+			input := minimalValidPlatform()
+			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
+				Enabled:    true,
+				Hostname:   "planton.example.com",
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Name: literalRef("")},
+			}
+			err := protovalidate.Validate(input)
+			gomega.Expect(err).NotTo(gomega.BeNil())
+		})
+
+		ginkgo.It("should fail on a gateway_ref namespace that is present but empty", func() {
+			input := minimalValidPlatform()
+			input.Spec.Ingress = &KubernetesPlantonPlatformIngress{
+				Enabled:    true,
+				Hostname:   "planton.example.com",
+				GatewayRef: &KubernetesPlantonPlatformGatewayRef{Name: literalRef("main"), Namespace: literalRef("")},
 			}
 			err := protovalidate.Validate(input)
 			gomega.Expect(err).NotTo(gomega.BeNil())

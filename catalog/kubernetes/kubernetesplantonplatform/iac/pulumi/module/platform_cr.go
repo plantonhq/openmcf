@@ -106,13 +106,15 @@ func platformSpecBody(locals *Locals) map[string]interface{} {
 		// The Gateway API front door: the fork's other arm (the CRD refuses
 		// it beside ingressClassName). Rendered only when the manifest named
 		// a Gateway; the operator reads the Gateway's listeners for
-		// everything else.
+		// everything else. name and namespace are KubernetesGateway foreign
+		// keys -- resolved to their literal values before the module runs --
+		// and the PlantonPlatform resource takes the plain strings.
 		if g := i.GetGatewayRef(); g != nil {
 			gatewayRef := map[string]interface{}{
-				"name": g.GetName(),
+				"name": g.GetName().GetValue(),
 			}
-			if g.GetNamespace() != "" {
-				gatewayRef["namespace"] = g.GetNamespace()
+			if ns := g.GetNamespace().GetValue(); ns != "" {
+				gatewayRef["namespace"] = ns
 			}
 			if g.GetSectionName() != "" {
 				gatewayRef["sectionName"] = g.GetSectionName()
