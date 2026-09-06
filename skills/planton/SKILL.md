@@ -419,7 +419,7 @@ reads the repository and proposes, the user confirms once
 agent apply (a pure catalog entry is valid); a `service.yaml` pushed to
 the connected repository's default branch
 (`references/service.push-to-register.md`); and a CI step with proven
-repository identity (`references/service.external-ci.md`).
+repository identity (`references/service.external-ci.md`). Every door needs a GitHub connection and a registry; on a machine that is already signed in, both come from that sign-in with nothing pasted (`references/service.connecting-github-and-registries.md`).
 
 **Services deploy with or without a Planton backend.** Connected, the
 control plane runs pipelines, gates, and rollout verification. With NO
@@ -427,9 +427,8 @@ backend configured, `planton service deploy --env <env>` deploys the
 repository's own kustomize tree entirely offline through the open-source
 engine -- preflight report first, dependency-ordered deploys, honest exit
 codes -- and the same published GitHub Action serves both postures, the
-mode inferred from its inputs. The complete offline journey -- authoring
-offline-clean trees, wiring GitHub Actions keylessly, verifying everything
-before declaring ready -- is `references/service.offline-deploy.md`.
+mode inferred from its inputs. The complete offline journey -- authoring offline-clean trees,
+wiring GitHub Actions keylessly, verifying everything before declaring ready -- is `references/service.offline-deploy.md`.
 
 ## References
 
@@ -462,6 +461,7 @@ memory what a reference answers precisely.
 
 | File | Read when |
 |------|-----------|
+| `references/service.connecting-github-and-registries.md` | A service needs GitHub or a registry connected, a clone/push failed on a connection, or the person asks how to connect them: the two GitHub identities (the machine's sign-in vs an App) and what each can do, the two registry credential arms (a trusted connection vs stored keys), the detected cards and `planton connect github|registry detect`, the verify doors, every sentence and its remedy |
 | `references/service.detection-first-registration.md` | Registering by letting the platform read the repository: the detect + proposed-Service response, presenting the proposal, the confirm-once apply |
 | `references/service.push-to-register.md` | Registering by committing a `service.yaml`; why a pushed manifest did or didn't land; the default-branch and own-repository laws |
 | `references/service.external-ci.md` | Keyless CI: workload identity bindings, the `planton iam federate` exchange, registering and deploying from a CI step, the Planton GitHub Action, walking a federation refusal |
