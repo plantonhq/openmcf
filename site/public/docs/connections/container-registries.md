@@ -19,7 +19,16 @@ This page covers three types of registry connections: container image registries
 
 ## Container Image Registries
 
-Container image registries store the Docker images that Service Hub produces during builds. Every service that uses Buildpacks or Dockerfile builds needs a container registry connection so the built image can be pushed and later pulled by the deployment target.
+Container image registries store the Docker images that Service Hub produces during builds. Every service that uses Buildpacks or Dockerfile builds needs a container registry connection so the built image can be pushed.
+
+### Two Ways a Registry Connection Signs In
+
+A registry connection describes how Planton signs in to a registry; it never holds the result. It signs in one of two ways:
+
+- **A connection you already trust** — the registry names a connection your organization already has: a GitHub connection for GHCR, an AWS connection for ECR, a GCP connection for Artifact Registry, an Azure connection for ACR. The connection stores no key. At the moment a build pushes, the runner derives a short-lived registry token from that connection's own credential — the sign-in your laptop already holds, or the cloud identity a hosted runner already has. Sign out of the trusted connection and the registry stops working the same moment.
+- **Stored keys** — the registry references a secret you created: a service account key, IAM access keys, a service principal, a personal access token. The runner reads the secret at push time. This is the arm for JFrog Artifactory, and for any registry that sits outside the connections you have.
+
+The Container Registry card on the Connections page opens on **You Already Trust These** — one card per registry the connections in your organization can reach — and **Use This Registry** writes a connection that stores nothing. **Set Up Manually** reaches the wizard, whose **Credential** step asks the same question: **A Connection You Already Trust** or **Stored Keys**.
 
 Planton supports five container image registry providers:
 
@@ -32,7 +41,7 @@ Google's managed container registry. This is the recommended choice if your depl
 | GCP Project ID | The Google Cloud project that hosts the registry |
 | GCP Region | The region where the registry is located |
 | Repository Name | The Artifact Registry repository name |
-| Service Account Key | Base64-encoded JSON key for a service account with Artifact Registry Writer role |
+| Credential | A GCP connection you already trust, or a service account key (JSON) with the Artifact Registry Writer role, stored as a secret |
 
 ### AWS Elastic Container Registry (ECR)
 
@@ -41,45 +50,65 @@ Amazon's managed container registry. The natural choice for ECS and EKS deployme
 | Field | Description |
 |-------|-------------|
 | Account ID | Your 12-digit AWS account number |
-| Access Key ID | IAM user access key with ECR permissions |
-| Secret Access Key | IAM user secret key |
 | Region | The AWS region where the ECR registry is hosted |
+| Credential | An AWS connection you already trust, or an IAM access key pair with ECR push permissions, stored as secrets |
 
-### Azure Container Registry
+### Azure Container Registry (ACR)
 
-Microsoft's managed container registry. Pairs with AKS and Azure Container Instances deployments.
+Microsoft's managed container registry. Pairs with AKS and Azure Container Apps deployments.
 
-> **Note**: Azure Container Registry connection support is defined but the configuration interface is still being implemented. Check back for updates.
+| Field | Description |
+|-------|-------------|
+| Login Server | The registry's login server, `<name>.azurecr.io` |
+| Credential | An Azure connection you already trust, or a service principal (tenant, client ID, client secret) with the AcrPush role, stored as secrets |
 
 ### JFrog Artifactory
 
 A self-hosted or cloud-hosted universal artifact repository. Useful for organizations that standardize on JFrog for all artifact management.
 
-> **Note**: JFrog Artifactory connection support is defined but the configuration interface is still being implemented. Check back for updates.
+| Field | Description |
+|-------|-------------|
+| Server URL | The Artifactory instance, e.g. `https://mycompany.jfrog.io/artifactory` |
+| Repository Key | The Docker repository within Artifactory |
+| Username | The Artifactory user or service account |
+| Access Token | An Artifactory access token, stored as a secret |
 
 ### GitHub Container Registry (GHCR)
 
-GitHub's container registry, tightly integrated with GitHub Actions and GitHub Packages.
+GitHub's container registry, tightly integrated with GitHub Packages.
 
 | Field | Description |
 |-------|-------------|
-| GitHub Username | Your GitHub username or a machine account username |
-| Personal Access Token | A GitHub PAT with `write:packages` scope |
+| Credential | The GitHub connection you already trust — the sign-in on the machine running Planton, which needs the `write:packages` scope — or a GitHub username with a personal access token carrying `write:packages`, stored as a secret |
 
 ### Connecting via the Web Console
 
-1. Navigate to **Connections** and click the **Docker** card under DevOps Pipeline.
-2. **Name your connection**.
-3. **Select your registry provider** — GCP Artifact Registry, AWS ECR, Azure Container Registry, JFrog Artifactory, or GitHub Container Registry.
-4. **Provide the provider-specific credentials** listed above.
-5. **Create the connection**.
+1. Navigate to **Connections** and click the **Container Registry** card under Artifact Stores.
+2. **You Already Trust These** lists the registries your connections reach — *GHCR as priya-dev · via GitHub connection github-account-priya-dev*, *ECR us-east-1 for 123456789012 · via AWS connection aws-profile-acme-dev*. Fill in anything the connection cannot know (a region, a repository name) on the card, and click **Use This Registry**. Planton writes the connection and proves it: the runner derives the credential once and the registry accepts it, or you read the exact sentence saying why not.
+3. Or choose **Set Up Manually**: pick the provider, answer **Credential** (**A Connection You Already Trust** or **Stored Keys**), and provide the fields listed above.
+4. On the completed screen — and on the connection's page any time after — **Verify This Registry** asks the registry to accept the derived credential right now.
 
-<!-- SCREENSHOT: Container registry connection form
-  Page: /resource/connect/container-registry-connection/create
-  Action: Show the registry provider selector with all five options
-  Focus: The provider selection dropdown and provider-specific form fields
-  Alt: Docker registry connection form with provider selection showing GCP Artifact Registry, AWS ECR, and other options
+<!-- SCREENSHOT: You Already Trust These
+  Page: /orgs/{org}/connections/create/container-registry
+  Action: Show the registry cards the organization's trusted connections reach, with Use This Registry
+  Focus: The GHCR card via a GitHub connection and the ECR card via an AWS connection
+  Alt: Container registry create page listing the registries the organization's trusted connections reach, one confirm card each
 -->
+
+### Connecting via the CLI
+
+```bash
+# Which registries do my connections reach?
+planton connect registry detect
+
+# GHCR through the GitHub sign-in on this machine, without the confirmation prompt
+planton connect registry detect --from github-account-priya-dev --yes
+
+# ECR in a region through an AWS connection
+planton connect registry detect --from aws-profile-acme-dev --region us-east-1
+```
+
+The verb writes the same credential-free connection the card writes, then proves it and reads **Registry Connection Ready — ghcr.io accepted the credential derived from GitHub connection github-account-priya-dev**.
 
 ### How Container Registries Are Used During Builds
 
@@ -155,6 +184,7 @@ If you're starting fresh and choosing which registry to use, a practical guideli
 - **Deploying to GCP (GKE, Cloud Run)?** Use GCP Artifact Registry — same benefits for the GCP ecosystem.
 - **Deploying to multiple clouds?** Use GitHub Container Registry or JFrog Artifactory for a cloud-neutral registry.
 - **Already using JFrog?** Continue using it — Planton connects to it the same way your existing tooling does.
+- **Already connected a cloud or GitHub?** Its registry is one click away with nothing to paste — GHCR through your GitHub sign-in, ECR / Artifact Registry / ACR through the cloud connection you already have.
 
 ## Related Documentation
 

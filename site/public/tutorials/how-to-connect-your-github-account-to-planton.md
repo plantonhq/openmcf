@@ -11,41 +11,77 @@ tags:
   - "scm-connection"
   - "getting-started"
 category: "connect"
-excerpt: "Connect your GitHub repositories to Planton so the platform can clone code, receive push events, and deploy your services."
+excerpt: "Connect your GitHub repositories to Planton -- from the sign-in your machine already holds, or with the Planton GitHub App -- so the platform can clone code, learn about pushes, and deploy your services."
 ---
 
 # How to Connect Your GitHub Account to Planton
 
-Before Planton can build and deploy your code, it needs access to your GitHub repositories. This tutorial walks you through installing the Planton GitHub App on your GitHub organization (or personal account) to establish that connection. Once connected, Planton can clone your repositories, receive webhook notifications when you push code, and report build status back to GitHub as check runs.
-
-> **Note**: This connection is created through the Planton web console because it requires completing GitHub's App installation flow in your browser. Unlike provider connections (AWS, GCP), there is no CLI-only path for the initial setup. Once created, the connection is fully manageable via CLI.
+Before Planton can build and deploy your code, it needs access to your GitHub repositories. A GitHub connection gives it that access as one of two identities, and this tutorial walks through both: **the sign-in your machine already holds** (the path for Planton Desktop on your laptop, or a self-hosted server), and **the Planton GitHub App** (the path for hosted Planton). Neither path ever asks you to paste a personal access token.
 
 ## What You Will Learn
 
-- What an SCM connection is and how it differs from provider connections
-- How the GitHub App model works (no personal access tokens, no stored secrets)
+- The two identities a GitHub connection can sign in as, and which one fits where Planton runs
+- How to turn the `gh` sign-in on your machine into a connection that stores no token -- from the desktop or the CLI
 - How to install the Planton GitHub App on your GitHub organization or personal account
-- How to verify the connection and list accessible repositories from the CLI
+- How to prove a connection works the moment it exists, and list the repositories it can see
 
 ## Prerequisites
 
-- [ ] A Planton account with an organization already created
-- [ ] The `planton` CLI installed and authenticated (run `planton auth login` if you have not done this yet)
-- [ ] A GitHub account with **owner** or **admin** access to the organization you want to connect (or a personal account)
+- [ ] A Planton organization -- on Planton Desktop, a hosted account, or a self-hosted instance
+- [ ] The `planton` CLI installed and authenticated
+- [ ] For Path A: the GitHub CLI signed in on the machine running Planton (`gh auth login`), or a `GH_TOKEN` exported in its environment
+- [ ] For Path B: a GitHub account with **owner** or **admin** access to the organization you want to connect (or a personal account)
 
 ## How GitHub Connections Work
 
-Planton connects to GitHub using a **GitHub App** -- not personal access tokens. The App uses short-lived installation tokens (one hour expiry), declares granular permissions you review during installation, and is scoped to your organization rather than any individual user. Once installed, Planton uses this connection to clone repositories, receive push webhooks, and report build status as GitHub check runs. For more details, see the [Git provider connections documentation](/docs/connections/git-providers).
+A GitHub connection describes how Planton signs in; it never holds a pasted token.
 
-## Step 1: Start the GitHub App Installation from the Console
+- **The sign-in on this machine.** When Planton runs on your own machine, the connection names the GitHub account that machine is signed in as. Planton reads the machine's sign-in (`gh`'s credential store, or the token in its environment) each time it reaches GitHub, and stores nothing. Sign out of `gh` and the connection stops the same second. This identity clones and reads everything your account can see; because GitHub cannot call a machine it does not know, Planton watches your repositories for pushes instead of receiving webhooks, and check runs on pull requests are not available.
+- **A GitHub App.** Planton's own App (or one you register) is installed on your organization. GitHub mints short-lived installation tokens, delivers push events to Planton, and accepts check runs. This is the identity for hosted Planton.
 
-Open the Planton web console and navigate to the **Connect** section of your organization. Select **Add Connection**, then choose **GitHub Connection**.
+For more, see the [Git provider connections documentation](/docs/connections/git-providers).
 
-The console presents a creation form where you provide a **name** for the connection (for example, `my-github` or `acme-github`). This name becomes the connection's slug, which you will reference when creating Services later.
+## Path A: The Sign-In on This Machine
 
-After entering a name, the console directs you to install the Planton GitHub App. This opens GitHub's App installation page in your browser.
+### Step 1: Confirm the Machine Is Signed In
 
-## Step 2: Install the Planton GitHub App on GitHub
+```bash
+gh auth status
+```
+
+You should see the account and host you expect (`Logged in to github.com account priya-dev`). If not, run `gh auth login`, or export `GH_TOKEN` in your shell profile and restart Planton -- a shell token is read when Planton starts; `gh auth login` takes effect at once.
+
+### Step 2: Use the Detected Card, or One Command
+
+In Planton Desktop, open **Connections** and click **GitHub**. The card shows the account this machine is signed in as -- *GitHub Account priya-dev · github.com · Signed in with gh* -- and offers **Use This Account**. Click it.
+
+Or, from the terminal:
+
+```bash
+planton connect github detect
+```
+
+Either way Planton writes a connection named after the account (`github.account.priya-dev`), then proves it: it reads the sign-in once and asks GitHub who it belongs to. You read **GitHub Connection Ready** -- *Confirmed -- GitHub attributes this sign-in to priya-dev* -- or the exact sentence explaining what to fix.
+
+### Step 3: Verify Any Time
+
+The connection's page has **Verify Sign-In**. Press it whenever you like; it answers **Confirmed** with the account GitHub attributes the sign-in to, or **Sign-In Not Working Yet** with the `gh auth login` to run. From the CLI:
+
+```bash
+planton connect github list-repos github-account-priya-dev
+```
+
+lists the repositories the sign-in can see.
+
+## Path B: The Planton GitHub App
+
+### Step 1: Start the Installation from the Console
+
+Open the console and navigate to **Connections**. Click **GitHub**, then **Set Up Manually** if a detected card is offered. On the **Identity** step choose **Planton GitHub App** (or **Your Own GitHub App** on GitHub Enterprise Server), and give the connection a **name** (for example `acme-github`).
+
+The console then directs you to install the App. This opens GitHub's App installation page in your browser.
+
+### Step 2: Install the App on GitHub
 
 On GitHub's installation page, you choose:
 
@@ -54,50 +90,37 @@ On GitHub's installation page, you choose:
 
 For most teams, installing on the organization account and granting access to **all repositories** is the simplest approach. You can change this scope later from your GitHub organization settings without affecting the Planton connection.
 
-After you approve the installation, GitHub redirects you back to the Planton console with the installation metadata. The console creates the `GithubConnection` resource automatically.
+After you approve the installation, GitHub redirects you back to the console with the installation, and the connection is created.
 
-## Step 3: Verify the Connection via CLI
+### Step 3: Verify the Connection
 
-Once the console confirms the connection was created, verify it from the CLI:
-
-```bash
-planton get github-connection my-github
-```
-
-This returns the connection resource, confirming the `installation_id`, `account_type`, and `account_id` were captured correctly.
-
-## Step 4: Verify Repository Access
-
-Confirm that Planton can see the repositories available through this connection:
+The completed screen shows **Verify Sign-In**: press it and read **Confirmed** with the installation GitHub minted the token for. From the CLI:
 
 ```bash
-planton service github list-repos my-github
+planton get github-connection acme-github
+planton connect github list-repos acme-github
 ```
-
-This lists the GitHub repositories accessible to the Planton GitHub App installation. The list reflects the repository scope you selected during installation (all repositories, or a specific set).
 
 If you do not see a repository you expect, check the App's repository access settings in your GitHub organization: **Settings > Integrations > GitHub Apps > Planton > Configure**.
 
 ## Connecting GitHub Enterprise Server
 
-If your organization uses GitHub Enterprise Server instead of github.com, the process is the same with one additional configuration: the `github_connection_host` field in the spec points to your Enterprise Server URL instead of the default `https://github.com`.
+Both identities work against GitHub Enterprise Server. For the sign-in on this machine, `gh auth login --hostname github.enterprise.corp` (or `GH_ENTERPRISE_TOKEN`) is what the connection names, and the connection records the server URL:
 
 ```yaml
 apiVersion: connect.planton.ai/v1
 kind: GithubConnection
 metadata:
-  name: ghe-internal
+  name: github.account.priya@github.enterprise.corp
   org: your-org
 spec:
-  github_connection_host:
+  authMode: host_login
+  accountLogin: priya
+  host:
     value: "https://github.enterprise.corp"
-  app_install_info:
-    installation_id: 87654321
-    account_type: organization
-    account_id: "platform-team"
 ```
 
-The Planton GitHub App must be registered on your GitHub Enterprise Server instance for this to work. Contact your Planton account team for Enterprise Server configuration.
+For an App, choose **Your Own GitHub App** in the wizard and register it on your server; the connection carries your App's client ID, private key reference, and the installation.
 
 ## What to Do Next
 

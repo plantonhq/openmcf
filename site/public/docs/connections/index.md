@@ -44,9 +44,9 @@ Source control providers and artifact registries that power your build and deplo
 
 | Integration | What It Enables |
 |-------------|----------------|
-| **GitHub** | Repository access for Service Hub builds, webhook-triggered pipelines, pull request deployments |
+| **GitHub** | Repository access for Service Hub builds and pull request deployments — as a GitHub App, or as the sign-in the machine running Planton already holds |
 | **GitLab** | Repository access and pipeline triggers (self-hosted GitLab supported) |
-| **Docker Registry** | Push and pull container images — supports GCP Artifact Registry, AWS ECR, Azure Container Registry, JFrog Artifactory, and GitHub Container Registry |
+| **Container Registry** | Where builds push images — GCP Artifact Registry, AWS ECR, Azure Container Registry, JFrog Artifactory, and GitHub Container Registry, signing in through a connection you already trust or with stored keys |
 | **NPM** | Private JavaScript/TypeScript package resolution during builds |
 | **Maven** | Private Java artifact resolution during builds |
 | **Cloudflare Wrangler** | R2 bucket for storing Cloudflare Worker script bundles during deployment |
@@ -77,7 +77,7 @@ Managed service credentials follow the same create-authorize-default workflow as
 
 ## How Authentication Works
 
-When you create a connection, you choose how Planton authenticates with the provider. There are three authentication modes, and the right choice depends on your security requirements.
+When you create a connection, you choose how Planton authenticates with the provider. The right choice depends on where Planton runs and on your security requirements. One rule holds across every mode: a connection describes how to sign in; wherever a sign-in already exists — on the machine running Planton, in a runner's environment, in another connection — Planton references it and stores nothing.
 
 ### Inline Credentials
 
@@ -97,7 +97,19 @@ Specific to AWS. You create an IAM role in your AWS account that trusts Planton'
 
 **Best for**: AWS organizations with strict credential policies, multi-account setups, cross-account deployments.
 
-Not every provider supports all three modes. Cloud infrastructure providers (AWS, GCP, Azure, DigitalOcean, Cloudflare) and Kubernetes clusters support inline and runner-delegated authentication. Cross-account trust is currently AWS-only. Git providers, registries, state backends, and managed services use inline credentials.
+### The Sign-In on This Machine
+
+When Planton runs on your own laptop or a self-hosted server, that machine is usually already signed in — `aws sso login`, `gcloud auth login`, `az login`, `gh auth login`. Planton detects those sign-ins and turns each into a connection that stores nothing: a cloud connection the local runner resolves at deploy time, and a GitHub connection the control plane reads at the moment it reaches GitHub. Sign out on the machine and the connection stops working the same second.
+
+**Best for**: A developer's laptop; a self-hosted server whose environment already carries the sign-ins it needs.
+
+### A Connection You Already Trust
+
+Some connections need no credential of their own because another connection already has one. A container registry connection names the connection it trusts — a GitHub connection for GHCR, a cloud connection for ECR, Artifact Registry, or ACR — and the runner derives the registry's push token from it at the moment a build pushes. The registry stores no key.
+
+**Best for**: Every registry a connection you already have can reach.
+
+Not every provider supports every mode. Cloud infrastructure providers (AWS, GCP, Azure) support inline, runner-delegated, and the sign-in on this machine; DigitalOcean and Cloudflare support inline and an exported API token. Cross-account trust is AWS-only. GitHub signs in as an App or as the sign-in on this machine. Container registries sign in through a connection you already trust or with stored keys. GitLab, state backends, and managed services use inline credentials.
 
 ## Authorization and Defaults
 

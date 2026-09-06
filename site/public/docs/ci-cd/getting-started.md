@@ -22,9 +22,9 @@ This guide walks you through deploying your first service with Service Hub. By t
 
 ## Step 1: Connect Your Git Provider
 
-Service Hub needs access to your Git repositories to clone code and configure webhooks. Navigate to **Connect** in the web console and add your GitHub connection.
+Service Hub needs access to your Git repositories to clone code and to learn about pushes. Navigate to **Connections** and add your GitHub connection.
 
-The setup uses a GitHub App installation — Planton creates a webhook on your repository and receives push events to trigger pipelines automatically.
+A GitHub connection signs in one of two ways. As a **GitHub App** (hosted Planton), GitHub delivers push events to Planton through the App's own subscription and pipelines start automatically — nothing is registered on your repository. As the **sign-in on this machine** (a laptop or a self-hosted server), the connection stores no token and Planton watches the repository for new commits to start runs itself.
 
 See [Git Providers](/docs/connections/git-providers) for detailed setup instructions.
 

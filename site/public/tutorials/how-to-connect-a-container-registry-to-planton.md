@@ -13,50 +13,84 @@ tags:
   - "artifact-registry"
   - "getting-started"
 category: "connect"
-excerpt: "Connect your container registry so Planton can push built images during CI and pull them during deployment."
+excerpt: "Connect your container registry -- through a connection you already trust with nothing to paste, or with stored keys -- so Planton can push built images during CI and pull them during deployment."
 ---
 
 # How to Connect a Container Registry to Planton
 
-When Planton builds your service from source code, the result is a container image that needs to be stored somewhere. Your organization brings its own registry -- Google Cloud Artifact Registry, AWS Elastic Container Registry, or GitHub Container Registry -- and a Container Registry Connection provides the authentication Planton needs to push images during CI and pull them during deployment.
+When Planton builds your service from source code, the result is a container image that needs to be stored somewhere. Your organization brings its own registry -- Google Cloud Artifact Registry, AWS Elastic Container Registry, Azure Container Registry, JFrog Artifactory, or GitHub Container Registry -- and a Container Registry Connection describes how Planton signs in to push images during CI.
 
-This tutorial walks you through creating a Container Registry Connection for each supported provider.
-
-> **Note**: The Planton web console provides a guided creation wizard for container registry connections. Since the console is actively evolving, this tutorial focuses on the CLI/YAML path which remains stable. Always check the console for the latest experience.
+A registry connection signs in one of two ways, and this tutorial covers both. **The fastest path** names a connection you already trust -- the GitHub sign-in on your machine for GHCR, or the AWS, GCP, or Azure connection you already have -- and stores no key at all. **The stored-keys paths** reference a secret you create, for registries outside the connections you have.
 
 ## What You Will Learn
 
-- What a container registry connection is and how Service Hub pipelines use it
-- How to store registry credentials as organization-level secrets in Planton
-- How to create a Container Registry Connection for GCP Artifact Registry, AWS ECR, or GitHub Container Registry
-- How to verify the connection from the CLI
+- The two ways a registry connection signs in, and when each fits
+- How to connect a registry with nothing to paste, from the card on the Connections page or one CLI command
+- How to store registry credentials as organization-level secrets and reference them, for the stored-keys paths
+- How to prove a registry connection works the moment it exists
 
 ## Prerequisites
 
-- [ ] A Planton account with an organization already created
-- [ ] The `planton` CLI installed and authenticated (run `planton auth login` if you have not done this yet)
-- [ ] One of the following, depending on which registry you use:
+- [ ] A Planton organization -- on Planton Desktop, a hosted account, or a self-hosted instance
+- [ ] The `planton` CLI installed and authenticated
+- [ ] For the fastest path: a connection Planton already trusts that reaches your registry -- a GitHub connection made from the `gh` sign-in on your machine (with the `write:packages` scope) for GHCR, or an AWS, GCP, or Azure connection for ECR, Artifact Registry, or ACR
+- [ ] For the stored-keys paths, one of the following:
   - **GCP Artifact Registry**: A GCP project with Artifact Registry enabled and a service account key with Artifact Registry Writer role
-  - **AWS ECR**: An AWS account with an ECR repository and an IAM user with ECR push/pull permissions
+  - **AWS ECR**: An AWS account with an ECR repository and an IAM user with ECR push permissions
   - **GitHub Container Registry**: A GitHub account with a personal access token that has `write:packages` scope
 
 ## How Registry Connections Work
 
-A container registry connection tells Planton where to push images that pipelines build and where Kubernetes clusters pull images from for deployment. This connection stores registry credentials as secrets and references them by slug. For more details, see the [container registry connections documentation](/docs/connections/container-registries).
+A container registry connection tells Planton where to push images that pipelines build and where Kubernetes clusters pull images from for deployment. It describes how to sign in and never holds the result: on the trusted-connection arm it names another connection and the runner derives a short-lived registry token from it at push time; on the stored-keys arm it references a secret by slug. For more details, see the [container registry connections documentation](/docs/connections/container-registries).
 
 ### Supported Providers
 
-| Provider | Status | Registry Hostname Pattern |
-|---|---|---|
-| GCP Artifact Registry | Supported | `<region>-docker.pkg.dev` |
-| AWS ECR | Supported | `<account-id>.dkr.ecr.<region>.amazonaws.com` |
-| GitHub Container Registry | Supported | `ghcr.io` |
+| Provider | Trusted connection | Stored keys | Registry Hostname Pattern |
+|---|---|---|---|
+| GCP Artifact Registry | A GCP connection | Service account key | `<region>-docker.pkg.dev` |
+| AWS ECR | An AWS connection | IAM access keys | `<account-id>.dkr.ecr.<region>.amazonaws.com` |
+| Azure Container Registry | An Azure connection | Service principal | `<name>.azurecr.io` |
+| GitHub Container Registry | A GitHub connection (the sign-in on your machine) | Personal access token | `ghcr.io` |
+| JFrog Artifactory | -- | Access token | your Artifactory host |
 
-Choose the path below that matches your registry provider.
+## The Fastest Path: A Connection You Already Trust
 
-## Path A: GCP Artifact Registry
+If your organization already has a connection that reaches your registry, this is the whole tutorial.
 
-### Step 1: Create a GCP Service Account
+### From the Connections Page
+
+Open **Connections** and click **Container Registry**. The page opens on **You Already Trust These** -- one card per registry your connections reach:
+
+- *GHCR as priya-dev · via GitHub connection github-account-priya-dev* -- **Use This Registry**
+- *ECR us-east-1 for 123456789012 · via AWS connection aws-profile-acme-dev* -- **Use This Registry**
+- *Artifact Registry in acme-dev · via GCP connection gcp-configuration-acme-dev -- needs a region and a repository* -- fill both on the card, then **Use This Registry**
+
+Click **Use This Registry**. Planton writes a connection that stores nothing -- the registry's coordinates and the connection it trusts -- then proves it: the runner that would push derives the credential once and asks the registry to accept it. You land on the connection's page reading **Confirmed -- ghcr.io accepted the credential derived from github-account-priya-dev**, or **Saved, but Not Yet Working** with the exact sentence to act on (for a GitHub sign-in without `write:packages`, the `gh auth refresh -s write:packages` to run).
+
+### From the CLI
+
+```bash
+# Which registries do my connections reach?
+planton connect registry detect
+
+# GHCR through the GitHub sign-in on this machine
+planton connect registry detect --from github-account-priya-dev --yes
+
+# ECR in a region through an AWS connection
+planton connect registry detect --from aws-profile-acme-dev --region us-east-1 --yes
+```
+
+The verb writes the same connection the card writes and reads **Registry Connection Ready**. Name the connection in a service's build (`spec.build.registry`) to push there.
+
+If no connection reaches your registry yet, connect GitHub or the cloud first -- its registries then appear here -- or continue with a stored-keys path below.
+
+## The Stored-Keys Paths
+
+Choose the path that matches your registry provider. Each stores the registry's credential as an organization secret and references it from the connection by slug.
+
+### Path A: GCP Artifact Registry (stored keys)
+
+#### Step 1: Create a GCP Service Account
 
 In your GCP project, create a service account with the **Artifact Registry Writer** role. This role allows both pushing images during builds and pulling images during deployments.
 
@@ -76,7 +110,7 @@ gcloud iam service-accounts keys create sa-key.json \
   --iam-account=planton-registry@YOUR_PROJECT_ID.iam.gserviceaccount.com
 ```
 
-### Step 2: Store the Service Account Key as a Planton Secret
+#### Step 2: Store the Service Account Key as a Planton Secret
 
 Use the `--from-file` flag to store the JSON key file content as an organization-level secret:
 
@@ -90,7 +124,7 @@ After storing the secret, delete the local key file:
 rm sa-key.json
 ```
 
-### Step 3: Create the Container Registry Connection
+#### Step 3: Create the Container Registry Connection
 
 Create a file named `container-registry.yaml`:
 
@@ -122,15 +156,15 @@ Replace the placeholder values:
 - `service_account_key.secret`: The slug of the secret you created in Step 2
 - `gcp_artifact_registry_repo_name.value`: The name of your Docker repository in Artifact Registry
 
-### Step 4: Apply the Connection
+#### Step 4: Apply the Connection
 
 ```bash
 planton apply -f container-registry.yaml
 ```
 
-## Path B: AWS Elastic Container Registry
+### Path B: AWS Elastic Container Registry (stored keys)
 
-### Step 1: Create an IAM User with ECR Permissions
+#### Step 1: Create an IAM User with ECR Permissions
 
 In your AWS account, create an IAM user with programmatic access and attach a policy that grants ECR permissions:
 
@@ -158,14 +192,14 @@ In your AWS account, create an IAM user with programmatic access and attach a po
 
 Note the **Access Key ID** and **Secret Access Key** from the user creation.
 
-### Step 2: Store Credentials as Planton Secrets
+#### Step 2: Store Credentials as Planton Secrets
 
 ```bash
-planton secret set ecr-access-key value=AKIAIOSFODNN7EXAMPLE
-planton secret set ecr-secret-key value=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+planton secret set ecr-access-key value=<access-key-id>
+planton secret set ecr-secret-key value=<secret-access-key>
 ```
 
-### Step 3: Create the Container Registry Connection
+#### Step 3: Create the Container Registry Connection
 
 Create a file named `container-registry.yaml`:
 
@@ -197,15 +231,17 @@ Replace the placeholder values:
 - `secret_access_key.secret`: The slug of the secret key secret
 - `region.value`: The AWS region where your ECR repository is located
 
-### Step 4: Apply the Connection
+#### Step 4: Apply the Connection
 
 ```bash
 planton apply -f container-registry.yaml
 ```
 
-## Path C: GitHub Container Registry
+### Path C: GitHub Container Registry (stored keys)
 
-### Step 1: Create a Personal Access Token
+#### Step 1: Create a Personal Access Token
+
+> **Tip:** If the machine running Planton is signed in with `gh`, skip this path -- the fastest path above connects GHCR through that sign-in with nothing to paste.
 
 In GitHub, navigate to **Settings > Developer settings > Personal access tokens** and create a token with:
 
@@ -214,13 +250,13 @@ In GitHub, navigate to **Settings > Developer settings > Personal access tokens*
 
 Note the token value. You will not be able to see it again after creation.
 
-### Step 2: Store the Token as a Planton Secret
+#### Step 2: Store the Token as a Planton Secret
 
 ```bash
-planton secret set ghcr-pat value=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+planton secret set ghcr-pat value=<personal-access-token>
 ```
 
-### Step 3: Create the Container Registry Connection
+#### Step 3: Create the Container Registry Connection
 
 Create a file named `container-registry.yaml`:
 
@@ -246,7 +282,7 @@ Replace the placeholder values:
 - `github_username.value`: Your GitHub username or organization name
 - `personal_access_token.secret`: The slug of the secret you created in Step 2
 
-### Step 4: Apply the Connection
+#### Step 4: Apply the Connection
 
 ```bash
 planton apply -f container-registry.yaml
@@ -254,15 +290,13 @@ planton apply -f container-registry.yaml
 
 ## Verifying Your Connection
 
-After applying any of the paths above, verify the connection was created:
+Every registry connection -- trusted or stored -- has **Verify This Registry** on its page. Press it and the runner that would push derives the credential right now and asks the registry to accept it. You read **Confirmed** with the registry host and the credential's source, or **Registry Not Working Yet** with the platform's own sentence naming the remedy for your provider. Nothing usable as a credential reaches your browser.
+
+From the CLI, the connection's record shows the provider, the coordinates, and either the trusted connection or the secret slugs -- never a secret value:
 
 ```bash
-planton get container-registry-connection gcp-registry
+planton get container-registry-connection ghcr-account-priya-dev
 ```
-
-Replace `gcp-registry` with the name you used in your manifest.
-
-The output shows the connection resource with the provider type, region, and secret references. Actual secret values are never displayed -- only the secret slugs.
 
 ## What to Do Next
 
