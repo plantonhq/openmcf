@@ -63,6 +63,15 @@ spec:
       type: string
       description: Optional owner identifier label value
       default: ""
+    # An optional fact the platform supplies only because this pipeline
+    # declares it: the platform(s) the deploy target runs (os/arch,
+    # comma-separated when several). Empty means the build machine's own.
+    # BuildKit builds for the target, emulating when the machine differs; the
+    # run records which, from the build-node-architecture result.
+    - name: target-platform
+      type: string
+      description: "The platform(s) the image must be built for, e.g. linux/amd64 -- the deploy target's, supplied by the platform; empty builds for the build machine's own"
+      default: ""
 
   workspaces:
     - name: source
@@ -95,6 +104,8 @@ spec:
       params:
         - name: image
           value: "$(params.image-name)"
+        - name: platforms
+          value: "$(params.target-platform)"
         # The Docker context is its own param, deliberately NOT project-root:
         # a monorepo service can live in its own directory (project-root, the
         # trigger and kustomize base) while its image builds from a wider

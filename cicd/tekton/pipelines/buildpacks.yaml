@@ -55,6 +55,14 @@ spec:
       type: string
       description: Optional owner identifier label value
       default: ""
+    # An optional fact the platform supplies only because this pipeline
+    # declares it: the platform(s) the deploy target runs. The Buildpacks
+    # track can build linux/amd64 only (its builder exists for nothing else),
+    # so the task refuses any other target in plain words before it starts.
+    - name: target-platform
+      type: string
+      description: "The platform(s) the image must be built for, e.g. linux/amd64 -- the deploy target's, supplied by the platform; empty builds for the build machine's own"
+      default: ""
 
   workspaces:
     - name: source
@@ -93,6 +101,8 @@ spec:
           value: "$(params.project-root)"
         - name: PROCESS_TYPE
           value: ""
+        - name: TARGET_PLATFORM
+          value: "$(params.target-platform)"
       workspaces:
         - name: source
           workspace: source

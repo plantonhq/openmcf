@@ -57,6 +57,14 @@ spec:
       optional: true
       description: Holds .docker/config.json
 
+  # ------------------------------ results --------------------------------
+  results:
+    - name: build-node-architecture
+      description: >-
+        The architecture of the machine this build ran on (amd64, arm64), as
+        the pod itself saw it. Read beside the platforms the image was built
+        for, it says whether the build ran native or emulated.
+
   # ------------------------------ steps ---------------------------------
   steps:
     # ------------------- export Dockerfile ---------------------
@@ -109,6 +117,16 @@ spec:
       script: |
         #!/usr/bin/env sh
         set -eux
+
+        # This step's own image is multi-arch, so it runs on the node's real
+        # architecture even when the image it is about to build is emulated
+        # -- which is exactly why its word about the machine can be trusted.
+        case "$(uname -m)" in
+          x86_64) node_arch=amd64 ;;
+          aarch64|arm64) node_arch=arm64 ;;
+          *) node_arch="$(uname -m)" ;;
+        esac
+        printf '%s' "$node_arch" > "$(results.build-node-architecture.path)"
 
         extra_opts=""
 

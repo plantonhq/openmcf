@@ -62,12 +62,27 @@ spec:
     - name: PLATFORM_DIR
       description: The name of the platform directory.
       default: empty-dir
+    - name: TARGET_PLATFORM
+      description: >-
+        The platform(s) the image must be built for (os/arch, comma-separated
+        when several), or empty for the build machine's own. The Buildpacks
+        lifecycle builds for the builder image's architecture and nothing
+        else, and the builder this task pins exists for linux/amd64 only --
+        so any other target is refused before the build starts, in plain
+        words, rather than producing an image the target cannot run.
+      default: ""
 
   results:
     - name: APP_IMAGE_DIGEST
       description: The digest of the built `APP_IMAGE`.
     - name: APP_IMAGE_URL
       description: The URL of the built `APP_IMAGE`.
+    - name: build-node-architecture
+      description: >-
+        The architecture of the machine this build ran on (amd64, arm64), as
+        the pod itself saw it. Read beside the platform the image was built
+        for, it says whether the build ran native or emulated -- on an arm64
+        machine the Buildpacks track always runs emulated.
 
   stepTemplate:
     env:
@@ -83,6 +98,27 @@ spec:
       script: |
         #!/usr/bin/env bash
         set -e
+
+        # This step's image is multi-arch, so it runs on the node's real
+        # architecture even though the builder step that follows may be
+        # emulated -- its word about the machine is the trustworthy one.
+        case "$(uname -m)" in
+          x86_64) node_arch=amd64 ;;
+          aarch64|arm64) node_arch=arm64 ;;
+          *) node_arch="$(uname -m)" ;;
+        esac
+        printf '%s' "$node_arch" > "$(results.build-node-architecture.path)"
+
+        # The builder image exists for linux/amd64 only, so that is the only
+        # platform this track can honestly build. Refuse anything else here,
+        # before a single layer is pulled, naming the two ways out.
+        case "$(params.TARGET_PLATFORM)" in
+          ""|linux/amd64) ;;
+          *)
+            echo "The Buildpacks build makes linux/amd64 images only -- the builder image this platform pins exists for no other architecture. This service targets $(params.TARGET_PLATFORM): switch it to a Dockerfile build, or change the target's platform."
+            exit 1
+            ;;
+        esac
 
         if [[ "$(workspaces.cache.bound)" == "true" ]]; then
           echo "> Setting permissions on '$(workspaces.cache.path)'..."

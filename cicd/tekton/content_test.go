@@ -51,6 +51,37 @@ func TestContent_tracksAndTasksArePresent(t *testing.T) {
 	}
 }
 
+// Every track builds for the deploy target's platform, not the build
+// machine's: each declares the optional target-platform fact (the platform
+// supplies it only to pipelines that declare it), and each build task
+// reports the machine it ran on as the build-node-architecture result -- the
+// two facts a run needs to say "built for linux/amd64 on an arm64 machine,
+// emulated" as a fact rather than a guess.
+func TestContent_everyTrackBuildsForTheTargetPlatformAndReportsItsMachine(t *testing.T) {
+	for _, track := range Tracks() {
+		yaml, _ := Track(track)
+		if !strings.Contains(string(yaml), "- name: target-platform") {
+			t.Errorf("track %s does not declare the target-platform fact", track)
+		}
+		if !strings.Contains(string(yaml), "$(params.target-platform)") {
+			t.Errorf("track %s declares target-platform but never hands it to its build task", track)
+		}
+	}
+	tasks, err := TaskFiles()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stem := range []string{"buildkit", "buildpacks"} {
+		task := string(tasks[stem])
+		if !strings.Contains(task, "- name: build-node-architecture") {
+			t.Errorf("build task %s does not declare the build-node-architecture result", stem)
+		}
+		if !strings.Contains(task, "$(results.build-node-architecture.path)") {
+			t.Errorf("build task %s declares the result but never writes it", stem)
+		}
+	}
+}
+
 // Every image the content can run is digest-pinned: the tag documents
 // intent, the digest is what the cluster pulls, so a build is reproducible
 // and immune to upstream tag mutation -- and the derived allowlist an
